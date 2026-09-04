@@ -82,7 +82,7 @@ jobs:
           test -s site/index.html
           test -s site/assets/css/app.css
           test -s site/assets/js/static.js
-          test -s site/.nojekyll
+          test -f site/.nojekyll
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
