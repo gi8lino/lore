@@ -3,7 +3,7 @@ module github.com/gi8lino/lore
 go 1.27.0
 
 require (
-	github.com/alecthomas/chroma/v2 v2.20.0
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/containeroo/httpgrace v0.2.0
 	github.com/containeroo/tinyflags v0.0.81
 	github.com/coreos/go-oidc/v3 v3.21.0
@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
