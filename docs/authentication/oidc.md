@@ -7,11 +7,11 @@ OIDC mode uses authorization-code login with provider discovery. Lore binds an a
 Set:
 
 ```text
-LORE_OIDC_CLIENT_SECRET
-LORE_SESSION_SECRET
+LORE__OIDC_CLIENT_SECRET
+LORE__SESSION_SECRET
 ```
 
-`LORE_SESSION_SECRET` must contain at least 32 characters. The client secret and session secret are not stored in PostgreSQL.
+`LORE__SESSION_SECRET` must contain at least 32 characters. The client secret and session secret are not stored in PostgreSQL.
 
 The issuer, client ID, optional group claim, and group mappings are managed as non-secret application settings.
 

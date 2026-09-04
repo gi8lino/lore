@@ -676,13 +676,13 @@ func authenticationSettingsProblems(
 		if !runtime.OIDCClientSecretConfigured {
 			problems = append(problems, httpresponse.NewFieldProblem(
 				"oidc_client_secret",
-				"Configure LORE_OIDC_CLIENT_SECRET before enabling OIDC.",
+				"Configure LORE__OIDC_CLIENT_SECRET before enabling OIDC.",
 			))
 		}
 		if !runtime.SessionSecretConfigured {
 			problems = append(problems, httpresponse.NewFieldProblem(
 				"session_secret",
-				"Configure LORE_SESSION_SECRET with at least 32 characters before enabling OIDC.",
+				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
 			))
 		}
 		if settings.OIDCGroupSync && settings.OIDCGroupClaim == "" {

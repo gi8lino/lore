@@ -9,8 +9,8 @@ import (
 )
 
 func TestEnvironmentPrefix(t *testing.T) {
-	t.Setenv("LORE_DATABASE_URL", "postgres://example/lore")
-	t.Setenv("LORE_AUTH_MODE", string(auth.AuthModeTrustedProxy))
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__AUTH_MODE", string(auth.AuthModeTrustedProxy))
 
 	cfg, err := Parse(nil, "test")
 	require.NoError(t, err)
@@ -37,8 +37,8 @@ func TestAuthModeDefaultsToDatabaseManaged(t *testing.T) {
 }
 
 func TestLocalRecoveryLoginCanBeEnabledFromEnvironment(t *testing.T) {
-	t.Setenv("LORE_DATABASE_URL", "postgres://example/lore")
-	t.Setenv("LORE_LOCAL_LOGIN", "true")
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__LOCAL_LOGIN", "true")
 
 	cfg, err := Parse(nil, "test")
 	require.NoError(t, err)

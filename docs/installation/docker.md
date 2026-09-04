@@ -6,7 +6,7 @@ The included Compose file starts Lore and PostgreSQL 18.
 docker compose -f deploy/compose.yaml up -d
 ```
 
-The development stack publishes Lore on `127.0.0.1:8080` and PostgreSQL on `127.0.0.1:5432`. The Lore service receives a PostgreSQL URL through `LORE_DATABASE_URL` and uses `LORE_PUBLIC_URL=http://localhost:8080`.
+The development stack publishes Lore on `127.0.0.1:8080` and PostgreSQL on `127.0.0.1:5432`. The Lore service receives a PostgreSQL URL through `LORE__DATABASE_URL` and uses `LORE__PUBLIC_URL=http://localhost:8080`.
 
 ## Container image
 

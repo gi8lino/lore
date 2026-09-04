@@ -31,14 +31,14 @@ For production deployments, authentication, Kubernetes, static sites, and other 
 
 ## Common settings
 
-Environment variables use the `LORE_` prefix.
+Environment variables use the `LORE__` prefix.
 
-| Setting               | Default                 | What it changes                                                                |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------ |
-| `LORE_LISTEN_ADDRESS` | `127.0.0.1:8080`        | Address and port Lore listens on.                                              |
-| `LORE_PUBLIC_URL`     | `http://localhost:8080` | Externally visible URL of the Lore installation.                               |
-| `LORE_DATABASE_URL`   | —                       | PostgreSQL connection URL.                                                     |
-| `LORE_LOCAL_LOGIN`    | `false`                 | Enables the local recovery login alongside the configured authentication mode. |
+| Setting                 | Default                 | What it changes                                                                |
+| ----------------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `LORE___LISTEN_ADDRESS` | `127.0.0.1:8080`        | Address and port Lore listens on.                                              |
+| `LORE___PUBLIC_URL`     | `http://localhost:8080` | Externally visible URL of the Lore installation.                               |
+| `LORE___DATABASE_URL`   | —                       | PostgreSQL connection URL.                                                     |
+| `LORE___LOCAL_LOGIN`    | `false`                 | Enables the local recovery login alongside the configured authentication mode. |
 
 See the [configuration guide](https://gi8lino.github.io/lore/configuration/) for all settings and authentication options.
 

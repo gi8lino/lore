@@ -8,6 +8,6 @@ A successful sign-in creates a random 32-byte session token. Lore stores only a 
 
 ## Recovery login
 
-`LORE_LOCAL_LOGIN=true` can expose `/auth/local` alongside another configured mode as a break-glass login. Administrators can set or replace their local recovery password from the configuration area.
+`LORE___LOCAL_LOGIN=true` can expose `/auth/local` alongside another configured mode as a break-glass login. Administrators can set or replace their local recovery password from the configuration area.
 
 Use local recovery deliberately: it is intended to keep access possible when an external identity provider or proxy is unavailable.

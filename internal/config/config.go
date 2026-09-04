@@ -65,12 +65,12 @@ type Config struct {
 	Overridden map[string]any
 }
 
-// Parse parses command-line arguments and LORE_ environment variables into Config.
+// Parse parses command-line arguments and LORE__ environment variables into Config.
 func Parse(args []string, version string) (Config, error) {
 	cfg := Config{}
 	flags := tinyflags.NewFlagSet("lore", tinyflags.ContinueOnError)
 	flags.Version(version)
-	flags.EnvPrefix("LORE")
+	flags.EnvPrefix("LORE_")
 
 	// Server
 	listen := flags.TCPAddr("listen-address", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8080}, "Address on which the web server listens").
@@ -90,19 +90,15 @@ func Parse(args []string, version string) (Config, error) {
 		Placeholder("DIR").
 		Value()
 
-		// Auth
-	authModeFlag := tinyflags.Enum(
-		flags,
-		"auth-mode",
-		auth.AuthModeNone,
-		"Emergency override for the database-managed authentication mode",
+	// Auth
+	authModeFlag := tinyflags.Enum(flags, "auth-mode", auth.AuthModeNone, "Emergency override for the database-managed authentication mode",
 		auth.AuthModeNone,
 		auth.AuthModeTrustedProxy,
 		auth.AuthModeOIDC,
 	).
 		Placeholder("MODE")
 
-		// Trusted-proxy
+	// Trusted-proxy
 	flags.StringSliceVar(&cfg.TrustedUsernameHeaders, "trusted-username-headers", trustedUsernameHeaders, "Trusted-proxy username headers used only with the authentication override").
 		Value()
 	flags.StringSliceVar(&cfg.TrustedEmailHeaders, "trusted-email-headers", trustedEmailHeaders, "Trusted-proxy email headers used only with the authentication override").
@@ -110,7 +106,7 @@ func Parse(args []string, version string) (Config, error) {
 	flags.StringSliceVar(&cfg.TrustedDisplayNameHeaders, "trusted-display-name-headers", trustedDisplayNameHeaders, "Trusted-proxy display-name headers used only with the authentication override").
 		Value()
 
-		// OIDC
+	// OIDC
 	flags.StringVar(&cfg.OIDCIssuer, "oidc-issuer", "", "OIDC issuer used only with the authentication override").
 		Placeholder("URL").
 		Value()
@@ -130,7 +126,7 @@ func Parse(args []string, version string) (Config, error) {
 		}).
 		Value()
 
-		// Logging
+	// Logging
 	logFormat := flags.String("log-format", "json", "Log output format").
 		Choices(string(logging.LogFormatText), string(logging.LogFormatJSON)).
 		Short("l").

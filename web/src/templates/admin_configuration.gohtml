@@ -61,7 +61,7 @@
             <div class="auth-override-note">
               <strong>Runtime override active</strong>
               <span
-                ><code>LORE_AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> currently overrides the mode below. Remove
+                ><code>LORE__AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> currently overrides the mode below. Remove
                 it after recovery to use the saved mode.</span
               >
             </div>
@@ -304,7 +304,7 @@
                 {{ else }}
                   <strong class="config-status missing">Missing</strong>
                 {{ end }}
-                <small><code>LORE_OIDC_CLIENT_SECRET</code></small>
+                <small><code>LORE__OIDC_CLIENT_SECRET</code></small>
               </div>
               <div>
                 <span>Session secret</span>
@@ -313,7 +313,7 @@
                 {{ else }}
                   <strong class="config-status missing">Missing</strong>
                 {{ end }}
-                <small><code>LORE_SESSION_SECRET</code>, at least 32 characters</small>
+                <small><code>LORE__SESSION_SECRET</code>, at least 32 characters</small>
               </div>
             </div>
           </div>
@@ -369,7 +369,7 @@
             </div>
           </form>
           <p class="settings-note auth-recovery-note">
-            When another authentication mode is active, set <code>LORE_LOCAL_LOGIN=true</code> and restart Lore to expose
+            When another authentication mode is active, set <code>LORE__LOCAL_LOGIN=true</code> and restart Lore to expose
             <code>/auth/local</code>. Local mode always exposes the endpoint.
           </p>
         </div>
