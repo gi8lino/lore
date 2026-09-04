@@ -47,7 +47,7 @@ func Run(
 			cfg.LogFormat,
 			cfg.Debug,
 			cfg.AccessLog,
-			serve.FlagSet.OverriddenValues(),
+			serve.OverriddenValues(),
 			version,
 			commit,
 			stdout,
@@ -67,7 +67,7 @@ func Run(
 			version,
 			commit,
 			cfg,
-			build.FlagSet.OverriddenValues(),
+			build.OverriddenValues(),
 			stdout,
 		)
 	})
