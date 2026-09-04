@@ -39,16 +39,14 @@ func (s *Store) CreateInitialLocalAdministrator(
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Lock the singleton settings row so only one concurrent setup can win.
+	// The presence of users is the setup invariant; a stale auth_mode must not
+	// make an otherwise empty installation impossible to bootstrap.
 	var singleton bool
-	var authMode string
 	if err := tx.QueryRow(ctx, `
-SELECT singleton,auth_mode
+SELECT singleton
 FROM application_settings
-WHERE singleton=true FOR UPDATE`).Scan(&singleton, &authMode); err != nil {
+WHERE singleton=true FOR UPDATE`).Scan(&singleton); err != nil {
 		return User{}, err
-	}
-	if authMode != "none" {
-		return User{}, ErrForbidden
 	}
 	var exists bool
 	if err := tx.QueryRow(ctx, `
@@ -63,12 +61,14 @@ SELECT EXISTS(SELECT 1 FROM users)`).Scan(&exists); err != nil {
 	if err := tx.QueryRow(ctx, `
 INSERT INTO users(username,email,display_name,role,last_login)
 VALUES($1,$2,$3,'admin',now())
-RETURNING id,username,email,display_name,role`, username, email, displayName).Scan(
+RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.DisplayName,
 		&user.Role,
+		&user.Enabled,
+		&user.SessionVersion,
 	); err != nil {
 		return User{}, err
 	}
@@ -94,15 +94,17 @@ func (s *Store) LocalCredential(ctx context.Context, username string) (User, str
 	var user User
 	var passwordHash string
 	err := s.pool.QueryRow(ctx, `
-SELECT u.id,u.username,u.email,u.display_name,u.role,c.password_hash
+SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version,c.password_hash
 FROM local_credentials c
 JOIN users u ON u.id=c.user_id
-WHERE u.username=$1 AND c.enabled`, strings.TrimSpace(username)).Scan(
+WHERE u.username=$1 AND u.enabled AND c.enabled`, strings.TrimSpace(username)).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.DisplayName,
 		&user.Role,
+		&user.Enabled,
+		&user.SessionVersion,
 		&passwordHash,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -127,7 +129,7 @@ SELECT EXISTS(
   SELECT 1
   FROM local_credentials c
   JOIN users u ON u.id=c.user_id
-  WHERE u.role='admin' AND c.enabled
+  WHERE u.role='admin' AND u.enabled AND c.enabled
 )`).Scan(&exists)
 	return exists, err
 }
@@ -197,11 +199,11 @@ WHERE id=$1`, userID)
 func (s *Store) LocalUserBySession(ctx context.Context, tokenHash string) (User, error) {
 	var user User
 	err := s.pool.QueryRow(ctx, `
-SELECT u.id,u.username,u.email,u.display_name,u.role
+SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version
 FROM local_sessions s
 JOIN users u ON u.id=s.user_id
 JOIN local_credentials c ON c.user_id=u.id
-WHERE s.token_hash=$1 AND s.expires_at>now() AND c.enabled`, tokenHash).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+WHERE s.token_hash=$1 AND s.expires_at>now() AND u.enabled AND c.enabled`, tokenHash).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}

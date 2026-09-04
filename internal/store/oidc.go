@@ -13,6 +13,24 @@ const (
 	pendingOIDCStatusRejected = "rejected"
 )
 
+// SetExternalAdminStatus records the most recently asserted external administrator state.
+func (s *Store) SetExternalAdminStatus(ctx context.Context, userID int64, method string, admin bool) error {
+	var query string
+	switch method {
+	case "oidc":
+		query = `UPDATE users SET oidc_admin_observed=true,oidc_external_admin=$2 WHERE id=$1`
+	case "trusted-proxy":
+		query = `UPDATE users SET trusted_proxy_admin_observed=true,trusted_proxy_external_admin=$2 WHERE id=$1`
+	default:
+		return errors.New("unsupported external authentication method")
+	}
+	tag, err := s.pool.Exec(ctx, query, userID, admin)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return err
+}
+
 // OIDCUser resolves an existing Lore account by its verified OIDC issuer and subject.
 func (s *Store) OIDCUser(ctx context.Context, issuer, subject string) (User, error) {
 	issuer = strings.TrimSpace(issuer)
@@ -23,10 +41,10 @@ func (s *Store) OIDCUser(ctx context.Context, issuer, subject string) (User, err
 
 	var user User
 	err := s.pool.QueryRow(ctx, `
-SELECT u.id,u.username,u.email,u.display_name,u.role
+SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version,u.oidc_external_admin
 FROM oidc_identities oi
 JOIN users u ON u.id=oi.user_id
-WHERE oi.issuer=$1 AND oi.subject=$2`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+WHERE oi.issuer=$1 AND oi.subject=$2 AND u.enabled`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion, &user.ExternalAdmin)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
@@ -497,11 +515,11 @@ WHERE id=$1`, pendingID, status)
 func oidcUserForUpdate(ctx context.Context, tx pgx.Tx, issuer, subject string) (User, bool, error) {
 	var user User
 	err := tx.QueryRow(ctx, `
-SELECT u.id,u.username,u.email,u.display_name,u.role
+SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version
 FROM oidc_identities oi
 JOIN users u ON u.id=oi.user_id
 WHERE oi.issuer=$1 AND oi.subject=$2
-FOR UPDATE OF u`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+FOR UPDATE OF u`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil
 	}
@@ -581,14 +599,19 @@ func refreshOIDCUser(
 
 	err := tx.QueryRow(ctx, `
 UPDATE users
-SET username=$2,email=$3,display_name=$4,last_login=now()
+SET username=$2,
+    email=$3,
+    display_name=$4,
+    last_login=CASE WHEN enabled THEN now() ELSE last_login END
 WHERE id=$1
-RETURNING id,username,email,display_name,role`, user.ID, user.Username, email, displayName).Scan(
+RETURNING id,username,email,display_name,role,enabled,session_version`, user.ID, user.Username, email, displayName).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.DisplayName,
 		&user.Role,
+		&user.Enabled,
+		&user.SessionVersion,
 	)
 	return user, err
 }
@@ -615,12 +638,14 @@ func createOIDCUser(
 	if err := tx.QueryRow(ctx, `
 INSERT INTO users(username,email,display_name,last_login)
 VALUES($1,$2,$3,now())
-RETURNING id,username,email,display_name,role`, username, email, displayName).Scan(
+RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.DisplayName,
 		&user.Role,
+		&user.Enabled,
+		&user.SessionVersion,
 	); err != nil {
 		return User{}, err
 	}

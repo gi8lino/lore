@@ -47,19 +47,19 @@
       {{ if .LocalCredentialAuthenticated }}
         <section class="panel settings-panel" id="password">
           <div class="panel-title"><h2>Change password</h2></div>
-          <form class="stacked-form" action="/settings/local-password" method="post">
+          <form class="stacked-form" action="/settings/local-password" method="post" data-validate-form novalidate>
             <label>
               Current password
-              <input type="password" name="current_password" autocomplete="current-password" required />
+              <input type="password" name="current_password" autocomplete="current-password" data-error-required="Enter your current password." required />
             </label>
             <label>
               New password
-              <input type="password" name="new_password" autocomplete="new-password" minlength="12" required />
+              <input type="password" name="new_password" autocomplete="new-password" minlength="12" data-error-required="Enter a new password." data-error-minlength="Use at least 12 characters." required />
               <small>At least 12 characters.</small>
             </label>
             <label>
               Confirm new password
-              <input type="password" name="new_password_confirm" autocomplete="new-password" minlength="12" required />
+              <input type="password" name="new_password_confirm" autocomplete="new-password" data-validate-match="new_password" data-error-required="Confirm your new password." data-error-match="Passwords do not match." required />
             </label>
             <div class="settings-actions"><button class="button primary" type="submit">Change password</button></div>
           </form>
@@ -331,3 +331,5 @@
     </div>
   </section>
 {{ end }}
+
+

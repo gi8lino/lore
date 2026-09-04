@@ -41,6 +41,9 @@ SELECT
   u.email,
   u.display_name,
   u.role,
+  u.enabled,
+  (u.oidc_admin_observed OR u.trusted_proxy_admin_observed),
+  (u.oidc_external_admin OR u.trusted_proxy_external_admin),
   lc.user_id IS NOT NULL,
   coalesce(lc.enabled,false),
   coalesce(u.last_login, u.created_at),
@@ -66,6 +69,9 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 			&user.User.Email,
 			&user.User.DisplayName,
 			&user.User.Role,
+			&user.User.Enabled,
+			&user.ExternalAdminObserved,
+			&user.ExternalAdmin,
 			&user.HasLocalCredential,
 			&user.LocalCredentialEnabled,
 			&user.LastLogin,
@@ -79,11 +85,12 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 	return users, rows.Err()
 }
 
-// UpdateUser updates an account role, local-login state, and group memberships transactionally.
+// UpdateUser updates an account role, enabled state, local-login state, and group memberships transactionally.
 func (s *Store) UpdateUser(
 	ctx context.Context,
 	userID int64,
 	role string,
+	enabled bool,
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
@@ -99,13 +106,22 @@ func (s *Store) UpdateUser(
 
 	tag, err := tx.Exec(ctx, `
 UPDATE users
-SET role=$2
-WHERE id=$1`, userID, role)
+SET role=$2,
+    enabled=$3,
+    session_version=CASE WHEN enabled AND NOT $3 THEN session_version+1 ELSE session_version END
+WHERE id=$1`, userID, role, enabled)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
+	}
+	if !enabled {
+		if _, err := tx.Exec(ctx, `
+DELETE FROM local_sessions
+WHERE user_id=$1`, userID); err != nil {
+			return err
+		}
 	}
 	if localCredentialEnabled != nil {
 		if _, err := tx.Exec(ctx, `
@@ -134,6 +150,32 @@ VALUES($1,$2)
 ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
 			return err
 		}
+	}
+	return tx.Commit(ctx)
+}
+
+// RevokeUserSessions invalidates local and OIDC sessions for one account.
+func (s *Store) RevokeUserSessions(ctx context.Context, userID int64) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	tag, err := tx.Exec(ctx, `
+UPDATE users
+SET session_version=session_version+1
+WHERE id=$1`, userID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, `
+DELETE FROM local_sessions
+WHERE user_id=$1`, userID); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }
@@ -238,10 +280,10 @@ WHERE id=$1`, id)
 func (s *Store) User(ctx context.Context, id int64) (User, error) {
 	var user User
 	err := s.pool.QueryRow(ctx, `
-SELECT id,username,email,display_name,role
+SELECT id,username,email,display_name,role,enabled,session_version
 FROM users
 WHERE id=$1`, id).
-		Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+		Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
@@ -293,9 +335,12 @@ SELECT
   oidc_group_claim,
   oidc_group_sync,
   oidc_groups_authoritative,
+	oidc_admin_group,
   trusted_username_headers,
   trusted_email_headers,
   trusted_display_name_headers,
+	trusted_group_headers,
+	trusted_admin_group,
   render_wiki_links,
   render_callouts,
   render_tabs,
@@ -324,9 +369,12 @@ WHERE singleton=true`).Scan(
 		&settings.Authentication.OIDCGroupClaim,
 		&settings.Authentication.OIDCGroupSync,
 		&settings.Authentication.OIDCGroupsAuthoritative,
+		&settings.Authentication.OIDCAdminGroup,
 		&settings.Authentication.TrustedUsernameHeaders,
 		&settings.Authentication.TrustedEmailHeaders,
 		&settings.Authentication.TrustedDisplayNameHeaders,
+		&settings.Authentication.TrustedGroupHeaders,
+		&settings.Authentication.TrustedAdminGroup,
 		&settings.Rendering.WikiLinks,
 		&settings.Rendering.Callouts,
 		&settings.Rendering.Tabs,
@@ -369,6 +417,30 @@ func (s *Store) SaveAuthenticationSettings(ctx context.Context, settings Authent
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// A changed assertion source invalidates previously observed external role state.
+	if _, err := tx.Exec(ctx, `
+UPDATE users
+SET oidc_admin_observed=false,oidc_external_admin=false
+WHERE EXISTS (
+  SELECT 1
+  FROM application_settings
+  WHERE singleton=true
+    AND (oidc_admin_group IS DISTINCT FROM $1 OR oidc_group_claim IS DISTINCT FROM $2)
+)`, settings.OIDCAdminGroup, settings.OIDCGroupClaim); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+UPDATE users
+SET trusted_proxy_admin_observed=false,trusted_proxy_external_admin=false
+WHERE EXISTS (
+  SELECT 1
+  FROM application_settings
+  WHERE singleton=true
+    AND (trusted_admin_group IS DISTINCT FROM $1 OR trusted_group_headers IS DISTINCT FROM $2)
+)`, settings.TrustedAdminGroup, settings.TrustedGroupHeaders); err != nil {
+		return err
+	}
+
 	if _, err := tx.Exec(ctx, `
 UPDATE application_settings
 SET auth_mode=$1,
@@ -377,9 +449,12 @@ SET auth_mode=$1,
     oidc_group_claim=$4,
     oidc_group_sync=$5,
     oidc_groups_authoritative=$6,
-    trusted_username_headers=$7,
-    trusted_email_headers=$8,
-    trusted_display_name_headers=$9,
+	oidc_admin_group=$7,
+    trusted_username_headers=$8,
+    trusted_email_headers=$9,
+    trusted_display_name_headers=$10,
+	trusted_group_headers=$11,
+	trusted_admin_group=$12,
     updated_at=now()
 WHERE singleton=true`,
 		settings.Mode,
@@ -388,9 +463,12 @@ WHERE singleton=true`,
 		settings.OIDCGroupClaim,
 		settings.OIDCGroupSync,
 		settings.OIDCGroupsAuthoritative,
+		settings.OIDCAdminGroup,
 		settings.TrustedUsernameHeaders,
 		settings.TrustedEmailHeaders,
 		settings.TrustedDisplayNameHeaders,
+		settings.TrustedGroupHeaders,
+		settings.TrustedAdminGroup,
 	); err != nil {
 		return err
 	}

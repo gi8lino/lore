@@ -469,6 +469,9 @@
   display: grid;
   gap: 12px;
 }
+.auth-group-sync-options[hidden] {
+  display: none;
+}
 .auth-group-sync-options > label:not(.toggle-row) {
   display: grid;
   max-width: 420px;

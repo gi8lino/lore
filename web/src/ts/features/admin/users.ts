@@ -17,6 +17,9 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   const role = dialog.querySelector<HTMLSelectElement>(
     "[data-admin-user-role]",
   );
+  const accountEnabled = dialog.querySelector<HTMLInputElement>(
+    "[data-admin-user-enabled]",
+  );
   const localLogin = dialog.querySelector<HTMLElement>(
     "[data-admin-user-local-login]",
   );
@@ -48,6 +51,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
       if (!userID) return;
 
       const groups = selectedGroupIDs(button);
+      form.reset();
       form.action = `/admin/users/${encodeURIComponent(userID)}`;
       name.textContent =
         button.dataset.userName || button.dataset.userUsername || "Edit user";
@@ -56,6 +60,9 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
       const email = button.dataset.userEmail || "";
       identity.textContent = email ? `${username} · ${email}` : username;
       role.value = button.dataset.userRole || "viewer";
+      if (accountEnabled) {
+        accountEnabled.checked = button.dataset.userEnabled === "true";
+      }
       if (localLogin && localCredentialEnabled && localCredentialUpdate) {
         const hasLocalCredential =
           button.dataset.userHasLocalCredential === "true";

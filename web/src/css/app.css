@@ -18,6 +18,7 @@
 @import "./components/dialogs-sharing-groups.css";
 @import "./components/icons.css";
 @import "./pages/admin-extras.css";
+@import "./components/form-validation.css";
 @import "./navigation/preferences.css";
 @import "./pages/reading-rendering.css";
 @import "./markdown/highlighting-tables.css";

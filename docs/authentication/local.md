@@ -50,3 +50,16 @@ COMMIT;
 After signing in, restore the intended authentication mode in **Administration → Configuration**. A deployment-level `LORE__AUTH_MODE` override takes precedence over these database settings.
 
 Use local recovery deliberately: it is intended to keep access possible when an external identity provider or proxy is unavailable.
+
+If the Lore account itself was disabled, enabling only its local credential is not enough. Re-enable both records during database recovery:
+
+```sql
+BEGIN;
+UPDATE users
+SET enabled = true
+WHERE username = 'admin';
+UPDATE local_credentials
+SET enabled = true, updated_at = now()
+WHERE user_id = (SELECT id FROM users WHERE username = 'admin');
+COMMIT;
+```

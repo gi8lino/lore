@@ -83,16 +83,28 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid password form.")
 			return
 		}
+		currentPassword := r.FormValue("current_password")
+		if currentPassword == "" {
+			httpresponse.Problem(
+				w,
+				http.StatusUnprocessableEntity,
+				"Password validation failed.",
+				httpresponse.NewFieldProblem("current_password", "Enter your current password."),
+			)
+			return
+		}
 		newPassword := r.FormValue("new_password")
-		if !auth.ValidLocalPassword(newPassword) {
-			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", httpresponse.NewFieldProblem("new_password", "Use at least 12 characters."))
+		if problems := localPasswordValidationProblems(
+			newPassword,
+			r.FormValue("new_password_confirm"),
+			"new_password",
+			"new_password_confirm",
+			true,
+		); len(problems) > 0 {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", problems...)
 			return
 		}
-		if newPassword != r.FormValue("new_password_confirm") {
-			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", httpresponse.NewFieldProblem("new_password_confirm", "Passwords do not match."))
-			return
-		}
-		token, err := local.ChangePassword(r.Context(), user.ID, user.Username, r.FormValue("current_password"), newPassword)
+		token, err := local.ChangePassword(r.Context(), user.ID, user.Username, currentPassword, newPassword)
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.", httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
 			return

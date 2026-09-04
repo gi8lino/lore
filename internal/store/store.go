@@ -144,13 +144,16 @@ ON CONFLICT(username) DO UPDATE SET
   email=EXCLUDED.email,
   display_name=EXCLUDED.display_name,
   role='admin',
+  enabled=true,
   last_login=now()
-RETURNING id,username,email,display_name,role`, username, email, displayName).Scan(
+RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
 		&user.DisplayName,
 		&user.Role,
+		&user.Enabled,
+		&user.SessionVersion,
 	)
 	return user, err
 }
@@ -164,9 +167,11 @@ func (s *Store) TrustedProxyUser(ctx context.Context, username, email, displayNa
 	var user User
 	err := s.pool.QueryRow(ctx, `
 UPDATE users
-SET email=$2,display_name=$3,last_login=now()
+SET email=$2,
+    display_name=$3,
+    last_login=CASE WHEN enabled THEN now() ELSE last_login END
 WHERE username=$1
-RETURNING id,username,email,display_name,role`, username, email, displayName).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if err == nil {
 		return user, nil
 	}
@@ -187,7 +192,7 @@ INSERT INTO users(username,email,display_name,last_login)
 VALUES($1,$2,$3,now())
 ON CONFLICT(username) DO UPDATE
 SET email=EXCLUDED.email,display_name=EXCLUDED.display_name,last_login=now()
-RETURNING id,username,email,display_name,role`, username, email, displayName).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	return user, err
 }
 
@@ -199,9 +204,9 @@ func (s *Store) UserByToken(ctx context.Context, token string) (User, error) {
 	err := s.pool.QueryRow(ctx, `
 UPDATE api_tokens t
 SET last_used=now() FROM users u
-WHERE t.token_hash=$1 AND coalesce(t.user_id,t.created_by)=u.id AND (t.expires_at IS NULL OR t.expires_at>now())
-RETURNING u.id,u.username,u.email,u.display_name,u.role`, hash).
-		Scan(&u.ID, &u.Username, &u.Email, &u.DisplayName, &u.Role)
+WHERE t.token_hash=$1 AND coalesce(t.user_id,t.created_by)=u.id AND u.enabled AND (t.expires_at IS NULL OR t.expires_at>now())
+RETURNING u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version`, hash).
+		Scan(&u.ID, &u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Enabled, &u.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}

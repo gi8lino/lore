@@ -21,6 +21,8 @@ type TrustedProxyHeaders struct {
 	Username    []string
 	Email       []string
 	DisplayName []string
+	Groups      []string
+	AdminGroup  string
 }
 
 // NewTrustedProxy creates a trusted-proxy authenticator.
@@ -44,7 +46,36 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (model.User, error) {
 	if errors.Is(err, model.ErrRegistrationDisabled) {
 		return model.User{}, ErrRegistrationDisabled
 	}
+	if err != nil {
+		return model.User{}, err
+	}
+	if !user.Enabled {
+		return model.User{}, ErrInvalidCredentials
+	}
+	if a.headers.AdminGroup != "" {
+		groups := splitHeaderValues(firstHeader(r, a.headers.Groups))
+		externalAdmin := containsGroup(groups, a.headers.AdminGroup)
+		if err := a.repository.SetExternalAdminStatus(r.Context(), user.ID, "trusted-proxy", externalAdmin); err != nil {
+			return model.User{}, err
+		}
+		if externalAdmin {
+			user.ExternalAdmin = true
+			user.Role = "admin"
+		}
+	}
 	return user, err
+}
+
+// splitHeaderValues normalizes a comma-separated trusted group header.
+func splitHeaderValues(value string) []string {
+	parts := strings.Split(value, ",")
+	groups := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if group := strings.TrimSpace(part); group != "" {
+			groups = append(groups, group)
+		}
+	}
+	return groups
 }
 
 // firstHeader returns the first non-empty configured header value.

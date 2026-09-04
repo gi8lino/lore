@@ -96,10 +96,16 @@
           <tbody>
             {{ range .AdminUsers }}
               {{ $adminUser := . }}
-              <tr>
+              <tr class="{{ if not .User.Enabled }}admin-user-disabled{{ end }}">
                 <td>
                   <strong>{{ .User.DisplayName }}</strong>
                   <small>{{ .User.Username }}{{ if .User.Email }} · {{ .User.Email }}{{ end }}</small>
+                  {{ if not .User.Enabled }}
+                    <small class="admin-user-warning">{{ icon "ban" 12 }} Account disabled</small>
+                  {{ end }}
+                  {{ if and (eq .User.Role "admin") .ExternalAdminObserved (not .ExternalAdmin) }}
+                    <small class="admin-user-warning">{{ icon "triangle-alert" 12 }} External provider no longer grants admin; manual admin remains</small>
+                  {{ end }}
                   {{ if .OIDCIdentities }}
                     <small class="admin-user-identity-state">
                       {{ icon "key-round" 12 }}
@@ -120,6 +126,9 @@
                 </td>
                 <td>
                   <span class="admin-role-badge role-{{ .User.Role }}">{{ .User.Role }}</span>
+                  {{ if .ExternalAdmin }}
+                    <span class="admin-role-badge role-external-admin">External admin</span>
+                  {{ end }}
                 </td>
                 <td>
                   {{ if .Groups }}
@@ -138,23 +147,37 @@
                   {{ end }}
                 </td>
                 <td class="admin-user-action">
-                  <button
-                    class="button compact"
-                    type="button"
-                    data-admin-user-edit
-                    data-user-id="{{ .User.ID }}"
-                    data-user-name="{{ .User.DisplayName }}"
-                    data-user-username="{{ .User.Username }}"
-                    data-user-email="{{ .User.Email }}"
-                    data-user-role="{{ .User.Role }}"
-                    data-user-has-local-credential="{{ .HasLocalCredential }}"
-                    data-user-local-credential-enabled="{{ .LocalCredentialEnabled }}"
-                    data-group-ids="{{ range $.Groups }}
-                      {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
-                    {{ end }}"
-                  >
-                    {{ icon "pencil" 15 }}<span>Edit</span>
-                  </button>
+                  <div class="admin-user-actions">
+                    <button
+                      class="button compact"
+                      type="button"
+                      data-admin-user-edit
+                      data-user-id="{{ .User.ID }}"
+                      data-user-name="{{ .User.DisplayName }}"
+                      data-user-username="{{ .User.Username }}"
+                      data-user-email="{{ .User.Email }}"
+                      data-user-role="{{ .User.Role }}"
+                      data-user-enabled="{{ .User.Enabled }}"
+                      data-user-has-local-credential="{{ .HasLocalCredential }}"
+                      data-user-local-credential-enabled="{{ .LocalCredentialEnabled }}"
+                      data-group-ids="{{ range $.Groups }}
+                        {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
+                      {{ end }}"
+                    >
+                      {{ icon "pencil" 15 }}<span>Edit</span>
+                    </button>
+                    <form
+                      action="/admin/users/{{ .User.ID }}/sessions/revoke"
+                      method="post"
+                      data-confirm="Sign out {{ .User.DisplayName }}? Local and OIDC browser sessions will be revoked. Trusted-proxy authentication resumes on the next request unless the account is disabled."
+                      data-confirm-title="Sign out user"
+                      data-confirm-label="Sign out"
+                    >
+                      <button class="button compact" type="submit" title="Revoke browser sessions">
+                        {{ icon "log-out" 15 }}<span class="sr-only">Sign out</span>
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             {{ end }}
@@ -221,7 +244,7 @@
     data-external-auth-active="{{ if .Runtime.AuthModeOverride }}{{ or (eq .Runtime.AuthModeOverride "oidc") (eq .Runtime.AuthModeOverride "trusted-proxy") }}{{ else }}{{ or (eq .ApplicationSettings.Authentication.Mode "oidc") (eq .ApplicationSettings.Authentication.Mode "trusted-proxy") }}{{ end }}"
     aria-labelledby="admin-user-dialog-title"
   >
-    <form method="post" data-admin-user-form>
+    <form method="post" data-admin-user-form data-validate-form novalidate>
       <div class="app-dialog-header">
         <div>
           <p class="eyebrow">User access</p>
@@ -244,6 +267,14 @@
           </select>
         </label>
 
+        <label class="toggle-row admin-user-account-state">
+          <span>
+            <strong>Account enabled</strong>
+            <small>Disabling blocks local login, OIDC, trusted-proxy authentication, and API tokens, and revokes browser sessions.</small>
+          </span>
+          <input type="checkbox" name="account_enabled" data-admin-user-enabled />
+        </label>
+
         <label class="toggle-row admin-user-local-login" data-admin-user-local-login hidden>
           <span>
             <strong>Local login</strong>
@@ -261,11 +292,11 @@
           <div class="form-grid">
             <label>
               New password
-              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-admin-user-local-password-input disabled />
+              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-error-minlength="Use at least 12 characters." data-admin-user-local-password-input disabled />
             </label>
             <label>
               Confirm password
-              <input type="password" name="local_password_confirm" autocomplete="new-password" minlength="12" data-admin-user-local-password-confirm disabled />
+              <input type="password" name="local_password_confirm" autocomplete="new-password" data-validate-match="local_password" data-error-required="Confirm the password." data-error-match="Passwords do not match." data-admin-user-local-password-confirm disabled />
             </label>
           </div>
           <p class="muted">The password works only when <code>/auth/local</code> is exposed; granting it does not expose the endpoint.</p>
@@ -357,3 +388,5 @@
     </div>
   </dialog>
 {{ end }}
+
+

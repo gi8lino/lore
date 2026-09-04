@@ -61,6 +61,10 @@ type AdminUser struct {
 	HasLocalCredential bool
 	// LocalCredentialEnabled reports whether that local password can be used to sign in.
 	LocalCredentialEnabled bool
+	// ExternalAdminObserved reports whether an external provider supplied admin status for this account.
+	ExternalAdminObserved bool
+	// ExternalAdmin reports the most recently observed external administrator status.
+	ExternalAdmin bool
 	// Groups contains group names assigned to the user.
 	Groups []string
 	// OIDCIdentities contains external OIDC identities bound to the user.
@@ -149,12 +153,18 @@ type AuthenticationSettings struct {
 	OIDCGroupsAuthoritative bool
 	// OIDCGroupMappings maps external group values to Lore groups.
 	OIDCGroupMappings []OIDCGroupMapping
+	// OIDCAdminGroup is the claim value that grants session-scoped administrator access.
+	OIDCAdminGroup string
 	// TrustedUsernameHeaders lists trusted-proxy username headers in priority order.
 	TrustedUsernameHeaders []string
 	// TrustedEmailHeaders lists trusted-proxy email headers in priority order.
 	TrustedEmailHeaders []string
 	// TrustedDisplayNameHeaders lists trusted-proxy display-name headers in priority order.
 	TrustedDisplayNameHeaders []string
+	// TrustedGroupHeaders lists trusted-proxy group header candidates.
+	TrustedGroupHeaders []string
+	// TrustedAdminGroup is the trusted group value that grants administrator access.
+	TrustedAdminGroup string
 }
 
 // ApplicationSettings contains mutable application-wide settings.
@@ -451,6 +461,12 @@ type User struct {
 	DisplayName string `json:"display_name"`
 	// Role controls the account authorization level.
 	Role string `json:"role"`
+	// Enabled controls authentication through every method.
+	Enabled bool `json:"-"`
+	// ExternalAdmin is an authentication-time administrator elevation.
+	ExternalAdmin bool `json:"-"`
+	// SessionVersion invalidates previously issued external browser sessions when incremented.
+	SessionVersion int64 `json:"-"`
 }
 
 // Page represents the current state of a wiki page.

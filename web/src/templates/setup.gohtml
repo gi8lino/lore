@@ -8,10 +8,10 @@
 
     {{ if .AuthError }}<div class="auth-form-error" role="alert">{{ .AuthError }}</div>{{ end }}
 
-    <form class="stacked-form auth-login-form" action="/setup" method="post">
+    <form class="stacked-form auth-login-form" action="/setup" method="post" data-validate-form novalidate>
       <label>
         Username
-        <input type="text" name="username" autocomplete="username" autofocus required />
+        <input type="text" name="username" autocomplete="username" data-error-required="Username is required." autofocus required />
       </label>
       <label>
         Display name
@@ -19,16 +19,16 @@
       </label>
       <label>
         Email
-        <input type="email" name="email" autocomplete="email" placeholder="admin@example.com" />
+        <input type="email" name="email" autocomplete="email" placeholder="admin@example.com" data-error-type="Enter a valid email address." />
       </label>
       <label>
         Password
-        <input type="password" name="password" autocomplete="new-password" minlength="12" required />
+        <input type="password" name="password" autocomplete="new-password" minlength="12" data-error-required="Password is required." data-error-minlength="Use at least 12 characters." required />
         <small>At least 12 characters.</small>
       </label>
       <label>
         Confirm password
-        <input type="password" name="password_confirm" autocomplete="new-password" minlength="12" required />
+        <input type="password" name="password_confirm" autocomplete="new-password" data-validate-match="password" data-error-required="Confirm your password." data-error-match="Passwords do not match." required />
       </label>
       <button class="button primary" type="submit">Create administrator</button>
     </form>
@@ -38,3 +38,5 @@
     </p>
   </section>
 {{ end }}
+
+

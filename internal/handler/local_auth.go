@@ -126,38 +126,43 @@ func Setup(
 				httpresponse.Problem(w, http.StatusBadRequest, "Invalid setup form.")
 				return
 			}
-			errorMessage := setupValidationError(r)
-			if errorMessage == "" {
-				user, token, err := browserAuth.Local.Setup(
-					r.Context(),
-					r.FormValue("username"),
-					r.FormValue("email"),
-					r.FormValue("display_name"),
-					r.FormValue("password"),
-				)
-				if err == nil {
-					browserAuth.Local.WriteSessionCookie(w, token)
-					systemUseCases.RecordSetupCompleted(r.Context(), user)
-					http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
+			problems := setupValidationProblems(r)
+			if len(problems) > 0 {
+				if wantsJSON(r) {
+					httpresponse.Problem(w, http.StatusUnprocessableEntity, "Setup validation failed.", problems...)
 					return
 				}
-				if errors.Is(err, service.ErrAlreadyExists) || errors.Is(err, service.ErrForbidden) {
-					httpresponse.Problem(w, http.StatusNotFound, "Not found.")
+
+				data, dataErr := publicViewData(views, "Set up Lore")
+				if dataErr != nil {
+					httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 					return
 				}
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+				data.AuthError = problems[0].Message
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				renderPublic(views, w, "setup", data)
 				return
 			}
 
-			data, dataErr := publicViewData(views, "Set up Lore")
-			if dataErr != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			user, token, err := browserAuth.Local.Setup(
+				r.Context(),
+				r.FormValue("username"),
+				r.FormValue("email"),
+				r.FormValue("display_name"),
+				r.FormValue("password"),
+			)
+			if err == nil {
+				browserAuth.Local.WriteSessionCookie(w, token)
+				systemUseCases.RecordSetupCompleted(r.Context(), user)
+				http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 				return
 			}
-			data.AuthError = errorMessage
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			renderPublic(views, w, "setup", data)
+			if errors.Is(err, service.ErrAlreadyExists) || errors.Is(err, service.ErrForbidden) {
+				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
+				return
+			}
+			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
 
@@ -168,21 +173,6 @@ func Setup(
 		}
 		renderPublic(views, w, "setup", data)
 	}
-}
-
-// setupValidationError returns the first compact validation error for first-run setup.
-func setupValidationError(r *http.Request) string {
-	if strings.TrimSpace(r.FormValue("username")) == "" {
-		return "Username is required."
-	}
-	password := r.FormValue("password")
-	if !auth.ValidLocalPassword(password) {
-		return "Password must contain at least 12 characters."
-	}
-	if password != r.FormValue("password_confirm") {
-		return "Passwords do not match."
-	}
-	return ""
 }
 
 // safeAuthNext accepts only local paths as post-authentication destinations.

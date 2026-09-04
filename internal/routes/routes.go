@@ -194,6 +194,10 @@ func addRoutes(
 		browserAuthn(adminAuthz(handler.UpdateAdminUser(userUseCases, settingsUseCases, browserAuth.Local, views, logger))),
 	)
 	mux.Handle(
+		"POST /admin/users/{id}/sessions/revoke",
+		browserAuthn(adminAuthz(handler.RevokeAdminUserSessions(userUseCases, logger))),
+	)
+	mux.Handle(
 		"POST /admin/users/{id}/oidc/remove",
 		browserAuthn(adminAuthz(handler.RemoveAdminOIDCIdentity(userUseCases, logger))),
 	)

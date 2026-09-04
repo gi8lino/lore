@@ -644,9 +644,12 @@ func authenticationSettingsFromForm(r *http.Request) service.AuthenticationSetti
 		OIDCGroupSync:             r.FormValue("oidc_group_sync") == "on",
 		OIDCGroupsAuthoritative:   r.FormValue("oidc_groups_authoritative") == "on",
 		OIDCGroupMappings:         mappings,
+		OIDCAdminGroup:            strings.TrimSpace(r.FormValue("oidc_admin_group")),
 		TrustedUsernameHeaders:    splitHeaderNames(r.FormValue("trusted_username_headers")),
 		TrustedEmailHeaders:       splitHeaderNames(r.FormValue("trusted_email_headers")),
 		TrustedDisplayNameHeaders: splitHeaderNames(r.FormValue("trusted_display_name_headers")),
+		TrustedGroupHeaders:       splitHeaderNames(r.FormValue("trusted_group_headers")),
+		TrustedAdminGroup:         strings.TrimSpace(r.FormValue("trusted_admin_group")),
 	}
 }
 
@@ -665,6 +668,9 @@ func authenticationSettingsProblems(
 				"trusted_username_headers",
 				"Configure at least one username header.",
 			))
+		}
+		if settings.TrustedAdminGroup != "" && len(settings.TrustedGroupHeaders) == 0 {
+			problems = append(problems, httpresponse.NewFieldProblem("trusted_group_headers", "Configure at least one group header for external administrator elevation."))
 		}
 	case auth.AuthModeOIDC:
 		if settings.OIDCIssuer == "" {
@@ -685,7 +691,7 @@ func authenticationSettingsProblems(
 				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
 			))
 		}
-		if settings.OIDCGroupSync && settings.OIDCGroupClaim == "" {
+		if (settings.OIDCGroupSync || settings.OIDCAdminGroup != "") && settings.OIDCGroupClaim == "" {
 			problems = append(problems, httpresponse.NewFieldProblem(
 				"oidc_group_claim",
 				"Configure the OIDC claim containing group memberships.",
@@ -717,6 +723,7 @@ func authenticationSettingsProblems(
 		"trusted_username_headers":     settings.TrustedUsernameHeaders,
 		"trusted_email_headers":        settings.TrustedEmailHeaders,
 		"trusted_display_name_headers": settings.TrustedDisplayNameHeaders,
+		"trusted_group_headers":        settings.TrustedGroupHeaders,
 	} {
 		for _, header := range headers {
 			if !httpguts.ValidHeaderFieldName(header) {
@@ -741,20 +748,14 @@ func SaveLocalRecoveryPassword(
 			return
 		}
 		password := r.FormValue("password")
-		if !auth.ValidLocalPassword(password) {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Local login validation failed.",
-				httpresponse.NewFieldProblem("password", "Use at least 12 characters."),
-			)
-			return
-		}
-		if password != r.FormValue("password_confirm") {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Local login validation failed.",
-				httpresponse.NewFieldProblem("password_confirm", "Passwords do not match."),
-			)
+		if problems := localPasswordValidationProblems(
+			password,
+			r.FormValue("password_confirm"),
+			"password",
+			"password_confirm",
+			true,
+		); len(problems) > 0 {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Local login validation failed.", problems...)
 			return
 		}
 		if err := local.SetPassword(r.Context(), admin.ID, password); err != nil {
@@ -844,6 +845,15 @@ func UpdateAdminUser(
 			)
 			return
 		}
+		enabled := r.FormValue("account_enabled") == "on"
+		if userID == admin.ID && !enabled {
+			httpresponse.Problem(w,
+				http.StatusBadRequest,
+				"User validation failed.",
+				httpresponse.NewFieldProblem("account_enabled", "You cannot disable your own account."),
+			)
+			return
+		}
 
 		groupIDs := make([]int64, 0, len(r.Form["group_id"]))
 		for _, value := range r.Form["group_id"] {
@@ -860,20 +870,14 @@ func UpdateAdminUser(
 		}
 		password := r.FormValue("local_password")
 		updateLocalCredential := r.FormValue("update_local_credential") == "true"
-		if password != "" && !auth.ValidLocalPassword(password) {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Local login validation failed.",
-				httpresponse.NewFieldProblem("local_password", "Use at least 12 characters."),
-			)
-			return
-		}
-		if password != r.FormValue("local_password_confirm") {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Local login validation failed.",
-				httpresponse.NewFieldProblem("local_password_confirm", "Passwords do not match."),
-			)
+		if problems := localPasswordValidationProblems(
+			password,
+			r.FormValue("local_password_confirm"),
+			"local_password",
+			"local_password_confirm",
+			false,
+		); len(problems) > 0 {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Local login validation failed.", problems...)
 			return
 		}
 
@@ -899,7 +903,7 @@ func UpdateAdminUser(
 			enabled := password != "" || r.FormValue("local_credential_enabled") == "on"
 			localCredentialEnabled = &enabled
 		}
-		if err := userUseCases.UpdateUser(r.Context(), userID, role, groupIDs, localCredentialEnabled); err != nil {
+		if err := userUseCases.UpdateUser(r.Context(), userID, role, enabled, groupIDs, localCredentialEnabled); err != nil {
 			writeAdminProblem(logger, w, err, "User")
 			return
 		}
@@ -908,6 +912,23 @@ func UpdateAdminUser(
 				writeAdminProblem(logger, w, err, "Local credential")
 				return
 			}
+		}
+		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+	}
+}
+
+// RevokeAdminUserSessions signs an account out of local and OIDC browser sessions.
+func RevokeAdminUserSessions(userUseCases userManagementService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		admin := currentUser(r)
+		userID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || userID <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user.")
+			return
+		}
+		if err := userUseCases.RevokeUserSessions(r.Context(), userID, admin.ID); err != nil {
+			writeAdminProblem(logger, w, err, "User sessions")
+			return
 		}
 		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 	}

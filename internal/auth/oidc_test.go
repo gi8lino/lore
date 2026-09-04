@@ -1,13 +1,82 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type oidcRepositoryStub struct{ user model.User }
+
+func (r *oidcRepositoryStub) LoginOIDCUser(context.Context, string, string, string, string, string) (model.User, error) {
+	return r.user, nil
+}
+
+func (r *oidcRepositoryStub) OIDCUser(context.Context, string, string) (model.User, error) {
+	return r.user, nil
+}
+
+func (*oidcRepositoryStub) SyncOIDCGroups(context.Context, int64, []string, []model.OIDCGroupMapping, bool) error {
+	return nil
+}
+
+func (*oidcRepositoryStub) SetExternalAdminStatus(context.Context, int64, string, bool) error {
+	return nil
+}
+
+func TestOIDCAuthenticateExternalAdministrator(t *testing.T) {
+	t.Parallel()
+
+	const issuer = "https://identity.example.com/realms/lore"
+	repository := &oidcRepositoryStub{user: model.User{
+		ID:             7,
+		Role:           "viewer",
+		Enabled:        true,
+		ExternalAdmin:  true,
+		SessionVersion: 4,
+	}}
+	authenticator := &OIDC{
+		repository: repository,
+		secret:     []byte("0123456789abcdef0123456789abcdef"),
+		issuer:     issuer,
+		adminGroup: "/lore-admins",
+	}
+	request := oidcSessionRequest(t, authenticator, session{
+		Issuer: issuer, Subject: "user-123", Expires: time.Now().Add(time.Hour).Unix(), Version: 4,
+	})
+
+	user, err := authenticator.Authenticate(request)
+	require.NoError(t, err)
+	assert.Equal(t, "admin", user.Role)
+
+	authenticator.adminGroup = ""
+	user, err = authenticator.Authenticate(request)
+	require.NoError(t, err)
+	assert.Equal(t, "viewer", user.Role, "a removed administrator-group setting must stop stale elevation")
+}
+
+func TestOIDCAuthenticateRejectsRevokedSession(t *testing.T) {
+	t.Parallel()
+
+	const issuer = "https://identity.example.com/realms/lore"
+	authenticator := &OIDC{
+		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 5}},
+		secret:     []byte("0123456789abcdef0123456789abcdef"),
+		issuer:     issuer,
+	}
+	request := oidcSessionRequest(t, authenticator, session{
+		Issuer: issuer, Subject: "user-123", Expires: time.Now().Add(time.Hour).Unix(), Version: 4,
+	})
+
+	_, err := authenticator.Authenticate(request)
+	assert.ErrorIs(t, err, ErrUnauthenticated)
+}
 
 func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 	t.Parallel()

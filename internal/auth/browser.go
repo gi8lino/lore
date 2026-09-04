@@ -103,7 +103,7 @@ func (b *browserAuthenticator) login(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 		return
 	}
-	if b.modeOverride == "" && AuthMode(settings.Mode) == AuthModeNone {
+	if b.modeOverride == "" {
 		setupRequired, err := b.repository.SetupRequired(r.Context())
 		if err != nil {
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
@@ -162,6 +162,15 @@ func (b *browserAuthenticator) callback(w http.ResponseWriter, r *http.Request) 
 
 // validate checks persisted authentication settings before administrators activate them.
 func (b *browserAuthenticator) validate(ctx context.Context, settings model.AuthenticationSettings) error {
+	if b.modeOverride == "" {
+		setupRequired, err := b.repository.SetupRequired(ctx)
+		if err != nil {
+			return err
+		}
+		if setupRequired {
+			return nil
+		}
+	}
 	if err := b.validateSettings(settings); err != nil {
 		return err
 	}
@@ -237,6 +246,8 @@ func (b *browserAuthenticator) authenticatorForSettings(
 			Username:    settings.TrustedUsernameHeaders,
 			Email:       settings.TrustedEmailHeaders,
 			DisplayName: settings.TrustedDisplayNameHeaders,
+			Groups:      settings.TrustedGroupHeaders,
+			AdminGroup:  settings.TrustedAdminGroup,
 		}), nil
 	case AuthModeOIDC:
 		return b.oidcFor(ctx, settings)
@@ -306,6 +317,7 @@ func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.Authe
 		GroupSync:           settings.OIDCGroupSync,
 		GroupsAuthoritative: settings.OIDCGroupsAuthoritative,
 		GroupMappings:       settings.OIDCGroupMappings,
+		AdminGroup:          strings.TrimSpace(settings.OIDCAdminGroup),
 	}, b.repository)
 	if err != nil {
 		return nil, err
@@ -323,12 +335,13 @@ func oidcSettingsKey(settings model.AuthenticationSettings) string {
 	var key strings.Builder
 	_, _ = fmt.Fprintf(
 		&key,
-		"%s\x00%s\x00%s\x00%t\x00%t",
+		"%s\x00%s\x00%s\x00%t\x00%t\x00%s",
 		strings.TrimSpace(settings.OIDCIssuer),
 		strings.TrimSpace(settings.OIDCClientID),
 		strings.TrimSpace(settings.OIDCGroupClaim),
 		settings.OIDCGroupSync,
 		settings.OIDCGroupsAuthoritative,
+		strings.TrimSpace(settings.OIDCAdminGroup),
 	)
 	for _, mapping := range settings.OIDCGroupMappings {
 		_, _ = fmt.Fprintf(&key, "\x00%s=%d", strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID)

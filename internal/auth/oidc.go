@@ -41,6 +41,8 @@ type OIDC struct {
 	groupsAuthoritative bool
 	// groupMappings maps external claim values to Lore groups.
 	groupMappings []model.OIDCGroupMapping
+	// adminGroup is the external group value that elevates the current session.
+	adminGroup string
 }
 
 // claims contains the OIDC identity claims used to create a wiki user.
@@ -61,6 +63,8 @@ type session struct {
 	Subject string `json:"sub"`
 	// Expires is the Unix timestamp after which the session is invalid.
 	Expires int64 `json:"x"`
+	// Version invalidates the cookie after an administrator revokes sessions.
+	Version int64 `json:"v"`
 }
 
 // loginState contains the signed OIDC state and its expiration.
@@ -98,6 +102,7 @@ func NewOIDC(
 		groupSync:           config.GroupSync,
 		groupsAuthoritative: config.GroupsAuthoritative,
 		groupMappings:       append([]model.OIDCGroupMapping(nil), config.GroupMappings...),
+		adminGroup:          strings.TrimSpace(config.AdminGroup),
 		oauth: &oauth2.Config{
 			ClientID:     config.ClientID,
 			ClientSecret: config.ClientSecret,
@@ -121,6 +126,12 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	user, err := o.repository.OIDCUser(r.Context(), current.Issuer, current.Subject)
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, ErrUnauthenticated
+	}
+	if err == nil && current.Version != user.SessionVersion {
+		return model.User{}, ErrUnauthenticated
+	}
+	if err == nil && o.adminGroup != "" && user.ExternalAdmin {
+		user.Role = "admin"
 	}
 	return user, err
 }
@@ -191,7 +202,7 @@ func (o *OIDC) Callback() http.HandlerFunc {
 		}
 
 		var groups []string
-		if o.groupSync {
+		if o.groupSync || o.adminGroup != "" {
 			groups, err = oidcGroups(idToken, o.groupClaim)
 			if err != nil {
 				httpresponse.Problem(w, http.StatusUnauthorized, "Invalid group claim.")
@@ -222,6 +233,10 @@ func (o *OIDC) Callback() http.HandlerFunc {
 			}
 			return
 		}
+		if !user.Enabled {
+			httpresponse.Problem(w, http.StatusForbidden, "This account is disabled.")
+			return
+		}
 
 		if o.groupSync {
 			if err := o.repository.SyncOIDCGroups(
@@ -236,10 +251,19 @@ func (o *OIDC) Callback() http.HandlerFunc {
 			}
 		}
 
+		if o.adminGroup != "" {
+			externalAdmin := containsGroup(groups, o.adminGroup)
+			if err := o.repository.SetExternalAdminStatus(r.Context(), user.ID, "oidc", externalAdmin); err != nil {
+				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+				return
+			}
+		}
+
 		o.setCookie(w, "lore_session", session{
 			Issuer:  issuer,
 			Subject: subject,
 			Expires: time.Now().Add(12 * time.Hour).Unix(),
+			Version: user.SessionVersion,
 		}, 43200)
 
 		next := "/"
@@ -249,6 +273,20 @@ func (o *OIDC) Callback() http.HandlerFunc {
 		}
 		http.Redirect(w, r, next, http.StatusFound)
 	}
+}
+
+// containsGroup reports whether the normalized external values contain the configured administrator group.
+func containsGroup(groups []string, expected string) bool {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return false
+	}
+	for _, group := range groups {
+		if strings.TrimSpace(group) == expected {
+			return true
+		}
+	}
+	return false
 }
 
 // oidcGroups extracts a configurable top-level string or string-array group claim.

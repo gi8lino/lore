@@ -148,6 +148,16 @@
                 />
                 <small>Optional identity metadata.</small>
               </label>
+              <label>
+                Group headers
+                <input type="text" name="trusted_group_headers" value="{{ join .ApplicationSettings.Authentication.TrustedGroupHeaders ", " }}" placeholder="X-Forwarded-Groups" autocomplete="off" />
+                <small>Comma-separated header names supplied and sanitized by the trusted proxy.</small>
+              </label>
+              <label>
+                Administrator group
+                <input type="text" name="trusted_admin_group" value="{{ .ApplicationSettings.Authentication.TrustedAdminGroup }}" placeholder="admins" autocomplete="off" />
+                <small>A matching value grants administrator access for each trusted request without changing the manually assigned role.</small>
+              </label>
             </div>
           </div>
 
@@ -185,15 +195,32 @@
                 />
                 <small>The non-secret client identifier registered with the provider.</small>
               </label>
+              <label>
+                Administrator group
+                <input type="text" name="oidc_admin_group" value="{{ .ApplicationSettings.Authentication.OIDCAdminGroup }}" placeholder="admins" autocomplete="off" />
+                <small>A matching value in the group claim grants administrator access at the next login without replacing the manually assigned Lore role.</small>
+              </label>
             </div>
 
             <section class="auth-group-sync" data-oidc-group-sync>
               <div class="admin-card-heading auth-mode-heading">
                 <div>
-                  <h3>Group synchronization</h3>
-                  <p class="muted">Map selected OIDC group values to existing Lore groups.</p>
+                  <h3>OIDC groups</h3>
+                  <p class="muted">Read administrator membership and optional collaboration groups from an ID-token claim.</p>
                 </div>
               </div>
+
+              <label>
+                Group claim
+                <input
+                  type="text"
+                  name="oidc_group_claim"
+                  value="{{ .ApplicationSettings.Authentication.OIDCGroupClaim }}"
+                  placeholder="groups"
+                  autocomplete="off"
+                />
+                <small>Top-level ID-token claim containing a string or string array. Required for administrator-group elevation.</small>
+              </label>
 
               <label class="toggle-row">
                 <span>
@@ -209,18 +236,6 @@
               </label>
 
               <div class="auth-group-sync-options" data-oidc-group-sync-options>
-                <label>
-                  Group claim
-                  <input
-                    type="text"
-                    name="oidc_group_claim"
-                    value="{{ .ApplicationSettings.Authentication.OIDCGroupClaim }}"
-                    placeholder="groups"
-                    autocomplete="off"
-                  />
-                  <small>Top-level ID-token claim containing a string or string array.</small>
-                </label>
-
                 <label class="toggle-row auth-group-authoritative">
                   <span>
                     <strong>Mapped groups are authoritative</strong>
@@ -350,16 +365,16 @@
             </div>
           </div>
 
-          <form class="stacked-form auth-recovery-form" action="/admin/authentication/local-password" method="post">
+          <form class="stacked-form auth-recovery-form" action="/admin/authentication/local-password" method="post" data-validate-form novalidate>
             <div class="form-grid">
               <label>
                 {{ if .LocalCredentialConfigured }}New recovery password{{ else }}Recovery password{{ end }}
-                <input type="password" name="password" autocomplete="new-password" minlength="12" required />
+                <input type="password" name="password" autocomplete="new-password" minlength="12" data-error-required="Password is required." data-error-minlength="Use at least 12 characters." required />
                 <small>At least 12 characters.</small>
               </label>
               <label>
                 Confirm password
-                <input type="password" name="password_confirm" autocomplete="new-password" minlength="12" required />
+                <input type="password" name="password_confirm" autocomplete="new-password" data-validate-match="password" data-error-required="Confirm the password." data-error-match="Passwords do not match." required />
               </label>
             </div>
             <div class="settings-actions auth-settings-actions">
@@ -413,3 +428,5 @@
     </div>
   </section>
 {{ end }}
+
+

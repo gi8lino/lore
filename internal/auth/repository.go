@@ -20,6 +20,7 @@ type noneRepository interface {
 // trustedProxyRepository resolves identities asserted by a trusted proxy.
 type trustedProxyRepository interface {
 	TrustedProxyUser(context.Context, string, string, string) (model.User, error)
+	SetExternalAdminStatus(context.Context, int64, string, bool) error
 }
 
 // localRepository persists local credentials and browser sessions.
@@ -37,6 +38,7 @@ type oidcRepository interface {
 	LoginOIDCUser(context.Context, string, string, string, string, string) (model.User, error)
 	OIDCUser(context.Context, string, string) (model.User, error)
 	SyncOIDCGroups(context.Context, int64, []string, []model.OIDCGroupMapping, bool) error
+	SetExternalAdminStatus(context.Context, int64, string, bool) error
 }
 
 // browserRepository collects the persistence capabilities used by dynamic browser authentication.

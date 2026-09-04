@@ -11,7 +11,8 @@ type userRepository interface {
 	Users(context.Context) ([]AdminUser, error)
 	User(context.Context, int64) (User, error)
 	UserGroups(context.Context, int64) ([]Group, error)
-	UpdateUser(context.Context, int64, string, []int64, *bool) error
+	UpdateUser(context.Context, int64, string, bool, []int64, *bool) error
+	RevokeUserSessions(context.Context, int64) error
 	SearchUsers(context.Context, string, int) ([]User, error)
 	OIDCIdentities(context.Context) ([]OIDCIdentity, error)
 	OIDCGroupMappings(context.Context) ([]OIDCGroupMapping, error)
@@ -44,15 +45,25 @@ func (s *Users) UserGroups(ctx context.Context, userID int64) ([]Group, error) {
 	return s.repository.UserGroups(ctx, userID)
 }
 
-// UpdateUser replaces a user's role, group assignments, and local-login state.
+// UpdateUser replaces a user's role, enabled state, group assignments, and local-login state.
 func (s *Users) UpdateUser(
 	ctx context.Context,
 	userID int64,
 	role string,
+	enabled bool,
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
-	return s.repository.UpdateUser(ctx, userID, role, groupIDs, localCredentialEnabled)
+	return s.repository.UpdateUser(ctx, userID, role, enabled, groupIDs, localCredentialEnabled)
+}
+
+// RevokeUserSessions signs a user out of local and OIDC browser sessions and audits the action.
+func (s *Users) RevokeUserSessions(ctx context.Context, userID, actorID int64) error {
+	if err := s.repository.RevokeUserSessions(ctx, userID); err != nil {
+		return err
+	}
+	_ = audit(s.repository, ctx, actorID, "user.sessions_revoked", "user", fmt.Sprint(userID), "Revoked browser sessions")
+	return nil
 }
 
 // SearchUsers returns accounts matching a display or login query.

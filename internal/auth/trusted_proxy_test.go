@@ -1,11 +1,65 @@
 package auth
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type trustedProxyRepositoryStub struct {
+	user   model.User
+	method string
+	admin  bool
+}
+
+func (r *trustedProxyRepositoryStub) TrustedProxyUser(context.Context, string, string, string) (model.User, error) {
+	return r.user, nil
+}
+
+func (r *trustedProxyRepositoryStub) SetExternalAdminStatus(_ context.Context, _ int64, method string, admin bool) error {
+	r.method = method
+	r.admin = admin
+	return nil
+}
+
+func TestTrustedProxyExternalAdministrator(t *testing.T) {
+	t.Parallel()
+
+	repository := &trustedProxyRepositoryStub{user: model.User{ID: 7, Role: "viewer", Enabled: true}}
+	authenticator := NewTrustedProxy(repository, TrustedProxyHeaders{
+		Username:   []string{"X-User"},
+		Groups:     []string{"X-Groups"},
+		AdminGroup: "/lore-admins",
+	})
+	request := httptest.NewRequest("GET", "/", nil)
+	request.Header.Set("X-User", "daniel")
+	request.Header.Set("X-Groups", "/family, /lore-admins")
+
+	user, err := authenticator.Authenticate(request)
+	require.NoError(t, err)
+	assert.Equal(t, "admin", user.Role)
+	assert.True(t, user.ExternalAdmin)
+	assert.Equal(t, "trusted-proxy", repository.method)
+	assert.True(t, repository.admin)
+}
+
+func TestTrustedProxyDisabledAccount(t *testing.T) {
+	t.Parallel()
+
+	authenticator := NewTrustedProxy(
+		&trustedProxyRepositoryStub{user: model.User{ID: 7, Enabled: false}},
+		TrustedProxyHeaders{Username: []string{"X-User"}},
+	)
+	request := httptest.NewRequest("GET", "/", nil)
+	request.Header.Set("X-User", "daniel")
+
+	_, err := authenticator.Authenticate(request)
+	assert.ErrorIs(t, err, ErrInvalidCredentials)
+}
 
 func TestFirstHeader(t *testing.T) {
 	t.Parallel()

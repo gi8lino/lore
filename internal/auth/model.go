@@ -44,6 +44,7 @@ type OIDCConfig struct {
 	GroupSync           bool
 	GroupsAuthoritative bool
 	GroupMappings       []model.OIDCGroupMapping
+	AdminGroup          string
 }
 
 // BrowserAuth groups dynamic browser identity resolution with its public handlers.

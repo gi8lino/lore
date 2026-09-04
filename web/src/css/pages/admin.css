@@ -82,7 +82,7 @@
 }
 .admin-users-table th:last-child,
 .admin-users-table td:last-child {
-  width: 86px;
+  width: 120px;
   text-align: right;
 }
 .admin-role-badge,
@@ -112,6 +112,12 @@
   background: color-mix(in srgb, var(--success) 7%, var(--surface));
   color: var(--success);
 }
+.admin-role-badge.role-external-admin {
+  margin-top: 5px;
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--accent);
+}
 .admin-group-chips {
   display: flex;
   flex-wrap: wrap;
@@ -136,6 +142,27 @@
   padding: 6px 9px;
   font-size: 12px;
   white-space: nowrap;
+}
+.admin-user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.admin-user-disabled {
+  opacity: 0.72;
+}
+.admin-table .admin-user-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 280px;
+  margin-top: 4px;
+  color: var(--warning);
+  line-height: 1.35;
+}
+.admin-table .admin-user-warning svg {
+  flex: none;
+  margin-top: 1px;
 }
 .admin-user-dialog {
   width: min(560px, calc(100vw - 32px));
@@ -263,6 +290,9 @@
 }
 .admin-user-local-login[hidden] {
   display: none;
+}
+.admin-user-account-state small {
+  color: var(--muted);
 }
 .admin-user-local-password {
   display: grid;

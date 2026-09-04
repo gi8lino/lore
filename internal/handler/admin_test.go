@@ -66,11 +66,14 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 		"oidc_group_claim":             {" groups "},
 		"oidc_group_sync":              {"on"},
 		"oidc_groups_authoritative":    {"on"},
+		"oidc_admin_group":             {" /lore-admins "},
 		"oidc_group_source":            {" /admins ", "/family"},
 		"oidc_group_id":                {"7", "9"},
 		"trusted_username_headers":     {"X-User, X-Backup-User, x-user"},
 		"trusted_email_headers":        {"X-Email"},
 		"trusted_display_name_headers": {"X-Name"},
+		"trusted_group_headers":        {"X-Groups, X-Backup-Groups"},
+		"trusted_admin_group":          {" lore-admins "},
 	}
 	request := httptest.NewRequest("POST", "/admin/authentication", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -83,6 +86,7 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 	assert.Equal(t, "groups", settings.OIDCGroupClaim)
 	assert.True(t, settings.OIDCGroupSync)
 	assert.True(t, settings.OIDCGroupsAuthoritative)
+	assert.Equal(t, "/lore-admins", settings.OIDCAdminGroup)
 	assert.Equal(t, []service.OIDCGroupMapping{
 		{OIDCGroup: "/admins", GroupID: 7},
 		{OIDCGroup: "/family", GroupID: 9},
@@ -90,6 +94,8 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 	assert.Equal(t, []string{"X-User", "X-Backup-User"}, settings.TrustedUsernameHeaders)
 	assert.Equal(t, []string{"X-Email"}, settings.TrustedEmailHeaders)
 	assert.Equal(t, []string{"X-Name"}, settings.TrustedDisplayNameHeaders)
+	assert.Equal(t, []string{"X-Groups", "X-Backup-Groups"}, settings.TrustedGroupHeaders)
+	assert.Equal(t, "lore-admins", settings.TrustedAdminGroup)
 }
 
 func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T) {
