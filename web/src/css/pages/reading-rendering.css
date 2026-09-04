@@ -1,0 +1,112 @@
+/* Sticky page heading and tighter reading start. */
+.page-heading {
+  position: sticky;
+  top: 64px;
+  z-index: 15;
+  margin: -12px -18px 0;
+  padding: 12px 18px 18px;
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  backdrop-filter: blur(12px);
+}
+.page-reading .prose {
+  padding-top: 22px;
+}
+.page-reading .prose > :first-child {
+  margin-top: 0;
+}
+.page-reading .prose h1,
+.page-reading .prose h2,
+.page-reading .prose h3,
+.page-reading .prose h4,
+.page-reading .prose h5,
+.page-reading .prose h6 {
+  scroll-margin-top: calc(88px + var(--page-heading-height, 0px));
+}
+
+@media (max-width: 800px) {
+  .page-heading {
+    position: static;
+    margin: 0;
+    padding: 0 0 18px;
+    background: transparent;
+    backdrop-filter: none;
+  }
+  .page-reading .prose {
+    padding-top: 18px;
+  }
+}
+
+/* Rendering settings previews */
+.render-setting-card {
+  padding: 14px 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.render-setting-card:first-child {
+  padding-top: 0;
+}
+.render-setting-card:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.render-setting-card .toggle-row {
+  padding: 0;
+}
+.render-setting-preview {
+  position: relative;
+  min-height: 56px;
+  margin-top: 12px;
+  padding: 28px 14px 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-hover);
+  font-size: 0.86rem;
+  transition:
+    opacity 140ms ease,
+    border-color 140ms ease;
+}
+.render-setting-card:has(input:not(:checked)) .render-setting-preview {
+  opacity: 0.58;
+}
+.render-setting-card:has(input:checked) .render-setting-preview {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+}
+.render-preview-label {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.render-setting-preview > :last-child {
+  margin-bottom: 0;
+}
+.render-setting-preview > :nth-child(2) {
+  margin-top: 0;
+}
+.render-setting-preview pre {
+  max-height: 150px;
+  overflow: auto;
+}
+.render-setting-preview table {
+  margin: 0;
+}
+.render-setting-preview .markdown-tabs,
+.render-setting-preview .markdown-details,
+.render-setting-preview .callout {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Sticky page contents beneath the sticky page heading. */
+.page-reading.with-contents .page-contents {
+  position: sticky;
+  top: calc(80px + var(--page-heading-height, 0px));
+  max-height: calc(100vh - 96px - var(--page-heading-height, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}

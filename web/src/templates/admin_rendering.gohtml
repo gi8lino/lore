@@ -1,0 +1,267 @@
+{{ define "content" }}
+  <section class="admin-page">
+    <div class="settings-heading">
+      <p class="eyebrow">Administration</p>
+      <h1>Rendering</h1>
+      <p class="muted">Configure wiki content language, code presentation, and the Markdown extensions Lore renders.</p>
+    </div>
+
+    <form class="settings-form rendering-settings" action="/admin/rendering" method="post">
+      <section class="panel settings-panel rendering-basics-panel">
+        <div class="panel-title"><h2>Content &amp; code</h2></div>
+        <div class="rendering-basics-grid">
+          <label class="render-basic-setting render-language-setting">
+            <span
+              ><strong>Content language</strong
+              ><small>Page language, spell checking, accessibility, and PDF exports.</small></span
+            >
+            <select name="content_language" aria-label="Content language">
+              {{ range .RenderingLanguages }}
+                <option
+                  value="{{ .Code }}"
+                  {{ if eq $.ApplicationSettings.Rendering.ContentLanguage .Code }}selected{{ end }}
+                >
+                  {{ .Label }}
+                </option>
+              {{ end }}
+            </select>
+          </label>
+
+          <article class="render-setting-card render-basic-setting render-ligature-setting">
+            <label class="toggle-row"
+              ><span
+                ><strong>Coding ligatures</strong
+                ><small>Use Fira Code ligatures in the editor and rendered code.</small></span
+              ><input
+                type="checkbox"
+                name="coding_ligatures"
+                {{ if .ApplicationSettings.Rendering.CodingLigatures }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span
+              ><code class="render-ligature-sample">!= === =&gt; -&gt; &gt;= &lt;= := &amp;&amp; ||</code>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel settings-panel">
+        <div class="panel-title"><h2>Lore extensions</h2></div>
+        <div class="render-setting-list">
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Wiki links</strong
+                ><small>Resolve <code>[[Page]]</code> and <code>[[Page|label]]</code> references.</small></span
+              ><input
+                type="checkbox"
+                name="wiki_links"
+                {{ if .ApplicationSettings.Rendering.WikiLinks }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "wiki_links" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Callouts</strong
+                ><small>Render <code>!!! note</code>, warning, tip, success, danger, and related blocks.</small></span
+              ><input type="checkbox" name="callouts" {{ if .ApplicationSettings.Rendering.Callouts }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "callouts" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Tabs</strong><small>Render Material-style <code>=== "Label"</code> tab groups.</small></span
+              ><input type="checkbox" name="tabs" {{ if .ApplicationSettings.Rendering.Tabs }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "tabs" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Collapsible details</strong
+                ><small>Render <code>???</code> and <code>???+</code> detail blocks.</small></span
+              ><input type="checkbox" name="details" {{ if .ApplicationSettings.Rendering.Details }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "details" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Table colors</strong
+                ><small>Enable Confluence-style, theme-aware header, row, column, and cell colors.</small></span
+              ><input
+                type="checkbox"
+                name="table_styles"
+                {{ if .ApplicationSettings.Rendering.TableStyles }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "table_styles" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Table sorting</strong
+                ><small
+                  >Allow tables marked <code>sortable</code> to sort rows by clicking their column headers.</small
+                ></span
+              ><input
+                type="checkbox"
+                name="table_sorting"
+                {{ if .ApplicationSettings.Rendering.TableSorting }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "table_sorting" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Table filtering</strong
+                ><small
+                  >Allow tables marked <code>filterable</code> to filter rows from each column header.</small
+                ></span
+              ><input
+                type="checkbox"
+                name="table_filtering"
+                {{ if .ApplicationSettings.Rendering.TableFiltering }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "table_filtering" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Mermaid diagrams</strong
+                ><small>Render fenced <code>mermaid</code> blocks in the browser.</small></span
+              ><input type="checkbox" name="mermaid" {{ if .ApplicationSettings.Rendering.Mermaid }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose" data-rendering-mermaid-preview>
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "mermaid" }}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel settings-panel">
+        <div class="panel-title"><h2>Markdown extensions</h2></div>
+        <div class="render-setting-list">
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span><strong>Tables</strong><small>GitHub-flavored pipe tables.</small></span
+              ><input type="checkbox" name="tables" {{ if .ApplicationSettings.Rendering.Tables }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "tables" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Strikethrough</strong><small>Render <code>~~removed~~</code> text.</small></span
+              ><input
+                type="checkbox"
+                name="strikethrough"
+                {{ if .ApplicationSettings.Rendering.Strikethrough }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "strikethrough" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Task lists</strong
+                ><small>Render <code>- [ ]</code> and <code>- [x]</code> task items.</small></span
+              ><input
+                type="checkbox"
+                name="task_lists"
+                {{ if .ApplicationSettings.Rendering.TaskLists }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "task_lists" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Automatic links</strong><small>Turn plain URLs and email addresses into links.</small></span
+              ><input
+                type="checkbox"
+                name="autolinks"
+                {{ if .ApplicationSettings.Rendering.Autolinks }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "autolinks" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Syntax highlighting</strong
+                ><small>Apply server-side syntax highlighting to fenced code blocks.</small></span
+              ><input
+                type="checkbox"
+                name="syntax_highlighting"
+                {{ if .ApplicationSettings.Rendering.SyntaxHighlighting }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "syntax_highlighting" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span><strong>Footnotes</strong><small>Enable Markdown footnote references and definitions.</small></span
+              ><input
+                type="checkbox"
+                name="footnotes"
+                {{ if .ApplicationSettings.Rendering.Footnotes }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "footnotes" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span><strong>Definition lists</strong><small>Enable term/definition list syntax.</small></span
+              ><input
+                type="checkbox"
+                name="definition_lists"
+                {{ if .ApplicationSettings.Rendering.DefinitionLists }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "definition_lists" }}
+            </div>
+          </article>
+          <article class="render-setting-card">
+            <label class="toggle-row"
+              ><span
+                ><strong>Typographer</strong
+                ><small>Convert common punctuation sequences to typographic characters.</small></span
+              ><input
+                type="checkbox"
+                name="typographer"
+                {{ if .ApplicationSettings.Rendering.Typographer }}checked{{ end }}
+            /></label>
+            <div class="render-setting-preview prose">
+              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "typographer" }}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="settings-actions"><button class="button primary" type="submit">Save rendering settings</button></div>
+    </form>
+  </section>
+{{ end }}

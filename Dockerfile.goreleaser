@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1.27
+
+FROM alpine:3.24
+
+ARG TARGETPLATFORM
+
+RUN apk add --no-cache weasyprint font-noto \
+  && addgroup -S lore \
+  && adduser -S -G lore lore \
+  && install -d -o lore -g lore /work
+
+COPY ${TARGETPLATFORM}/lore /lore
+WORKDIR /work
+USER lore
+
+ENTRYPOINT ["/lore"]

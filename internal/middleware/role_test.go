@@ -1,0 +1,86 @@
+package middleware
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/store"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestRequireRole(t *testing.T) {
+	t.Parallel()
+
+	t.Run("allows an accepted role", func(t *testing.T) {
+		t.Parallel()
+
+		handler := RequireRole("admin", "editor")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		request := auth.WithUser(
+			httptest.NewRequest(http.MethodGet, "/edit/page", nil),
+			store.User{ID: 1, Role: "editor"},
+		)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, request)
+
+		assert.Equal(t, http.StatusNoContent, response.Code)
+	})
+
+	t.Run("rejects a browser role with a JSON problem", func(t *testing.T) {
+		t.Parallel()
+
+		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("handler must not run")
+		}))
+		request := auth.WithUser(
+			httptest.NewRequest(http.MethodGet, "/admin", nil),
+			store.User{ID: 1, Role: "viewer"},
+		)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, request)
+
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.JSONEq(t, `{"error":"Forbidden.","problems":null}`, response.Body.String())
+	})
+
+	t.Run("rejects an API role with a JSON problem", func(t *testing.T) {
+		t.Parallel()
+
+		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("handler must not run")
+		}))
+		request := auth.WithUser(
+			httptest.NewRequest(http.MethodDelete, "/api/pages/example", nil),
+			store.User{ID: 1, Role: "editor"},
+		)
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, request)
+
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.JSONEq(
+			t,
+			`{"error":"Forbidden.","problems":{"authorization":"Your account does not have permission to perform this action."}}`,
+			response.Body.String(),
+		)
+	})
+
+	t.Run("rejects a missing authenticated user", func(t *testing.T) {
+		t.Parallel()
+
+		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("handler must not run")
+		}))
+		response := httptest.NewRecorder()
+
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/admin", nil))
+
+		assert.Equal(t, http.StatusUnauthorized, response.Code)
+		assert.JSONEq(t, `{"error":"Unauthorized.","problems":null}`, response.Body.String())
+	})
+}

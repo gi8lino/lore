@@ -1,0 +1,29 @@
+/* Administrator-controlled coding ligatures. The font is fetched only when used. */
+@font-face {
+  font-family: "Fira Code";
+  src: url("https://cdn.jsdelivr.net/npm/firacode@6.2.0/distr/woff2/FiraCode-Regular.woff2")
+    format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+body[data-coding-ligatures="true"] .editor-source,
+body[data-coding-ligatures="true"] .prose code,
+body[data-coding-ligatures="true"] .prose pre {
+  font-family:
+    "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-ligatures: contextual;
+  font-feature-settings:
+    "calt" 1,
+    "liga" 1;
+}
+
+body[data-coding-ligatures="false"] .editor-source,
+body[data-coding-ligatures="false"] .prose code,
+body[data-coding-ligatures="false"] .prose pre {
+  font-variant-ligatures: none;
+  font-feature-settings:
+    "calt" 0,
+    "liga" 0;
+}

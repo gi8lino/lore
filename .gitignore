@@ -1,0 +1,11 @@
+/wiki
+/lore
+/bin/
+coverage.out
+.DS_Store
+/web/dist/
+/internal/icons/catalog_gen.go
+/node_modules/
+
+
+/site/

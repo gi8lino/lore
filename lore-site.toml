@@ -1,0 +1,7 @@
+site_name = "Lore"
+site_url = "https://gi8lino.github.io/lore/"
+source_dir = "docs"
+output_dir = "site"
+theme = "Light"
+language = "en"
+mermaid = true

@@ -1,0 +1,34 @@
+package handler
+
+import (
+	"context"
+
+	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/service"
+)
+
+// renderingOptions resolves administrator-controlled Markdown rendering behavior.
+func renderingOptions(ctx context.Context, settingsUseCases settingsService) (md.Options, service.RenderingSettings, error) {
+	settings, err := settingsUseCases.ApplicationSettings(ctx)
+	if err != nil {
+		return md.Options{}, service.RenderingSettings{}, err
+	}
+	rendering := settings.Rendering
+	return md.Options{
+		WikiLinks:          rendering.WikiLinks,
+		Callouts:           rendering.Callouts,
+		Tabs:               rendering.Tabs,
+		Details:            rendering.Details,
+		Tables:             rendering.Tables,
+		TableStyles:        rendering.TableStyles,
+		TableSorting:       rendering.TableSorting,
+		TableFiltering:     rendering.TableFiltering,
+		Strikethrough:      rendering.Strikethrough,
+		TaskLists:          rendering.TaskLists,
+		Autolinks:          rendering.Autolinks,
+		SyntaxHighlighting: rendering.SyntaxHighlighting,
+		Footnotes:          rendering.Footnotes,
+		DefinitionLists:    rendering.DefinitionLists,
+		Typographer:        rendering.Typographer,
+	}, rendering, nil
+}

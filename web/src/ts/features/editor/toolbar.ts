@@ -1,0 +1,259 @@
+// Markdown toolbar selection and insertion helpers.
+
+import { formatMarkdownDocument } from "./formatter.ts";
+
+// Inserts Markdown at the textarea selection.
+export function insertMarkdownAtSelection(
+  textarea: HTMLTextAreaElement,
+  markdown: string,
+): void {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+  const before = textarea.value.slice(0, start);
+  const after = textarea.value.slice(end);
+  const prefix = before && !before.endsWith("\n") ? "\n" : "";
+  const suffix = after && !after.startsWith("\n") ? "\n" : "";
+  const insertion = `${prefix}${markdown}${suffix}`;
+
+  textarea.setRangeText(insertion, start, end, "end");
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// Replaces the selected Markdown and restores the selection.
+function replaceMarkdownSelection(
+  textarea: HTMLTextAreaElement,
+  replacement: string,
+  selectionStart = 0,
+  selectionEnd = replacement.length,
+): void {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+  textarea.setRangeText(replacement, start, end, "select");
+  textarea.setSelectionRange(start + selectionStart, start + selectionEnd);
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// Wraps the selected Markdown with delimiters.
+function wrapMarkdownSelection(
+  textarea: HTMLTextAreaElement,
+  before: string,
+  after: string,
+  placeholder: string,
+): void {
+  const selected = textarea.value.slice(
+    textarea.selectionStart ?? 0,
+    textarea.selectionEnd ?? 0,
+  );
+  const content = selected || placeholder;
+  const replacement = `${before}${content}${after}`;
+  replaceMarkdownSelection(
+    textarea,
+    replacement,
+    before.length,
+    before.length + content.length,
+  );
+}
+
+// Prefixes each selected Markdown line.
+function prefixMarkdownLines(
+  textarea: HTMLTextAreaElement,
+  prefixer: (index: number) => string,
+  placeholder = "item",
+): void {
+  const selected =
+    textarea.value.slice(
+      textarea.selectionStart ?? 0,
+      textarea.selectionEnd ?? 0,
+    ) || placeholder;
+  const lines = selected.split("\n");
+  const replacement = lines
+    .map((line, index) => `${prefixer(index)}${line}`)
+    .join("\n");
+  replaceMarkdownSelection(textarea, replacement, 0, replacement.length);
+}
+
+// Indents each selected Markdown line.
+function indentMarkdownBlock(value: string): string {
+  return value
+    .split("\n")
+    .map((line) => `    ${line}`)
+    .join("\n");
+}
+
+// Closes open Markdown toolbar menus.
+function closeToolbarMenus(toolbar: HTMLElement): void {
+  for (const menu of toolbar.querySelectorAll(".markdown-toolbar-menu[open]")) {
+    menu.removeAttribute("open");
+  }
+}
+
+// Wires markdown toolbar behavior.
+function setupMarkdownToolbar(toolbar: HTMLElement): void {
+  const form = toolbar.closest<HTMLFormElement>("[data-editor-form]");
+  const textarea = form?.querySelector<HTMLTextAreaElement>(
+    "[data-markdown-editor]",
+  );
+  if (!textarea) return;
+  const editor = textarea;
+
+  // Returns selected Markdown or the action placeholder.
+  function selectedText(placeholder: string): string {
+    return (
+      editor.value.slice(
+        editor.selectionStart ?? 0,
+        editor.selectionEnd ?? 0,
+      ) || placeholder
+    );
+  }
+
+  // Applies action.
+  function applyAction(action: string | undefined): void {
+    if (!action) return;
+    if (action.startsWith("heading-")) {
+      const level = Number(action.slice("heading-".length));
+      if (level >= 1 && level <= 6) {
+        prefixMarkdownLines(editor, () => `${"#".repeat(level)} `, "Heading");
+      }
+      return;
+    }
+
+    if (action.startsWith("callout-")) {
+      const type = action.slice("callout-".length);
+      const content = selectedText("Important information.");
+      const replacement = `!!! ${type}\n${content}`;
+      const offset = type.length + 5;
+      replaceMarkdownSelection(
+        editor,
+        replacement,
+        offset,
+        offset + content.length,
+      );
+      return;
+    }
+
+    switch (action) {
+      case "bold":
+        wrapMarkdownSelection(editor, "**", "**", "bold text");
+        break;
+      case "italic":
+        wrapMarkdownSelection(editor, "*", "*", "italic text");
+        break;
+      case "strikethrough":
+        wrapMarkdownSelection(editor, "~~", "~~", "strikethrough text");
+        break;
+      case "link": {
+        const label = selectedText("link text");
+        const replacement = `[${label}](https://example.com)`;
+        const urlStart = label.length + 3;
+        replaceMarkdownSelection(
+          editor,
+          replacement,
+          urlStart,
+          urlStart + "https://example.com".length,
+        );
+        break;
+      }
+      case "quote":
+        prefixMarkdownLines(editor, () => "> ", "Quoted text");
+        break;
+      case "inline-code":
+        wrapMarkdownSelection(editor, "`", "`", "code");
+        break;
+      case "code-block": {
+        const content = selectedText("command");
+        const replacement = `\`\`\`\n${content}\n\`\`\``;
+        replaceMarkdownSelection(editor, replacement, 4, 4 + content.length);
+        break;
+      }
+      case "bullet-list":
+        prefixMarkdownLines(editor, () => "- ", "item");
+        break;
+      case "ordered-list":
+        prefixMarkdownLines(editor, (index) => `${index + 1}. `, "item");
+        break;
+      case "task-list":
+        prefixMarkdownLines(editor, () => "- [ ] ", "task");
+        break;
+      case "tabs": {
+        const content = indentMarkdownBlock(selectedText("First tab content."));
+        const replacement = `=== "Tab 1"\n\n${content}\n\n=== "Tab 2"\n\n    Second tab content.`;
+        replaceMarkdownSelection(editor, replacement, 5, 10);
+        break;
+      }
+      case "details": {
+        const content = indentMarkdownBlock(selectedText("Hidden details."));
+        const replacement = `??? "Details"\n\n${content}`;
+        replaceMarkdownSelection(editor, replacement, 5, 12);
+        break;
+      }
+      case "subpages":
+        insertMarkdownAtSelection(editor, "{{subpages}}");
+        break;
+      case "horizontal-rule":
+        insertMarkdownAtSelection(editor, "---");
+        break;
+      case "find":
+        form?.dispatchEvent(new CustomEvent("editor:find"));
+        break;
+      case "format-document": {
+        const formatted = formatMarkdownDocument(editor.value);
+        if (formatted === editor.value) {
+          editor.focus();
+          break;
+        }
+
+        const selectionStart = Math.min(
+          editor.selectionStart ?? 0,
+          formatted.length,
+        );
+        const selectionEnd = Math.min(
+          editor.selectionEnd ?? selectionStart,
+          formatted.length,
+        );
+        const scrollTop = editor.scrollTop;
+        editor.value = formatted;
+        editor.setSelectionRange(selectionStart, selectionEnd);
+        editor.scrollTop = scrollTop;
+        editor.focus();
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  toolbar.addEventListener("click", (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest<HTMLElement>("[data-markdown-action]");
+    if (!button) return;
+    applyAction(button.dataset.markdownAction);
+    closeToolbarMenus(toolbar);
+  });
+
+  editor.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const key = event.key.toLocaleLowerCase();
+    if (key === "b") {
+      event.preventDefault();
+      applyAction("bold");
+    } else if (key === "i") {
+      event.preventDefault();
+      applyAction("italic");
+    } else if (key === "k" && event.shiftKey) {
+      event.preventDefault();
+      applyAction("link");
+    }
+  });
+}
+
+// Initializes markdown toolbar.
+export function initMarkdownToolbar(): void {
+  for (const toolbar of document.querySelectorAll<HTMLElement>(
+    "[data-markdown-toolbar]",
+  ))
+    setupMarkdownToolbar(toolbar);
+}

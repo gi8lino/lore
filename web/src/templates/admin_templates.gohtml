@@ -1,0 +1,116 @@
+{{ define "content" }}
+  <section class="admin-page">
+    <div class="settings-heading">
+      <p class="eyebrow">Administration</p>
+      <h1>Page templates</h1>
+      <p class="muted">Create reusable Markdown starting points for new pages.</p>
+    </div>
+
+    <section class="panel template-create-panel">
+      <div class="template-panel-heading">
+        <span class="template-panel-icon">{{ icon "layout-template" 20 }}</span>
+        <div>
+          <h2>New template</h2>
+          <p>Create a reusable starting point for common page types.</p>
+        </div>
+      </div>
+
+      <form action="/admin/templates" method="post" class="template-form template-create-form">
+        <div class="template-fields">
+          <label class="template-field">
+            <span class="template-field-label">Name</span>
+            <input name="name" required placeholder="Runbook" autocomplete="off" />
+            <small>Shown when choosing a template for a new page.</small>
+          </label>
+          <label class="template-field">
+            <span class="template-field-label">Description <span class="optional">Optional</span></span>
+            <input name="description" placeholder="Operational procedure template" autocomplete="off" />
+            <small>A short hint describing when this template should be used.</small>
+          </label>
+        </div>
+
+        <label class="template-field template-markdown-field">
+          <span class="template-field-heading">
+            <span class="template-field-label">Markdown</span>
+            <small>Starter content inserted into the new page.</small>
+          </span>
+          <textarea name="markdown" rows="8" placeholder="# Overview&#10;&#10;## Procedure"></textarea>
+        </label>
+
+        <div class="template-form-footer">
+          <span class="muted">You can edit or delete the template later.</span>
+          <button class="button primary" type="submit">{{ icon "plus" 16 }}<span>Create template</span></button>
+        </div>
+      </form>
+    </section>
+
+    <div class="template-section-heading">
+      <div>
+        <h2>Saved templates</h2>
+        <p class="muted">Manage the templates available when creating pages.</p>
+      </div>
+    </div>
+
+    <div class="template-admin-list">
+      {{ range .PageTemplates }}
+        <details class="panel template-admin-item">
+          <summary>
+            <span class="template-summary-main">
+              <span class="template-summary-icon">{{ icon "layout-template" 17 }}</span>
+              <span class="template-summary-copy">
+                <strong>{{ .Name }}</strong>
+                {{ if .Description }}
+                  <small>{{ .Description }}</small>
+                {{ else }}
+                  <small>No description</small>
+                {{ end }}
+              </span>
+            </span>
+            <span class="template-summary-chevron">{{ icon "chevron-down" 16 }}</span>
+          </summary>
+
+          <div class="template-admin-body">
+            <form action="/admin/templates/{{ .ID }}" method="post" class="template-form">
+              <div class="template-fields">
+                <label class="template-field">
+                  <span class="template-field-label">Name</span>
+                  <input name="name" required value="{{ .Name }}" />
+                </label>
+                <label class="template-field">
+                  <span class="template-field-label">Description <span class="optional">Optional</span></span>
+                  <input name="description" value="{{ .Description }}" />
+                </label>
+              </div>
+              <label class="template-field template-markdown-field">
+                <span class="template-field-label">Markdown</span>
+                <textarea name="markdown" rows="10">{{ .Markdown }}</textarea>
+              </label>
+              <div class="template-form-footer template-item-actions">
+                <span></span>
+                <button class="button primary" type="submit">{{ icon "save" 16 }}<span>Save changes</span></button>
+              </div>
+            </form>
+            <form
+              class="template-delete-form"
+              action="/admin/templates/{{ .ID }}/delete"
+              method="post"
+              data-confirm="Delete the {{ .Name }} page template?"
+              data-confirm-title="Delete page template"
+              data-confirm-label="Delete template"
+            >
+              <button class="button danger" type="submit">{{ icon "trash-2" 16 }}<span>Delete template</span></button>
+            </form>
+          </div>
+        </details>
+      {{ else }}
+        <div class="panel template-empty">
+          <span class="template-panel-icon">{{ icon "layout-template" 20 }}</span>
+          <div>
+            <strong>No page templates yet</strong>
+            <p class="muted">Create your first template above.</p>
+          </div>
+        </div>
+      {{ end }}
+    </div>
+  </section>
+{{ end }}

@@ -1,0 +1,36 @@
+services:
+  lore:
+    build:
+      context: ..
+    environment:
+      LORE_DATABASE_URL: postgres://lore:lore@postgres:5432/lore?sslmode=disable
+      LORE_LISTEN_ADDRESS: 0.0.0.0:8080
+      LORE_PUBLIC_URL: http://localhost:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: lore
+      POSTGRES_USER: lore
+      POSTGRES_PASSWORD: lore
+    volumes:
+      - lore-postgres:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lore -d lore"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  lore-postgres:
+
+

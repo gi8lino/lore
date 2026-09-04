@@ -1,0 +1,40 @@
+{{ define "content" }}
+  <section class="panel auth-card auth-setup-card">
+    <div class="auth-card-heading">
+      <p class="eyebrow">First-time setup</p>
+      <h1>Create the Lore administrator</h1>
+      <p class="muted">This page disappears permanently after the first account is created.</p>
+    </div>
+
+    {{ if .AuthError }}<div class="auth-form-error" role="alert">{{ .AuthError }}</div>{{ end }}
+
+    <form class="stacked-form auth-login-form" action="/setup" method="post">
+      <label>
+        Username
+        <input type="text" name="username" autocomplete="username" autofocus required />
+      </label>
+      <label>
+        Display name
+        <input type="text" name="display_name" autocomplete="name" placeholder="Administrator" />
+      </label>
+      <label>
+        Email
+        <input type="email" name="email" autocomplete="email" placeholder="admin@example.com" />
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="new-password" minlength="12" required />
+        <small>At least 12 characters.</small>
+      </label>
+      <label>
+        Confirm password
+        <input type="password" name="password_confirm" autocomplete="new-password" minlength="12" required />
+      </label>
+      <button class="button primary" type="submit">Create administrator</button>
+    </form>
+
+    <p class="settings-note auth-setup-note">
+      New-user registration starts closed. After setup, configure OIDC or another authentication mode in Administration.
+    </p>
+  </section>
+{{ end }}

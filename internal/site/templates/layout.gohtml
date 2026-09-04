@@ -1,0 +1,123 @@
+{{ define "layout" }}
+<!doctype html>
+<html lang="{{ .Language }}" data-theme="{{ .ActiveTheme }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="generator" content="Lore {{ .Version }}" />
+    <title>{{ .Title }} · {{ .SiteName }}</title>
+    <link rel="icon" href="{{ asseturl "favicon.svg" }}" type="image/svg+xml" />
+    <link rel="stylesheet" href="{{ asseturl "css/app.css" }}" />
+    <script id="lore-themes" type="application/json">{{ .ThemeData }}</script>
+    <script type="module" src="{{ asseturl "js/static.js" }}"></script>
+  </head>
+  <body
+    class="static-site"
+    data-static-base-path="{{ .BasePath }}"
+    data-render-mermaid="{{ if .RenderMermaid }}true{{ else }}false{{ end }}"
+    data-coding-ligatures="false"
+    data-navigation-density="comfortable"
+    data-navigation-guides="true"
+    data-current-page="{{ .CurrentRoute }}"
+    style="--sidebar: 280px"
+  >
+    <header class="topbar">
+      <button
+        class="menu-button"
+        type="button"
+        data-menu
+        aria-label="Toggle navigation"
+        aria-controls="lore-sidebar"
+        aria-expanded="false"
+      >
+        {{ icon "menu" 20 }}
+      </button>
+      <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ logo }}</a>
+      <form class="global-search" action="{{ searchurl }}" data-static-search>
+        <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
+        <input
+          type="search"
+          name="q"
+          placeholder="Search documentation…"
+          autocomplete="off"
+          aria-label="Search {{ .SiteName }}"
+          aria-autocomplete="list"
+          aria-expanded="false"
+        />
+        <kbd>/</kbd>
+      </form>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar" id="lore-sidebar" data-sidebar>
+        <nav data-navigation data-navigation-remember="false">
+          <div class="nav-section-heading">
+            <p class="nav-label">Documentation</p>
+            <div class="nav-tree-actions" aria-label="Navigation tree controls">
+              <button
+                class="nav-tree-action"
+                type="button"
+                data-navigation-collapse-all
+                title="Collapse all folders"
+                aria-label="Collapse all folders"
+              >
+                {{ icon "chevrons-up" 14 }}
+              </button>
+              <button
+                class="nav-tree-action"
+                type="button"
+                data-navigation-expand-all
+                title="Expand all folders"
+                aria-label="Expand all folders"
+              >
+                {{ icon "chevrons-down" 14 }}
+              </button>
+            </div>
+          </div>
+          <div class="navigation-tree">
+            <a
+              class="nav-page-link nav-root-link{{ if eq .CurrentRoute "" }} active{{ end }}"
+              href="{{ pageurl "" }}"
+              {{ if eq .CurrentRoute "" }}aria-current="page"{{ end }}
+            >
+              <span class="nav-icon" aria-hidden="true">{{ icon "house" 18 }}</span>
+              <span>Home</span>
+            </a>
+            {{ range .Navigation }}{{ template "nav-entry" . }}{{ end }}
+          </div>
+        </nav>
+        <div class="static-sidebar-footer">
+          <span>{{ icon "book-open" 14 }}</span>
+          <span>Read-only static site</span>
+        </div>
+      </aside>
+
+      <button
+        class="sidebar-backdrop"
+        type="button"
+        data-sidebar-backdrop
+        aria-label="Close navigation"
+        hidden
+      ></button>
+      <button
+        class="sidebar-visibility-toggle"
+        type="button"
+        data-sidebar-visibility-toggle
+        aria-controls="lore-sidebar"
+        aria-expanded="true"
+        aria-label="Hide navigation"
+        title="Hide navigation"
+      >
+        <span class="sidebar-visibility-hide" aria-hidden="true">{{ icon "panel-left-close" 17 }}</span>
+        <span class="sidebar-visibility-show" aria-hidden="true">{{ icon "panel-left-open" 17 }}</span>
+      </button>
+
+      <main{{ if .PageContents }} class="with-page-contents"{{ end }}>
+        {{ template "content" . }}
+      </main>
+    </div>
+    <footer>{{ .SiteName }} · Built with Lore {{ .Version }}</footer>
+  </body>
+</html>
+{{ end }}

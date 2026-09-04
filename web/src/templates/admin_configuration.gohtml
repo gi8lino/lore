@@ -1,0 +1,414 @@
+{{ define "content" }}
+  {{ $root := . }}
+  <section class="admin-page">
+    <div class="settings-heading">
+      <p class="eyebrow">Administration</p>
+      <h1>Configuration</h1>
+      <p class="muted">Review runtime configuration and change application-wide settings.</p>
+    </div>
+
+    <div class="settings-grid">
+      <section class="panel settings-panel">
+        <div class="panel-title"><h2>Runtime configuration</h2></div>
+        <dl class="user-details admin-config">
+          <div>
+            <dt>Version</dt>
+            <dd>{{ .Version }}</dd>
+          </div>
+          <div>
+            <dt>Commit</dt>
+            <dd><code>{{ .Commit }}</code></dd>
+          </div>
+          <div>
+            <dt>Listen address</dt>
+            <dd>{{ .Runtime.ListenAddress }}</dd>
+          </div>
+          <div>
+            <dt>Public URL</dt>
+            <dd>{{ .Runtime.PublicURL }}</dd>
+          </div>
+          <div>
+            <dt>Authentication source</dt>
+            <dd>
+              {{ if .Runtime.AuthModeOverride }}
+                Runtime override ({{ .Runtime.AuthModeOverride }})
+              {{ else }}
+                Administration settings
+              {{ end }}
+            </dd>
+          </div>
+          <div>
+            <dt>Theme directory</dt>
+            <dd>
+              {{ if .Runtime.ThemeDirectory }}
+                {{ .Runtime.ThemeDirectory }}
+              {{ else }}
+                <span class="muted">Embedded themes only</span>
+              {{ end }}
+            </dd>
+          </div>
+        </dl>
+        <p class="settings-note">
+          Runtime settings and secrets are read-only here. Authentication settings that are safe to persist are managed
+          below.
+        </p>
+      </section>
+
+      <section class="panel settings-panel settings-wide">
+        <div class="panel-title"><h2>Authentication</h2></div>
+        <form class="stacked-form auth-settings-form" action="/admin/authentication" method="post" data-auth-settings>
+          {{ if .Runtime.AuthModeOverride }}
+            <div class="auth-override-note">
+              <strong>Runtime override active</strong>
+              <span
+                ><code>LORE_AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> currently overrides the mode below. Remove
+                it after recovery to use the saved mode.</span
+              >
+            </div>
+          {{ end }}
+
+          <label class="auth-mode-field">
+            Authentication mode
+            <select name="auth_mode" data-auth-mode>
+              <option value="none" {{ if eq .ApplicationSettings.Authentication.Mode "none" }}selected{{ end }}>
+                No authentication (development only)
+              </option>
+              <option value="local" {{ if eq .ApplicationSettings.Authentication.Mode "local" }}selected{{ end }}>
+                Local account
+              </option>
+              <option
+                value="trusted-proxy"
+                {{ if eq .ApplicationSettings.Authentication.Mode "trusted-proxy" }}selected{{ end }}
+              >
+                Trusted proxy
+              </option>
+              <option value="oidc" {{ if eq .ApplicationSettings.Authentication.Mode "oidc" }}selected{{ end }}>
+                OpenID Connect (OIDC)
+              </option>
+            </select>
+            <small>Changes take effect immediately after saving.</small>
+          </label>
+
+          <div
+            class="auth-mode-options"
+            data-auth-fields="local"
+            {{ if ne .ApplicationSettings.Authentication.Mode "local" }}hidden{{ end }}
+          >
+            <div class="admin-card-heading auth-mode-heading">
+              <div>
+                <h3>Local authentication</h3>
+                <p class="muted">Sign in with a Lore-managed administrator password instead of an external provider.</p>
+              </div>
+            </div>
+            <p class="settings-note">At least one administrator must have a local password before this mode can be enabled.</p>
+          </div>
+
+          <div
+            class="auth-mode-options"
+            data-auth-fields="trusted-proxy"
+            {{ if ne .ApplicationSettings.Authentication.Mode "trusted-proxy" }}hidden{{ end }}
+          >
+            <div class="admin-card-heading auth-mode-heading">
+              <div>
+                <h3>Trusted proxy headers</h3>
+                <p class="muted">Only use this mode behind a proxy that removes untrusted client-supplied headers.</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>
+                Username headers
+                <input
+                  type="text"
+                  name="trusted_username_headers"
+                  value="{{ join .ApplicationSettings.Authentication.TrustedUsernameHeaders ", " }}"
+                  placeholder="X-Forwarded-User, X-Auth-Request-User"
+                  autocomplete="off"
+                />
+                <small>Required. Checked from left to right.</small>
+              </label>
+              <label>
+                Email headers
+                <input
+                  type="text"
+                  name="trusted_email_headers"
+                  value="{{ join .ApplicationSettings.Authentication.TrustedEmailHeaders ", " }}"
+                  placeholder="X-Forwarded-Email"
+                  autocomplete="off"
+                />
+                <small>Optional identity metadata.</small>
+              </label>
+              <label>
+                Display-name headers
+                <input
+                  type="text"
+                  name="trusted_display_name_headers"
+                  value="{{ join .ApplicationSettings.Authentication.TrustedDisplayNameHeaders ", " }}"
+                  placeholder="X-Forwarded-Name"
+                  autocomplete="off"
+                />
+                <small>Optional identity metadata.</small>
+              </label>
+            </div>
+          </div>
+
+          <div
+            class="auth-mode-options"
+            data-auth-fields="oidc"
+            {{ if ne .ApplicationSettings.Authentication.Mode "oidc" }}hidden{{ end }}
+          >
+            <div class="admin-card-heading auth-mode-heading">
+              <div>
+                <h3>OpenID Connect</h3>
+                <p class="muted">Configure the public provider details here. Secrets remain deployment-managed.</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label>
+                Issuer URL
+                <input
+                  type="url"
+                  name="oidc_issuer"
+                  value="{{ .ApplicationSettings.Authentication.OIDCIssuer }}"
+                  placeholder="https://sso.example.com/realms/lore"
+                  autocomplete="off"
+                />
+                <small>Lore verifies provider discovery before saving.</small>
+              </label>
+              <label>
+                Client ID
+                <input
+                  type="text"
+                  name="oidc_client_id"
+                  value="{{ .ApplicationSettings.Authentication.OIDCClientID }}"
+                  placeholder="lore"
+                  autocomplete="off"
+                />
+                <small>The non-secret client identifier registered with the provider.</small>
+              </label>
+            </div>
+
+            <section class="auth-group-sync" data-oidc-group-sync>
+              <div class="admin-card-heading auth-mode-heading">
+                <div>
+                  <h3>Group synchronization</h3>
+                  <p class="muted">Map selected OIDC group values to existing Lore groups.</p>
+                </div>
+              </div>
+
+              <label class="toggle-row">
+                <span>
+                  <strong>Synchronize mapped groups</strong>
+                  <small>Apply configured group mappings after every successful OIDC login.</small>
+                </span>
+                <input
+                  type="checkbox"
+                  name="oidc_group_sync"
+                  data-oidc-group-sync-toggle
+                  {{ if .ApplicationSettings.Authentication.OIDCGroupSync }}checked{{ end }}
+                />
+              </label>
+
+              <div class="auth-group-sync-options" data-oidc-group-sync-options>
+                <label>
+                  Group claim
+                  <input
+                    type="text"
+                    name="oidc_group_claim"
+                    value="{{ .ApplicationSettings.Authentication.OIDCGroupClaim }}"
+                    placeholder="groups"
+                    autocomplete="off"
+                  />
+                  <small>Top-level ID-token claim containing a string or string array.</small>
+                </label>
+
+                <label class="toggle-row auth-group-authoritative">
+                  <span>
+                    <strong>Mapped groups are authoritative</strong>
+                    <small
+                      >Remove memberships covered by these mappings when the corresponding OIDC group disappears. Other
+                      manually managed Lore groups are untouched.</small
+                    >
+                  </span>
+                  <input
+                    type="checkbox"
+                    name="oidc_groups_authoritative"
+                    {{ if .ApplicationSettings.Authentication.OIDCGroupsAuthoritative }}checked{{ end }}
+                  />
+                </label>
+
+                <div class="auth-group-mappings" data-oidc-group-mappings>
+                  <div class="auth-group-mapping-heading">
+                    <strong>Mappings</strong>
+                    <small class="muted">OIDC group → Lore group</small>
+                  </div>
+
+                  <div class="auth-group-mapping-list" data-oidc-group-mapping-list>
+                    {{ range .ApplicationSettings.Authentication.OIDCGroupMappings }}
+                      {{ $mapping := . }}
+                      <div class="auth-group-mapping-row" data-oidc-group-mapping-row>
+                        <input
+                          type="text"
+                          name="oidc_group_source"
+                          value="{{ .OIDCGroup }}"
+                          placeholder="/platform"
+                          aria-label="OIDC group"
+                        />
+                        <span aria-hidden="true">→</span>
+                        <select name="oidc_group_id" aria-label="Lore group">
+                          <option value="">Choose Lore group…</option>
+                          {{ range $root.Groups }}
+                            <option value="{{ .ID }}" {{ if eq .ID $mapping.GroupID }}selected{{ end }}>{{ .Name }}</option>
+                          {{ end }}
+                        </select>
+                        <button class="icon-button" type="button" data-oidc-group-mapping-remove aria-label="Remove group mapping">
+                          {{ icon "x" 16 }}
+                        </button>
+                      </div>
+                    {{ end }}
+                  </div>
+
+                  {{ if .Groups }}
+                    <button class="button compact" type="button" data-oidc-group-mapping-add>
+                      {{ icon "plus" 15 }}<span>Add mapping</span>
+                    </button>
+                    <template data-oidc-group-mapping-template>
+                      <div class="auth-group-mapping-row" data-oidc-group-mapping-row>
+                        <input
+                          type="text"
+                          name="oidc_group_source"
+                          placeholder="/platform"
+                          aria-label="OIDC group"
+                        />
+                        <span aria-hidden="true">→</span>
+                        <select name="oidc_group_id" aria-label="Lore group">
+                          <option value="">Choose Lore group…</option>
+                          {{ range .Groups }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
+                        </select>
+                        <button class="icon-button" type="button" data-oidc-group-mapping-remove aria-label="Remove group mapping">
+                          {{ icon "x" 16 }}
+                        </button>
+                      </div>
+                    </template>
+                  {{ else }}
+                    <p class="muted auth-group-mapping-empty">Create a Lore group before adding OIDC mappings.</p>
+                  {{ end }}
+                </div>
+              </div>
+            </section>
+
+            <div class="auth-secret-summary">
+              <div>
+                <span>OIDC client secret</span>
+                {{ if .Runtime.OIDCClientSecretConfigured }}
+                  <strong class="config-status configured">Configured</strong>
+                {{ else }}
+                  <strong class="config-status missing">Missing</strong>
+                {{ end }}
+                <small><code>LORE_OIDC_CLIENT_SECRET</code></small>
+              </div>
+              <div>
+                <span>Session secret</span>
+                {{ if .Runtime.SessionSecretConfigured }}
+                  <strong class="config-status configured">Configured</strong>
+                {{ else }}
+                  <strong class="config-status missing">Missing</strong>
+                {{ end }}
+                <small><code>LORE_SESSION_SECRET</code>, at least 32 characters</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-actions auth-settings-actions">
+            <button class="button primary" type="submit">Save authentication settings</button>
+          </div>
+        </form>
+
+        <div class="auth-local-recovery">
+          <div class="admin-card-heading auth-mode-heading">
+            <div>
+              <h3>Local recovery login</h3>
+              <p class="muted">Keep a password-backed administrator available when OIDC or the identity provider is unavailable.</p>
+            </div>
+          </div>
+
+          <div class="auth-recovery-status">
+            <div>
+              <span>Current administrator password</span>
+              {{ if .LocalCredentialConfigured }}
+                <strong class="config-status configured">Configured</strong>
+              {{ else }}
+                <strong class="config-status missing">Missing</strong>
+              {{ end }}
+            </div>
+            <div>
+              <span>Recovery endpoint</span>
+              {{ if or .Runtime.LocalLoginEnabled (eq .ApplicationSettings.Authentication.Mode "local") }}
+                <strong class="config-status configured">Enabled</strong>
+              {{ else }}
+                <strong class="config-status missing">Disabled</strong>
+              {{ end }}
+            </div>
+          </div>
+
+          <form class="stacked-form auth-recovery-form" action="/admin/authentication/local-password" method="post">
+            <div class="form-grid">
+              <label>
+                {{ if .LocalCredentialConfigured }}New recovery password{{ else }}Recovery password{{ end }}
+                <input type="password" name="password" autocomplete="new-password" minlength="12" required />
+                <small>At least 12 characters.</small>
+              </label>
+              <label>
+                Confirm password
+                <input type="password" name="password_confirm" autocomplete="new-password" minlength="12" required />
+              </label>
+            </div>
+            <div class="settings-actions auth-settings-actions">
+              <button class="button" type="submit">
+                {{ if .LocalCredentialConfigured }}Replace recovery password{{ else }}Set recovery password{{ end }}
+              </button>
+            </div>
+          </form>
+          <p class="settings-note auth-recovery-note">
+            When another authentication mode is active, set <code>LORE_LOCAL_LOGIN=true</code> and restart Lore to expose
+            <code>/auth/local</code>. Local mode always exposes the endpoint.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel settings-panel">
+        <div class="panel-title"><h2>Application settings</h2></div>
+        <form class="settings-form" action="/admin/settings" method="post">
+          <label class="toggle-row">
+            <span>
+              <strong>Allow new users</strong>
+              <small
+                >Allow unknown OIDC or trusted-proxy identities to create Lore accounts automatically. When disabled,
+                verified OIDC identities wait for administrator approval while existing users can still sign in.</small
+              >
+            </span>
+            <input
+              type="checkbox"
+              name="allow_user_registration"
+              {{ if .ApplicationSettings.AllowUserRegistration }}checked{{ end }}
+            />
+          </label>
+          <label class="toggle-row">
+            <span>
+              <strong>Page discussions</strong>
+              <small
+                >Allow users to add anchored comments to wiki pages. Existing comments are preserved while discussions
+                are disabled.</small
+              >
+            </span>
+            <input
+              type="checkbox"
+              name="discussions_enabled"
+              {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }}
+            />
+          </label>
+          <button class="button primary" type="submit">Save application settings</button>
+        </form>
+      </section>
+    </div>
+  </section>
+{{ end }}

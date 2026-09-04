@@ -1,0 +1,53 @@
+{{ define "content" }}
+  <section class="admin-page">
+    <div class="settings-heading">
+      <p class="eyebrow">Administration</p>
+      <h1>Images</h1>
+      <p class="muted">Inspect all uploaded media, reference counts, and clean up files when appropriate.</p>
+    </div>
+
+    <section class="panel settings-panel">
+      <div class="panel-title">
+        <h2>All images</h2>
+        <span class="muted">{{ len .Images }} files</span>
+      </div>
+      <p class="settings-note">
+        Reference counts count every Markdown occurrence. Administrators may delete referenced images; doing so leaves
+        broken references in affected pages.
+      </p>
+      <div class="media-settings-list" data-media-settings-list>
+        {{ range .Images }}
+          <article class="media-settings-row" data-media-settings-item data-media-id="{{ .ID }}">
+            <img src="{{ .URL }}" alt="" loading="lazy" />
+            <div class="media-settings-info">
+              <strong>{{ .Filename }}</strong>
+              <small
+                >{{ filesize .SizeBytes }} · {{ if .Uploader }}{{ .Uploader }}{{ else }}Unknown uploader{{ end }} ·
+                {{ timeago .CreatedAt }}</small
+              >
+              {{ if gt .UsageCount 0 }}
+                <small class="media-used">Referenced {{ .UsageCount }} time{{ if ne .UsageCount 1 }}s{{ end }}</small>
+              {{ else }}
+                <small class="media-unused">Unused</small>
+              {{ end }}
+              <code>{{ .URL }}</code>
+            </div>
+            <div class="media-settings-actions">
+              <button
+                class="button danger"
+                type="button"
+                data-media-delete
+                data-media-usage="{{ .UsageCount }}"
+                data-delete-url="/api/images/{{ .ID }}"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+        {{ else }}
+          <p class="muted" data-media-settings-empty>No images uploaded yet.</p>
+        {{ end }}
+      </div>
+    </section>
+  </section>
+{{ end }}

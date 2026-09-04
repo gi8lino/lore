@@ -1,0 +1,62 @@
+{{ define "admin-sidebar" }}
+  <aside class="sidebar admin-sidebar" id="lore-sidebar" data-sidebar>
+    <nav>
+      <p class="nav-label">Administration</p>
+      <a href="/admin" {{ if eq .AdminSection "overview" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "layout-dashboard" 17 }}<span>Overview</span></a
+      >
+      <a
+        href="/admin/configuration"
+        {{ if eq .AdminSection "configuration" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "settings-2" 17 }}<span>Configuration</span></a
+      >
+      <a href="/admin/rendering" {{ if eq .AdminSection "rendering" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "wand-sparkles" 17 }}<span>Rendering</span></a
+      >
+      <a href="/admin/health" {{ if eq .AdminSection "health" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "heart-pulse" 17 }}<span>Documentation health</span></a
+      >
+      <a href="/admin/templates" {{ if eq .AdminSection "templates" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "layout-template" 17 }}<span>Page templates</span></a
+      >
+      <a href="/admin/snippets" {{ if eq .AdminSection "snippets" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "braces" 17 }}<span>Snippets & variables</span></a
+      >
+      <a href="/admin/pages" {{ if eq .AdminSection "pages" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "files" 17 }}<span>Pages</span></a
+      >
+      <a href="/admin/import" {{ if eq .AdminSection "import" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "import" 17 }}<span>Import</span></a
+      >
+      <a href="/admin/audit" {{ if eq .AdminSection "audit" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "scroll-text" 17 }}<span>Audit log</span></a
+      >
+      <a href="/admin/users" {{ if eq .AdminSection "users" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "users" 17 }}<span>Users</span></a
+      >
+      <a href="/admin/groups" {{ if eq .AdminSection "groups" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "users-round" 17 }}<span>Groups</span></a
+      >
+      <a href="/admin/navigation" {{ if eq .AdminSection "navigation" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "panel-left" 17 }}<span>Navigation</span></a
+      >
+      <a href="/admin/bin" {{ if eq .AdminSection "bin" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "trash-2" 17 }}<span>Recycle bin</span></a
+      >
+      <a href="/admin/tags" {{ if eq .AdminSection "tags" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "tags" 17 }}<span>Tags</span></a
+      >
+      <a href="/admin/tokens" {{ if eq .AdminSection "tokens" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "key-round" 17 }}<span>Access tokens</span></a
+      >
+      <a href="/admin/exports" {{ if eq .AdminSection "exports" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "download" 17 }}<span>Exports</span></a
+      >
+      <a href="/admin/images" {{ if eq .AdminSection "images" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "images" 17 }}<span>Images</span></a
+      >
+    </nav>
+    <a class="admin-back-link" href="/">{{ icon "arrow-left" 17 }}<span>Back to Lore</span></a>
+    {{ template "account-menu" . }}
+  </aside>
+{{ end }}

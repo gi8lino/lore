@@ -1,0 +1,95 @@
+@media (max-width: 900px) {
+  .rendering-settings {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 1000px) {
+  .page-layout.with-contents {
+    display: block;
+  }
+  .page-contents {
+    position: static;
+    max-height: none;
+    margin-top: 30px;
+    padding: 16px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+@media (max-width: 800px) {
+  .topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .brand {
+    height: 34px;
+  }
+  .brand .lore-logo {
+    width: 96px;
+    height: 34px;
+  }
+  .menu-button {
+    display: inline-grid;
+    place-items: center;
+  }
+  .topbar > .button {
+    padding: 8px;
+  }
+  .topbar > .button span {
+    display: none;
+  }
+  .sidebar {
+    position: fixed;
+    z-index: 30;
+    left: 0;
+    top: 64px;
+    width: var(--sidebar);
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+  .sidebar.open {
+    transform: none;
+  }
+  .shell {
+    display: block;
+  }
+  .shell > main {
+    grid-column: auto;
+  }
+  main {
+    padding: 30px 20px;
+  }
+  .dashboard {
+    display: block;
+  }
+  .panel {
+    margin-bottom: 16px;
+  }
+  .relations {
+    grid-template-columns: 1fr;
+  }
+  .page-heading,
+  .editor-heading {
+    display: block;
+  }
+  .actions,
+  .editor-heading > div:last-child {
+    margin-top: 15px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .global-search kbd {
+    display: none;
+  }
+  .user-details > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .settings-actions {
+    justify-content: stretch;
+  }
+  .settings-actions .button {
+    width: 100%;
+  }
+}

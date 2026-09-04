@@ -1,0 +1,27 @@
+/* Lore stylesheet entrypoint. The frontend build bundles these sources in order. */
+@import "./base/foundation.css";
+@import "./layout/shell.css";
+@import "./pages/content.css";
+@import "./editor/editor.css";
+@import "./pages/settings.css";
+@import "./layout/responsive.css";
+@import "./components/search-tags.css";
+@import "./components/mentions.css";
+@import "./components/page-contents-code.css";
+@import "./markdown/extensions.css";
+@import "./editor/media.css";
+@import "./pages/admin.css";
+@import "./navigation/navigation-reading.css";
+@import "./navigation/account.css";
+@import "./editor/preview-print.css";
+@import "./editor/toolbar-admin.css";
+@import "./components/dialogs-sharing-groups.css";
+@import "./components/icons.css";
+@import "./pages/admin-extras.css";
+@import "./navigation/preferences.css";
+@import "./pages/reading-rendering.css";
+@import "./markdown/highlighting-tables.css";
+@import "./editor/table-format-icons.css";
+@import "./components/code-ligatures.css";
+@import "./layout/mobile.css";
+@import "./pages/static.css";

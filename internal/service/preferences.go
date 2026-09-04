@@ -1,0 +1,55 @@
+package service
+
+import (
+	"context"
+)
+
+// preferenceRepository contains per-user preference operations.
+type preferenceRepository interface {
+	Preferences(context.Context, int64) (UserPreferences, error)
+	SavePreferences(context.Context, int64, UserPreferences) error
+	SetShowPageContents(context.Context, int64, bool) error
+	SetExpandedNavigation(context.Context, int64, []string) error
+	SetSidebarWidth(context.Context, int64, int) error
+}
+
+// Preferences exposes per-user display preference use cases.
+type Preferences struct{ repository preferenceRepository }
+
+// NewPreferences constructs the user preference service.
+func NewPreferences(repository preferenceRepository) *Preferences {
+	return &Preferences{repository: repository}
+}
+
+// Preferences returns the saved preferences for a user.
+func (s *Preferences) Preferences(ctx context.Context, userID int64) (UserPreferences, error) {
+	return s.repository.Preferences(ctx, userID)
+}
+
+// SavePreferences replaces the saved preferences for a user.
+func (s *Preferences) SavePreferences(
+	ctx context.Context,
+	userID int64,
+	preferences UserPreferences,
+) error {
+	return s.repository.SavePreferences(ctx, userID, preferences)
+}
+
+// SetShowPageContents updates a user's page-contents visibility preference.
+func (s *Preferences) SetShowPageContents(ctx context.Context, userID int64, show bool) error {
+	return s.repository.SetShowPageContents(ctx, userID, show)
+}
+
+// SetExpandedNavigation updates the navigation paths expanded by a user.
+func (s *Preferences) SetExpandedNavigation(
+	ctx context.Context,
+	userID int64,
+	expanded []string,
+) error {
+	return s.repository.SetExpandedNavigation(ctx, userID, expanded)
+}
+
+// SetSidebarWidth updates a user's preferred sidebar width.
+func (s *Preferences) SetSidebarWidth(ctx context.Context, userID int64, width int) error {
+	return s.repository.SetSidebarWidth(ctx, userID, width)
+}

@@ -1,0 +1,337 @@
+package auth
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+
+	"github.com/gi8lino/lore/internal/httpresponse"
+	"github.com/gi8lino/lore/internal/model"
+)
+
+// browserAuthenticator resolves the database-managed browser authentication mode per request.
+type browserAuthenticator struct {
+	repository        browserRepository
+	modeOverride      AuthMode
+	trustedProxy      TrustedProxyHeaders
+	oidcConfig        OIDCConfig
+	none              *None
+	local             *Local
+	localLoginEnabled bool
+
+	mu      sync.Mutex
+	oidcKey string
+	oidc    *OIDC
+}
+
+// ConfigureBrowserAuth constructs database-managed browser authentication.
+func ConfigureBrowserAuth(
+	ctx context.Context,
+	config BrowserConfig,
+	repository browserRepository,
+) (BrowserAuth, error) {
+	browser := &browserAuthenticator{
+		repository:        repository,
+		modeOverride:      config.ModeOverride,
+		trustedProxy:      config.TrustedProxy,
+		oidcConfig:        config.OIDC,
+		none:              NewNone(repository),
+		local:             NewLocal(repository, config.OIDC.PublicURL),
+		localLoginEnabled: config.LocalLoginEnabled,
+	}
+
+	// Validate the effective startup mode so broken OIDC or local recovery
+	// configuration fails early.
+	settings, err := browser.currentSettings(ctx)
+	if err != nil {
+		return BrowserAuth{}, err
+	}
+	if err := browser.validate(ctx, settings); err != nil {
+		return BrowserAuth{}, err
+	}
+
+	return BrowserAuth{
+		Authenticator:     browser,
+		Login:             http.HandlerFunc(browser.login),
+		Callback:          http.HandlerFunc(browser.callback),
+		Validate:          browser.validate,
+		Local:             browser.local,
+		LocalLoginAllowed: browser.localLoginAllowed,
+	}, nil
+}
+
+// Authenticate resolves a user with the currently configured browser authentication mode.
+func (b *browserAuthenticator) Authenticate(r *http.Request) (model.User, error) {
+	settings, err := b.currentSettings(r.Context())
+	if err != nil {
+		return model.User{}, err
+	}
+	if b.modeOverride == "" && AuthMode(settings.Mode) == AuthModeNone {
+		setupRequired, err := b.repository.SetupRequired(r.Context())
+		if err != nil {
+			return model.User{}, err
+		}
+		if setupRequired {
+			return model.User{}, ErrUnauthenticated
+		}
+	}
+	if b.localLoginEnabled && AuthMode(settings.Mode) != AuthModeLocal {
+		user, err := b.local.Authenticate(r)
+		if err == nil {
+			return user, nil
+		}
+		if !errors.Is(err, ErrUnauthenticated) {
+			return model.User{}, err
+		}
+	}
+
+	authenticator, err := b.authenticatorForSettings(r.Context(), settings)
+	if err != nil {
+		return model.User{}, err
+	}
+	return authenticator.Authenticate(r)
+}
+
+// login starts the configured interactive flow or redirects home for non-interactive modes.
+func (b *browserAuthenticator) login(w http.ResponseWriter, r *http.Request) {
+	settings, err := b.currentSettings(r.Context())
+	if err != nil {
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
+	}
+	if b.modeOverride == "" && AuthMode(settings.Mode) == AuthModeNone {
+		setupRequired, err := b.repository.SetupRequired(r.Context())
+		if err != nil {
+			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			return
+		}
+		if setupRequired {
+			http.Redirect(w, r, "/setup", http.StatusFound)
+			return
+		}
+	}
+	switch AuthMode(settings.Mode) {
+	case AuthModeLocal:
+		next := r.URL.Query().Get("next")
+		target := "/auth/local"
+		if next != "" {
+			target += "?next=" + url.QueryEscape(next)
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+		return
+	case AuthModeOIDC:
+	case AuthModeNone, AuthModeTrustedProxy:
+		LoginUnavailable().ServeHTTP(w, r)
+		return
+	default:
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
+	}
+
+	oidcAuth, err := b.oidcFor(r.Context(), settings)
+	if err != nil {
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
+	}
+	oidcAuth.Login().ServeHTTP(w, r)
+}
+
+// callback completes OIDC only while OIDC is the effective authentication mode.
+func (b *browserAuthenticator) callback(w http.ResponseWriter, r *http.Request) {
+	settings, err := b.currentSettings(r.Context())
+	if err != nil {
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
+	}
+	if AuthMode(settings.Mode) != AuthModeOIDC {
+		httpresponse.Problem(w, http.StatusBadRequest, "OIDC authentication is not enabled.")
+		return
+	}
+
+	oidcAuth, err := b.oidcFor(r.Context(), settings)
+	if err != nil {
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
+	}
+	oidcAuth.Callback().ServeHTTP(w, r)
+}
+
+// validate checks persisted authentication settings before administrators activate them.
+func (b *browserAuthenticator) validate(ctx context.Context, settings model.AuthenticationSettings) error {
+	if err := b.validateSettings(settings); err != nil {
+		return err
+	}
+	if AuthMode(settings.Mode) == AuthModeLocal {
+		configured, err := b.repository.HasLocalAdministratorCredential(ctx)
+		if err != nil {
+			return err
+		}
+		if !configured {
+			return errors.New("local authentication requires an administrator with a local password")
+		}
+	}
+	if AuthMode(settings.Mode) == AuthModeOIDC {
+		_, err := b.oidcFor(ctx, settings)
+		return err
+	}
+	return nil
+}
+
+// currentSettings reads database-managed settings and applies the emergency mode override.
+func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.AuthenticationSettings, error) {
+	// Recovery overrides are self-contained and do not depend on stored auth configuration.
+	switch b.modeOverride {
+	case AuthModeNone:
+		return model.AuthenticationSettings{Mode: string(AuthModeNone)}, nil
+	case AuthModeLocal:
+		return model.AuthenticationSettings{Mode: string(AuthModeLocal)}, nil
+	case AuthModeTrustedProxy:
+		return model.AuthenticationSettings{
+			Mode:                      string(AuthModeTrustedProxy),
+			TrustedUsernameHeaders:    b.trustedProxy.Username,
+			TrustedEmailHeaders:       b.trustedProxy.Email,
+			TrustedDisplayNameHeaders: b.trustedProxy.DisplayName,
+		}, nil
+	case AuthModeOIDC:
+		return model.AuthenticationSettings{
+			Mode:         string(AuthModeOIDC),
+			OIDCIssuer:   b.oidcConfig.Issuer,
+			OIDCClientID: b.oidcConfig.ClientID,
+		}, nil
+	}
+
+	settings, err := b.repository.ApplicationSettings(ctx)
+	if err != nil {
+		return model.AuthenticationSettings{}, err
+	}
+	authentication := settings.Authentication
+	if authentication.OIDCGroupSync {
+		authentication.OIDCGroupMappings, err = b.repository.OIDCGroupMappings(ctx)
+		if err != nil {
+			return model.AuthenticationSettings{}, err
+		}
+	}
+	return authentication, nil
+}
+
+// authenticatorForSettings creates the authenticator for one resolved configuration.
+func (b *browserAuthenticator) authenticatorForSettings(
+	ctx context.Context,
+	settings model.AuthenticationSettings,
+) (Authenticator, error) {
+	if err := b.validateSettings(settings); err != nil {
+		return nil, err
+	}
+
+	switch AuthMode(settings.Mode) {
+	case AuthModeNone:
+		return b.none, nil
+	case AuthModeLocal:
+		return b.local, nil
+	case AuthModeTrustedProxy:
+		return NewTrustedProxy(b.repository, TrustedProxyHeaders{
+			Username:    settings.TrustedUsernameHeaders,
+			Email:       settings.TrustedEmailHeaders,
+			DisplayName: settings.TrustedDisplayNameHeaders,
+		}), nil
+	case AuthModeOIDC:
+		return b.oidcFor(ctx, settings)
+	default:
+		return nil, fmt.Errorf("unsupported auth mode %q", settings.Mode)
+	}
+}
+
+// validateSettings checks configuration that does not require contacting an OIDC provider.
+func (b *browserAuthenticator) validateSettings(settings model.AuthenticationSettings) error {
+	switch AuthMode(settings.Mode) {
+	case AuthModeNone:
+		return nil
+	case AuthModeLocal:
+		return nil
+	case AuthModeTrustedProxy:
+		if len(settings.TrustedUsernameHeaders) == 0 {
+			return errors.New("trusted-proxy authentication requires at least one username header")
+		}
+		return nil
+	case AuthModeOIDC:
+		if strings.TrimSpace(settings.OIDCIssuer) == "" || strings.TrimSpace(settings.OIDCClientID) == "" {
+			return errors.New("OIDC authentication requires an issuer and client ID")
+		}
+		if settings.OIDCGroupSync && strings.TrimSpace(settings.OIDCGroupClaim) == "" {
+			return errors.New("OIDC group synchronization requires a group claim")
+		}
+		if b.oidcConfig.ClientSecret == "" {
+			return errors.New("OIDC client secret is not configured")
+		}
+		if len(b.oidcConfig.SessionSecret) < 32 {
+			return errors.New("OIDC session secret must be at least 32 characters")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported auth mode %q", settings.Mode)
+	}
+}
+
+// localLoginAllowed reports whether the local sign-in endpoint is active for the effective mode.
+func (b *browserAuthenticator) localLoginAllowed(ctx context.Context) (bool, error) {
+	settings, err := b.currentSettings(ctx)
+	if err != nil {
+		return false, err
+	}
+	return AuthMode(settings.Mode) == AuthModeLocal || b.localLoginEnabled, nil
+}
+
+// oidcFor returns a cached OIDC integration for the supplied public settings.
+func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.AuthenticationSettings) (*OIDC, error) {
+	key := oidcSettingsKey(settings)
+	b.mu.Lock()
+	if b.oidc != nil && b.oidcKey == key {
+		configured := b.oidc
+		b.mu.Unlock()
+		return configured, nil
+	}
+	b.mu.Unlock()
+
+	configured, err := NewOIDC(ctx, OIDCConfig{
+		ClientID:            strings.TrimSpace(settings.OIDCClientID),
+		ClientSecret:        b.oidcConfig.ClientSecret,
+		Issuer:              strings.TrimSpace(settings.OIDCIssuer),
+		SessionSecret:       b.oidcConfig.SessionSecret,
+		PublicURL:           b.oidcConfig.PublicURL,
+		GroupClaim:          strings.TrimSpace(settings.OIDCGroupClaim),
+		GroupSync:           settings.OIDCGroupSync,
+		GroupsAuthoritative: settings.OIDCGroupsAuthoritative,
+		GroupMappings:       settings.OIDCGroupMappings,
+	}, b.repository)
+	if err != nil {
+		return nil, err
+	}
+
+	b.mu.Lock()
+	b.oidcKey = key
+	b.oidc = configured
+	b.mu.Unlock()
+	return configured, nil
+}
+
+// oidcSettingsKey fingerprints public OIDC settings that affect the cached integration.
+func oidcSettingsKey(settings model.AuthenticationSettings) string {
+	var key strings.Builder
+	_, _ = fmt.Fprintf(
+		&key,
+		"%s\x00%s\x00%s\x00%t\x00%t",
+		strings.TrimSpace(settings.OIDCIssuer),
+		strings.TrimSpace(settings.OIDCClientID),
+		strings.TrimSpace(settings.OIDCGroupClaim),
+		settings.OIDCGroupSync,
+		settings.OIDCGroupsAuthoritative,
+	)
+	for _, mapping := range settings.OIDCGroupMappings {
+		_, _ = fmt.Fprintf(&key, "\x00%s=%d", strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID)
+	}
+	return key.String()
+}

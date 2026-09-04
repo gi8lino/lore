@@ -1,0 +1,387 @@
+/* Chroma syntax highlighting rendered by goldmark-highlighting. */
+.prose .chroma {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.prose .chroma .c,
+.prose .chroma .ch,
+.prose .chroma .cm,
+.prose .chroma .c1,
+.prose .chroma .cs,
+.prose .chroma .cp,
+.prose .chroma .cpf {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.prose .chroma .k,
+.prose .chroma .kc,
+.prose .chroma .kd,
+.prose .chroma .kn,
+.prose .chroma .kp,
+.prose .chroma .kr,
+.prose .chroma .kt,
+.prose .chroma .o,
+.prose .chroma .ow {
+  color: var(--accent);
+  font-weight: 600;
+}
+.prose .chroma .na,
+.prose .chroma .nb,
+.prose .chroma .bp,
+.prose .chroma .nc,
+.prose .chroma .no,
+.prose .chroma .nd,
+.prose .chroma .ni,
+.prose .chroma .ne,
+.prose .chroma .nf,
+.prose .chroma .fm,
+.prose .chroma .nl,
+.prose .chroma .nn,
+.prose .chroma .nx,
+.prose .chroma .py,
+.prose .chroma .nt,
+.prose .chroma .nv,
+.prose .chroma .vc,
+.prose .chroma .vg,
+.prose .chroma .vi,
+.prose .chroma .vm {
+  color: var(--accent-secondary);
+}
+.prose .chroma .s,
+.prose .chroma .sa,
+.prose .chroma .sb,
+.prose .chroma .sc,
+.prose .chroma .dl,
+.prose .chroma .sd,
+.prose .chroma .s2,
+.prose .chroma .se,
+.prose .chroma .sh,
+.prose .chroma .si,
+.prose .chroma .sx,
+.prose .chroma .sr,
+.prose .chroma .s1,
+.prose .chroma .ss,
+.prose .chroma .l,
+.prose .chroma .ld {
+  color: var(--success);
+}
+.prose .chroma .m,
+.prose .chroma .mb,
+.prose .chroma .mf,
+.prose .chroma .mh,
+.prose .chroma .mi,
+.prose .chroma .il,
+.prose .chroma .mo {
+  color: var(--warning);
+}
+.prose .chroma .p {
+  color: var(--text-secondary);
+}
+.prose .chroma .gd,
+.prose .chroma .err {
+  color: var(--danger);
+}
+.prose .chroma .gi {
+  color: var(--success);
+}
+.prose .chroma .ge {
+  font-style: italic;
+}
+.prose .chroma .gs {
+  font-weight: 700;
+}
+.prose .chroma .w {
+  color: var(--muted);
+}
+
+/* Make explicit table color directives visually distinct in every theme. */
+.prose table.lore-table-styled {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.prose table.lore-table-styled th,
+.prose table.lore-table-styled td {
+  border-width: 0 1px 1px 0;
+}
+.prose table.lore-table-styled tr:last-child > * {
+  border-bottom-width: 0;
+}
+.prose table.lore-table-styled tr > *:last-child {
+  border-right-width: 0;
+}
+.prose .table-tone-accent {
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border)) !important;
+}
+.prose .table-tone-accent-soft {
+  background: color-mix(in srgb, var(--accent-soft) 34%, var(--surface));
+}
+.prose .table-tone-info {
+  background: color-mix(in srgb, var(--accent-secondary) 25%, var(--surface));
+}
+.prose .table-tone-success {
+  background: color-mix(in srgb, var(--success) 24%, var(--surface));
+}
+.prose .table-tone-warning {
+  background: color-mix(in srgb, var(--warning) 28%, var(--surface));
+}
+.prose .table-tone-danger {
+  background: color-mix(in srgb, var(--danger) 24%, var(--surface));
+}
+.prose .table-tone-neutral {
+  background: var(--surface-elevated);
+}
+
+@media (max-width: 800px) {
+  .page-reading.with-contents .page-contents {
+    position: relative;
+    top: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Confluence-style semantic table palette. */
+.prose .table-tone-gray {
+  background: color-mix(in srgb, var(--muted) 13%, var(--surface));
+}
+.prose .table-tone-blue {
+  background: color-mix(in srgb, var(--accent) 24%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border)) !important;
+}
+.prose .table-tone-purple {
+  background: color-mix(
+    in srgb,
+    var(--accent) 19%,
+    color-mix(in srgb, var(--danger) 12%, var(--surface))
+  );
+}
+.prose .table-tone-green {
+  background: color-mix(in srgb, var(--success) 24%, var(--surface));
+}
+.prose .table-tone-yellow {
+  background: color-mix(in srgb, var(--warning) 27%, var(--surface));
+}
+.prose .table-tone-orange {
+  background: color-mix(
+    in srgb,
+    var(--warning) 22%,
+    color-mix(in srgb, var(--danger) 10%, var(--surface))
+  );
+}
+.prose .table-tone-red {
+  background: color-mix(in srgb, var(--danger) 23%, var(--surface));
+}
+
+/* Opt-in client-side table sorting and per-column filtering. */
+.prose .lore-table-shell {
+  position: relative;
+  min-width: 0;
+  margin: 1.1em 0;
+  overflow: visible;
+}
+.prose .lore-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.prose .lore-table-shell table {
+  margin: 0;
+}
+.prose table.lore-table-sortable th,
+.prose table.lore-table-filterable th {
+  padding: 0;
+}
+.prose .table-header-cell {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: stretch;
+}
+.prose .table-header-label {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+}
+.prose .table-sort-button {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+}
+.prose .table-sort-button:hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.prose .table-sort-button:focus-visible,
+.prose .table-filter-button:focus-visible,
+.prose .table-filter-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.prose .table-sort-button .table-header-label {
+  padding-right: 4px;
+}
+.prose .table-sort-indicator {
+  flex: 0 0 auto;
+  margin-right: 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.prose th[aria-sort="ascending"] .table-sort-indicator,
+.prose th[aria-sort="descending"] .table-sort-indicator {
+  color: var(--accent);
+}
+.prose .table-filter-button {
+  display: inline-flex;
+  width: 34px;
+  min-width: 34px;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.prose .table-filter-button:hover,
+.prose .table-filter-button[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+}
+.prose .table-filter-button.active {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent);
+}
+.prose .table-filter-button svg,
+.prose .table-filter-search-icon svg,
+.prose .table-filter-clear svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+.prose .table-filter-button svg {
+  width: 14px;
+  height: 14px;
+}
+.prose .table-filter-menu {
+  position: absolute;
+  z-index: 40;
+  width: min(280px, calc(100% - 16px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 16%, transparent);
+}
+.prose .table-filter-menu[hidden] {
+  display: none;
+}
+.prose .table-filter-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.prose .table-filter-menu-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prose .table-filter-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.prose .table-filter-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  display: inline-flex;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.prose .table-filter-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 32px 6px 31px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.prose .table-filter-input::-webkit-search-cancel-button {
+  display: none;
+}
+.prose .table-filter-input::placeholder {
+  color: var(--text-tertiary);
+}
+.prose .table-filter-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.prose .table-filter-clear {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.prose .table-filter-clear[hidden] {
+  display: none;
+}
+.prose .table-filter-clear:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .prose .table-filter-menu {
+    width: min(260px, calc(100% - 12px));
+  }
+  .prose .table-filter-input {
+    font-size: 16px;
+  }
+}

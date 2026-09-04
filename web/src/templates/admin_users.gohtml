@@ -1,0 +1,314 @@
+{{ define "content" }}
+  <section class="admin-page">
+    <div class="settings-heading">
+      <p class="eyebrow">Administration</p>
+      <h1>Users</h1>
+      <p class="muted">Manage roles, group memberships, and external identities.</p>
+    </div>
+
+    <section class="panel settings-panel" id="pending-identities">
+      <div class="panel-title">
+        <div>
+          <h2>OIDC identity requests</h2>
+          <p class="muted">Review verified identities that were not allowed to create a Lore account automatically.</p>
+        </div>
+        {{ if .ApplicationSettings.AllowUserRegistration }}
+          <span class="admin-registration-state open">New users allowed</span>
+        {{ else }}
+          <span class="admin-registration-state closed">Registration closed</span>
+        {{ end }}
+      </div>
+
+      {{ if .PendingOIDCIdentities }}
+        <div class="admin-identity-requests">
+          {{ range .PendingOIDCIdentities }}
+            <article class="admin-identity-request{{ if eq .Status "rejected" }} rejected{{ end }}">
+              <div class="admin-identity-request-main">
+                <div class="admin-identity-request-title">
+                  <strong>{{ if .DisplayName }}{{ .DisplayName }}{{ else }}{{ .Username }}{{ end }}</strong>
+                  {{ if eq .Status "rejected" }}
+                    <span class="admin-identity-status rejected">Rejected</span>
+                  {{ else }}
+                    <span class="admin-identity-status pending">Pending</span>
+                  {{ end }}
+                </div>
+                <small>
+                  {{ .Username }}{{ if .Email }} · {{ .Email }}{{ end }}
+                </small>
+                <div class="admin-identity-request-meta">
+                  <span><strong>Issuer</strong><code>{{ .Issuer }}</code></span>
+                  <span><strong>Subject</strong><code>{{ .Subject }}</code></span>
+                  <span><strong>Last seen</strong>{{ timeago .LastSeenAt }}</span>
+                </div>
+                {{ if .SuggestedUserID }}
+                  <p class="admin-identity-suggestion">
+                    Possible match: <strong>{{ .SuggestedDisplayName }}</strong> <span>{{ .SuggestedUsername }}</span>
+                  </p>
+                {{ end }}
+              </div>
+              <div class="admin-identity-request-actions">
+                {{ if eq .Status "rejected" }}
+                  <form action="/admin/oidc/pending/{{ .ID }}/reopen" method="post">
+                    <button class="button compact" type="submit">Reopen</button>
+                  </form>
+                {{ else }}
+                  <button
+                    class="button compact"
+                    type="button"
+                    data-pending-oidc-review
+                    data-pending-id="{{ .ID }}"
+                    data-pending-name="{{ .DisplayName }}"
+                    data-pending-username="{{ .Username }}"
+                    data-pending-email="{{ .Email }}"
+                    data-pending-issuer="{{ .Issuer }}"
+                    data-pending-subject="{{ .Subject }}"
+                    data-suggested-user-id="{{ .SuggestedUserID }}"
+                    data-suggested-user-name="{{ .SuggestedDisplayName }}"
+                  >
+                    {{ icon "link" 15 }}<span>Review</span>
+                  </button>
+                {{ end }}
+              </div>
+            </article>
+          {{ end }}
+        </div>
+      {{ else }}
+        <p class="muted admin-identity-empty">No OIDC identities are waiting for review.</p>
+      {{ end }}
+    </section>
+
+    <section class="panel settings-panel">
+      <div class="panel-title">
+        <h2>Users</h2>
+        <span class="muted">{{ len .AdminUsers }} accounts</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table admin-users-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Groups</th>
+              <th>Last login</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range .AdminUsers }}
+              {{ $adminUser := . }}
+              <tr>
+                <td>
+                  <strong>{{ .User.DisplayName }}</strong>
+                  <small>{{ .User.Username }}{{ if .User.Email }} · {{ .User.Email }}{{ end }}</small>
+                  {{ if .OIDCIdentities }}
+                    <small class="admin-user-identity-state">
+                      {{ icon "key-round" 12 }}
+                      {{ len .OIDCIdentities }} OIDC {{ if eq (len .OIDCIdentities) 1 }}identity{{ else }}identities{{ end }}
+                    </small>
+                  {{ end }}
+                </td>
+                <td>
+                  <span class="admin-role-badge role-{{ .User.Role }}">{{ .User.Role }}</span>
+                </td>
+                <td>
+                  {{ if .Groups }}
+                    <div class="admin-group-chips">
+                      {{ range .Groups }}<span class="admin-group-chip">{{ . }}</span>{{ end }}
+                    </div>
+                  {{ else }}
+                    <span class="muted admin-user-no-groups">No groups</span>
+                  {{ end }}
+                </td>
+                <td class="admin-user-last-login">
+                  {{ if .HasLoggedIn }}
+                    {{ timeago .LastLogin }}
+                  {{ else }}
+                    <span class="muted">Never</span>
+                  {{ end }}
+                </td>
+                <td class="admin-user-action">
+                  <button
+                    class="button compact"
+                    type="button"
+                    data-admin-user-edit
+                    data-user-id="{{ .User.ID }}"
+                    data-user-name="{{ .User.DisplayName }}"
+                    data-user-username="{{ .User.Username }}"
+                    data-user-email="{{ .User.Email }}"
+                    data-user-role="{{ .User.Role }}"
+                    data-group-ids="{{ range $.Groups }}
+                      {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
+                    {{ end }}"
+                  >
+                    {{ icon "pencil" 15 }}<span>Edit</span>
+                  </button>
+                </td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel settings-panel" id="oidc-identities">
+      <div class="panel-title">
+        <div>
+          <h2>Bound OIDC identities</h2>
+          <p class="muted">Stable issuer and subject bindings currently allowed to sign in as Lore users.</p>
+        </div>
+        <span class="muted">{{ .OIDCIdentityCount }} bindings</span>
+      </div>
+      {{ if .OIDCIdentityCount }}
+        <div class="admin-table-wrap">
+          <table class="admin-table admin-identities-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Issuer</th>
+                <th>Subject</th>
+                <th><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range .AdminUsers }}
+                {{ $user := .User }}
+                {{ range .OIDCIdentities }}
+                  <tr>
+                    <td><strong>{{ $user.DisplayName }}</strong><small>{{ $user.Username }}</small></td>
+                    <td><code>{{ .Issuer }}</code></td>
+                    <td><code>{{ .Subject }}</code></td>
+                    <td class="admin-user-action">
+                      <form
+                        action="/admin/users/{{ $user.ID }}/oidc/remove"
+                        method="post"
+                        data-confirm="Disconnect this OIDC identity from {{ $user.DisplayName }}? Existing sessions using it will stop working."
+                        data-confirm-title="Disconnect OIDC identity"
+                        data-confirm-label="Disconnect"
+                      >
+                        <input type="hidden" name="issuer" value="{{ .Issuer }}" />
+                        <input type="hidden" name="subject" value="{{ .Subject }}" />
+                        <button class="button compact danger" type="submit">Disconnect</button>
+                      </form>
+                    </td>
+                  </tr>
+                {{ end }}
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
+      {{ else }}
+        <p class="muted admin-identity-empty">No OIDC identities are currently bound.</p>
+      {{ end }}
+    </section>
+  </section>
+
+  <dialog class="app-dialog admin-user-dialog" data-admin-user-dialog aria-labelledby="admin-user-dialog-title">
+    <form method="post" data-admin-user-form>
+      <div class="app-dialog-header">
+        <div>
+          <p class="eyebrow">User access</p>
+          <h2 id="admin-user-dialog-title" data-admin-user-name>Edit user</h2>
+          <p class="admin-user-dialog-identity" data-admin-user-identity></p>
+        </div>
+        <button class="icon-button app-dialog-close" type="button" data-admin-user-close aria-label="Close user editor">
+          {{ icon "x" 20 }}
+        </button>
+      </div>
+
+      <div class="app-dialog-body admin-user-dialog-body">
+        <label class="admin-user-field">
+          <span>Role</span>
+          <small>Controls the account's application-wide permissions.</small>
+          <select name="role" data-admin-user-role aria-label="User role">
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+
+        <fieldset class="admin-user-group-fieldset">
+          <legend>Groups</legend>
+          <p class="muted">Choose the collaboration groups this account belongs to.</p>
+          {{ if .Groups }}
+            <div class="admin-user-group-options">
+              {{ range .Groups }}
+                <label class="admin-user-group-option">
+                  <input type="checkbox" name="group_id" value="{{ .ID }}" />
+                  <span>{{ .Name }}</span>
+                </label>
+              {{ end }}
+            </div>
+          {{ else }}
+            <p class="muted admin-user-group-empty">No groups have been created yet.</p>
+          {{ end }}
+        </fieldset>
+      </div>
+
+      <div class="app-dialog-actions">
+        <button class="button" type="button" data-admin-user-close>Cancel</button>
+        <button class="button primary" type="submit">{{ icon "save" 15 }}<span>Save changes</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="app-dialog admin-identity-dialog" data-pending-oidc-dialog aria-labelledby="pending-oidc-dialog-title">
+    <div class="app-dialog-header">
+      <div>
+        <p class="eyebrow">External identity</p>
+        <h2 id="pending-oidc-dialog-title" data-pending-oidc-name>Review OIDC identity</h2>
+        <p class="admin-user-dialog-identity" data-pending-oidc-profile></p>
+      </div>
+      <button class="icon-button app-dialog-close" type="button" data-pending-oidc-close aria-label="Close identity review">
+        {{ icon "x" 20 }}
+      </button>
+    </div>
+
+    <div class="app-dialog-body admin-identity-dialog-body">
+      <dl class="admin-identity-details">
+        <div><dt>Issuer</dt><dd><code data-pending-oidc-issuer></code></dd></div>
+        <div><dt>Subject</dt><dd><code data-pending-oidc-subject></code></dd></div>
+      </dl>
+
+      <section class="admin-identity-action-card">
+        <div>
+          <strong>Link to existing user</strong>
+          <small>Use this after an identity-provider rebuild. The old OIDC binding for this issuer is replaced.</small>
+        </div>
+        <form method="post" data-pending-oidc-link-form>
+          <select name="user_id" data-pending-oidc-user required aria-label="Existing Lore user">
+            <option value="">Choose a Lore user…</option>
+            {{ range .AdminUsers }}
+              <option value="{{ .User.ID }}">{{ .User.DisplayName }} · {{ .User.Username }}</option>
+            {{ end }}
+          </select>
+          <p class="admin-identity-match" data-pending-oidc-match hidden></p>
+          <button class="button primary" type="submit">{{ icon "link" 15 }}<span>Link identity</span></button>
+        </form>
+      </section>
+
+      <section class="admin-identity-action-card">
+        <div>
+          <strong>Create new Lore user</strong>
+          <small>Approve this verified identity even while automatic user creation is disabled.</small>
+        </div>
+        <form method="post" data-pending-oidc-approve-form>
+          <button class="button" type="submit">{{ icon "user-plus" 15 }}<span>Create user</span></button>
+        </form>
+      </section>
+
+      <section class="admin-identity-action-card danger-zone">
+        <div>
+          <strong>Reject identity</strong>
+          <small>Keep this identity blocked until an administrator explicitly reopens it.</small>
+        </div>
+        <form method="post" data-pending-oidc-reject-form>
+          <button class="button danger" type="submit">Reject</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="app-dialog-actions">
+      <button class="button" type="button" data-pending-oidc-close>Cancel</button>
+    </div>
+  </dialog>
+{{ end }}

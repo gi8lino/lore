@@ -1,0 +1,98 @@
+{{ define "content" }}
+  <section class="admin-heading">
+    <div>
+      <p class="eyebrow">Administration</p>
+      <h1>Snippets & variables</h1>
+      <p>Keep repeated values and Markdown blocks in one canonical place.</p>
+    </div>
+  </section>
+  <div class="admin-workspace-grid">
+    <section class="panel admin-compact-form">
+      <div class="admin-card-heading">
+        <span class="admin-card-icon">{{ icon "braces" 20 }}</span>
+        <div>
+          <h2>New reusable value</h2>
+          <p class="muted">
+            <code>{{ "{{var:name }}"}}</code> inserts a value; <code>{{ "{{snippet:name }}"}}</code> inserts Markdown.
+          </p>
+        </div>
+      </div>
+      <form action="/admin/snippets" method="post" class="stacked-form">
+        <div class="form-grid">
+          <label
+            >Kind<select name="kind">
+              <option value="variable">Variable</option>
+              <option value="snippet">Markdown snippet</option>
+            </select></label
+          >
+          <label>Name<input name="name" required placeholder="production-cluster" autocomplete="off" /></label>
+        </div>
+        <label
+          >Description <span class="optional">optional</span
+          ><input name="description" placeholder="Where this reusable value is used"
+        /></label>
+        <label
+          >Content<textarea name="content" rows="8" required placeholder="Shared value or Markdown…"></textarea>
+        </label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">{{ icon "plus" 16 }}<span>Create</span></button>
+        </div>
+      </form>
+    </section>
+    <section class="panel admin-library-panel">
+      <div class="panel-title">
+        <div>
+          <h2>Reusable values</h2>
+          <p class="muted">Changes are reflected wherever the macro is rendered.</p>
+        </div>
+        <span class="count-chip">{{ len .KnowledgeSnippets }}</span>
+      </div>
+      <div class="admin-expand-list">
+        {{ range .KnowledgeSnippets }}
+          <details class="admin-expand-item">
+            <summary>
+              <span class="admin-expand-icon"
+                >{{ if eq .Kind "variable" }}
+                  {{ icon "variable" 17 }}
+                {{ else }}
+                  {{ icon "braces" 17 }}
+                {{ end }}</span
+              ><span
+                ><strong>{{ .Name }}</strong
+                ><small>{{ .Kind }}{{ if .Description }}· {{ .Description }}{{ end }}</small></span
+              >{{ icon "chevron-down" 15 }}
+            </summary>
+            <form action="/admin/snippets/{{ .ID }}" method="post" class="stacked-form admin-expand-body">
+              <div class="form-grid">
+                <label
+                  >Kind<select name="kind">
+                    <option value="variable" {{ if eq .Kind "variable" }}selected{{ end }}>Variable</option>
+                    <option value="snippet" {{ if eq .Kind "snippet" }}selected{{ end }}>Markdown snippet</option>
+                  </select></label
+                ><label>Name<input name="name" value="{{ .Name }}" required /></label>
+              </div>
+              <label>Description<input name="description" value="{{ .Description }}" /></label>
+              <label>Content<textarea name="content" rows="8" required>{{ .Content }}</textarea></label>
+              <div class="form-actions">
+                <button class="button primary" type="submit">{{ icon "save" 15 }}<span>Save</span></button
+                ><button
+                  class="button danger"
+                  type="submit"
+                  formaction="/admin/snippets/{{ .ID }}/delete"
+                  data-confirm="Delete this reusable value?"
+                >
+                  {{ icon "trash-2" 15 }}<span>Delete</span>
+                </button>
+              </div>
+            </form>
+          </details>
+        {{ else }}
+          <div class="empty">
+            <strong>No reusable values yet.</strong>
+            <p>Create a variable or snippet to remove duplicated wiki content.</p>
+          </div>
+        {{ end }}
+      </div>
+    </section>
+  </div>
+{{ end }}

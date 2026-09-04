@@ -1,0 +1,70 @@
+{{ define "header" }}
+  <header class="topbar">
+    <button
+      class="menu-button"
+      type="button"
+      data-menu
+      aria-label="Toggle navigation"
+      aria-controls="lore-sidebar"
+      aria-expanded="false"
+    >
+      {{ icon "menu" 20 }}
+    </button>
+    <a class="brand" href="/" aria-label="Lore home">{{ logo }}</a>
+    <form class="global-search" action="/search" data-live-search>
+      <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
+      <input
+        type="search"
+        name="q"
+        value="{{ .Query }}"
+        placeholder="Search pages, tags, runbooks…"
+        autocomplete="off"
+        aria-label="Search Lore"
+        aria-autocomplete="list"
+        aria-expanded="false"
+      />
+      <kbd>/</kbd>
+    </form>
+    <details class="notification-menu" data-notification-menu>
+      <summary class="icon-button" aria-label="Notifications" title="Notifications">
+        {{ icon "bell" 18 }}{{ if gt .UnreadNotifications 0 }}
+          <span class="notification-badge">{{ .UnreadNotifications }}</span>
+        {{ end }}
+      </summary>
+      <div class="notification-popover">
+        <div class="notification-heading">
+          <strong>Notifications</strong>{{ if gt .UnreadNotifications 0 }}
+            <button type="button" data-notifications-read-all>Mark all read</button>
+          {{ end }}
+        </div>
+        <div class="notification-list">
+          {{ range .Notifications }}
+            <a
+              href="{{ if .URL }}
+                {{ .URL }}
+              {{ else }}
+                #
+              {{ end }}"
+              class="notification-item{{ if not .ReadAt }}unread{{ end }}"
+              data-notification-id="{{ .ID }}"
+              ><span class="notification-icon"
+                >{{ if eq .Kind "mention" }}
+                  {{ icon "at-sign" 15 }}
+                {{ else }}
+                  {{ icon "bell" 15 }}
+                {{ end }}</span
+              ><span
+                ><strong>{{ .Title }}</strong>{{ if .Body }}<small>{{ .Body }}</small>{{ end }}<time
+                  >{{ timeago .CreatedAt }}</time
+                ></span
+              ></a
+            >
+          {{ else }}
+            <p class="muted notification-empty">Nothing new.</p>
+          {{ end }}
+        </div>
+      </div>
+    </details>
+    {{ if .CanEdit }}<a class="button primary" href="/pages/new">{{ icon "plus" 16 }}<span>New page</span></a>{{ end }}
+  </header>
+{{ end }}
