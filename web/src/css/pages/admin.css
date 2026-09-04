@@ -247,6 +247,20 @@
   gap: 4px;
   margin-top: 3px;
 }
+.admin-local-state {
+  border-radius: 999px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.admin-local-state.enabled {
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  color: var(--success);
+}
+.admin-local-state.disabled {
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  color: var(--warning);
+}
 .admin-registration-state,
 .admin-identity-status {
   display: inline-flex;

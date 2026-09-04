@@ -41,13 +41,16 @@ SELECT
   u.email,
   u.display_name,
   u.role,
+  lc.user_id IS NOT NULL,
+  coalesce(lc.enabled,false),
   coalesce(u.last_login, u.created_at),
   u.last_login IS NOT NULL,
   coalesce(array_agg(g.name ORDER BY g.name) FILTER (WHERE g.id IS NOT NULL),'{}')
 FROM users u
+LEFT JOIN local_credentials lc ON lc.user_id=u.id
 LEFT JOIN user_groups ug ON ug.user_id=u.id
 LEFT JOIN wiki_groups g ON g.id=ug.group_id
-GROUP BY u.id
+GROUP BY u.id,lc.user_id,lc.enabled
 ORDER BY lower(u.display_name),lower(u.username),u.id`)
 	if err != nil {
 		return nil, err
@@ -63,6 +66,8 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 			&user.User.Email,
 			&user.User.DisplayName,
 			&user.User.Role,
+			&user.HasLocalCredential,
+			&user.LocalCredentialEnabled,
 			&user.LastLogin,
 			&user.HasLoggedIn,
 			&user.Groups,
@@ -74,8 +79,14 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 	return users, rows.Err()
 }
 
-// UpdateUser updates an account role and replaces its group memberships transactionally.
-func (s *Store) UpdateUser(ctx context.Context, userID int64, role string, groupIDs []int64) error {
+// UpdateUser updates an account role, local-login state, and group memberships transactionally.
+func (s *Store) UpdateUser(
+	ctx context.Context,
+	userID int64,
+	role string,
+	groupIDs []int64,
+	localCredentialEnabled bool,
+) error {
 	if role != "admin" && role != "editor" && role != "viewer" {
 		return errors.New("invalid user role")
 	}
@@ -95,6 +106,19 @@ WHERE id=$1`, userID, role)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
+	}
+	if _, err := tx.Exec(ctx, `
+UPDATE local_credentials
+SET enabled=$2,updated_at=now()
+WHERE user_id=$1`, userID, localCredentialEnabled); err != nil {
+		return err
+	}
+	if !localCredentialEnabled {
+		if _, err := tx.Exec(ctx, `
+DELETE FROM local_sessions
+WHERE user_id=$1`, userID); err != nil {
+			return err
+		}
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM user_groups

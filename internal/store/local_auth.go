@@ -97,7 +97,7 @@ func (s *Store) LocalCredential(ctx context.Context, username string) (User, str
 SELECT u.id,u.username,u.email,u.display_name,u.role,c.password_hash
 FROM local_credentials c
 JOIN users u ON u.id=c.user_id
-WHERE u.username=$1`, strings.TrimSpace(username)).Scan(
+WHERE u.username=$1 AND c.enabled`, strings.TrimSpace(username)).Scan(
 		&user.ID,
 		&user.Username,
 		&user.Email,
@@ -127,7 +127,7 @@ SELECT EXISTS(
   SELECT 1
   FROM local_credentials c
   JOIN users u ON u.id=c.user_id
-  WHERE u.role='admin'
+  WHERE u.role='admin' AND c.enabled
 )`).Scan(&exists)
 	return exists, err
 }
@@ -144,10 +144,10 @@ func (s *Store) SetLocalCredential(ctx context.Context, userID int64, passwordHa
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `
-INSERT INTO local_credentials(user_id,password_hash,updated_at)
-SELECT id,$2,now() FROM users WHERE id=$1
+INSERT INTO local_credentials(user_id,password_hash,enabled,updated_at)
+SELECT id,$2,true,now() FROM users WHERE id=$1
 ON CONFLICT(user_id) DO UPDATE
-SET password_hash=EXCLUDED.password_hash,updated_at=now()`, userID, passwordHash)
+SET password_hash=EXCLUDED.password_hash,enabled=true,updated_at=now()`, userID, passwordHash)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,8 @@ func (s *Store) LocalUserBySession(ctx context.Context, tokenHash string) (User,
 SELECT u.id,u.username,u.email,u.display_name,u.role
 FROM local_sessions s
 JOIN users u ON u.id=s.user_id
-WHERE s.token_hash=$1 AND s.expires_at>now()`, tokenHash).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
+JOIN local_credentials c ON c.user_id=u.id
+WHERE s.token_hash=$1 AND s.expires_at>now() AND c.enabled`, tokenHash).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}

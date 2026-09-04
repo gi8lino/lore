@@ -852,7 +852,8 @@ func UpdateAdminUser(userUseCases userManagementService, logger *slog.Logger) ht
 			}
 			groupIDs = append(groupIDs, groupID)
 		}
-		if err := userUseCases.UpdateUser(r.Context(), userID, role, groupIDs); err != nil {
+		localCredentialEnabled := r.FormValue("local_credential_enabled") == "on"
+		if err := userUseCases.UpdateUser(r.Context(), userID, role, groupIDs, localCredentialEnabled); err != nil {
 			writeAdminProblem(logger, w, err, "User")
 			return
 		}

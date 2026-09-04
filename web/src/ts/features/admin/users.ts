@@ -17,6 +17,12 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   const role = dialog.querySelector<HTMLSelectElement>(
     "[data-admin-user-role]",
   );
+  const localLogin = dialog.querySelector<HTMLElement>(
+    "[data-admin-user-local-login]",
+  );
+  const localCredentialEnabled = dialog.querySelector<HTMLInputElement>(
+    "[data-admin-user-local-credential-enabled]",
+  );
   const groupInputs = [
     ...dialog.querySelectorAll<HTMLInputElement>('input[name="group_id"]'),
   ];
@@ -38,6 +44,14 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
       const email = button.dataset.userEmail || "";
       identity.textContent = email ? `${username} · ${email}` : username;
       role.value = button.dataset.userRole || "viewer";
+      if (localLogin && localCredentialEnabled) {
+        const hasLocalCredential =
+          button.dataset.userHasLocalCredential === "true";
+        localLogin.hidden = !hasLocalCredential;
+        localCredentialEnabled.checked =
+          button.dataset.userLocalCredentialEnabled === "true";
+        localCredentialEnabled.disabled = !hasLocalCredential;
+      }
       groupInputs.forEach((input) => {
         input.checked = groups.has(input.value);
       });

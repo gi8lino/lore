@@ -57,6 +57,10 @@ type AdminStats struct {
 type AdminUser struct {
 	// User is the wiki account.
 	User User
+	// HasLocalCredential reports whether the account has a local password.
+	HasLocalCredential bool
+	// LocalCredentialEnabled reports whether that local password can be used to sign in.
+	LocalCredentialEnabled bool
 	// Groups contains group names assigned to the user.
 	Groups []string
 	// OIDCIdentities contains external OIDC identities bound to the user.

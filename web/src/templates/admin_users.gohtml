@@ -106,6 +106,17 @@
                       {{ len .OIDCIdentities }} OIDC {{ if eq (len .OIDCIdentities) 1 }}identity{{ else }}identities{{ end }}
                     </small>
                   {{ end }}
+                  {{ if .HasLocalCredential }}
+                    <small class="admin-user-identity-state">
+                      {{ icon "key-round" 12 }}
+                      Local login
+                      {{ if .LocalCredentialEnabled }}
+                        <span class="admin-local-state enabled">Enabled</span>
+                      {{ else }}
+                        <span class="admin-local-state disabled">Disabled</span>
+                      {{ end }}
+                    </small>
+                  {{ end }}
                 </td>
                 <td>
                   <span class="admin-role-badge role-{{ .User.Role }}">{{ .User.Role }}</span>
@@ -136,6 +147,8 @@
                     data-user-username="{{ .User.Username }}"
                     data-user-email="{{ .User.Email }}"
                     data-user-role="{{ .User.Role }}"
+                    data-user-has-local-credential="{{ .HasLocalCredential }}"
+                    data-user-local-credential-enabled="{{ .LocalCredentialEnabled }}"
                     data-group-ids="{{ range $.Groups }}
                       {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
                     {{ end }}"
@@ -224,6 +237,14 @@
             <option value="editor">Editor</option>
             <option value="admin">Admin</option>
           </select>
+        </label>
+
+        <label class="toggle-row admin-user-local-login" data-admin-user-local-login hidden>
+          <span>
+            <strong>Local login</strong>
+            <small>Allow this account's password to sign in. Disabling it also revokes its existing local sessions.</small>
+          </span>
+          <input type="checkbox" name="local_credential_enabled" data-admin-user-local-credential-enabled />
         </label>
 
         <fieldset class="admin-user-group-fieldset">

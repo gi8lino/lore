@@ -278,7 +278,7 @@ type userDirectoryService interface {
 type userManagementService interface {
 	Users(context.Context) ([]service.AdminUser, error)
 	UserGroups(context.Context, int64) ([]service.Group, error)
-	UpdateUser(context.Context, int64, string, []int64) error
+	UpdateUser(context.Context, int64, string, []int64, bool) error
 }
 
 type oidcIdentityService interface {
