@@ -46,6 +46,15 @@ CREATE TABLE application_settings (
   render_content_language text NOT NULL DEFAULT 'en',
   render_coding_ligatures boolean NOT NULL DEFAULT false,
   discussions_enabled boolean NOT NULL DEFAULT true,
+  auth_mode text NOT NULL DEFAULT 'none' CHECK (auth_mode IN ('none', 'local', 'trusted-proxy', 'oidc')),
+  oidc_issuer text NOT NULL DEFAULT '',
+  oidc_client_id text NOT NULL DEFAULT '',
+  oidc_group_claim text NOT NULL DEFAULT 'groups',
+  oidc_group_sync boolean NOT NULL DEFAULT false,
+  oidc_groups_authoritative boolean NOT NULL DEFAULT true,
+  trusted_username_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-User', 'X-Auth-Request-User', 'Remote-User']::text[],
+  trusted_email_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-Email', 'X-Auth-Request-Email', 'X-Authentik-Email']::text[],
+  trusted_display_name_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-Name', 'X-Auth-Request-Preferred-Username', 'X-Authentik-Name']::text[],
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -282,3 +291,88 @@ CREATE TABLE page_comments (
 );
 
 CREATE INDEX page_comments_page_idx ON page_comments (page_id, resolved_at, created_at);
+
+CREATE TABLE oidc_identities (
+  issuer text NOT NULL,
+  subject text NOT NULL,
+  user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (issuer, subject),
+  UNIQUE (user_id, issuer)
+);
+
+CREATE INDEX oidc_identities_user_idx ON oidc_identities (user_id);
+
+CREATE TABLE pending_oidc_identities (
+  id bigserial PRIMARY KEY,
+  issuer text NOT NULL,
+  subject text NOT NULL,
+  username text NOT NULL DEFAULT '',
+  email text NOT NULL DEFAULT '',
+  display_name text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'rejected')),
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (issuer, subject)
+);
+
+CREATE INDEX pending_oidc_identities_status_idx
+  ON pending_oidc_identities (status, last_seen_at DESC);
+
+CREATE TABLE oidc_group_mappings (
+  oidc_group text PRIMARY KEY,
+  group_id bigint NOT NULL REFERENCES wiki_groups (id) ON DELETE CASCADE
+);
+
+CREATE INDEX oidc_group_mappings_group_idx ON oidc_group_mappings (group_id);
+
+CREATE TABLE local_credentials (
+  user_id bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+  password_hash text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE local_sessions (
+  token_hash text PRIMARY KEY,
+  user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX local_sessions_user_idx ON local_sessions (user_id);
+CREATE INDEX local_sessions_expiry_idx ON local_sessions (expires_at);
+
+CREATE TABLE page_share_links (
+  id bigserial PRIMARY KEY,
+  page_id bigint NOT NULL REFERENCES pages (id) ON DELETE CASCADE,
+  token_hash text NOT NULL UNIQUE,
+  created_by bigint REFERENCES users (id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  revoked_at timestamptz
+);
+
+CREATE INDEX page_share_links_page_idx
+  ON page_share_links (page_id, created_at DESC);
+
+CREATE TABLE page_drafts (
+  id bigserial PRIMARY KEY,
+  user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  draft_key text NOT NULL,
+  page_id bigint REFERENCES pages (id) ON DELETE CASCADE,
+  base_revision integer NOT NULL DEFAULT 0,
+  title text NOT NULL DEFAULT '',
+  slug text NOT NULL DEFAULT '',
+  form_values jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, draft_key)
+);
+
+CREATE INDEX page_drafts_user_updated_idx
+  ON page_drafts (user_id, updated_at DESC);
+
+CREATE INDEX page_drafts_page_idx
+  ON page_drafts (page_id)
+  WHERE page_id IS NOT NULL;
+
