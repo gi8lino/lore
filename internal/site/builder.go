@@ -359,7 +359,7 @@ func discoverPages(sourceDir string) ([]sourcePage, error) {
 		}
 		route := markdownFileRoute(relative)
 		if existing, found := routes[route]; found {
-			return fmt.Errorf("Markdown files %s and %s map to the same route %q", existing, relative, route)
+			return fmt.Errorf("markdown files %s and %s map to the same route %q", existing, relative, route)
 		}
 		routes[route] = relative
 		title, hasTitle := markdownTitle(string(data), route)
@@ -659,7 +659,7 @@ func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string,
 	if strings.EqualFold(path.Ext(resolved), ".md") {
 		route, found := routesBySource[resolved]
 		if !found {
-			return "", fmt.Errorf("Markdown link %q points to missing file %s", value, resolved)
+			return "", fmt.Errorf("markdown link %q points to missing file %s", value, resolved)
 		}
 		parsed.Path = pageURL(basePath, route)
 	} else {
