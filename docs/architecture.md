@@ -12,8 +12,9 @@ HTTP -> routes/middleware -> handler -> service -> repository contract -> store 
 
 ## Main layers
 
-- `cmd` is the entry point and dispatches the normal server or static-site command.
-- `internal/app` is the server composition root. It loads configuration/assets, opens PostgreSQL, constructs services/authentication/views, and builds the router.
+- `cmd` is the minimal process entry point.
+- `internal/cli` defines the TinyFlags command tree (`serve`, `site build`) and binds command-line configuration to application operations.
+- `internal/app` is the server composition root. It receives parsed runtime configuration, loads assets, opens PostgreSQL, constructs services/authentication/views, and builds the router.
 - `internal/routes` registers routes and applies authentication/role policies to already-constructed dependencies.
 - `internal/handler`, `internal/middleware`, and `internal/auth` are inbound HTTP adapters.
 - `internal/service` owns application use cases and mutation policy.
@@ -28,4 +29,3 @@ HTTP -> routes/middleware -> handler -> service -> repository contract -> store 
 Handlers do not import the concrete store. Services and authenticators declare the persistence capabilities they consume. `internal/app` is the place where concrete store implementations satisfy those contracts. SQL and `pgx` stay in `internal/store`.
 
 The static builder is intentionally outside the server composition path. `lore site build` reads files, renders them, and writes static output without opening PostgreSQL.
-

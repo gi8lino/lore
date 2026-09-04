@@ -65,11 +65,9 @@ type Config struct {
 	Overridden map[string]any
 }
 
-// Parse parses command-line arguments and LORE__ environment variables into Config.
-func Parse(args []string, version string) (Config, error) {
+// BindFlags registers the lore serve flags and returns a resolver for the parsed Config.
+func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	cfg := Config{}
-	flags := tinyflags.NewFlagSet("lore", tinyflags.ContinueOnError)
-	flags.Version(version)
 	flags.EnvPrefix("LORE_")
 
 	// Server
@@ -138,16 +136,14 @@ func Parse(args []string, version string) (Config, error) {
 	flags.BoolVar(&cfg.AccessLog, "access-log", false, "Enable HTTP request access logging").
 		Value()
 
-	if err := flags.Parse(args); err != nil {
-		return Config{}, err
+	return func() Config {
+		resolved := cfg
+		if authModeFlag.Changed() {
+			resolved.AuthModeOverride = *authModeFlag.Value()
+		}
+		resolved.ListenAddress = (*listen).String()
+		resolved.LogFormat = logging.LogFormat(*logFormat)
+		resolved.Overridden = flags.OverriddenValues()
+		return resolved
 	}
-
-	if authModeFlag.Changed() {
-		cfg.AuthModeOverride = *authModeFlag.Value()
-	}
-
-	cfg.ListenAddress = (*listen).String()
-	cfg.LogFormat = logging.LogFormat(*logFormat)
-	cfg.Overridden = flags.OverriddenValues()
-	return cfg, nil
 }

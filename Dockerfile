@@ -38,3 +38,4 @@ USER lore
 
 EXPOSE 8080
 ENTRYPOINT ["lore"]
+CMD ["serve"]

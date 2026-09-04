@@ -12,10 +12,10 @@ A release-style local binary can be built with:
 
 ```sh
 make build
-./lore --database-url 'postgres://lore:lore@localhost:5432/lore?sslmode=disable'
+./lore serve --database-url 'postgres://lore:lore@localhost:5432/lore?sslmode=disable'
 ```
 
-Run the binary with `--help` to see the deployment-level flags available in the current build.
+Run `./lore --help` to see the available commands or `./lore serve --help` for server runtime flags.
 
 ## Frontend assets
 

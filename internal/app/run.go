@@ -2,12 +2,10 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/fs"
 
 	"github.com/containeroo/httpgrace/server"
-	"github.com/containeroo/tinyflags"
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/config"
 	"github.com/gi8lino/lore/internal/handler"
@@ -20,17 +18,7 @@ import (
 )
 
 // Run configures dependencies and serves the wiki until the context is canceled.
-func Run(ctx context.Context, appFS fs.FS, version, commit string, args []string, stdout, stderr io.Writer) error {
-	cfg, err := config.Parse(args, version)
-	if err != nil {
-		if tinyflags.IsHelpRequested(err) || tinyflags.IsVersionRequested(err) {
-			_, _ = fmt.Fprint(stdout, err.Error())
-			return nil
-		}
-		_, _ = fmt.Fprintln(stderr, err)
-		return err
-	}
-
+func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit string, stdout io.Writer) error {
 	logger := logging.Setup(cfg.LogFormat, cfg.Debug, stdout)
 	setupLogger := logger.With("component", "setup")
 	setupLogger.Info(

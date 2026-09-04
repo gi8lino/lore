@@ -11,7 +11,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-const defaultConfigPath = "lore-site.toml"
+const DefaultConfigPath = "lore-site.toml"
 
 // Config contains filesystem-backed static site build settings.
 type Config struct {
@@ -36,8 +36,8 @@ func DefaultConfig() Config {
 	}
 }
 
-// loadConfig reads an optional TOML site configuration.
-func loadConfig(path string, required bool) (Config, error) {
+// LoadConfig reads an optional TOML site configuration.
+func LoadConfig(path string, required bool) (Config, error) {
 	config := DefaultConfig()
 	file, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) && !required {

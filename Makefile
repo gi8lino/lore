@@ -119,7 +119,7 @@ download: $(NODE_MODULES) ## Download Go and frontend dependencies.
 
 .PHONY: run
 run: generate web ## Run Lore locally.
-	go run $(COMMAND) --debug --access-log --log-format text $(RUN_ARGS) --database-url="postgres://lore:lore@localhost:5432/lore?sslmode=disable"
+	go run $(COMMAND) serve --debug --access-log --log-format text $(RUN_ARGS) --database-url="postgres://lore:lore@localhost:5432/lore?sslmode=disable"
 
 .PHONY: build
 build: generate web ## Build the Lore binary.
@@ -215,5 +215,3 @@ endef
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
-
-
