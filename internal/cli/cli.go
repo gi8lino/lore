@@ -19,7 +19,7 @@ func Run(
 	args []string,
 	appFS fs.FS,
 	version, commit string,
-	stdout io.Writer,
+	stdout, stderr io.Writer,
 ) error {
 	root := tinyflags.NewCommand("lore", tinyflags.ContinueOnError).RequireCommand()
 	root.Version(version)
@@ -27,18 +27,49 @@ func Run(
 	serve := root.Command("serve", "Run the Lore server")
 	serveConfig := config.BindFlags(serve.FlagSet)
 	serve.Run(func(ctx context.Context) error {
-		return app.Run(ctx, appFS, serveConfig(), version, commit, stdout)
+		cfg := serveConfig()
+		return app.Run(
+			ctx,
+			appFS,
+			cfg.ListenAddress,
+			cfg.DatabaseURL,
+			cfg.PublicURL,
+			cfg.AuthModeOverride,
+			cfg.TrustedUsernameHeaders,
+			cfg.TrustedEmailHeaders,
+			cfg.TrustedDisplayNameHeaders,
+			cfg.OIDCIssuer,
+			cfg.OIDCClientID,
+			cfg.OIDCClientSecret,
+			cfg.SessionSecret,
+			cfg.LocalLogin,
+			cfg.ThemeDirectory,
+			cfg.LogFormat,
+			cfg.Debug,
+			cfg.AccessLog,
+			serve.FlagSet.OverriddenValues(),
+			version,
+			commit,
+			stdout,
+		)
 	})
 
-	siteCommand := root.Command("site", "Build static documentation").RequireCommand()
-	build := siteCommand.Command("build", "Build a read-only static documentation site")
-	buildConfig := bindSiteBuildFlags(build.FlagSet)
+	build := root.Command("build", "Build a read-only static documentation site")
+	buildConfig := bindBuildFlags(build.FlagSet)
 	build.Run(func(ctx context.Context) error {
 		cfg, err := buildConfig()
 		if err != nil {
 			return err
 		}
-		return site.Build(ctx, appFS, version, commit, cfg, stdout)
+		return site.Build(
+			ctx,
+			appFS,
+			version,
+			commit,
+			cfg,
+			build.FlagSet.OverriddenValues(),
+			stdout,
+		)
 	})
 
 	runner, err := root.ParseRunner(args)
@@ -49,7 +80,7 @@ func Run(
 			return nil
 		case tinyflags.IsCommandRequired(err):
 			help, _ := tinyflags.HelpText(err)
-			_, _ = fmt.Fprint(stdout, help)
+			_, _ = fmt.Fprint(stderr, help)
 			return nil
 		default:
 			return err
@@ -58,7 +89,7 @@ func Run(
 	return runner.Run(ctx)
 }
 
-func bindSiteBuildFlags(flags *tinyflags.FlagSet) func() (site.Config, error) {
+func bindBuildFlags(flags *tinyflags.FlagSet) func() (site.Config, error) {
 	defaults := site.DefaultConfig()
 
 	configPath := flags.String("config", site.DefaultConfigPath, "TOML site configuration file").

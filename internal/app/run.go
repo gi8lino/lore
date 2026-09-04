@@ -7,7 +7,6 @@ import (
 
 	"github.com/containeroo/httpgrace/server"
 	"github.com/gi8lino/lore/internal/auth"
-	"github.com/gi8lino/lore/internal/config"
 	"github.com/gi8lino/lore/internal/handler"
 	"github.com/gi8lino/lore/internal/logging"
 	"github.com/gi8lino/lore/internal/markdown"
@@ -18,8 +17,30 @@ import (
 )
 
 // Run configures dependencies and serves the wiki until the context is canceled.
-func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit string, stdout io.Writer) error {
-	logger := logging.Setup(cfg.LogFormat, cfg.Debug, stdout)
+func Run(
+	ctx context.Context,
+	appFS fs.FS,
+	listenAddress string,
+	databaseURL string,
+	publicURL string,
+	authModeOverride auth.AuthMode,
+	trustedUsernameHeaders []string,
+	trustedEmailHeaders []string,
+	trustedDisplayNameHeaders []string,
+	oidcIssuer string,
+	oidcClientID string,
+	oidcClientSecret string,
+	sessionSecret string,
+	localLogin bool,
+	themeDirectory string,
+	logFormat logging.LogFormat,
+	debug bool,
+	accessLog bool,
+	overrides map[string]any,
+	version, commit string,
+	stdout io.Writer,
+) error {
+	logger := logging.Setup(logFormat, debug, stdout)
 	setupLogger := logger.With("component", "setup")
 	setupLogger.Info(
 		"starting Lore",
@@ -27,8 +48,15 @@ func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit st
 		"version", version,
 		"commit", commit,
 	)
+	if len(overrides) > 0 {
+		setupLogger.Info(
+			"CLI Overrides",
+			"event", "cli_overrides",
+			"overrides", overrides,
+		)
+	}
 
-	availableThemes, err := themes.Load(cfg.ThemeDirectory)
+	availableThemes, err := themes.Load(themeDirectory)
 	if err != nil {
 		setupLogger.Error(
 			"load themes",
@@ -38,7 +66,7 @@ func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit st
 		return err
 	}
 
-	database, err := store.Open(ctx, cfg.DatabaseURL, setupLogger)
+	database, err := store.Open(ctx, databaseURL, setupLogger)
 	if err != nil {
 		setupLogger.Error(
 			"open database",
@@ -79,20 +107,20 @@ func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit st
 	browserAuth, err := auth.ConfigureBrowserAuth(
 		ctx,
 		auth.BrowserConfig{
-			ModeOverride: cfg.AuthModeOverride,
+			ModeOverride: authModeOverride,
 			TrustedProxy: auth.TrustedProxyHeaders{
-				Username:    cfg.TrustedUsernameHeaders,
-				Email:       cfg.TrustedEmailHeaders,
-				DisplayName: cfg.TrustedDisplayNameHeaders,
+				Username:    trustedUsernameHeaders,
+				Email:       trustedEmailHeaders,
+				DisplayName: trustedDisplayNameHeaders,
 			},
 			OIDC: auth.OIDCConfig{
-				ClientID:      cfg.OIDCClientID,
-				ClientSecret:  cfg.OIDCClientSecret,
-				Issuer:        cfg.OIDCIssuer,
-				SessionSecret: cfg.SessionSecret,
-				PublicURL:     cfg.PublicURL,
+				ClientID:      oidcClientID,
+				ClientSecret:  oidcClientSecret,
+				Issuer:        oidcIssuer,
+				SessionSecret: sessionSecret,
+				PublicURL:     publicURL,
 			},
-			LocalLoginEnabled: cfg.LocalLogin,
+			LocalLoginEnabled: localLogin,
 		},
 		database,
 	)
@@ -107,13 +135,13 @@ func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit st
 	bearerAuth := auth.NewBearer(database)
 
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
-		ListenAddress:              cfg.ListenAddress,
-		PublicURL:                  cfg.PublicURL,
-		AuthModeOverride:           string(cfg.AuthModeOverride),
-		OIDCClientSecretConfigured: cfg.OIDCClientSecret != "",
-		SessionSecretConfigured:    len(cfg.SessionSecret) >= 32,
-		LocalLoginEnabled:          cfg.LocalLogin,
-		ThemeDirectory:             cfg.ThemeDirectory,
+		ListenAddress:              listenAddress,
+		PublicURL:                  publicURL,
+		AuthModeOverride:           string(authModeOverride),
+		OIDCClientSecretConfigured: oidcClientSecret != "",
+		SessionSecretConfigured:    len(sessionSecret) >= 32,
+		LocalLoginEnabled:          localLogin,
+		ThemeDirectory:             themeDirectory,
 	})
 	if err != nil {
 		setupLogger.Error(
@@ -150,9 +178,9 @@ func Run(ctx context.Context, appFS fs.FS, cfg config.Config, version, commit st
 		userUseCases,
 		viewDataUseCases,
 		logger.With("component", "server"),
-		cfg.AccessLog,
+		accessLog,
 	)
-	if err := server.Run(ctx, cfg.ListenAddress, router, setupLogger, server.WithMaxHeaderValueCount(100)); err != nil {
+	if err := server.Run(ctx, listenAddress, router, setupLogger, server.WithMaxHeaderValueCount(100)); err != nil {
 		setupLogger.Error("run server", "event", "server_run_failed", "error", err)
 		return err
 	}

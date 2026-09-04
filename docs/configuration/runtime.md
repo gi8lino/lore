@@ -1,6 +1,6 @@
 # Runtime configuration
 
-Lore uses command-line flags and matching `LORE__` environment variables. The database URL is required for `lore serve`; it is not required for `lore site build`.
+Lore uses command-line flags and matching `LORE__` environment variables. The database URL is required for `lore serve`; it is not required for `lore build`.
 
 | Flag                   | Environment                | Purpose                                                                             |
 | ---------------------- | -------------------------- | ----------------------------------------------------------------------------------- |

@@ -59,6 +59,30 @@ func TestOIDCSecretsRemainDeploymentConfiguration(t *testing.T) {
 	assert.Equal(t, "0123456789abcdef0123456789abcdef", cfg.SessionSecret)
 }
 
+func TestOverriddenValuesMaskSecrets(t *testing.T) {
+	t.Parallel()
+
+	flags := tinyflags.NewFlagSet("lore serve", tinyflags.ContinueOnError)
+	resolve := BindFlags(flags)
+	databaseURL := "postgres://lore:database-secret@postgres:5432/lore?sslmode=disable"
+	oidcSecret := "oidc-client-secret-value"
+	sessionSecret := "0123456789abcdef0123456789abcdef"
+	require.NoError(t, flags.Parse([]string{
+		"--database-url", databaseURL,
+		"--oidc-client-secret", oidcSecret,
+		"--session-secret", sessionSecret,
+	}))
+	_ = resolve()
+
+	overrides := flags.OverriddenValues()
+	assert.Contains(t, overrides, "database-url")
+	assert.Contains(t, overrides, "oidc-client-secret")
+	assert.Contains(t, overrides, "session-secret")
+	assert.NotEqual(t, databaseURL, overrides["database-url"])
+	assert.NotEqual(t, oidcSecret, overrides["oidc-client-secret"])
+	assert.NotEqual(t, sessionSecret, overrides["session-secret"])
+}
+
 func parseTestConfig(args []string) (Config, error) {
 	flags := tinyflags.NewFlagSet("lore serve", tinyflags.ContinueOnError)
 	resolve := BindFlags(flags)

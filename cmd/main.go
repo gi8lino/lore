@@ -22,6 +22,7 @@ func main() {
 		Version,
 		Commit,
 		os.Stdout,
+		os.Stderr,
 	); err != nil {
 		os.Exit(1)
 	}

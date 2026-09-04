@@ -61,8 +61,6 @@ type Config struct {
 	Debug bool
 	// AccessLog enables HTTP request logging.
 	AccessLog bool
-	// Overridden records configuration values explicitly overridden by flags or environment variables.
-	Overridden map[string]any
 }
 
 // BindFlags registers the lore serve flags and returns a resolver for the parsed Config.
@@ -78,6 +76,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	flags.StringVar(&cfg.DatabaseURL, "database-url", "", "PostgreSQL connection URL").
 		Required().
 		Placeholder("URL").
+		OverriddenValueMaskFn(tinyflags.MaskPostgresURL).
 		Value()
 	flags.StringVar(&cfg.PublicURL, "public-url", "http://localhost:8080", "Externally visible base URL").
 		Placeholder("URL").
@@ -111,8 +110,10 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	flags.StringVar(&cfg.OIDCClientID, "oidc-client-id", "", "OIDC client ID used only with the authentication override").
 		Value()
 	flags.StringVar(&cfg.OIDCClientSecret, "oidc-client-secret", "", "OIDC client secret used when OIDC is enabled in the administration UI").
+		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
 		Value()
 	flags.StringVar(&cfg.SessionSecret, "session-secret", "", "Secret used to sign OIDC login sessions").
+		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
 		Validate(func(value string) error {
 			if value == "" {
 				return nil
@@ -143,7 +144,6 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		}
 		resolved.ListenAddress = (*listen).String()
 		resolved.LogFormat = logging.LogFormat(*logFormat)
-		resolved.Overridden = flags.OverriddenValues()
 		return resolved
 	}
 }

@@ -9,7 +9,7 @@ This repository's own documentation is configured by `lore-site.toml` and lives 
 A built Lore binary already contains the read-only browser assets needed by the generator, so it can build a site directly:
 
 ```sh
-lore site build
+lore build
 ```
 
 From the source repository the convenience target builds the frontend first and then runs the generator:
@@ -77,6 +77,6 @@ It intentionally does **not** ship the Lore editor, authentication, account menu
 
 ## GitHub Pages
 
-A typical CI job builds the frontend and Lore binary, runs `lore site build`, and publishes the generated `site/` directory as the Pages artifact. No PostgreSQL service is needed for that job.
+A typical CI job builds the frontend and Lore binary, runs `lore build`, and publishes the generated `site/` directory as the Pages artifact. No PostgreSQL service is needed for that job.
 
 For local preview, override the site URL to match your local server root if the checked-in configuration uses a GitHub Pages project prefix.

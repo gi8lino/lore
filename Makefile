@@ -127,11 +127,11 @@ build: generate web ## Build the Lore binary.
 
 .PHONY: site
 site: generate web ## Build the published read-only documentation site.
-	go run $(COMMAND) site build --config "$(SITE_CONFIG)"
+	go run $(COMMAND) build --config "$(SITE_CONFIG)"
 
 .PHONY: site-serve
 site-serve: generate web ## Build and serve the documentation site locally.
-	go run $(COMMAND) site build \
+	go run $(COMMAND) build \
 		--config "$(SITE_CONFIG)" \
 		--site-url "http://127.0.0.1:$(SITE_PORT)/"
 	@echo "Serving Lore documentation at http://127.0.0.1:$(SITE_PORT)"
