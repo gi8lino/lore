@@ -267,6 +267,8 @@ type ViewData struct {
 	AuthError string
 	// AuthNext is the validated local path restored after interactive authentication.
 	AuthNext string
+	// LocalCredentialAuthenticated reports whether this request used a local session.
+	LocalCredentialAuthenticated bool
 	// Navigation is the slug-derived sidebar navigation tree.
 	Navigation []navigation.Node
 	// Version is the application version shown in the footer.

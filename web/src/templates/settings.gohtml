@@ -44,6 +44,29 @@
         {{ if eq .User.Role "admin" }}<p><a class="button" href="/admin">Open administration</a></p>{{ end }}
       </section>
 
+      {{ if .LocalCredentialAuthenticated }}
+        <section class="panel settings-panel" id="password">
+          <div class="panel-title"><h2>Change password</h2></div>
+          <form class="stacked-form" action="/settings/local-password" method="post">
+            <label>
+              Current password
+              <input type="password" name="current_password" autocomplete="current-password" required />
+            </label>
+            <label>
+              New password
+              <input type="password" name="new_password" autocomplete="new-password" minlength="12" required />
+              <small>At least 12 characters.</small>
+            </label>
+            <label>
+              Confirm new password
+              <input type="password" name="new_password_confirm" autocomplete="new-password" minlength="12" required />
+            </label>
+            <div class="settings-actions"><button class="button primary" type="submit">Change password</button></div>
+          </form>
+          <p class="settings-note">This form is available because you signed in with a local password. Changing it signs out your other local sessions while keeping this browser signed in.</p>
+        </section>
+      {{ end }}
+
       <section class="panel settings-panel" id="preferences">
         <div class="panel-title"><h2>Preferences</h2></div>
         <form class="preferences-form" action="/settings/preferences" method="post">
@@ -308,5 +331,3 @@
     </div>
   </section>
 {{ end }}
-
-

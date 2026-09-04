@@ -808,8 +808,14 @@ func applicationSettingsFromForm(r *http.Request) service.ApplicationSettings {
 	}
 }
 
-// UpdateAdminUser updates one user's role and group memberships.
-func UpdateAdminUser(userUseCases userManagementService, logger *slog.Logger) http.HandlerFunc {
+// UpdateAdminUser updates one user's role, group memberships, and optional recovery login state.
+func UpdateAdminUser(
+	userUseCases userManagementService,
+	settingsUseCases settingsService,
+	local *auth.Local,
+	views *Views,
+	logger *slog.Logger,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := currentUser(r)
 		userID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -852,10 +858,56 @@ func UpdateAdminUser(userUseCases userManagementService, logger *slog.Logger) ht
 			}
 			groupIDs = append(groupIDs, groupID)
 		}
-		localCredentialEnabled := r.FormValue("local_credential_enabled") == "on"
+		password := r.FormValue("local_password")
+		updateLocalCredential := r.FormValue("update_local_credential") == "true"
+		if password != "" && !auth.ValidLocalPassword(password) {
+			httpresponse.Problem(w,
+				http.StatusUnprocessableEntity,
+				"Local login validation failed.",
+				httpresponse.NewFieldProblem("local_password", "Use at least 12 characters."),
+			)
+			return
+		}
+		if password != r.FormValue("local_password_confirm") {
+			httpresponse.Problem(w,
+				http.StatusUnprocessableEntity,
+				"Local login validation failed.",
+				httpresponse.NewFieldProblem("local_password_confirm", "Passwords do not match."),
+			)
+			return
+		}
+
+		var localCredentialEnabled *bool
+		if updateLocalCredential || password != "" {
+			settings, err := settingsUseCases.ApplicationSettings(r.Context())
+			if err != nil {
+				writeUnexpectedProblem(logger, w, err)
+				return
+			}
+			effectiveMode := settings.Authentication.Mode
+			if views.runtime.AuthModeOverride != "" {
+				effectiveMode = views.runtime.AuthModeOverride
+			}
+			if effectiveMode != string(auth.AuthModeOIDC) && effectiveMode != string(auth.AuthModeTrustedProxy) {
+				httpresponse.Problem(w,
+					http.StatusBadRequest,
+					"Local login state cannot be changed.",
+					httpresponse.NewFieldProblem("local_credential_enabled", "Local recovery credentials can only be enabled or disabled while external authentication is active."),
+				)
+				return
+			}
+			enabled := password != "" || r.FormValue("local_credential_enabled") == "on"
+			localCredentialEnabled = &enabled
+		}
 		if err := userUseCases.UpdateUser(r.Context(), userID, role, groupIDs, localCredentialEnabled); err != nil {
 			writeAdminProblem(logger, w, err, "User")
 			return
+		}
+		if password != "" {
+			if err := local.SetPassword(r.Context(), userID, password); err != nil {
+				writeAdminProblem(logger, w, err, "Local credential")
+				return
+			}
 		}
 		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 	}

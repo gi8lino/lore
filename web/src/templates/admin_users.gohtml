@@ -215,7 +215,12 @@
     </section>
   </section>
 
-  <dialog class="app-dialog admin-user-dialog" data-admin-user-dialog aria-labelledby="admin-user-dialog-title">
+  <dialog
+    class="app-dialog admin-user-dialog"
+    data-admin-user-dialog
+    data-external-auth-active="{{ if .Runtime.AuthModeOverride }}{{ or (eq .Runtime.AuthModeOverride "oidc") (eq .Runtime.AuthModeOverride "trusted-proxy") }}{{ else }}{{ or (eq .ApplicationSettings.Authentication.Mode "oidc") (eq .ApplicationSettings.Authentication.Mode "trusted-proxy") }}{{ end }}"
+    aria-labelledby="admin-user-dialog-title"
+  >
     <form method="post" data-admin-user-form>
       <div class="app-dialog-header">
         <div>
@@ -242,10 +247,29 @@
         <label class="toggle-row admin-user-local-login" data-admin-user-local-login hidden>
           <span>
             <strong>Local login</strong>
-            <small>Allow this account's password to sign in. Disabling it also revokes its existing local sessions.</small>
+            <small>Password sign-in only. Disabling it revokes local sessions but does not affect OIDC, trusted-proxy access, or API tokens.</small>
           </span>
           <input type="checkbox" name="local_credential_enabled" data-admin-user-local-credential-enabled />
+          <input type="hidden" name="update_local_credential" value="true" data-admin-user-local-credential-update disabled />
         </label>
+
+        <section class="admin-user-local-password" data-admin-user-local-password hidden>
+          <div>
+            <strong>Set local password</strong>
+            <small>OIDC and trusted-proxy accounts start without a local password. Granting one adds password sign-in, enables the credential, and revokes existing local sessions.</small>
+          </div>
+          <div class="form-grid">
+            <label>
+              New password
+              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-admin-user-local-password-input disabled />
+            </label>
+            <label>
+              Confirm password
+              <input type="password" name="local_password_confirm" autocomplete="new-password" minlength="12" data-admin-user-local-password-confirm disabled />
+            </label>
+          </div>
+          <p class="muted">The password works only when <code>/auth/local</code> is exposed; granting it does not expose the endpoint.</p>
+        </section>
 
         <fieldset class="admin-user-group-fieldset">
           <legend>Groups</legend>

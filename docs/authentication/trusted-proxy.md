@@ -11,3 +11,5 @@ Only use this mode when Lore is reachable exclusively through a proxy that remov
 Unknown trusted-proxy identities are subject to Lore's user-registration setting.
 
 Persistent trusted-proxy header lists are managed in **Administration → Configuration**. Deployment-level header flags are primarily useful with the emergency authentication override.
+
+Automatically created trusted-proxy accounts do not receive a local password. An administrator may explicitly grant one for `/auth/local`; see [Local authentication](local.md#accounts-and-local-credentials).

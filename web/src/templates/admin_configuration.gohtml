@@ -327,13 +327,13 @@
           <div class="admin-card-heading auth-mode-heading">
             <div>
               <h3>Local recovery login</h3>
-              <p class="muted">Keep a password-backed administrator available when OIDC or the identity provider is unavailable.</p>
+              <p class="muted">Set a password for the administrator currently signed in. This creates a separate fallback credential without changing OIDC or trusted-proxy access.</p>
             </div>
           </div>
 
           <div class="auth-recovery-status">
             <div>
-              <span>Current administrator password</span>
+              <span>This administrator's local password</span>
               {{ if .LocalCredentialConfigured }}
                 <strong class="config-status configured">Configured</strong>
               {{ else }}
@@ -369,8 +369,9 @@
             </div>
           </form>
           <p class="settings-note auth-recovery-note">
-            When another authentication mode is active, set <code>LORE__LOCAL_LOGIN=true</code> and restart Lore to expose
-            <code>/auth/local</code>. Local mode always exposes the endpoint.
+            The credential and its endpoint are separate controls. When another authentication mode is active, set
+            <code>LORE__LOCAL_LOGIN=true</code> and restart Lore to expose <code>/auth/local</code>. Local mode always exposes
+            the endpoint.
           </p>
         </div>
       </section>

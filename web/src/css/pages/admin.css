@@ -261,6 +261,27 @@
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   color: var(--warning);
 }
+.admin-user-local-login[hidden] {
+  display: none;
+}
+.admin-user-local-password {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.admin-user-local-password[hidden] {
+  display: none;
+}
+.admin-user-local-password > div > strong,
+.admin-user-local-password > div > small {
+  display: block;
+}
+.admin-user-local-password > div > small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .admin-registration-state,
 .admin-identity-status {
   display: inline-flex;

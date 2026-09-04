@@ -23,6 +23,18 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   const localCredentialEnabled = dialog.querySelector<HTMLInputElement>(
     "[data-admin-user-local-credential-enabled]",
   );
+  const localCredentialUpdate = dialog.querySelector<HTMLInputElement>(
+    "[data-admin-user-local-credential-update]",
+  );
+  const localPassword = dialog.querySelector<HTMLElement>(
+    "[data-admin-user-local-password]",
+  );
+  const localPasswordInput = dialog.querySelector<HTMLInputElement>(
+    "[data-admin-user-local-password-input]",
+  );
+  const localPasswordConfirm = dialog.querySelector<HTMLInputElement>(
+    "[data-admin-user-local-password-confirm]",
+  );
   const groupInputs = [
     ...dialog.querySelectorAll<HTMLInputElement>('input[name="group_id"]'),
   ];
@@ -44,13 +56,25 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
       const email = button.dataset.userEmail || "";
       identity.textContent = email ? `${username} · ${email}` : username;
       role.value = button.dataset.userRole || "viewer";
-      if (localLogin && localCredentialEnabled) {
+      if (localLogin && localCredentialEnabled && localCredentialUpdate) {
         const hasLocalCredential =
           button.dataset.userHasLocalCredential === "true";
-        localLogin.hidden = !hasLocalCredential;
+        const canManageLocalCredential =
+          hasLocalCredential && dialog.dataset.externalAuthActive === "true";
+        localLogin.hidden = !canManageLocalCredential;
         localCredentialEnabled.checked =
           button.dataset.userLocalCredentialEnabled === "true";
-        localCredentialEnabled.disabled = !hasLocalCredential;
+        localCredentialEnabled.disabled = !canManageLocalCredential;
+        localCredentialUpdate.disabled = !canManageLocalCredential;
+      }
+      if (localPassword && localPasswordInput && localPasswordConfirm) {
+        const canSetLocalPassword =
+          dialog.dataset.externalAuthActive === "true";
+        localPassword.hidden = !canSetLocalPassword;
+        localPasswordInput.disabled = !canSetLocalPassword;
+        localPasswordConfirm.disabled = !canSetLocalPassword;
+        localPasswordInput.value = "";
+        localPasswordConfirm.value = "";
       }
       groupInputs.forEach((input) => {
         input.checked = groups.has(input.value);

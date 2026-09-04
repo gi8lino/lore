@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -30,6 +31,7 @@ func Settings(
 	userUseCases userManagementService,
 	tokenUseCases tokenService,
 	mediaUseCases userImageService,
+	local *auth.Local,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +45,9 @@ func Settings(
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
+		}
+		if localUser, localErr := local.Authenticate(r); localErr == nil && localUser.ID == data.User.ID {
+			data.LocalCredentialAuthenticated = true
 		}
 
 		data.UserTokens, err = tokenUseCases.UserTokens(r.Context(), data.User.ID)
@@ -61,6 +66,43 @@ func Settings(
 		}
 
 		render(views, w, "settings", data)
+	}
+}
+
+// ChangeLocalPassword lets a locally authenticated user replace their own password.
+func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := currentUser(r)
+		localUser, err := local.Authenticate(r)
+		if err != nil || localUser.ID != user.ID {
+			httpresponse.Problem(w, http.StatusForbidden, "A local-password session is required to change this password.")
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+		if err := r.ParseForm(); err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid password form.")
+			return
+		}
+		newPassword := r.FormValue("new_password")
+		if !auth.ValidLocalPassword(newPassword) {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", httpresponse.NewFieldProblem("new_password", "Use at least 12 characters."))
+			return
+		}
+		if newPassword != r.FormValue("new_password_confirm") {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", httpresponse.NewFieldProblem("new_password_confirm", "Passwords do not match."))
+			return
+		}
+		token, err := local.ChangePassword(r.Context(), user.ID, user.Username, r.FormValue("current_password"), newPassword)
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.", httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
+			return
+		}
+		if err != nil {
+			writeUnexpectedProblem(logger, w, err)
+			return
+		}
+		local.WriteSessionCookie(w, token)
+		http.Redirect(w, r, "/settings#password", http.StatusSeeOther)
 	}
 }
 

@@ -63,7 +63,7 @@ func addRoutes(
 	mux.Handle("GET /p/{id}", browserAuthn(handler.PagePermalink(catalogUseCases, logger)))
 	mux.Handle(
 		"GET /settings",
-		browserAuthn(handler.Settings(viewDataUseCases, userUseCases, tokenUseCases, mediaUseCases, views)),
+		browserAuthn(handler.Settings(viewDataUseCases, userUseCases, tokenUseCases, mediaUseCases, browserAuth.Local, views)),
 	)
 	mux.Handle(
 		"GET /admin",
@@ -169,6 +169,7 @@ func addRoutes(
 	mux.Handle("GET /media/{id}/{name...}", mediaAuthn(handler.ServeImage(mediaUseCases)))
 	mux.Handle("GET /attachments/{id}/{name...}", mediaAuthn(handler.ServeAttachment(mediaUseCases)))
 	mux.Handle("POST /settings/preferences", browserAuthn(handler.SavePreferences(preferenceUseCases, views)))
+	mux.Handle("POST /settings/local-password", browserAuthn(handler.ChangeLocalPassword(browserAuth.Local, logger)))
 	mux.Handle(
 		"POST /settings/preferences/page-contents",
 		browserAuthn(handler.SavePageContentsPreference(preferenceUseCases, views)),
@@ -188,7 +189,10 @@ func addRoutes(
 	)
 	mux.Handle("POST /settings/tokens", browserAuthn(handler.CreatePersonalToken(tokenUseCases, logger)))
 	mux.Handle("DELETE /settings/tokens/{id}", browserAuthn(handler.DeletePersonalToken(tokenUseCases, logger)))
-	mux.Handle("POST /admin/users/{id}", browserAuthn(adminAuthz(handler.UpdateAdminUser(userUseCases, logger))))
+	mux.Handle(
+		"POST /admin/users/{id}",
+		browserAuthn(adminAuthz(handler.UpdateAdminUser(userUseCases, settingsUseCases, browserAuth.Local, views, logger))),
+	)
 	mux.Handle(
 		"POST /admin/users/{id}/oidc/remove",
 		browserAuthn(adminAuthz(handler.RemoveAdminOIDCIdentity(userUseCases, logger))),

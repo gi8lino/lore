@@ -85,7 +85,7 @@ func (s *Store) UpdateUser(
 	userID int64,
 	role string,
 	groupIDs []int64,
-	localCredentialEnabled bool,
+	localCredentialEnabled *bool,
 ) error {
 	if role != "admin" && role != "editor" && role != "viewer" {
 		return errors.New("invalid user role")
@@ -107,17 +107,19 @@ WHERE id=$1`, userID, role)
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	if _, err := tx.Exec(ctx, `
+	if localCredentialEnabled != nil {
+		if _, err := tx.Exec(ctx, `
 UPDATE local_credentials
 SET enabled=$2,updated_at=now()
-WHERE user_id=$1`, userID, localCredentialEnabled); err != nil {
-		return err
-	}
-	if !localCredentialEnabled {
-		if _, err := tx.Exec(ctx, `
+WHERE user_id=$1`, userID, *localCredentialEnabled); err != nil {
+			return err
+		}
+		if !*localCredentialEnabled {
+			if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
 WHERE user_id=$1`, userID); err != nil {
-			return err
+				return err
+			}
 		}
 	}
 	if _, err := tx.Exec(ctx, `

@@ -24,3 +24,5 @@ Lore can read a configurable top-level group claim as either a string or string 
 When automatic user creation is disabled, a verified unknown identity is recorded for administrator review. An administrator can approve it as a new user, link it to an existing Lore user, reject it, or reopen a rejected request.
 
 The callback verifies issuer and subject before establishing the Lore session.
+
+Automatically created OIDC accounts do not receive a local password. An administrator may explicitly grant one for `/auth/local`; see [Local authentication](local.md#accounts-and-local-credentials).

@@ -69,6 +69,39 @@ func (l *Local) SignIn(ctx context.Context, username, password string) (model.Us
 	return user, token, nil
 }
 
+// ChangePassword verifies the current credential, replaces it, and creates a fresh session.
+func (l *Local) ChangePassword(
+	ctx context.Context,
+	userID int64,
+	username, currentPassword, newPassword string,
+) (string, error) {
+	user, passwordHash, err := l.repository.LocalCredential(ctx, strings.TrimSpace(username))
+	if errors.Is(err, model.ErrNotFound) || (err == nil && user.ID != userID) {
+		return "", ErrInvalidCredentials
+	}
+	if err != nil {
+		return "", err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(currentPassword)) != nil {
+		return "", ErrInvalidCredentials
+	}
+	newHash, err := localPasswordHash(newPassword)
+	if err != nil {
+		return "", err
+	}
+	if err := l.repository.SetLocalCredential(ctx, userID, newHash); err != nil {
+		return "", err
+	}
+	token, err := newLocalSessionToken()
+	if err != nil {
+		return "", err
+	}
+	if err := l.repository.CreateLocalSession(ctx, userID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
 // Setup creates the first local administrator and starts its initial session.
 func (l *Local) Setup(
 	ctx context.Context,

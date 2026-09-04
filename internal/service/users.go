@@ -11,7 +11,7 @@ type userRepository interface {
 	Users(context.Context) ([]AdminUser, error)
 	User(context.Context, int64) (User, error)
 	UserGroups(context.Context, int64) ([]Group, error)
-	UpdateUser(context.Context, int64, string, []int64, bool) error
+	UpdateUser(context.Context, int64, string, []int64, *bool) error
 	SearchUsers(context.Context, string, int) ([]User, error)
 	OIDCIdentities(context.Context) ([]OIDCIdentity, error)
 	OIDCGroupMappings(context.Context) ([]OIDCGroupMapping, error)
@@ -50,7 +50,7 @@ func (s *Users) UpdateUser(
 	userID int64,
 	role string,
 	groupIDs []int64,
-	localCredentialEnabled bool,
+	localCredentialEnabled *bool,
 ) error {
 	return s.repository.UpdateUser(ctx, userID, role, groupIDs, localCredentialEnabled)
 }
