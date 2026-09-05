@@ -95,6 +95,8 @@ type RuntimeInfo struct {
 	ListenAddress string
 	// PublicURL is the externally visible wiki URL.
 	PublicURL string
+	// PDFURL is the complete remote PDF rendering endpoint.
+	PDFURL string
 	// AuthModeOverride is the optional deployment-level recovery override.
 	AuthModeOverride string
 	// OIDCClientSecretConfigured reports whether the OIDC client secret is available.

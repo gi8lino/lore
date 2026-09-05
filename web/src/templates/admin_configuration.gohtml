@@ -28,6 +28,10 @@
             <dd>{{ .Runtime.PublicURL }}</dd>
           </div>
           <div>
+            <dt>PDF service</dt>
+            <dd>{{ if .Runtime.PDFURL }}{{ .Runtime.PDFURL }}{{ else }}Not configured{{ end }}</dd>
+          </div>
+          <div>
             <dt>Authentication source</dt>
             <dd>
               {{ if .Runtime.AuthModeOverride }}

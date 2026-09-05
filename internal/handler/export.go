@@ -69,7 +69,7 @@ func ExportPageMarkdown(
 	}
 }
 
-// ExportPagePDF renders one page into a downloadable PDF using a local WeasyPrint executable.
+// ExportPagePDF renders one page into a downloadable PDF using the configured PDF service.
 func ExportPagePDF(
 	catalogUseCases pageContentService,
 	settingsUseCases settingsService,
@@ -81,6 +81,10 @@ func ExportPagePDF(
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if views.runtime.PDFURL == "" {
+			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is not configured. Set LORE__PDF_URL to the PDF service endpoint, including its path.")
+			return
+		}
 		slug := strings.TrimSpace(r.PathValue("slug"))
 		if slug == "" {
 			httpresponse.Problem(w,
@@ -140,12 +144,12 @@ func ExportPagePDF(
 		if pageData.Language != "" {
 			language = pageData.Language
 		}
-		pdfFile, cleanup, err := pdf.Render(r.Context(), pageData.Title, language, rendered)
+		pdfFile, cleanup, err := pdf.Render(r.Context(), views.runtime.PDFURL, pageData.Title, language, rendered)
 		if err != nil {
 			logger.Error("generate PDF", "event", "pdf_generation_failed", "slug", slug, "error", err)
 			httpresponse.Problem(w,
-				http.StatusInternalServerError,
-				"PDF could not be generated. Ensure WeasyPrint is installed on the server.",
+				http.StatusBadGateway,
+				"PDF could not be generated. Check the configured PDF service and try again.",
 			)
 			return
 		}

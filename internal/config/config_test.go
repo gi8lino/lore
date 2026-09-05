@@ -91,3 +91,23 @@ func parseTestConfig(args []string) (Config, error) {
 	}
 	return resolve(), nil
 }
+
+func TestPDFURLFromEnvironmentIncludesPath(t *testing.T) {
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__PDF_URL", "http://pdf:8080/custom/render?profile=wiki")
+	cfg, err := parseTestConfig(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "http://pdf:8080/custom/render?profile=wiki", cfg.PDFURL)
+}
+
+func TestPDFURLValidation(t *testing.T) {
+	for _, value := range []string{"pdf:8080/render", "http://pdf:8080", "file:///render", "http://pdf/render#fragment", "http://user:password@pdf/render"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", value})
+			require.Error(t, err)
+		})
+	}
+	cfg, err := parseTestConfig([]string{"--database-url", "postgres://example/lore"})
+	require.NoError(t, err)
+	assert.Empty(t, cfg.PDFURL)
+}

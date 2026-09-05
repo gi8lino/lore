@@ -7,6 +7,7 @@ import (
 	"github.com/containeroo/tinyflags"
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/logging"
+	"github.com/gi8lino/lore/internal/pdf"
 )
 
 var trustedUsernameHeaders = []string{
@@ -35,6 +36,8 @@ type Config struct {
 	DatabaseURL string
 	// PublicURL is the externally visible base URL.
 	PublicURL string
+	// PDFURL is the complete HTTP POST endpoint for PDF conversion, including its path.
+	PDFURL string
 	// AuthModeOverride forces one browser authentication mode for recovery when non-empty.
 	AuthModeOverride auth.AuthMode
 	// TrustedUsernameHeaders are used only by the trusted-proxy runtime override.
@@ -80,6 +83,10 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Value()
 	flags.StringVar(&cfg.PublicURL, "public-url", "http://localhost:8080", "Externally visible base URL").
 		Placeholder("URL").
+		Value()
+	flags.StringVar(&cfg.PDFURL, "pdf-url", "", "Complete PDF service POST URL, including the path; empty disables PDF export").
+		Placeholder("URL").
+		Validate(pdf.ValidateURL).
 		Value()
 	flags.BoolVar(&cfg.LocalLogin, "local-login", false, "Enable the local recovery login alongside the configured authentication mode").
 		Value()

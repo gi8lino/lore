@@ -1,51 +1,104 @@
-// Package pdf renders standalone wiki documents with WeasyPrint.
+// Package pdf sends standalone wiki documents to an external PDF renderer.
 package pdf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
+	"io"
+	"mime"
+	"net/http"
+	"net/url"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
+	"time"
 )
 
-// Render creates a temporary PDF whose returned cleanup function must be called after use.
-func Render(ctx context.Context, title, language, rendered string) (*os.File, func(), error) {
-	weasyprint, err := exec.LookPath("weasyprint")
+const (
+	maxHTMLBytes = 32 << 20
+	maxPDFBytes  = 64 << 20
+)
+
+// ErrNotConfigured indicates PDF exports have no configured rendering endpoint.
+var ErrNotConfigured = errors.New("PDF service is not configured")
+
+var renderClient = &http.Client{
+	Timeout: 60 * time.Second,
+	// Never forward private wiki content to a redirect target or change POST to GET.
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+}
+
+// ValidateURL accepts an optional, complete HTTP endpoint including its path.
+func ValidateURL(value string) error {
+	if value == "" {
+		return nil
+	}
+	endpoint, err := url.Parse(value)
+	if err != nil || endpoint.Hostname() == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Path == "" || endpoint.User != nil || endpoint.Fragment != "" {
+		return errors.New("PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://pdf:8080/render)")
+	}
+	return nil
+}
+
+// Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.
+// The caller must call cleanup after serving the file.
+func Render(ctx context.Context, endpoint, title, language, rendered string) (*os.File, func(), error) {
+	noop := func() {}
+	if endpoint == "" {
+		return nil, noop, ErrNotConfigured
+	}
+	if err := ValidateURL(endpoint); err != nil {
+		return nil, noop, err
+	}
+	content := document(title, language, rendered)
+	if len(content) > maxHTMLBytes {
+		return nil, noop, errors.New("PDF document exceeds the 32 MiB request limit")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(content))
 	if err != nil {
-		return nil, func() {}, fmt.Errorf("weasyprint executable not found: %w", err)
+		return nil, noop, err
 	}
-
-	directory, err := os.MkdirTemp("", "lore-pdf-*")
+	request.Header.Set("Content-Type", "text/html; charset=utf-8")
+	request.Header.Set("Accept", "application/pdf")
+	response, err := renderClient.Do(request)
 	if err != nil {
-		return nil, func() {}, err
+		return nil, noop, fmt.Errorf("request PDF service: %w", err)
 	}
-	cleanup := func() { _ = os.RemoveAll(directory) }
-
-	htmlPath := filepath.Join(directory, "page.html")
-	pdfPath := filepath.Join(directory, "page.pdf")
-	if err := os.WriteFile(htmlPath, []byte(document(title, language, rendered)), 0o600); err != nil {
-		cleanup()
-		return nil, func() {}, err
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, noop, fmt.Errorf("PDF service returned HTTP %d", response.StatusCode)
 	}
-
-	command := exec.CommandContext(ctx, weasyprint, htmlPath, pdfPath)
-	if output, err := command.CombinedOutput(); err != nil {
-		cleanup()
-		return nil, func() {}, fmt.Errorf("run weasyprint: %w: %s", err, strings.TrimSpace(string(output)))
+	contentType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	if err != nil || contentType != "application/pdf" {
+		return nil, noop, errors.New("PDF service returned an unexpected content type")
 	}
-
-	file, err := os.Open(pdfPath)
+	if response.ContentLength > maxPDFBytes {
+		return nil, noop, errors.New("PDF service response exceeds the 64 MiB limit")
+	}
+	prefix := make([]byte, 5)
+	if _, err := io.ReadFull(response.Body, prefix); err != nil || string(prefix) != "%PDF-" {
+		return nil, noop, errors.New("PDF service returned an invalid PDF")
+	}
+	file, err := os.CreateTemp("", "lore-pdf-*.pdf")
+	if err != nil {
+		return nil, noop, err
+	}
+	cleanup := func() { _ = file.Close(); _ = os.Remove(file.Name()) }
+	size, err := io.Copy(file, io.LimitReader(io.MultiReader(strings.NewReader(string(prefix)), response.Body), maxPDFBytes+1))
 	if err != nil {
 		cleanup()
-		return nil, func() {}, err
+		return nil, noop, fmt.Errorf("read PDF service response: %w", err)
 	}
-	return file, func() {
-		_ = file.Close()
+	if size > maxPDFBytes {
 		cleanup()
-	}, nil
+		return nil, noop, errors.New("PDF service response exceeds the 64 MiB limit")
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		cleanup()
+		return nil, noop, err
+	}
+	return file, cleanup, nil
 }
 
 // document wraps rendered wiki HTML in a self-contained print-oriented document.

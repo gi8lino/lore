@@ -23,6 +23,7 @@ func Run(
 	listenAddress string,
 	databaseURL string,
 	publicURL string,
+	pdfURL string,
 	authModeOverride auth.AuthMode,
 	trustedUsernameHeaders []string,
 	trustedEmailHeaders []string,
@@ -137,6 +138,7 @@ func Run(
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
 		ListenAddress:              listenAddress,
 		PublicURL:                  publicURL,
+		PDFURL:                     pdfURL,
 		AuthModeOverride:           string(authModeOverride),
 		OIDCClientSecretConfigured: oidcClientSecret != "",
 		SessionSecretConfigured:    len(sessionSecret) >= 32,

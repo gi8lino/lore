@@ -34,6 +34,7 @@ func Run(
 			cfg.ListenAddress,
 			cfg.DatabaseURL,
 			cfg.PublicURL,
+			cfg.PDFURL,
 			cfg.AuthModeOverride,
 			cfg.TrustedUsernameHeaders,
 			cfg.TrustedEmailHeaders,
