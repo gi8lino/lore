@@ -284,10 +284,10 @@
           <input type="hidden" name="update_local_credential" value="true" data-admin-user-local-credential-update disabled />
         </label>
 
-        <section class="admin-user-local-password" data-admin-user-local-password hidden>
+        <details class="admin-user-local-password" data-admin-user-local-password>
+          <summary>Set local password</summary>
           <div>
-            <strong>Set local password</strong>
-            <small>OIDC and trusted-proxy accounts start without a local password. Granting one adds password sign-in, enables the credential, and revokes existing local sessions.</small>
+            <small>Setting a password enables local sign-in for this account and revokes its existing local sessions.</small>
           </div>
           <div class="form-grid">
             <label>
@@ -299,8 +299,8 @@
               <input type="password" name="local_password_confirm" autocomplete="new-password" data-validate-match="local_password" data-error-required="Confirm the password." data-error-match="Passwords do not match." data-admin-user-local-password-confirm disabled />
             </label>
           </div>
-          <p class="muted">The password works only when <code>/auth/local</code> is exposed; granting it does not expose the endpoint.</p>
-        </section>
+          <p class="muted">Password sign-in must be enabled in the authentication configuration to use this password.</p>
+        </details>
 
         <fieldset class="admin-user-group-fieldset">
           <legend>Groups</legend>

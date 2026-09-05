@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -165,4 +166,22 @@ func TestAuthenticateAPILogsMissingCredentials(t *testing.T) {
 		`{"error":"Unauthorized.","problems":{"authorization":"Authentication credentials are required."}}`,
 		response.Body.String(),
 	)
+}
+
+func TestBrowserUnauthorizedReturnsToReadablePage(t *testing.T) {
+	for _, tc := range []struct{ method, path, next string }{
+		{"POST", "/admin/oidc/pending/42/reopen", "/admin/users"},
+		{"POST", "/admin/users/7", "/admin/users"},
+		{"POST", "/admin/settings", "/"},
+		{"GET", "/admin/users?filter=all", "/admin/users?filter=all"},
+	} {
+		t.Run(tc.method+tc.path, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			browserUnauthorized(response, httptest.NewRequest(tc.method, tc.path, nil), unauthorizedCredentialsRequired)
+			require.Equal(t, http.StatusFound, response.Code)
+			location, err := url.Parse(response.Header().Get("Location"))
+			require.NoError(t, err)
+			assert.Equal(t, tc.next, location.Query().Get("next"))
+		})
+	}
 }

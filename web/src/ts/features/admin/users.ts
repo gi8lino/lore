@@ -29,7 +29,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   const localCredentialUpdate = dialog.querySelector<HTMLInputElement>(
     "[data-admin-user-local-credential-update]",
   );
-  const localPassword = dialog.querySelector<HTMLElement>(
+  const localPassword = dialog.querySelector<HTMLDetailsElement>(
     "[data-admin-user-local-password]",
   );
   const localPasswordInput = dialog.querySelector<HTMLInputElement>(
@@ -42,6 +42,14 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
     ...dialog.querySelectorAll<HTMLInputElement>('input[name="group_id"]'),
   ];
   if (!form || !name || !identity || !role) return;
+
+  localPassword?.addEventListener("toggle", () => {
+    for (const input of [localPasswordInput, localPasswordConfirm]) {
+      if (!input) continue;
+      input.disabled = !localPassword.open;
+      if (!localPassword.open) input.value = "";
+    }
+  });
 
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-admin-user-edit]",
@@ -75,11 +83,9 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
         localCredentialUpdate.disabled = !canManageLocalCredential;
       }
       if (localPassword && localPasswordInput && localPasswordConfirm) {
-        const canSetLocalPassword =
-          dialog.dataset.externalAuthActive === "true";
-        localPassword.hidden = !canSetLocalPassword;
-        localPasswordInput.disabled = !canSetLocalPassword;
-        localPasswordConfirm.disabled = !canSetLocalPassword;
+        localPassword.open = false;
+        localPasswordInput.disabled = true;
+        localPasswordConfirm.disabled = true;
         localPasswordInput.value = "";
         localPasswordConfirm.value = "";
       }

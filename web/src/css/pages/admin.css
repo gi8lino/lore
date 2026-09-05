@@ -295,8 +295,6 @@
   color: var(--muted);
 }
 .admin-user-local-password {
-  display: grid;
-  gap: 12px;
   padding: 12px 0;
   border-top: 1px solid var(--border-subtle);
 }
@@ -658,4 +656,12 @@
 }
 .admin-page {
   max-width: 1180px;
+}
+
+.admin-user-local-password > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.admin-user-local-password[open] > div {
+  margin-top: 12px;
 }

@@ -233,8 +233,6 @@ type ViewData struct {
 	PendingOIDCIdentities []service.PendingOIDCIdentity
 	// OIDCIdentityCount is the number of active external OIDC bindings.
 	OIDCIdentityCount int
-	// LocalCredentialConfigured reports whether the current administrator has a local password.
-	LocalCredentialConfigured bool
 	// Groups contains administratively managed user groups.
 	Groups []service.Group
 	// PageTemplates contains reusable templates available to page authors.

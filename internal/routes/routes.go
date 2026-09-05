@@ -162,10 +162,7 @@ func addRoutes(
 		"POST /admin/authentication",
 		browserAuthn(adminAuthz(handler.SaveAdminAuthentication(settingsUseCases, browserAuth, views))),
 	)
-	mux.Handle(
-		"POST /admin/authentication/local-password",
-		browserAuthn(adminAuthz(handler.SaveLocalRecoveryPassword(browserAuth.Local, settingsUseCases, logger))),
-	)
+
 	mux.Handle("GET /media/{id}/{name...}", mediaAuthn(handler.ServeImage(mediaUseCases)))
 	mux.Handle("GET /attachments/{id}/{name...}", mediaAuthn(handler.ServeAttachment(mediaUseCases)))
 	mux.Handle("POST /settings/preferences", browserAuthn(handler.SavePreferences(preferenceUseCases, views)))

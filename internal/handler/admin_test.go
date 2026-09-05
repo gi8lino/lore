@@ -1,12 +1,19 @@
 package handler
 
 import (
+	"context"
+	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/store"
+	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,4 +163,74 @@ func TestPendingOIDCIdentityID(t *testing.T) {
 		_, err := pendingOIDCIdentityID(request)
 		require.Error(t, err)
 	})
+}
+
+type pendingIdentityStatusStub struct {
+	oidcIdentityService
+	id, actor int64
+	rejected  bool
+}
+
+func (s *pendingIdentityStatusStub) SetPendingOIDCIdentityRejected(_ context.Context, id int64, rejected bool, actor int64) error {
+	s.id, s.rejected, s.actor = id, rejected, actor
+	return nil
+}
+func TestReopenPendingOIDCIdentity(t *testing.T) {
+	users := &pendingIdentityStatusStub{rejected: true}
+	mux := http.NewServeMux()
+	mux.Handle("POST /admin/oidc/pending/{id}/reopen", ReopenPendingOIDCIdentity(users, slog.Default()))
+	request := auth.WithUser(httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), model.User{ID: 7, Role: "admin"})
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, request)
+	assert.Equal(t, http.StatusSeeOther, response.Code)
+	assert.Equal(t, "/admin/users#pending-identities", response.Header().Get("Location"))
+	assert.Equal(t, int64(42), users.id)
+	assert.Equal(t, int64(7), users.actor)
+	assert.False(t, users.rejected)
+}
+
+type passwordUserStub struct{ userManagementService }
+
+func (*passwordUserStub) UpdateUser(context.Context, int64, string, bool, []int64, *bool) error {
+	return nil
+}
+
+type passwordRepositoryStub struct {
+	*store.Store
+	id   int64
+	hash string
+}
+
+func (s *passwordRepositoryStub) SetLocalCredential(_ context.Context, id int64, hash string) error {
+	s.id, s.hash = id, hash
+	return nil
+}
+func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) {
+	repository := &passwordRepositoryStub{}
+	form := url.Values{"role": {"admin"}, "account_enabled": {"on"}, "local_password": {"a-long-password-123"}, "local_password_confirm": {"a-long-password-123"}}
+	request := httptest.NewRequest("POST", "/admin/users/7", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.SetPathValue("id", "7")
+	request = auth.WithUser(request, model.User{ID: 7, Role: "admin"})
+	response := httptest.NewRecorder()
+	UpdateAdminUser(&passwordUserStub{}, nil, auth.NewLocal(repository, "http://localhost"), &Views{}, slog.Default())(response, request)
+	assert.Equal(t, http.StatusSeeOther, response.Code)
+	assert.Equal(t, int64(7), repository.id)
+	assert.NotEmpty(t, repository.hash)
+	assert.NotEqual(t, form.Get("local_password"), repository.hash)
+}
+func TestAdminAuthenticationTemplates(t *testing.T) {
+	views, err := NewViews(web.Assets, slog.Default(), "test", "test", nil, RuntimeInfo{})
+	require.NoError(t, err)
+	data := ViewData{Runtime: RuntimeInfo{AuthModeOverride: "oidc"}}
+	data.ApplicationSettings.Authentication.Mode = "none"
+	html, err := renderTemplateHTML(views, "admin_configuration", "content", data)
+	require.NoError(t, err)
+	assert.Contains(t, string(html), "Authentication mode (active)")
+	assert.Contains(t, string(html), "<option>OpenID Connect (OIDC)</option>")
+	assert.Contains(t, string(html), "Saved authentication mode")
+	assert.NotContains(t, string(html), "auth-recovery-form")
+	html, err = renderTemplateHTML(views, "admin_users", "content", data)
+	require.NoError(t, err)
+	assert.Contains(t, string(html), `<details class="admin-user-local-password" data-admin-user-local-password>`)
 }

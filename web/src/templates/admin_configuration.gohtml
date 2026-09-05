@@ -61,14 +61,21 @@
             <div class="auth-override-note">
               <strong>Runtime override active</strong>
               <span
-                ><code>LORE__AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> currently overrides the mode below. Remove
-                it after recovery to use the saved mode.</span
+                ><code>LORE__AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> sets the active authentication mode. The saved settings below apply when this runtime override is removed.</span
               >
             </div>
           {{ end }}
 
+          {{ if .Runtime.AuthModeOverride }}
+            <label class="auth-mode-field">
+              Authentication mode (active)
+              <select disabled aria-label="Active authentication mode">
+                <option>{{ if eq .Runtime.AuthModeOverride "oidc" }}OpenID Connect (OIDC){{ else if eq .Runtime.AuthModeOverride "local" }}Local account{{ else if eq .Runtime.AuthModeOverride "trusted-proxy" }}Trusted proxy{{ else }}No authentication (development only){{ end }}</option>
+              </select>
+            </label>
+          {{ end }}
           <label class="auth-mode-field">
-            Authentication mode
+            {{ if .Runtime.AuthModeOverride }}Saved authentication mode{{ else }}Authentication mode{{ end }}
             <select name="auth_mode" data-auth-mode>
               <option value="none" {{ if eq .ApplicationSettings.Authentication.Mode "none" }}selected{{ end }}>
                 No authentication (development only)
@@ -86,7 +93,7 @@
                 OpenID Connect (OIDC)
               </option>
             </select>
-            <small>Changes take effect immediately after saving.</small>
+            <small>{{ if .Runtime.AuthModeOverride }}Changes are saved but do not replace the active runtime override.{{ else }}Changes take effect immediately after saving.{{ end }}</small>
           </label>
 
           <div
@@ -338,57 +345,8 @@
           </div>
         </form>
 
-        <div class="auth-local-recovery">
-          <div class="admin-card-heading auth-mode-heading">
-            <div>
-              <h3>Local recovery login</h3>
-              <p class="muted">Set a password for the administrator currently signed in. This creates a separate fallback credential without changing OIDC or trusted-proxy access.</p>
-            </div>
-          </div>
+        <p class="settings-note">Manage local passwords in <a href="/admin/users">Users</a>.</p>
 
-          <div class="auth-recovery-status">
-            <div>
-              <span>This administrator's local password</span>
-              {{ if .LocalCredentialConfigured }}
-                <strong class="config-status configured">Configured</strong>
-              {{ else }}
-                <strong class="config-status missing">Missing</strong>
-              {{ end }}
-            </div>
-            <div>
-              <span>Recovery endpoint</span>
-              {{ if or .Runtime.LocalLoginEnabled (eq .ApplicationSettings.Authentication.Mode "local") }}
-                <strong class="config-status configured">Enabled</strong>
-              {{ else }}
-                <strong class="config-status missing">Disabled</strong>
-              {{ end }}
-            </div>
-          </div>
-
-          <form class="stacked-form auth-recovery-form" action="/admin/authentication/local-password" method="post" data-validate-form novalidate>
-            <div class="form-grid">
-              <label>
-                {{ if .LocalCredentialConfigured }}New recovery password{{ else }}Recovery password{{ end }}
-                <input type="password" name="password" autocomplete="new-password" minlength="12" data-error-required="Password is required." data-error-minlength="Use at least 12 characters." required />
-                <small>At least 12 characters.</small>
-              </label>
-              <label>
-                Confirm password
-                <input type="password" name="password_confirm" autocomplete="new-password" data-validate-match="password" data-error-required="Confirm the password." data-error-match="Passwords do not match." required />
-              </label>
-            </div>
-            <div class="settings-actions auth-settings-actions">
-              <button class="button" type="submit">
-                {{ if .LocalCredentialConfigured }}Replace recovery password{{ else }}Set recovery password{{ end }}
-              </button>
-            </div>
-          </form>
-          <p class="settings-note auth-recovery-note">
-            The credential and its endpoint are separate controls. When another authentication mode is active, set
-            <code>LORE__LOCAL_LOGIN=true</code> and restart Lore to expose <code>/auth/local</code>. Local mode always exposes
-            the endpoint.
-          </p>
-        </div>
       </section>
 
       <section class="panel settings-panel">

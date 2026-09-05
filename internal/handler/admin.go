@@ -85,11 +85,6 @@ func AdminConfiguration(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
-		data.LocalCredentialConfigured, err = userUseCases.HasLocalCredential(r.Context(), currentUser(r).ID)
-		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
-			return
-		}
 
 		render(views, w, "admin_configuration", data)
 	}
@@ -735,38 +730,6 @@ func authenticationSettingsProblems(
 	return problems
 }
 
-// SaveLocalRecoveryPassword creates or replaces the current administrator's local password.
-func SaveLocalRecoveryPassword(
-	local *auth.Local,
-	settingsUseCases settingsService,
-	logger *slog.Logger,
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		admin := currentUser(r)
-		if err := r.ParseForm(); err != nil {
-			httpresponse.Problem(w, http.StatusBadRequest, "Invalid local login form.")
-			return
-		}
-		password := r.FormValue("password")
-		if problems := localPasswordValidationProblems(
-			password,
-			r.FormValue("password_confirm"),
-			"password",
-			"password_confirm",
-			true,
-		); len(problems) > 0 {
-			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Local login validation failed.", problems...)
-			return
-		}
-		if err := local.SetPassword(r.Context(), admin.ID, password); err != nil {
-			writeAdminProblem(logger, w, err, "Local credential")
-			return
-		}
-		settingsUseCases.RecordLocalPasswordUpdated(r.Context(), admin)
-		http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
-	}
-}
-
 // splitHeaderNames normalizes a comma-separated ordered header list.
 func splitHeaderNames(value string) []string {
 	seen := map[string]bool{}
@@ -882,7 +845,7 @@ func UpdateAdminUser(
 		}
 
 		var localCredentialEnabled *bool
-		if updateLocalCredential || password != "" {
+		if updateLocalCredential {
 			settings, err := settingsUseCases.ApplicationSettings(r.Context())
 			if err != nil {
 				writeUnexpectedProblem(logger, w, err)

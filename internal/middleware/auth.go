@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/httpresponse"
@@ -123,7 +124,15 @@ func unauthorized(
 
 // browserUnauthorized redirects an unauthenticated browser request to the login endpoint.
 func browserUnauthorized(w http.ResponseWriter, r *http.Request, _ unauthorizedReason) {
-	next := url.QueryEscape(r.URL.RequestURI())
+	destination := r.URL.RequestURI()
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// Login resumes with GET, so never return to a POST-only action URL.
+		destination = "/"
+		if strings.HasPrefix(r.URL.Path, "/admin/oidc/") || strings.HasPrefix(r.URL.Path, "/admin/users/") {
+			destination = "/admin/users"
+		}
+	}
+	next := url.QueryEscape(destination)
 	http.Redirect(w, r, "/auth/login?next="+next, http.StatusFound)
 }
 
