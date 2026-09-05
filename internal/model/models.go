@@ -173,6 +173,8 @@ type ApplicationSettings struct {
 	AllowUserRegistration bool
 	// DiscussionsEnabled enables page comments and anchored discussions.
 	DiscussionsEnabled bool
+	// PDFURL is the persisted HTML-to-PDF rendering endpoint.
+	PDFURL string
 	// Authentication contains non-secret browser authentication settings.
 	Authentication AuthenticationSettings
 	// Rendering contains administrator-controlled Markdown rendering features.

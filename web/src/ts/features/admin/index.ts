@@ -1,6 +1,7 @@
 // Administrator feature bootstrap.
 
 import { requestConfirmation } from "../../core/dialogs.ts";
+import { errorMessage, responseProblem } from "../../core/http.ts";
 import { renderMermaid } from "../markdown.ts";
 import { setupGroupMemberPicker } from "./groups.ts";
 import { setupNavigationIconPicker } from "./navigation.ts";
@@ -28,6 +29,7 @@ export function initAdmin(): void {
   if (identityEditor) setupPendingOIDCEditor(identityEditor);
 
   setupAuthenticationSettings();
+  setupPDFSettings();
 
   const mermaidPreview = document.querySelector<HTMLElement>(
     "[data-rendering-mermaid-preview]",
@@ -92,6 +94,54 @@ export function initAdmin(): void {
     });
     refresh();
   }
+}
+
+// Wires the PDF integration test to the endpoint currently entered in the form.
+function setupPDFSettings(): void {
+  const form = document.querySelector<HTMLFormElement>("[data-pdf-settings]");
+  if (!form) return;
+
+  const endpoint = form.elements.namedItem("pdf_url");
+  const button = form.querySelector<HTMLButtonElement>("[data-pdf-test]");
+  const status = form.querySelector<HTMLElement>("[data-pdf-test-status]");
+  if (!(endpoint instanceof HTMLInputElement) || !button || !status) return;
+
+  const setStatus = (
+    state: "" | "testing" | "success" | "error",
+    message: string,
+  ): void => {
+    status.dataset.state = state;
+    status.textContent = message;
+  };
+
+  endpoint.addEventListener("input", () => setStatus("", ""));
+  button.addEventListener("click", async () => {
+    const pdfURL = endpoint.value.trim();
+    if (!pdfURL) {
+      setStatus("error", "Enter a PDF service URL to test.");
+      endpoint.focus();
+      return;
+    }
+
+    button.disabled = true;
+    setStatus("testing", "Rendering a small test document…");
+    try {
+      const body = new URLSearchParams({ pdf_url: pdfURL });
+      const response = await fetch("/admin/pdf/test", {
+        method: "POST",
+        body,
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw await responseProblem(response);
+      const payload = (await response.json()) as { message?: string };
+      setStatus("success", payload.message || "PDF service is reachable.");
+    } catch (error: unknown) {
+      setStatus("error", errorMessage(error));
+    } finally {
+      button.disabled = false;
+    }
+  });
 }
 
 // Shows only the fields used by the selected browser authentication mode.

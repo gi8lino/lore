@@ -329,6 +329,7 @@ func (s *Store) ApplicationSettings(ctx context.Context) (ApplicationSettings, e
 SELECT
   allow_user_registration,
   discussions_enabled,
+  pdf_url,
   auth_mode,
   oidc_issuer,
   oidc_client_id,
@@ -363,6 +364,7 @@ FROM application_settings
 WHERE singleton=true`).Scan(
 		&settings.AllowUserRegistration,
 		&settings.DiscussionsEnabled,
+		&settings.PDFURL,
 		&settings.Authentication.Mode,
 		&settings.Authentication.OIDCIssuer,
 		&settings.Authentication.OIDCClientID,
@@ -406,6 +408,16 @@ ON CONFLICT(singleton) DO UPDATE
 SET allow_user_registration=EXCLUDED.allow_user_registration,
     discussions_enabled=EXCLUDED.discussions_enabled,
     updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled)
+	return err
+}
+
+// SavePDFSettings updates the persisted HTML-to-PDF rendering endpoint.
+func (s *Store) SavePDFSettings(ctx context.Context, pdfURL string) error {
+	_, err := s.pool.Exec(ctx, `
+UPDATE application_settings
+SET pdf_url=$1,
+    updated_at=now()
+WHERE singleton=true`, pdfURL)
 	return err
 }
 

@@ -9,6 +9,7 @@ type settingsRepository interface {
 	auditRepository
 	ApplicationSettings(context.Context) (ApplicationSettings, error)
 	SaveApplicationSettings(context.Context, ApplicationSettings) error
+	SavePDFSettings(context.Context, string) error
 	SaveAuthenticationSettings(context.Context, AuthenticationSettings) error
 	SaveRenderingSettings(context.Context, RenderingSettings) error
 }
@@ -40,6 +41,22 @@ func (s *Settings) SaveApplicationSettings(
 		"settings",
 		"application",
 		"Updated application settings",
+	)
+	return nil
+}
+
+// SavePDFSettings persists the default PDF rendering endpoint and records the change.
+func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID int64) error {
+	if err := s.repository.SavePDFSettings(ctx, pdfURL); err != nil {
+		return err
+	}
+	_ = audit(s.repository,
+		ctx,
+		actorID,
+		"settings.pdf_updated",
+		"settings",
+		"pdf",
+		"Updated PDF service settings",
 	)
 	return nil
 }

@@ -36,9 +36,16 @@ func ValidateURL(value string) error {
 	}
 	endpoint, err := url.Parse(value)
 	if err != nil || endpoint.Hostname() == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Path == "" || endpoint.User != nil || endpoint.Fragment != "" {
-		return errors.New("PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://pdf:8080/render)")
+		return errors.New("PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://html2pdf:8080/render)")
 	}
 	return nil
+}
+
+// Check verifies that endpoint can render a minimal HTML document.
+func Check(ctx context.Context, endpoint string) error {
+	_, cleanup, err := Render(ctx, endpoint, "PDF service test", "en", "<p>PDF service test.</p>")
+	cleanup()
+	return err
 }
 
 // Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.
@@ -65,7 +72,7 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (*o
 	if err != nil {
 		return nil, noop, fmt.Errorf("request PDF service: %w", err)
 	}
-	defer response.Body.Close()
+	defer response.Body.Close() // nolint:errcheck
 	if response.StatusCode != http.StatusOK {
 		return nil, noop, fmt.Errorf("PDF service returned HTTP %d", response.StatusCode)
 	}

@@ -36,7 +36,7 @@ type Config struct {
 	DatabaseURL string
 	// PublicURL is the externally visible base URL.
 	PublicURL string
-	// PDFURL is the complete HTTP POST endpoint for PDF conversion, including its path.
+	// PDFURL optionally overrides the persisted PDF rendering endpoint for this process.
 	PDFURL string
 	// AuthModeOverride forces one browser authentication mode for recovery when non-empty.
 	AuthModeOverride auth.AuthMode
@@ -84,7 +84,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	flags.StringVar(&cfg.PublicURL, "public-url", "http://localhost:8080", "Externally visible base URL").
 		Placeholder("URL").
 		Value()
-	flags.StringVar(&cfg.PDFURL, "pdf-url", "", "Complete PDF service POST URL, including the path; empty disables PDF export").
+	flags.StringVar(&cfg.PDFURL, "pdf-url", "", "Deployment override for the PDF service POST URL, including its path").
 		Placeholder("URL").
 		Validate(pdf.ValidateURL).
 		Value()

@@ -158,6 +158,8 @@ func addRoutes(
 		browserAuthn(adminAuthz(handler.AdminImages(viewDataUseCases, mediaUseCases, views))),
 	)
 	mux.Handle("POST /admin/settings", browserAuthn(adminAuthz(handler.SaveAdminSettings(settingsUseCases, logger))))
+	mux.Handle("POST /admin/pdf", browserAuthn(adminAuthz(handler.SaveAdminPDFSettings(settingsUseCases, logger))))
+	mux.Handle("POST /admin/pdf/test", browserAuthn(adminAuthz(handler.TestAdminPDFService(logger))))
 	mux.Handle(
 		"POST /admin/authentication",
 		browserAuthn(adminAuthz(handler.SaveAdminAuthentication(settingsUseCases, browserAuth, views))),

@@ -81,8 +81,14 @@ func ExportPagePDF(
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if views.runtime.PDFURL == "" {
-			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is not configured. Set LORE__PDF_URL to the PDF service endpoint, including its path.")
+		applicationSettings, err := settingsUseCases.ApplicationSettings(r.Context())
+		if err != nil {
+			writePageProblem(logger, w, err)
+			return
+		}
+		pdfURL := effectivePDFURL(views.runtime.PDFURL, applicationSettings.PDFURL)
+		if pdfURL == "" {
+			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is not configured. Configure a PDF service in Administration or set LORE__PDF_URL.")
 			return
 		}
 		slug := strings.TrimSpace(r.PathValue("slug"))
@@ -100,11 +106,8 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
-		options, settings, err := renderingOptions(r.Context(), settingsUseCases)
-		if err != nil {
-			writePageProblem(logger, w, err)
-			return
-		}
+		settings := applicationSettings.Rendering
+		options := renderingOptionsFromSettings(settings)
 		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
 		if err != nil {
 			writePageProblem(logger, w, err)
@@ -144,7 +147,7 @@ func ExportPagePDF(
 		if pageData.Language != "" {
 			language = pageData.Language
 		}
-		pdfFile, cleanup, err := pdf.Render(r.Context(), views.runtime.PDFURL, pageData.Title, language, rendered)
+		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered)
 		if err != nil {
 			logger.Error("generate PDF", "event", "pdf_generation_failed", "slug", slug, "error", err)
 			httpresponse.Problem(w,

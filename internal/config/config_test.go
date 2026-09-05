@@ -94,10 +94,10 @@ func parseTestConfig(args []string) (Config, error) {
 
 func TestPDFURLFromEnvironmentIncludesPath(t *testing.T) {
 	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
-	t.Setenv("LORE__PDF_URL", "http://pdf:8080/custom/render?profile=wiki")
+	t.Setenv("LORE__PDF_URL", "http://html2pdf:8080/custom/render?profile=wiki")
 	cfg, err := parseTestConfig(nil)
 	require.NoError(t, err)
-	assert.Equal(t, "http://pdf:8080/custom/render?profile=wiki", cfg.PDFURL)
+	assert.Equal(t, "http://html2pdf:8080/custom/render?profile=wiki", cfg.PDFURL)
 }
 
 func TestPDFURLValidation(t *testing.T) {

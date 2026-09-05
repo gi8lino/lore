@@ -7,6 +7,7 @@ Lore uses command-line flags and matching `LORE__` environment variables. The da
 | `--listen-address`     | `LORE__LISTEN_ADDRESS`     | HTTP listen address; defaults to `127.0.0.1:8080`.                                  |
 | `--database-url`       | `LORE__DATABASE_URL`       | PostgreSQL connection URL.                                                          |
 | `--public-url`         | `LORE__PUBLIC_URL`         | Externally visible base URL; defaults to `http://localhost:8080`.                   |
+| `--pdf-url`            | `LORE__PDF_URL`            | Optional runtime override for the configured HTML-to-PDF render endpoint.           |
 | `--local-login`        | `LORE__LOCAL_LOGIN`        | Exposes local recovery login alongside another configured authentication mode.      |
 | `--theme-directory`    | `LORE__THEME_DIRECTORY`    | Optional directory of TOML theme files that override or extend embedded themes.     |
 | `--auth-mode`          | `LORE__AUTH_MODE`          | Emergency authentication override.                                                  |
@@ -20,4 +21,6 @@ Lore uses command-line flags and matching `LORE__` environment variables. The da
 
 Trusted-proxy username, email, and display-name header lists also have deployment flags and environment-variable forms. Their built-in defaults cover common reverse-proxy headers.
 
-The `--auth-mode` value is a recovery override, not the normal place to configure browser authentication. Use the administration UI for persistent authentication settings. See [Authentication](../authentication/index.md).
+The `--auth-mode` value is a recovery override, not the normal place to configure browser authentication. Use the administration UI for persistent authentication settings. When it is set, the UI clearly marks the saved authentication mode as a fallback that becomes active only after the override is removed and Lore is restarted.
+
+The PDF service is also normally configured in **Administration → Configuration**. `--pdf-url` / `LORE__PDF_URL` overrides that persisted endpoint for deployments that want to manage the integration entirely outside Lore. See [Authentication](../authentication/index.md).

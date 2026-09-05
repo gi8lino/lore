@@ -16,4 +16,4 @@ The configured limits are 10 MiB for images and 25 MiB for attachments.
 
 Markdown export includes referenced images. A page with no referenced images can be returned as a plain `.md` file; pages requiring media are packaged into a ZIP with rewritten relative media paths.
 
-PDF export renders page HTML and inlines stored images as data URLs before invoking WeasyPrint.
+PDF export renders page HTML, inlines stored images as data URLs, and sends the self-contained document to the configured HTML-to-PDF service.

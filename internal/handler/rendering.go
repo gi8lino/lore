@@ -13,7 +13,11 @@ func renderingOptions(ctx context.Context, settingsUseCases settingsService) (md
 	if err != nil {
 		return md.Options{}, service.RenderingSettings{}, err
 	}
-	rendering := settings.Rendering
+	return renderingOptionsFromSettings(settings.Rendering), settings.Rendering, nil
+}
+
+// renderingOptionsFromSettings maps persisted rendering settings to Markdown renderer options.
+func renderingOptionsFromSettings(rendering service.RenderingSettings) md.Options {
 	return md.Options{
 		WikiLinks:          rendering.WikiLinks,
 		Callouts:           rendering.Callouts,
@@ -30,5 +34,5 @@ func renderingOptions(ctx context.Context, settingsUseCases settingsService) (md
 		Footnotes:          rendering.Footnotes,
 		DefinitionLists:    rendering.DefinitionLists,
 		Typographer:        rendering.Typographer,
-	}, rendering, nil
+	}
 }

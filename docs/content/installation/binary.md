@@ -23,4 +23,4 @@ The Go binary embeds `web/dist`. Run `make web` before compiling manually so Typ
 
 ## PDF support
 
-PDF export invokes a local WeasyPrint executable. Install WeasyPrint and suitable fonts when PDF export is required. The official container image installs both.
+The Lore binary does not contain a PDF renderer. Configure a compatible HTML-to-PDF `POST` endpoint in **Administration → Configuration**. A deployment can override the persisted endpoint with `LORE__PDF_URL`.

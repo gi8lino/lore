@@ -236,6 +236,7 @@ type recycleBinService interface {
 type settingsService interface {
 	ApplicationSettings(context.Context) (service.ApplicationSettings, error)
 	SaveApplicationSettings(context.Context, service.ApplicationSettings, int64) error
+	SavePDFSettings(context.Context, string, int64) error
 	SaveAuthenticationSettings(context.Context, service.AuthenticationSettings, int64) error
 	SaveRenderingSettings(context.Context, service.RenderingSettings, int64) error
 	RecordLocalPasswordUpdated(context.Context, service.User)

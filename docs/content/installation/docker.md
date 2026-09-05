@@ -1,6 +1,6 @@
 # Docker
 
-The included Compose file starts Lore and PostgreSQL 18.
+The included Compose file starts Lore, PostgreSQL 18, and the optional `html2pdf` renderer.
 
 ```sh
 docker compose -f deploy/compose.yaml up -d
@@ -10,7 +10,7 @@ The development stack publishes Lore on `127.0.0.1:8080` and PostgreSQL on `127.
 
 ## Container image
 
-The production image is multi-stage. A Node build stage compiles the TypeScript frontend, a Go build stage embeds the generated web assets into the Lore binary, and the final Alpine image contains the binary plus WeasyPrint and Noto fonts. Node.js and npm are build dependencies only and are not present in the runtime image.
+The production image is multi-stage. A Node build stage compiles the TypeScript frontend, a Go build stage embeds the generated web assets into the Lore binary, and the final distroless image contains only the application and its writable runtime directories. PDF rendering stays in the separate `html2pdf` container. Node.js and npm are build dependencies only and are not present in the Lore runtime image.
 
 ## Persistent data
 

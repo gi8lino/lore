@@ -4,13 +4,18 @@
     <div class="settings-heading">
       <p class="eyebrow">Administration</p>
       <h1>Configuration</h1>
-      <p class="muted">Review runtime configuration and change application-wide settings.</p>
+      <p class="muted">Manage Lore's application settings, integrations, and authentication.</p>
     </div>
 
-    <div class="settings-grid">
-      <section class="panel settings-panel">
-        <div class="panel-title"><h2>Runtime configuration</h2></div>
-        <dl class="user-details admin-config">
+    <div class="settings-grid configuration-grid">
+      <section class="panel settings-panel settings-wide configuration-runtime">
+        <div class="panel-title configuration-panel-title">
+          <div>
+            <h2>Runtime</h2>
+            <p class="muted">Read-only values supplied by the process or deployment.</p>
+          </div>
+        </div>
+        <dl class="configuration-runtime-grid">
           <div>
             <dt>Version</dt>
             <dd>{{ .Version }}</dd>
@@ -21,52 +26,120 @@
           </div>
           <div>
             <dt>Listen address</dt>
-            <dd>{{ .Runtime.ListenAddress }}</dd>
+            <dd><code>{{ .Runtime.ListenAddress }}</code></dd>
           </div>
           <div>
             <dt>Public URL</dt>
             <dd>{{ .Runtime.PublicURL }}</dd>
           </div>
           <div>
-            <dt>PDF service</dt>
-            <dd>{{ if .Runtime.PDFURL }}{{ .Runtime.PDFURL }}{{ else }}Not configured{{ end }}</dd>
-          </div>
-          <div>
-            <dt>Authentication source</dt>
-            <dd>
-              {{ if .Runtime.AuthModeOverride }}
-                Runtime override ({{ .Runtime.AuthModeOverride }})
-              {{ else }}
-                Administration settings
-              {{ end }}
-            </dd>
-          </div>
-          <div>
-            <dt>Theme directory</dt>
+            <dt>Themes</dt>
             <dd>
               {{ if .Runtime.ThemeDirectory }}
                 {{ .Runtime.ThemeDirectory }}
               {{ else }}
-                <span class="muted">Embedded themes only</span>
+                Embedded only
               {{ end }}
             </dd>
           </div>
         </dl>
-        <p class="settings-note">
-          Runtime settings and secrets are read-only here. Authentication settings that are safe to persist are managed
-          below.
-        </p>
       </section>
 
-      <section class="panel settings-panel settings-wide">
-        <div class="panel-title"><h2>Authentication</h2></div>
+      <section class="panel settings-panel configuration-application">
+        <div class="panel-title configuration-panel-title">
+          <div>
+            <h2>Application</h2>
+            <p class="muted">General behavior shared by all Lore users.</p>
+          </div>
+        </div>
+        <form class="settings-form" action="/admin/settings" method="post">
+          <label class="toggle-row">
+            <span>
+              <strong>Allow new users</strong>
+              <small>Allow unknown OIDC or trusted-proxy identities to create Lore accounts automatically.</small>
+            </span>
+            <input type="checkbox" name="allow_user_registration" {{ if .ApplicationSettings.AllowUserRegistration }}checked{{ end }} />
+          </label>
+          <label class="toggle-row">
+            <span>
+              <strong>Page discussions</strong>
+              <small>Allow users to add anchored comments to wiki pages.</small>
+            </span>
+            <input type="checkbox" name="discussions_enabled" {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }} />
+          </label>
+          <div class="settings-actions">
+            <button class="button primary" type="submit">Save application settings</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel settings-panel configuration-pdf" id="pdf-rendering">
+        <div class="panel-title configuration-panel-title">
+          <div>
+            <h2>PDF rendering</h2>
+            <p class="muted">Connect Lore to a generic HTML-to-PDF service.</p>
+          </div>
+          {{ if .Runtime.PDFURL }}
+            <span class="config-status warning">Runtime override</span>
+          {{ else if .ApplicationSettings.PDFURL }}
+            <span class="config-status configured">Configured</span>
+          {{ else }}
+            <span class="config-status missing">Not configured</span>
+          {{ end }}
+        </div>
+
+        {{ if .Runtime.PDFURL }}
+          <div class="configuration-override-note">
+            <strong>Runtime PDF override active</strong>
+            <span>
+              A deployment-level <code>--pdf-url</code> / <code>LORE__PDF_URL</code> override is currently used for exports: <code>{{ .Runtime.PDFURL }}</code>. The saved endpoint below becomes active after the override is removed and Lore is restarted.
+            </span>
+          </div>
+        {{ end }}
+
+        <form
+          class="stacked-form pdf-settings-form"
+          action="/admin/pdf"
+          method="post"
+          data-pdf-settings
+          data-validate-form
+          novalidate
+        >
+          <label>
+            {{ if .Runtime.PDFURL }}Saved fallback endpoint{{ else }}Endpoint{{ end }}
+            <input
+              type="url"
+              name="pdf_url"
+              value="{{ .ApplicationSettings.PDFURL }}"
+              placeholder="http://html2pdf:8080/render"
+              autocomplete="off"
+              data-error-type="Enter a valid HTTP or HTTPS URL."
+            />
+            <small>Complete <code>POST</code> endpoint including the render path. Leave empty to disable PDF export.</small>
+          </label>
+          <div class="pdf-settings-actions">
+            <button class="button" type="button" data-pdf-test>{{ icon "activity" 15 }}<span>Test endpoint</span></button>
+            <button class="button primary" type="submit">Save PDF settings</button>
+          </div>
+          <p class="pdf-test-status" data-pdf-test-status aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel settings-panel settings-wide configuration-authentication">
+        <div class="panel-title configuration-panel-title">
+          <div>
+            <h2>Authentication</h2>
+            <p class="muted">Choose how people sign in and configure provider-specific identity settings.</p>
+          </div>
+          {{ if .Runtime.AuthModeOverride }}<span class="config-status warning">Runtime override</span>{{ end }}
+        </div>
         <form class="stacked-form auth-settings-form" action="/admin/authentication" method="post" data-auth-settings>
           {{ if .Runtime.AuthModeOverride }}
-            <div class="auth-override-note">
-              <strong>Runtime override active</strong>
-              <span
-                ><code>LORE__AUTH_MODE={{ .Runtime.AuthModeOverride }}</code> sets the active authentication mode. The saved settings below apply when this runtime override is removed.</span
-              >
+            <div class="configuration-override-note">
+              <strong>Runtime authentication override active</strong>
+              <span>
+                A deployment-level <code>--auth-mode</code> / <code>LORE__AUTH_MODE</code> override currently selects <strong>{{ .Runtime.AuthModeOverride }}</strong>. Changes below are saved as the fallback configuration and become active only after the override is removed and Lore is restarted.
+              </span>
             </div>
           {{ end }}
 
@@ -79,7 +152,7 @@
             </label>
           {{ end }}
           <label class="auth-mode-field">
-            {{ if .Runtime.AuthModeOverride }}Saved authentication mode{{ else }}Authentication mode{{ end }}
+            {{ if .Runtime.AuthModeOverride }}Saved fallback mode{{ else }}Authentication mode{{ end }}
             <select name="auth_mode" data-auth-mode>
               <option value="none" {{ if eq .ApplicationSettings.Authentication.Mode "none" }}selected{{ end }}>
                 No authentication (development only)
@@ -345,7 +418,7 @@
           </div>
 
           <div class="settings-actions auth-settings-actions">
-            <button class="button primary" type="submit">Save authentication settings</button>
+            <button class="button primary" type="submit">{{ if .Runtime.AuthModeOverride }}Save fallback authentication settings{{ else }}Save authentication settings{{ end }}</button>
           </div>
         </form>
 
@@ -353,42 +426,6 @@
 
       </section>
 
-      <section class="panel settings-panel">
-        <div class="panel-title"><h2>Application settings</h2></div>
-        <form class="settings-form" action="/admin/settings" method="post">
-          <label class="toggle-row">
-            <span>
-              <strong>Allow new users</strong>
-              <small
-                >Allow unknown OIDC or trusted-proxy identities to create Lore accounts automatically. When disabled,
-                verified OIDC identities wait for administrator approval while existing users can still sign in.</small
-              >
-            </span>
-            <input
-              type="checkbox"
-              name="allow_user_registration"
-              {{ if .ApplicationSettings.AllowUserRegistration }}checked{{ end }}
-            />
-          </label>
-          <label class="toggle-row">
-            <span>
-              <strong>Page discussions</strong>
-              <small
-                >Allow users to add anchored comments to wiki pages. Existing comments are preserved while discussions
-                are disabled.</small
-              >
-            </span>
-            <input
-              type="checkbox"
-              name="discussions_enabled"
-              {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }}
-            />
-          </label>
-          <button class="button primary" type="submit">Save application settings</button>
-        </form>
-      </section>
     </div>
   </section>
 {{ end }}
-
-
