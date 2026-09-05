@@ -194,7 +194,7 @@ func Setup(
 // safeAuthNext accepts only local paths as post-authentication destinations.
 func safeAuthNext(value string) string {
 	value = strings.TrimSpace(value)
-	if !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") {
+	if !httpresponse.IsLocalPath(value) {
 		return ""
 	}
 

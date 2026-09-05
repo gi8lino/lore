@@ -434,5 +434,5 @@ func (o *OIDC) decodeCookie(r *http.Request, name string, out any) error {
 
 // isLocalPath reports whether a redirect target stays within this application.
 func isLocalPath(value string) bool {
-	return strings.HasPrefix(value, "/") && !strings.HasPrefix(value, "//")
+	return httpresponse.IsLocalPath(value)
 }
