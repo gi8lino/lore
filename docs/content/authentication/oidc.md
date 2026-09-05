@@ -13,6 +13,8 @@ LORE__SESSION_SECRET
 
 `LORE__SESSION_SECRET` must contain at least 32 characters. The client secret and session secret are not stored in PostgreSQL.
 
+OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__SESSION_SECRET` and the PostgreSQL database are preserved. Explicit session revocation and account disabling still invalidate existing sessions.
+
 The issuer, client ID, optional group claim, administrator group, and group mappings are managed as non-secret application settings.
 
 ## External administrator group
@@ -40,3 +42,5 @@ Automatically created OIDC accounts do not receive a local password. An administ
 ## Disabled accounts and sessions
 
 Disabling an account in **Administration → Users** revokes its local and OIDC browser sessions and blocks local login, OIDC login, trusted-proxy authentication, and personal API tokens. Re-enabling it does not restore old sessions; the user must authenticate again.
+
+

@@ -63,6 +63,54 @@ func TestOIDCAuthenticateExternalAdministrator(t *testing.T) {
 	assert.Equal(t, "viewer", user.Role, "a removed administrator-group setting must stop stale elevation")
 }
 
+func TestOIDCAuthenticatePreservesPreVersionedSession(t *testing.T) {
+	t.Parallel()
+
+	const issuer = "https://identity.example.com/realms/lore"
+	authenticator := &OIDC{
+		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 1}},
+		secret:     []byte("0123456789abcdef0123456789abcdef"),
+		issuer:     issuer,
+	}
+	request := oidcSessionRequest(t, authenticator, struct {
+		Issuer  string `json:"iss"`
+		Subject string `json:"sub"`
+		Expires int64  `json:"x"`
+	}{
+		Issuer:  issuer,
+		Subject: "user-123",
+		Expires: time.Now().Add(time.Hour).Unix(),
+	})
+
+	_, err := authenticator.Authenticate(request)
+
+	require.NoError(t, err)
+}
+
+func TestOIDCAuthenticateRejectsPreVersionedSessionAfterRevocation(t *testing.T) {
+	t.Parallel()
+
+	const issuer = "https://identity.example.com/realms/lore"
+	authenticator := &OIDC{
+		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 2}},
+		secret:     []byte("0123456789abcdef0123456789abcdef"),
+		issuer:     issuer,
+	}
+	request := oidcSessionRequest(t, authenticator, struct {
+		Issuer  string `json:"iss"`
+		Subject string `json:"sub"`
+		Expires int64  `json:"x"`
+	}{
+		Issuer:  issuer,
+		Subject: "user-123",
+		Expires: time.Now().Add(time.Hour).Unix(),
+	})
+
+	_, err := authenticator.Authenticate(request)
+
+	assert.ErrorIs(t, err, ErrUnauthenticated)
+}
+
 func TestOIDCAuthenticateRejectsRevokedSession(t *testing.T) {
 	t.Parallel()
 
