@@ -55,7 +55,9 @@ func writeMediaUploadProblem(
 	if err == nil {
 		return false
 	}
+
 	text := mediaErrorTexts[kind]
+
 	switch {
 	case errors.Is(err, service.ErrEmptyFile):
 		httpresponse.Problem(w,
@@ -78,6 +80,7 @@ func writeMediaUploadProblem(
 	default:
 		writeUnexpectedProblem(logger, w, err)
 	}
+
 	return true
 }
 
@@ -91,8 +94,10 @@ func writeMediaDeleteProblem(
 	if err == nil {
 		return false
 	}
+
 	text := mediaErrorTexts[kind]
 	inUse, isInUse := errors.AsType[*service.MediaInUseError](err)
+
 	switch {
 	case errors.Is(err, service.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, text.noun+" not found.")
@@ -106,6 +111,7 @@ func writeMediaDeleteProblem(
 	default:
 		writeUnexpectedProblem(logger, w, err)
 	}
+
 	return true
 }
 
@@ -115,10 +121,13 @@ func writeValidationProblem(w http.ResponseWriter, err error, title string) bool
 	if !ok {
 		return false
 	}
+
 	problems := make([]httpresponse.FieldProblem, 0, len(validation.Fields))
+
 	for _, field := range validation.Fields {
 		problems = append(problems, httpresponse.NewFieldProblem(field.Field, field.Message))
 	}
+
 	httpresponse.Problem(w, http.StatusUnprocessableEntity, title, problems...)
 	return true
 }

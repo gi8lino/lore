@@ -31,9 +31,11 @@ function syncSidebarWidthSetting(width: number): number {
   const output = document.querySelector<HTMLOutputElement>(
     "[data-sidebar-width-output]",
   );
+
   if (input) input.value = String(next);
   if (output) {
     const status = sidebarWidthStatus(next);
+
     output.value = status;
     output.textContent = status;
   }
@@ -43,6 +45,7 @@ function syncSidebarWidthSetting(width: number): number {
     const selected = Number(preset.dataset.sidebarWidthPreset) === next;
     preset.setAttribute("aria-pressed", String(selected));
   }
+
   return next;
 }
 
@@ -58,6 +61,7 @@ async function postJSON(url: string, value: unknown): Promise<void> {
 function initNavigationTree(): void {
   const navigation = document.querySelector<HTMLElement>("[data-navigation]");
   if (!navigation) return;
+
   const navigationRoot = navigation;
   const nodes = [
     ...navigation.querySelectorAll<HTMLDetailsElement>(
@@ -94,7 +98,9 @@ function initNavigationTree(): void {
   function saveExpandedState(): Promise<void> {
     const stateURL = navigationRoot.dataset.navigationStateUrl;
     if (!remember || !stateURL) return Promise.resolve();
+
     const expanded = expandedPaths();
+
     savePromise = savePromise
       .then(() => postJSON(stateURL, { expanded }))
       .catch((error: unknown) => {
@@ -105,7 +111,9 @@ function initNavigationTree(): void {
 
   function persistExpandedState(): void {
     if (!remember) return;
+
     if (saveTimer) clearTimeout(saveTimer);
+
     saveTimer = setTimeout(() => {
       saveTimer = undefined;
       void saveExpandedState();
@@ -124,9 +132,11 @@ function initNavigationTree(): void {
 
   for (const node of nodes)
     node.addEventListener("toggle", persistExpandedState);
+
   navigation.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const link = target.closest<HTMLAnchorElement>("a[href]");
     if (
       !link ||
@@ -161,9 +171,11 @@ function initNavigationTree(): void {
   const restoredScrollPosition =
     navigation.dataset.navigationScrollRestored === "true";
   const active = navigation.querySelector<HTMLElement>('[aria-current="page"]');
+
   if (active && !restoredScrollPosition) {
     const navigationRect = navigation.getBoundingClientRect();
     const activeRect = active.getBoundingClientRect();
+
     if (
       activeRect.top < navigationRect.top ||
       activeRect.bottom > navigationRect.bottom
@@ -192,8 +204,10 @@ function initAccountMenus(): void {
       "[data-account-menu-popover]",
     );
     if (!trigger || !popover || popover.hidden) return;
+
     popover.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
+
     if (restoreFocus) trigger.focus();
   }
 
@@ -202,6 +216,7 @@ function initAccountMenus(): void {
     focus: "" | "first" | "last" = "",
   ): void {
     for (const other of menus) if (other !== menu) closeMenu(other);
+
     const trigger = menu.querySelector<HTMLButtonElement>(
       "[data-account-menu-trigger]",
     );
@@ -209,9 +224,12 @@ function initAccountMenus(): void {
       "[data-account-menu-popover]",
     );
     if (!trigger || !popover) return;
+
     popover.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+
     const items = menuItems(menu);
+
     if (focus === "first") items[0]?.focus();
     if (focus === "last") items.at(-1)?.focus();
   }
@@ -224,11 +242,13 @@ function initAccountMenus(): void {
       "[data-account-menu-popover]",
     );
     if (!trigger || !popover) continue;
+
     trigger.addEventListener("click", () =>
       popover.hidden ? openMenu(menu) : closeMenu(menu),
     );
     trigger.addEventListener("keydown", (event: KeyboardEvent) => {
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
       event.preventDefault();
       openMenu(menu, event.key === "ArrowDown" ? "first" : "last");
     });
@@ -239,17 +259,22 @@ function initAccountMenus(): void {
         return;
       }
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+
       const items = menuItems(menu);
       if (!items.length) return;
+
       event.preventDefault();
+
       const current = items.indexOf(document.activeElement as HTMLElement);
       let next = current;
+
       if (event.key === "Home") next = 0;
       if (event.key === "End") next = items.length - 1;
       if (event.key === "ArrowDown")
         next = (current + 1 + items.length) % items.length;
       if (event.key === "ArrowUp")
         next = (current - 1 + items.length) % items.length;
+
       items[next]?.focus();
     });
   }
@@ -257,6 +282,7 @@ function initAccountMenus(): void {
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
+
     for (const menu of menus) if (!menu.contains(target)) closeMenu(menu);
   });
   document.addEventListener("keydown", (event: KeyboardEvent) => {
@@ -272,6 +298,7 @@ function initMobileSidebar(): void {
     "[data-sidebar-backdrop]",
   );
   if (!trigger || !sidebar || !backdrop) return;
+
   const menuTrigger = trigger;
   const sidebarRoot = sidebar;
   const backdropButton = backdrop;
@@ -280,10 +307,12 @@ function initMobileSidebar(): void {
 
   function setOpen(open: boolean, restoreFocus = false): void {
     const nextOpen = open && mobile.matches;
+
     sidebarRoot.classList.toggle("open", nextOpen);
     document.body.classList.toggle("sidebar-open", nextOpen);
     menuTrigger.setAttribute("aria-expanded", String(nextOpen));
     backdropButton.hidden = !nextOpen;
+
     if (restoreFocus) menuTrigger.focus();
   }
 
@@ -295,15 +324,18 @@ function initMobileSidebar(): void {
 
   sidebarRoot.addEventListener("click", (event: MouseEvent) => {
     if (!mobile.matches) return;
+
     const target = event.target;
     if (!(target instanceof Element) || !target.closest("a[href]")) return;
     if (event.defaultPrevented) return;
+
     setOpen(false);
   });
 
   document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !sidebarRoot.classList.contains("open"))
       return;
+
     event.preventDefault();
     setOpen(false, true);
   });
@@ -317,6 +349,7 @@ function initSidebarVisibility(): void {
     "[data-sidebar-visibility-toggle]",
   );
   if (!sidebar || !toggle) return;
+
   const visibilityToggle = toggle;
   const mobile = window.matchMedia(MOBILE_SIDEBAR_QUERY);
 
@@ -329,24 +362,31 @@ function initSidebarVisibility(): void {
         // Storage can be unavailable in privacy-restricted browser contexts.
       }
     }
+
     const hidden =
       !mobile.matches &&
       document.documentElement.classList.contains("sidebar-hidden");
+
     visibilityToggle.setAttribute("aria-expanded", String(!hidden));
+
     const label = hidden ? "Show navigation" : "Hide navigation";
+
     visibilityToggle.setAttribute("aria-label", label);
     visibilityToggle.title = label;
   }
 
   visibilityToggle.addEventListener("click", () => {
     if (mobile.matches) return;
+
     const hidden = document.documentElement.classList.toggle("sidebar-hidden");
+
     try {
       if (hidden) window.localStorage.setItem(SIDEBAR_HIDDEN_KEY, "true");
       else window.localStorage.removeItem(SIDEBAR_HIDDEN_KEY);
     } catch {
       // Storage can be unavailable in privacy-restricted browser contexts.
     }
+
     updateToggle();
   });
 
@@ -358,6 +398,7 @@ function initSidebarResize(): void {
   const sidebar = document.querySelector<HTMLElement>("[data-sidebar]");
   const handle = document.querySelector<HTMLElement>("[data-sidebar-resizer]");
   if (!sidebar || !handle) return;
+
   const sidebarRoot = sidebar;
   const resizeHandle = handle;
   let startX = 0;
@@ -366,6 +407,7 @@ function initSidebarResize(): void {
 
   function setWidth(width: number): number {
     const next = syncSidebarWidthSetting(width);
+
     document.body.style.setProperty("--sidebar", `${next}px`);
     resizeHandle.setAttribute("aria-valuenow", String(next));
     return next;
@@ -374,6 +416,7 @@ function initSidebarResize(): void {
   async function persistWidth(width: number): Promise<void> {
     const url = resizeHandle.dataset.sidebarWidthUrl;
     if (!url) return;
+
     try {
       await postJSON(url, { width });
     } catch (error) {
@@ -384,6 +427,7 @@ function initSidebarResize(): void {
   function finishResize(event?: PointerEvent): void {
     if (activePointer === undefined) return;
     if (event && event.pointerId !== activePointer) return;
+
     activePointer = undefined;
     document.body.classList.remove("sidebar-resizing");
     void persistWidth(Math.round(sidebarRoot.getBoundingClientRect().width));
@@ -391,6 +435,7 @@ function initSidebarResize(): void {
 
   handle.addEventListener("pointerdown", (event: PointerEvent) => {
     if (window.matchMedia("(max-width: 800px)").matches) return;
+
     activePointer = event.pointerId;
     startX = event.clientX;
     startWidth = sidebarRoot.getBoundingClientRect().width;
@@ -406,8 +451,11 @@ function initSidebarResize(): void {
   handle.addEventListener("pointercancel", finishResize);
   handle.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
     event.preventDefault();
+
     const direction = event.key === "ArrowRight" ? 10 : -10;
+
     void persistWidth(
       setWidth(sidebarRoot.getBoundingClientRect().width + direction),
     );
@@ -435,6 +483,7 @@ function initSidebarWidthSetting(): void {
       apply(Number(preset.dataset.sidebarWidthPreset));
     });
   }
+
   syncSidebarWidthSetting(Number(input.value));
 }
 

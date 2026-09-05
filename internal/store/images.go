@@ -64,9 +64,11 @@ ORDER BY i.created_at DESC,i.id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var images []Image
+
 	for rows.Next() {
 		var image Image
 		if err := rows.Scan(
@@ -81,8 +83,10 @@ ORDER BY i.created_at DESC,i.id DESC`, args...)
 		); err != nil {
 			return nil, err
 		}
+
 		images = append(images, image)
 	}
+
 	return images, rows.Err()
 }
 
@@ -117,6 +121,7 @@ WHERE i.id=$1`, id).Scan(
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Image{}, ErrNotFound
 	}
+
 	return image, err
 }
 
@@ -131,6 +136,7 @@ WHERE id=$1`, id).
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ImageData{}, ErrNotFound
 	}
+
 	return image, err
 }
 
@@ -142,5 +148,6 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }

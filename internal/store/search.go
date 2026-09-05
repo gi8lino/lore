@@ -15,6 +15,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 	for _, token := range searchTokens(query) {
 		key, value, found := strings.Cut(token, ":")
 		key = strings.ToLower(key)
+
 		if found && value != "" &&
 			(key == "tag" || key == "group" || key == "title" || key == "namespace" || key == "author" || key == "status" || key == "owner" || key == "property") {
 			filters[key] = append(filters[key], value)
@@ -22,6 +23,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 			textTerms = append(textTerms, token)
 		}
 	}
+
 	args := []any{}
 	where := []string{"p.deleted_at IS NULL"}
 	add := func(value any) string {
@@ -31,6 +33,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 
 	text := strings.Join(textTerms, " ")
 	rank := "0::real"
+
 	if text != "" {
 		p := add(text)
 		where = append(where, "p.search_vector @@ websearch_to_tsquery('english', "+p+")")
@@ -77,10 +80,12 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 		if !ok || strings.TrimSpace(key) == "" {
 			continue
 		}
+
 		keyParam := add(strings.ToLower(strings.TrimSpace(key)))
 		valueParam := add("%" + strings.TrimSpace(value) + "%")
 		where = append(where, "EXISTS (SELECT 1 FROM page_properties pp WHERE pp.page_id=p.id AND lower(pp.key)="+keyParam+" AND pp.value ILIKE "+valueParam+")")
 	}
+
 	args = append(args, limit)
 	limitParam := fmt.Sprintf("$%d", len(args))
 	sql := `
@@ -98,16 +103,20 @@ LIMIT ` + limitParam
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var out []Page
+
 	for rows.Next() {
 		var p Page
 		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Icon, &p.Markdown, &p.CreatedBy, &p.UpdatedBy, &p.Author, &p.CreatedAt, &p.UpdatedAt, &p.ViewCount, &p.Tags, &p.Rank); err != nil {
 			return nil, err
 		}
+
 		out = append(out, p)
 	}
+
 	return out, rows.Err()
 }
 
@@ -127,7 +136,9 @@ LIMIT $2`,
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	return collectPages(rows)
 }
 
@@ -145,7 +156,9 @@ LIMIT $1`,
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	return collectPages(rows)
 }
 
@@ -160,13 +173,16 @@ func searchTokens(query string) []string {
 		if current.Len() == 0 {
 			return
 		}
+
 		tokens = append(tokens, current.String())
+
 		current.Reset()
 	}
 
 	for _, r := range query {
 		if escaped {
 			current.WriteRune(r)
+
 			escaped = false
 			continue
 		}
@@ -190,11 +206,13 @@ func searchTokens(query string) []string {
 			flush()
 			continue
 		}
+
 		current.WriteRune(r)
 	}
 	if escaped {
 		current.WriteRune('\\')
 	}
+
 	flush()
 	return tokens
 }

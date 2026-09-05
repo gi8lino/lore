@@ -13,7 +13,9 @@ export interface AttachmentItem {
 
 function isAttachmentItem(value: unknown): value is AttachmentItem {
   if (typeof value !== "object" || value === null) return false;
+
   const item = value as Partial<AttachmentItem>;
+
   return (
     typeof item.id === "number" &&
     typeof item.filename === "string" &&
@@ -66,17 +68,23 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
   // Builds one attachment-library row.
   function row(item: AttachmentItem): HTMLElement {
     const element = document.createElement("div");
+
     element.className = "attachment-row";
+
     const info = document.createElement("span");
     const name = document.createElement("strong");
     const meta = document.createElement("small");
+
     name.textContent = item.filename;
     meta.textContent = `${Math.max(1, Math.round(item.size_bytes / 1024))} KiB · ${item.usage_count || 0} reference${item.usage_count === 1 ? "" : "s"}`;
     info.append(name, meta);
 
     const actions = document.createElement("span");
+
     actions.className = "attachment-row-actions";
+
     const insert = document.createElement("button");
+
     insert.type = "button";
     insert.className = "button";
     insert.textContent = "Insert";
@@ -84,7 +92,9 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
       insertMarkdownAtSelection(editor, attachmentMarkdown(item));
       attachmentDialog.close();
     });
+
     const remove = document.createElement("button");
+
     remove.type = "button";
     remove.className = "button danger";
     remove.textContent = "Delete";
@@ -96,9 +106,11 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
         ))
       )
         return;
+
       const response = await fetch(`/api/attachments/${item.id}`, {
         method: "DELETE",
       });
+
       if (response.ok) element.remove();
     });
     actions.append(insert, remove);
@@ -109,6 +121,7 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
   // Loads attachments into the library dialog.
   async function load(): Promise<void> {
     attachmentBody.innerHTML = '<p class="muted">Loading files…</p>';
+
     const response = await fetch(attachmentListURL, {
       headers: { Accept: "application/json" },
     });
@@ -117,18 +130,22 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
         '<p class="muted">Files could not be loaded.</p>';
       return;
     }
+
     const payload: unknown = await response.json();
     const items = Array.isArray(payload)
       ? payload.filter(isAttachmentItem)
       : [];
+
     attachmentBody.replaceChildren();
     if (!items.length) {
       const empty = document.createElement("p");
+
       empty.className = "muted";
       empty.textContent = "No attachments yet.";
       attachmentBody.append(empty);
       return;
     }
+
     items.forEach((item) => attachmentBody.append(row(item)));
   }
 
@@ -143,9 +160,12 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
   upload?.addEventListener("change", async () => {
     const file = upload.files?.[0];
     if (!file) return;
+
     const data = new FormData();
+
     data.append("file", file);
     attachmentStatus.textContent = `Uploading ${file.name}…`;
+
     const response = await fetch(attachmentUploadURL, {
       method: "POST",
       body: data,
@@ -154,11 +174,13 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
       attachmentStatus.textContent = "Upload failed.";
       return;
     }
+
     const payload: unknown = await response.json();
     if (!isAttachmentItem(payload)) {
       attachmentStatus.textContent = "Upload returned an invalid response.";
       return;
     }
+
     insertMarkdownAtSelection(editor, attachmentMarkdown(payload));
     upload.value = "";
     attachmentStatus.textContent = "Uploaded and inserted.";

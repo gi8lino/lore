@@ -89,5 +89,6 @@ test("preserves Markdown hard line breaks", () => {
 test("formatting is idempotent", () => {
   const source = "|A|B|\n|---|---:|\n| one |2|\n\n\n-  item\n";
   const once = formatMarkdownDocument(source);
+
   assert.equal(formatMarkdownDocument(once), once);
 });

@@ -17,7 +17,9 @@ func RevisionHistory(catalogUseCases pageRevisionService, views *Views) http.Han
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		user, _ := auth.User(r)
+
 		renderFragment(views, w, "page", "revision-list", ViewData{
 			Revisions:    revision.AnalyzeAll(revisions),
 			RevisionSlug: r.PathValue("slug"),
@@ -35,11 +37,13 @@ func RestoreRevision(pageUseCases pageRevisionWriter, views *Views) http.Handler
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid revision.")
 			return
 		}
+
 		page, err := pageUseCases.RestoreRevision(r.Context(), r.PathValue("slug"), number, user)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		http.Redirect(w, r, "/pages/"+page.Slug, http.StatusSeeOther)
 	}
 }

@@ -32,11 +32,13 @@ func CreatePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 			writeTokenFormError(w, err)
 			return
 		}
+
 		issued, err := tokenUseCases.CreateToken(r.Context(), name, user.ID, user.ID, expiresAt)
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusCreated, issued)
 	}
 }
@@ -53,6 +55,7 @@ func DeletePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 			)
 			return
 		}
+
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		if err != nil || id <= 0 {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid token identifier.")
@@ -63,9 +66,11 @@ func DeletePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
 				return
 			}
+
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -81,6 +86,7 @@ func CreateAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 			writeTokenFormError(w, err)
 			return
 		}
+
 		userID, err := strconv.ParseInt(r.FormValue("user_id"), 10, 64)
 		if err != nil || userID <= 0 {
 			httpresponse.Problem(w,
@@ -90,15 +96,18 @@ func CreateAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 			)
 			return
 		}
+
 		issued, err := tokenUseCases.CreateToken(r.Context(), name, userID, admin.ID, expiresAt)
 		if err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				httpresponse.Problem(w, http.StatusNotFound, "User not found.")
 				return
 			}
+
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusCreated, issued)
 	}
 }
@@ -116,9 +125,11 @@ func DeleteAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
 				return
 			}
+
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -152,14 +163,17 @@ func parseTokenForm(r *http.Request) (string, *time.Time, error) {
 	if value == "" {
 		return name, nil, nil
 	}
+
 	date, err := time.Parse("2006-01-02", value)
 	if err != nil {
 		return "", nil, &tokenFormError{field: "expires", message: "Enter a valid expiration date."}
 	}
+
 	expiresAt := date.AddDate(0, 0, 1).Add(-time.Nanosecond)
 	if !expiresAt.After(time.Now().UTC()) {
 		return "", nil, &tokenFormError{field: "expires", message: "Expiration date must be in the future."}
 	}
+
 	return name, &expiresAt, nil
 }
 

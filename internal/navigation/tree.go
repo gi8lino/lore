@@ -70,19 +70,25 @@ type branch struct {
 // Build derives navigation from page slugs, persisted metadata, and user presentation state.
 func Build(pages []Page, options Options) []Node {
 	root := &branch{children: map[string]*branch{}}
+
 	for _, page := range pages {
 		parts := strings.Split(strings.Trim(page.Slug, "/"), "/")
 		current := root
+
 		for index, part := range parts {
 			if part == "" {
 				continue
 			}
+
 			child := current.children[part]
+
 			if child == nil {
 				slug := part
+
 				if current.slug != "" {
 					slug = current.slug + "/" + part
 				}
+
 				child = &branch{title: part, slug: slug, children: map[string]*branch{}}
 				current.children[part] = child
 			}
@@ -92,22 +98,27 @@ func Build(pages []Page, options Options) []Node {
 			if index == len(parts)-1 {
 				child.page = true
 				child.title = page.Title
+
 				if page.Icon != "" {
 					child.icon = page.Icon
 				}
 			}
+
 			current = child
 		}
 	}
 
 	expanded := make(map[string]bool, len(options.Expanded))
+
 	for _, slug := range options.Expanded {
 		slug = strings.Trim(strings.TrimSpace(slug), "/")
 		if slug != "" {
 			expanded[slug] = true
 		}
 	}
+
 	activeSlug := strings.Trim(strings.TrimSpace(options.ActiveSlug), "/")
+
 	return nodes(root, 0, activeSlug, expanded, options.ShowPageCounts)
 }
 
@@ -115,6 +126,7 @@ func Build(pages []Page, options Options) []Node {
 func Children(tree []Node, slug string) []Node {
 	slug = strings.Trim(strings.TrimSpace(slug), "/")
 	children, _ := children(tree, slug)
+
 	return children
 }
 
@@ -134,11 +146,13 @@ func children(tree []Node, slug string) ([]Node, bool) {
 // nodes recursively converts internal branches into sorted navigation nodes.
 func nodes(parent *branch, depth int, activeSlug string, expanded map[string]bool, showPageCounts bool) []Node {
 	result := make([]Node, 0, len(parent.children))
+
 	for _, child := range parent.children {
 		children := nodes(child, depth+1, activeSlug, expanded, showPageCounts)
 		active := child.page && child.slug == activeSlug
 		containsActive := active
 		pageCount := 0
+
 		if child.page {
 			pageCount++
 		}
@@ -148,6 +162,7 @@ func nodes(parent *branch, depth int, activeSlug string, expanded map[string]boo
 				containsActive = true
 			}
 		}
+
 		result = append(result, Node{
 			Title:          child.title,
 			Slug:           child.slug,
@@ -162,12 +177,14 @@ func nodes(parent *branch, depth int, activeSlug string, expanded map[string]boo
 			Children:       children,
 		})
 	}
+
 	sort.Slice(result, func(i, j int) bool {
 		leftFolder := len(result[i].Children) > 0
 		rightFolder := len(result[j].Children) > 0
 		if leftFolder != rightFolder {
 			return leftFolder
 		}
+
 		return strings.ToLower(result[i].Title) < strings.ToLower(result[j].Title)
 	})
 	return result

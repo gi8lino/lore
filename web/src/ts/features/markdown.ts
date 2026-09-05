@@ -27,6 +27,7 @@ function setupMarkdownTabs(group: HTMLElement): void {
   function activate(index: number, focus = false): void {
     for (const [candidateIndex, tab] of tabs.entries()) {
       const active = candidateIndex === index;
+
       tab.classList.toggle("active", active);
       tab.setAttribute("aria-selected", String(active));
       tab.tabIndex = active ? 0 : -1;
@@ -42,6 +43,7 @@ function setupMarkdownTabs(group: HTMLElement): void {
     tab.addEventListener("click", () => activate(index));
     tab.addEventListener("keydown", (event: KeyboardEvent) => {
       let next = index;
+
       if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
       else if (event.key === "ArrowLeft")
         next = (index - 1 + tabs.length) % tabs.length;
@@ -58,6 +60,7 @@ function setupMarkdownTabs(group: HTMLElement): void {
     0,
     tabs.findIndex((tab) => tab.classList.contains("active")),
   );
+
   activate(initial);
 }
 
@@ -90,10 +93,13 @@ function compareTableRows(
 function tableControlIcon(pathData: string): SVGSVGElement {
   const namespace = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(namespace, "svg");
+
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("focusable", "false");
+
   const path = document.createElementNS(namespace, "path");
+
   path.setAttribute("d", pathData);
   svg.append(path);
   return svg;
@@ -121,18 +127,23 @@ function setupTableSorting(
 
       for (const candidate of headers) {
         candidate.setAttribute("aria-sort", "none");
+
         const candidateIndicator = candidate.querySelector<HTMLElement>(
           ":scope .table-sort-indicator",
         );
+
         if (candidateIndicator) candidateIndicator.textContent = "↕";
       }
 
       header.setAttribute("aria-sort", direction);
       indicator.textContent = direction === "ascending" ? "↑" : "↓";
+
       const rows = tableRows(table);
+
       rows.sort((left, right) =>
         compareTableRows(left, right, column, direction),
       );
+
       for (const row of rows) body.append(row);
     });
   });
@@ -152,30 +163,44 @@ function setupTableFiltering(
   let activeButton: HTMLButtonElement | null = null;
 
   const menu = document.createElement("div");
+
   menu.className = "table-filter-menu";
   menu.hidden = true;
+
   const menuHeader = document.createElement("div");
+
   menuHeader.className = "table-filter-menu-header";
+
   const menuTitle = document.createElement("strong");
+
   menuTitle.className = "table-filter-menu-title";
   menuHeader.append(menuTitle);
 
   const field = document.createElement("label");
+
   field.className = "table-filter-field";
+
   const label = document.createElement("span");
+
   label.className = "sr-only";
   label.textContent = "Filter column";
+
   const searchIcon = document.createElement("span");
+
   searchIcon.className = "table-filter-search-icon";
   searchIcon.append(
     tableControlIcon("M21 21l-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"),
   );
+
   const input = document.createElement("input");
+
   input.type = "search";
   input.className = "table-filter-input";
   input.placeholder = "Filter values";
   input.autocomplete = "off";
+
   const clear = document.createElement("button");
+
   clear.type = "button";
   clear.className = "table-filter-clear";
   clear.setAttribute("aria-label", "Clear column filter");
@@ -188,6 +213,7 @@ function setupTableFiltering(
   function updateButtonStates(): void {
     for (const [column, button] of filterButtons.entries()) {
       const active = (filters.get(column) || "") !== "";
+
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
     }
@@ -196,6 +222,7 @@ function setupTableFiltering(
   function applyFilters(): void {
     for (const row of rows) {
       let matches = true;
+
       for (const [column, query] of filters.entries()) {
         if (!query) continue;
         if (!tableCellText(row, column).toLocaleLowerCase().includes(query)) {
@@ -203,6 +230,7 @@ function setupTableFiltering(
           break;
         }
       }
+
       row.hidden = !matches;
     }
     updateButtonStates();
@@ -213,7 +241,9 @@ function setupTableFiltering(
   }: { focusButton?: boolean } = {}): void {
     activeButton?.setAttribute("aria-expanded", "false");
     menu.hidden = true;
+
     if (focusButton) activeButton?.focus();
+
     activeColumn = -1;
     activeButton = null;
   }
@@ -224,6 +254,7 @@ function setupTableFiltering(
     const menuWidth = menu.offsetWidth;
     const maxLeft = Math.max(0, shell.clientWidth - menuWidth);
     const preferredLeft = buttonRect.right - shellRect.left - menuWidth;
+
     menu.style.left = `${Math.max(0, Math.min(preferredLeft, maxLeft))}px`;
     menu.style.top = `${buttonRect.bottom - shellRect.top + 4}px`;
   }
@@ -231,10 +262,13 @@ function setupTableFiltering(
   function openMenu(column: number, button: HTMLButtonElement): void {
     if (activeButton && activeButton !== button)
       activeButton.setAttribute("aria-expanded", "false");
+
     activeColumn = column;
     activeButton = button;
+
     const columnLabel =
       headers[column]?.dataset.tableColumnLabel || `Column ${column + 1}`;
+
     menuTitle.textContent = `Filter ${columnLabel}`;
     input.value = filters.get(column) || "";
     clear.hidden = input.value === "";
@@ -254,19 +288,24 @@ function setupTableFiltering(
 
   input.addEventListener("input", () => {
     if (activeColumn < 0) return;
+
     const query = input.value.trim().toLocaleLowerCase();
+
     if (query === "") filters.delete(activeColumn);
     else filters.set(activeColumn, query);
+
     clear.hidden = query === "";
     applyFilters();
   });
   input.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
+
     event.preventDefault();
     closeMenu({ focusButton: true });
   });
   clear.addEventListener("click", () => {
     if (activeColumn < 0) return;
+
     input.value = "";
     filters.delete(activeColumn);
     clear.hidden = true;
@@ -282,6 +321,7 @@ function setupTableFiltering(
         activeButton === focused
       )
         return;
+
       closeMenu();
     }, 0);
   });
@@ -289,10 +329,12 @@ function setupTableFiltering(
     const target = event.target;
     if (menu.hidden || !(target instanceof Element) || menu.contains(target))
       return;
+
     const filterButton = target.closest<HTMLButtonElement>(
       ".table-filter-button",
     );
     if (filterButton && filterButtons.includes(filterButton)) return;
+
     closeMenu();
   });
   window.addEventListener("resize", () => {
@@ -315,24 +357,35 @@ function setupTableHeaders(
   const headers = [...(table.tHead?.rows[0]?.cells ?? [])];
   const body = table.tBodies[0];
   if (!headers.length || !body) return;
+
   const filterButtons: HTMLButtonElement[] = [];
 
   headers.forEach((header, column) => {
     const columnLabel = header.textContent?.trim() || `Column ${column + 1}`;
+
     header.dataset.tableColumnLabel = columnLabel;
+
     if (sortable) header.setAttribute("aria-sort", "none");
+
     const content = document.createElement("span");
+
     content.className = "table-header-label";
+
     while (header.firstChild) content.append(header.firstChild);
+
     const headerCell = document.createElement("div");
+
     headerCell.className = "table-header-cell";
 
     if (sortable) {
       const sortButton = document.createElement("button");
+
       sortButton.type = "button";
       sortButton.className = "table-sort-button";
       sortButton.setAttribute("aria-label", `Sort by ${columnLabel}`);
+
       const indicator = document.createElement("span");
+
       indicator.className = "table-sort-indicator";
       indicator.textContent = "↕";
       indicator.setAttribute("aria-hidden", "true");
@@ -342,6 +395,7 @@ function setupTableHeaders(
 
     if (filterable) {
       const filterButton = document.createElement("button");
+
       filterButton.type = "button";
       filterButton.className = "table-filter-button";
       filterButton.setAttribute("aria-label", `Filter ${columnLabel}`);
@@ -354,6 +408,7 @@ function setupTableHeaders(
       headerCell.append(filterButton);
       filterButtons.push(filterButton);
     }
+
     header.append(headerCell);
   });
 
@@ -363,13 +418,19 @@ function setupTableHeaders(
 
 function setupInteractiveTable(table: HTMLTableElement): void {
   if (table.dataset.loreInteractiveReady === "true") return;
+
   const sortable = table.classList.contains("lore-table-sortable");
   const filterable = table.classList.contains("lore-table-filterable");
   if (!sortable && !filterable) return;
+
   table.dataset.loreInteractiveReady = "true";
+
   const shell = document.createElement("div");
+
   shell.className = "lore-table-shell";
+
   const scroll = document.createElement("div");
+
   scroll.className = "lore-table-scroll";
   table.before(shell);
   shell.append(scroll);
@@ -385,6 +446,7 @@ export function setupMarkdownEnhancements(root: MarkdownRoot = document): void {
     "table.lore-table-sortable, table.lore-table-filterable",
   ))
     setupInteractiveTable(table);
+
   setupCodeCopyButtons(root);
 }
 
@@ -397,11 +459,15 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
       pre.parentElement?.classList.contains("code-block")
     )
       continue;
+
     const wrapper = document.createElement("div");
+
     wrapper.className = "code-block";
     pre.before(wrapper);
     wrapper.append(pre);
+
     const button = document.createElement("button");
+
     button.type = "button";
     button.className = "code-copy-button";
     button.textContent = "Copy";
@@ -409,9 +475,12 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
     wrapper.append(button);
 
     let resetTimer: ReturnType<typeof setTimeout> | undefined;
+
     button.addEventListener("click", async () => {
       if (resetTimer) clearTimeout(resetTimer);
+
       button.disabled = true;
+
       try {
         await copyText(code.textContent ?? "");
         button.textContent = "Copied";
@@ -438,6 +507,7 @@ export async function renderMermaid(
   force = false,
 ): Promise<void> {
   if (!force && document.body?.dataset.renderMermaid !== "true") return;
+
   const blocks = [
     ...root.querySelectorAll<HTMLElement>("pre code.language-mermaid"),
   ];
@@ -447,14 +517,17 @@ export async function renderMermaid(
     const mermaidURL =
       "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
     const imported = (await import(mermaidURL)) as { default: MermaidModule };
+
     mermaidModule = imported.default;
   }
   for (const block of blocks) {
     const diagram = document.createElement("div");
+
     diagram.className = "mermaid";
     diagram.textContent = block.textContent;
     block.parentElement?.replaceWith(diagram);
   }
+
   mermaidModule.initialize({
     startOnLoad: false,
     theme:

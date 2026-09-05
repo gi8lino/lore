@@ -47,24 +47,29 @@ type DiffLine struct {
 func Analyze(record Revision) Revision {
 	record.AddedLines, record.RemovedLines = lineChanges(record.PreviousMarkdown, record.Markdown)
 	record.Diff = diff(record.PreviousMarkdown, record.Markdown, record.Number)
+
 	return record
 }
 
 // AnalyzeAll derives comparisons for every revision in records.
 func AnalyzeAll(records []Revision) []Revision {
 	result := make([]Revision, len(records))
+
 	for index, record := range records {
 		result[index] = Analyze(record)
 	}
+
 	return result
 }
 
 // diff returns a compact unified patch with three context lines per hunk.
 func diff(previous, current string, number int) []DiffLine {
 	fromFile := fmt.Sprintf("revision %d", number-1)
+
 	if number == 1 {
 		fromFile = "/dev/null"
 	}
+
 	patch, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A:        difflib.SplitLines(previous),
 		B:        difflib.SplitLines(current),
@@ -78,8 +83,10 @@ func diff(previous, current string, number int) []DiffLine {
 
 	lines := strings.Split(strings.TrimSuffix(patch, "\n"), "\n")
 	result := make([]DiffLine, 0, len(lines))
+
 	for _, line := range lines {
 		item := DiffLine{Kind: "context", Text: line}
+
 		switch {
 		case strings.HasPrefix(line, "--- "), strings.HasPrefix(line, "+++ "):
 			item.Kind = "header"
@@ -94,8 +101,10 @@ func diff(previous, current string, number int) []DiffLine {
 		case strings.HasPrefix(line, "\\"):
 			item.Kind = "note"
 		}
+
 		result = append(result, item)
 	}
+
 	return result
 }
 
@@ -103,6 +112,7 @@ func diff(previous, current string, number int) []DiffLine {
 func lineChanges(previous, current string) (int, int) {
 	before := strings.Split(previous, "\n")
 	after := strings.Split(current, "\n")
+
 	if previous == "" {
 		before = nil
 	}
@@ -112,18 +122,23 @@ func lineChanges(previous, current string) (int, int) {
 
 	// Longest common subsequence gives stable, intuitive line counts without storing a diff.
 	dynamic := make([]int, len(after)+1)
+
 	for _, left := range before {
 		last := 0
 		for index, right := range after {
 			old := dynamic[index+1]
+
 			if left == right {
 				dynamic[index+1] = last + 1
 			} else if dynamic[index] > dynamic[index+1] {
 				dynamic[index+1] = dynamic[index]
 			}
+
 			last = old
 		}
 	}
+
 	common := dynamic[len(after)]
+
 	return len(after) - common, len(before) - common
 }

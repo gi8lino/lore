@@ -26,10 +26,13 @@ func ListAttachments(mediaUseCases attachmentService, logger *slog.Logger) http.
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		out := make([]AttachmentItem, 0, len(items))
+
 		for _, item := range items {
 			out = append(out, attachmentItem(item))
 		}
+
 		httpresponse.Respond(w, http.StatusOK, out)
 	}
 }
@@ -48,16 +51,20 @@ func UploadAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 			)
 			return
 		}
+
 		defer file.Close() // nolint:errcheck
+
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxAttachmentBytes+1))
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		item, err := mediaUseCases.UploadAttachment(r.Context(), header.Filename, data, user)
 		if writeMediaUploadProblem(logger, w, err, attachmentMedia) {
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusCreated, attachmentItem(item))
 	}
 }
@@ -70,19 +77,23 @@ func ServeAttachment(mediaUseCases attachmentService) http.HandlerFunc {
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
+
 		item, err := mediaUseCases.AttachmentContent(r.Context(), id)
 		if err != nil {
 			if err == service.ErrNotFound {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
+
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
+
 		w.Header().Set("Content-Type", item.ContentType)
 		w.Header().Set("Content-Length", strconv.Itoa(len(item.Data)))
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, item.Filename))
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+
 		_, _ = w.Write(item.Data)
 	}
 }
@@ -96,10 +107,12 @@ func DeleteAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid attachment identifier.")
 			return
 		}
+
 		err = mediaUseCases.DeleteAttachment(r.Context(), id, user)
 		if writeMediaDeleteProblem(logger, w, err, attachmentMedia) {
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

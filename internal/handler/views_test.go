@@ -29,10 +29,15 @@ func TestFingerprintAssets(t *testing.T) {
 	}
 
 	firstVersion, err := fingerprintAssets(first)
+
 	assert.NoError(t, err)
+
 	repeatedVersion, err := fingerprintAssets(first)
+
 	assert.NoError(t, err)
+
 	secondVersion, err := fingerprintAssets(second)
+
 	assert.NoError(t, err)
 
 	assert.Len(t, firstVersion, 16)

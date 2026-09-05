@@ -56,7 +56,9 @@ func (s *Knowledge) SaveKnowledgeSnippet(
 	if err != nil {
 		return KnowledgeSnippet{}, err
 	}
+
 	_ = audit(s.repository, ctx, userID, "snippet.saved", "snippet", item.Name, item.Kind)
+
 	return item, nil
 }
 
@@ -65,7 +67,9 @@ func (s *Knowledge) DeleteKnowledgeSnippet(ctx context.Context, id, actorID int6
 	if err := s.repository.DeleteKnowledgeSnippet(ctx, id); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository, ctx, actorID, "snippet.deleted", "snippet", fmt.Sprint(id), "")
+
 	return nil
 }
 

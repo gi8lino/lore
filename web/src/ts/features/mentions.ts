@@ -20,12 +20,14 @@ function fencedCodeAt(value: string, caret: number): boolean {
   for (const line of lines) {
     const match = line.match(/^ {0,3}(`{3,}|~{3,})/u);
     if (!match) continue;
+
     const marker = match[1];
     const next: Fence = { character: marker[0], length: marker.length };
     if (!fence) {
       fence = next;
       continue;
     }
+
     if (fence.character === next.character && next.length >= fence.length)
       fence = null;
   }
@@ -44,11 +46,16 @@ function inlineCodeAt(value: string, caret: number): boolean {
       index += 1;
       continue;
     }
+
     let end = index + 1;
+
     while (line[end] === "`") end += 1;
+
     const length = end - index;
+
     if (open === 0) open = length;
     else if (length === open) open = 0;
+
     index = end;
   }
 
@@ -84,6 +91,7 @@ function initials(user: MentionUser): string {
   const parts = value.split(/\s+/u).filter(Boolean);
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toLocaleUpperCase();
+
   return `${parts[0][0]}${parts.at(-1)?.[0] ?? ""}`.toLocaleUpperCase();
 }
 
@@ -97,14 +105,18 @@ function appendHighlighted(
     target.textContent = value;
     return;
   }
+
   const lower = value.toLocaleLowerCase();
   const start = lower.indexOf(query.toLocaleLowerCase());
   if (start < 0) {
     target.textContent = value;
     return;
   }
+
   target.append(document.createTextNode(value.slice(0, start)));
+
   const mark = document.createElement("mark");
+
   mark.textContent = value.slice(start, start + query.length);
   target.append(
     mark,
@@ -143,11 +155,14 @@ function caretOffset(source: HTMLTextAreaElement, caret: number): CaretOffset {
   mirror.style.wordBreak = "normal";
   mirror.style.boxSizing = computed.boxSizing;
   mirror.style.width = `${source.offsetWidth}px`;
+
   for (const property of properties)
     mirror.style.setProperty(property, computed.getPropertyValue(property));
 
   mirror.textContent = source.value.slice(0, caret);
+
   const marker = document.createElement("span");
+
   marker.textContent = source.value.slice(caret, caret + 1) || "\u200b";
   mirror.append(marker);
   document.body.append(mirror);
@@ -159,6 +174,7 @@ function caretOffset(source: HTMLTextAreaElement, caret: number): CaretOffset {
     left: marker.offsetLeft - source.scrollLeft,
     top: marker.offsetTop - source.scrollTop + lineHeight,
   };
+
   mirror.remove();
   return offset;
 }
@@ -177,10 +193,13 @@ function mentionUsers(value: unknown): MentionUser[] {
 function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   const anchor = source.parentElement;
   if (!anchor) return;
+
   const suggestionAnchor = anchor;
+
   suggestionAnchor.classList.add("mention-suggestion-anchor");
 
   const menu = document.createElement("div");
+
   menu.className = "mention-suggestion-menu";
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
@@ -204,6 +223,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
 
   function position(): void {
     if (menu.hidden) return;
+
     const sourceRect = source.getBoundingClientRect();
     const anchorRect = suggestionAnchor.getBoundingClientRect();
     const caret = caretOffset(source, source.selectionStart ?? 0);
@@ -213,6 +233,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     );
     const rawLeft = sourceRect.left - anchorRect.left + caret.left;
     const maxLeft = Math.max(8, suggestionAnchor.clientWidth - menuWidth - 8);
+
     menu.style.width = `${menuWidth}px`;
     menu.style.left = `${Math.max(8, Math.min(rawLeft, maxLeft))}px`;
     menu.style.top = `${sourceRect.top - anchorRect.top + caret.top}px`;
@@ -220,8 +241,10 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
 
   function render(): void {
     menu.replaceChildren();
+
     if (!results.length) {
       const empty = document.createElement("div");
+
       empty.className = "mention-suggestion-empty";
       empty.textContent = trigger?.query
         ? "No matching people."
@@ -230,6 +253,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     } else {
       results.forEach((user, index) => {
         const option = document.createElement("button");
+
         option.type = "button";
         option.className = "mention-suggestion-option";
         option.dataset.mentionIndex = String(index);
@@ -237,21 +261,29 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
         option.setAttribute("aria-selected", String(index === active));
 
         const avatar = document.createElement("span");
+
         avatar.className = "mention-suggestion-avatar";
         avatar.textContent = initials(user);
 
         const text = document.createElement("span");
+
         text.className = "mention-suggestion-text";
+
         const name = document.createElement("strong");
+
         appendHighlighted(
           name,
           user.display_name || user.username,
           trigger?.query || "",
         );
+
         const meta = document.createElement("small");
+
         appendHighlighted(meta, `@${user.username}`, trigger?.query || "");
+
         if (user.role) meta.append(document.createTextNode(` · ${user.role}`));
         if (user.self) meta.append(document.createTextNode(" · you"));
+
         text.append(name, meta);
 
         option.append(avatar, text);
@@ -267,7 +299,9 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   function choose(index: number): void {
     const user = results[index];
     if (!user || !trigger) return;
+
     const end = source.selectionStart ?? trigger.start;
+
     source.setRangeText(
       mentionReplacement(user.username),
       trigger.start,
@@ -287,7 +321,9 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     }
 
     trigger = next;
+
     const currentRequest = ++request;
+
     try {
       const response = await fetch(
         `/api/mentions/users?q=${encodeURIComponent(next.query)}`,
@@ -296,6 +332,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
         },
       );
       if (!response.ok || currentRequest !== request) return;
+
       results = mentionUsers(await response.json()).slice(0, resultLimit);
       active = results.length ? 0 : -1;
       render();
@@ -330,7 +367,9 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   menu.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const option = target.closest<HTMLElement>("[data-mention-index]");
+
     if (option) choose(Number(option.dataset.mentionIndex));
   });
 

@@ -54,7 +54,9 @@ func AdminImport(viewDataUseCases viewDataService, views *Views) http.HandlerFun
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.Query = r.URL.Query().Get("result")
+
 		render(views, w, "admin_import", data)
 	}
 }
@@ -68,26 +70,32 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 			httpresponse.Problem(w, http.StatusBadRequest, "Import is too large or invalid.")
 			return
 		}
+
 		format, err := parseImportFormat(r.FormValue("format"))
 		if err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, err.Error())
 			return
 		}
+
 		var candidates []importCandidate
+
 		for _, header := range r.MultipartForm.File["files"] {
 			items, err := importCandidatesFromFile(header, format)
 			if err != nil {
 				httpresponse.Problem(w, http.StatusBadRequest, "Import "+header.Filename+": "+err.Error())
 				return
 			}
+
 			candidates = append(candidates, items...)
 		}
+
 		if len(candidates) == 0 {
 			httpresponse.Problem(w, http.StatusBadRequest, "Choose at least one supported import file.")
 			return
 		}
 
 		importPages := make([]service.ImportedPage, 0, len(candidates))
+
 		for _, candidate := range candidates {
 			importPages = append(importPages, service.ImportedPage{
 				Slug:     candidate.Slug,
@@ -96,11 +104,13 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 				Source:   candidate.Source,
 			})
 		}
+
 		imported, err := pageUseCases.Import(r.Context(), importPages, string(format), user)
 		if err != nil {
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		http.Redirect(w, r, "/admin/import?result="+strconv.Itoa(imported), http.StatusSeeOther)
 	}
 }
@@ -111,6 +121,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 	if err != nil {
 		return nil, err
 	}
+
 	data, err := io.ReadAll(io.LimitReader(file, maxImportBytes+1))
 	closeErr := file.Close()
 	if err != nil {
@@ -122,8 +133,10 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 	if len(data) > maxImportBytes {
 		return nil, fmt.Errorf("file exceeds 100 MiB")
 	}
+
 	name := strings.TrimPrefix(strings.ReplaceAll(header.Filename, "\\", "/"), "./")
 	ext := strings.ToLower(path.Ext(name))
+
 	switch format {
 	case markdownImport:
 		if ext != ".md" && ext != ".markdown" {
@@ -132,11 +145,14 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 			}
 			return nil, fmt.Errorf("markdown imports require .md, .markdown, or .zip files")
 		}
+
 		title, err := markdownTitle(string(data))
 		if err != nil {
 			return nil, err
 		}
+
 		slug := strings.TrimSuffix(name, ext)
+
 		return []importCandidate{{Slug: slug, Title: title, Markdown: string(data), Source: "Markdown"}}, nil
 	case wikiJSImport:
 		if ext == ".zip" {
@@ -145,6 +161,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 		if ext != ".json" {
 			return nil, fmt.Errorf("imports from Wiki.js require .json or .zip files")
 		}
+
 		return importWikiJSON(data)
 	case confluenceImport:
 		if ext == ".zip" {
@@ -153,15 +170,19 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 		if ext != ".html" && ext != ".htm" {
 			return nil, fmt.Errorf("imports from Confluence require .html, .htm, or .zip files")
 		}
+
 		markdown, err := htmlToMarkdown(data)
 		if err != nil {
 			return nil, err
 		}
+
 		title, err := markdownTitle(markdown)
 		if err != nil {
 			return nil, err
 		}
+
 		slug := strings.TrimSuffix(name, ext)
+
 		return []importCandidate{{
 			Slug: slug, Title: title, Markdown: markdown, Source: "Confluence HTML",
 		}}, nil
@@ -176,12 +197,15 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var result []importCandidate
 	remaining := int64(maxImportBytes)
+
 	for _, entry := range reader.File {
 		if entry.FileInfo().IsDir() {
 			continue
 		}
+
 		name := strings.TrimPrefix(strings.ReplaceAll(entry.Name, "\\", "/"), "./")
 		ext := strings.ToLower(path.Ext(name))
 		if !supportedImportExtension(format, ext) {
@@ -190,21 +214,26 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 		if entry.UncompressedSize64 > uint64(remaining) {
 			return nil, fmt.Errorf("archive contents exceed 100 MiB")
 		}
+
 		file, err := entry.Open()
 		if err != nil {
 			return nil, err
 		}
+
 		content, err := readImportArchiveEntry(file, remaining)
 		if err != nil {
 			return nil, err
 		}
+
 		remaining -= int64(len(content))
+
 		switch format {
 		case markdownImport:
 			title, err := markdownTitle(string(content))
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
+
 			slug := strings.TrimSuffix(name, ext)
 			result = append(result, importCandidate{
 				Slug:     slug,
@@ -217,16 +246,19 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
+
 			result = append(result, items...)
 		case confluenceImport:
 			markdown, err := htmlToMarkdown(content)
 			if err != nil {
 				return nil, err
 			}
+
 			title, err := markdownTitle(markdown)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
+
 			slug := strings.TrimSuffix(name, ext)
 			result = append(result, importCandidate{
 				Slug:     slug,
@@ -236,6 +268,7 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 			})
 		}
 	}
+
 	return result, nil
 }
 
@@ -266,6 +299,7 @@ func readImportArchiveEntry(file io.ReadCloser, remaining int64) ([]byte, error)
 	if int64(len(content)) > remaining {
 		return nil, fmt.Errorf("archive contents exceed 100 MiB")
 	}
+
 	return content, nil
 }
 
@@ -282,7 +316,9 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 	if len(pages) == 0 {
 		return nil, fmt.Errorf("export from Wiki.js must contain at least one page")
 	}
+
 	result := make([]importCandidate, 0, len(pages))
+
 	for index, page := range pages {
 		page.Path = strings.TrimSpace(page.Path)
 		page.Title = strings.TrimSpace(page.Title)
@@ -295,10 +331,12 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 		if page.Content == "" {
 			return nil, fmt.Errorf("page %d from Wiki.js has no content", index+1)
 		}
+
 		result = append(result, importCandidate{
 			Slug: page.Path, Title: page.Title, Markdown: page.Content, Source: "Wiki.js JSON",
 		})
 	}
+
 	return result, nil
 }
 
@@ -322,6 +360,7 @@ func htmlToMarkdown(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	var output strings.Builder
 	var walk func(*xhtml.Node, int)
 	walk = func(node *xhtml.Node, listDepth int) {
@@ -330,25 +369,33 @@ func htmlToMarkdown(data []byte) (string, error) {
 			if text == "" {
 				return
 			}
+
 			leadingSpace := strings.TrimLeft(node.Data, " \t\r\n") != node.Data
 			trailingSpace := strings.TrimRight(node.Data, " \t\r\n") != node.Data
+
 			if leadingSpace && output.Len() > 0 {
 				current := output.String()
 				last := current[len(current)-1]
+
 				if last != ' ' && last != '\n' {
 					output.WriteByte(' ')
 				}
 			}
+
 			output.WriteString(text)
+
 			if trailingSpace {
 				output.WriteByte(' ')
 			}
+
 			return
 		}
 		if node.Type != xhtml.ElementNode && node.Type != xhtml.DocumentNode {
 			return
 		}
+
 		tag := strings.ToLower(node.Data)
+
 		switch tag {
 		case "script", "style", "nav":
 			return
@@ -392,33 +439,41 @@ func htmlToMarkdown(data []byte) (string, error) {
 			output.WriteString("\n```\n")
 		case "a":
 			href := ""
+
 			for _, attr := range node.Attr {
 				if attr.Key == "href" {
 					href = attr.Val
 					break
 				}
 			}
+
 			output.WriteString("](" + href + ")")
 		case "p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6":
 			output.WriteString("\n")
 		}
 	}
+
 	walk(root, 0)
+
 	lines := strings.Split(output.String(), "\n")
 	cleaned := make([]string, 0, len(lines))
 	blank := false
+
 	for _, line := range lines {
 		line = strings.TrimRight(line, " \t")
 		if strings.TrimSpace(line) == "" {
 			if blank {
 				continue
 			}
+
 			blank = true
 			cleaned = append(cleaned, "")
 			continue
 		}
+
 		blank = false
 		cleaned = append(cleaned, line)
 	}
+
 	return strings.TrimSpace(strings.Join(cleaned, "\n")) + "\n", nil
 }

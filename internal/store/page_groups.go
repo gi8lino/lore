@@ -17,16 +17,20 @@ ORDER BY lower(g.name),g.id`, pageID)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var groups []Group
+
 	for rows.Next() {
 		var group Group
 		if err := rows.Scan(&group.ID, &group.Name); err != nil {
 			return nil, err
 		}
+
 		groups = append(groups, group)
 	}
+
 	return groups, rows.Err()
 }
 
@@ -38,7 +42,9 @@ func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user
 	if groupID < 0 {
 		return ErrForbidden
 	}
+
 	var allowed bool
+
 	if user.Role == "admin" {
 		if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM wiki_groups WHERE id=$1)`, groupID).Scan(&allowed); err != nil {
@@ -50,15 +56,18 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 			return err
 		}
 	}
+
 	if !allowed {
 		return ErrForbidden
 	}
+
 	return nil
 }
 
 // replacePageGroups validates and updates page collaboration groups in the active transaction.
 func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []int64, user User) error {
 	unique := make(map[int64]struct{}, len(groupIDs))
+
 	for _, groupID := range groupIDs {
 		if groupID <= 0 {
 			return ErrForbidden
@@ -66,9 +75,11 @@ func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []
 		if _, exists := unique[groupID]; exists {
 			continue
 		}
+
 		unique[groupID] = struct{}{}
 
 		var allowed bool
+
 		if user.Role == "admin" {
 			if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM wiki_groups WHERE id=$1)`, groupID).Scan(&allowed); err != nil {
@@ -80,6 +91,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 				return err
 			}
 		}
+
 		if !allowed {
 			return ErrForbidden
 		}
@@ -110,5 +122,6 @@ ON CONFLICT DO NOTHING`, pageID, groupID); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

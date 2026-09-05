@@ -101,6 +101,7 @@ func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 	)
 
 	inUse, ok := errors.AsType[*MediaInUseError](err)
+
 	require.True(t, ok)
 	assert.Equal(t, int64(3), inUse.References)
 	assert.Zero(t, repository.deletedImageID)

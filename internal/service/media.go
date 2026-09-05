@@ -89,10 +89,12 @@ func (s *Media) UploadImage(ctx context.Context, filename string, data []byte, a
 	if len(data) > MaxImageBytes {
 		return Image{}, ErrFileTooLarge
 	}
+
 	contentType := http.DetectContentType(data)
 	if !SupportedImageType(contentType) {
 		return Image{}, ErrUnsupportedFileType
 	}
+
 	return s.repository.SaveImage(ctx, SanitizeImageFilename(filename, contentType), contentType, data, actor.ID)
 }
 
@@ -108,6 +110,7 @@ func (s *Media) DeleteImage(ctx context.Context, id int64, actor User) error {
 	if actor.Role != "admin" && image.UsageCount > 0 {
 		return &MediaInUseError{References: image.UsageCount}
 	}
+
 	return s.repository.DeleteImage(ctx, id)
 }
 
@@ -119,11 +122,13 @@ func (s *Media) UploadAttachment(ctx context.Context, filename string, data []by
 	if len(data) > MaxAttachmentBytes {
 		return Attachment{}, ErrFileTooLarge
 	}
+
 	filename = sanitizeAttachmentFilename(filename)
 	contentType, supported := attachmentTypes[strings.ToLower(filepath.Ext(filename))]
 	if !supported {
 		return Attachment{}, ErrUnsupportedFileType
 	}
+
 	return s.repository.SaveAttachment(ctx, filename, contentType, data, actor.ID)
 }
 
@@ -139,6 +144,7 @@ func (s *Media) DeleteAttachment(ctx context.Context, id int64, actor User) erro
 	if actor.Role != "admin" && item.UsageCount > 0 {
 		return &MediaInUseError{References: item.UsageCount}
 	}
+
 	return s.repository.DeleteAttachment(ctx, id)
 }
 
@@ -163,15 +169,18 @@ func SanitizeImageFilename(filename, contentType string) string {
 	if extension != expected && (contentType != "image/jpeg" || extension != ".jpeg") {
 		return strings.TrimSuffix(name, filepath.Ext(name)) + expected
 	}
+
 	return name
 }
 
 // sanitizeAttachmentFilename produces a safe attachment name with an extension.
 func sanitizeAttachmentFilename(filename string) string {
 	name := sanitizeFilename(filename, "attachment.txt")
+
 	if filepath.Ext(name) == "" {
 		name += ".txt"
 	}
+
 	return name
 }
 
@@ -183,6 +192,7 @@ func sanitizeFilename(filename, fallback string) string {
 	if name == "" {
 		return fallback
 	}
+
 	return name
 }
 

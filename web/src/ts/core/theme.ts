@@ -10,9 +10,12 @@ function parseThemeCatalog(source: string): ThemeDefinition[] {
   try {
     const value: unknown = JSON.parse(source);
     if (!Array.isArray(value)) return [];
+
     return value.filter((candidate): candidate is ThemeDefinition => {
       if (typeof candidate !== "object" || candidate === null) return false;
+
       const theme = candidate as Partial<ThemeDefinition>;
+
       return (
         typeof theme.title === "string" &&
         typeof theme.color_scheme === "string" &&
@@ -55,6 +58,7 @@ function applyTheme(title: string): void {
 
   document.documentElement.style.colorScheme = theme.color_scheme;
   document.documentElement.dataset.theme = theme.title;
+
   if (themeSelect) themeSelect.value = theme.title;
 }
 

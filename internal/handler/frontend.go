@@ -11,6 +11,7 @@ func Assets(appFS fs.FS) http.Handler {
 	files := http.FileServer(http.FS(appFS))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path, versioned := assetPath(r.URL.Path)
+
 		if versioned {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
@@ -21,6 +22,7 @@ func Assets(appFS fs.FS) http.Handler {
 		url := *r.URL
 		url.Path = "/" + path
 		request.URL = &url
+
 		files.ServeHTTP(w, request)
 	})
 }
@@ -32,6 +34,7 @@ func assetPath(requestPath string) (string, bool) {
 	if ok && strings.HasPrefix(version, "v-") && len(version) > 2 {
 		return remainder, true
 	}
+
 	return requestPath, false
 }
 
@@ -43,9 +46,11 @@ func ServiceWorker(appFS fs.FS) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Service-Worker-Allowed", "/")
+
 		_, _ = w.Write(data)
 	})
 }

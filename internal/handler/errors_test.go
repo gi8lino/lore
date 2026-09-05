@@ -24,9 +24,11 @@ func TestWriteMediaUploadProblem(t *testing.T) {
 		{name: "too large", err: service.ErrFileTooLarge, status: http.StatusRequestEntityTooLarge},
 		{name: "unsupported", err: service.ErrUnsupportedFileType, status: http.StatusUnsupportedMediaType},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+
 			response := httptest.NewRecorder()
 			handled := writeMediaUploadProblem(
 				slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -34,6 +36,7 @@ func TestWriteMediaUploadProblem(t *testing.T) {
 				test.err,
 				attachmentMedia,
 			)
+
 			assert.True(t, handled)
 			assert.Equal(t, test.status, response.Code)
 		})
@@ -105,9 +108,11 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 			write:  writePageSaveProblem,
 		},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+
 			response := httptest.NewRecorder()
 
 			test.write(
@@ -128,6 +133,7 @@ func TestWriteAdminProblem(t *testing.T) {
 	t.Parallel()
 
 	response := httptest.NewRecorder()
+
 	writeAdminProblem(
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		response,

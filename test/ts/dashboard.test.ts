@@ -44,6 +44,7 @@ test("localDrafts ignores malformed values and supplies an untitled fallback", (
       "lore.editor.draft:new": JSON.stringify({ savedAt: 42 }),
     }),
   );
+
   assert.equal(result.length, 1);
   assert.equal(result[0].title, "Untitled");
 });

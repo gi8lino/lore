@@ -34,6 +34,7 @@ func LocalLogin(
 				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 				return
 			}
+
 			required, err := systemUseCases.SetupRequired(r.Context())
 			if err != nil {
 				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
@@ -51,13 +52,16 @@ func LocalLogin(
 				httpresponse.Problem(w, http.StatusBadRequest, "Invalid login form.")
 				return
 			}
+
 			next = safeAuthNext(r.FormValue("next"))
 			_, token, err := browserAuth.Local.SignIn(r.Context(), r.FormValue("username"), r.FormValue("password"))
 			if err == nil {
 				browserAuth.Local.WriteSessionCookie(w, token)
+
 				if next == "" {
 					next = "/"
 				}
+
 				http.Redirect(w, r, next, http.StatusSeeOther)
 				return
 			}
@@ -65,13 +69,16 @@ func LocalLogin(
 				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 				return
 			}
+
 			data, dataErr := publicViewData(views, "Local sign in")
 			if dataErr != nil {
 				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 				return
 			}
+
 			data.AuthError = "Invalid username or password."
 			data.AuthNext = next
+
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.WriteHeader(http.StatusUnauthorized)
 			renderPublic(views, w, "login", data)
@@ -83,7 +90,9 @@ func LocalLogin(
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
+
 		data.AuthNext = next
+
 		renderPublic(views, w, "login", data)
 	}
 }
@@ -102,6 +111,7 @@ func Setup(
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
+
 		settings, err := settingsUseCases.ApplicationSettings(r.Context())
 		if err != nil {
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
@@ -111,6 +121,7 @@ func Setup(
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
+
 		required, err := systemUseCases.SetupRequired(r.Context())
 		if err != nil {
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
@@ -126,6 +137,7 @@ func Setup(
 				httpresponse.Problem(w, http.StatusBadRequest, "Invalid setup form.")
 				return
 			}
+
 			problems := setupValidationProblems(r)
 			if len(problems) > 0 {
 				if wantsJSON(r) {
@@ -138,7 +150,9 @@ func Setup(
 					httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 					return
 				}
+
 				data.AuthError = problems[0].Message
+
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				renderPublic(views, w, "setup", data)
@@ -162,6 +176,7 @@ func Setup(
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
+
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
@@ -171,6 +186,7 @@ func Setup(
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
+
 		renderPublic(views, w, "setup", data)
 	}
 }
@@ -181,5 +197,6 @@ func safeAuthNext(value string) string {
 	if !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") {
 		return ""
 	}
+
 	return value
 }

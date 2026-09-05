@@ -49,6 +49,7 @@ test("table context resolves body row, column and existing directive", () => {
 test("rewriting a table directive inserts and removes only the directive", () => {
   const source = `| A | B |\n| --- | --- |\n| 1 | 2 |\n\nNext`;
   const table = findMarkdownTable(source, source.indexOf("2"));
+
   assert.ok(table);
 
   const withDirective = rewriteTableDirectiveSource(source, table, {
@@ -59,6 +60,7 @@ test("rewriting a table directive inserts and removes only the directive", () =>
     sortable: true,
     filterable: false,
   });
+
   assert.equal(
     withDirective,
     `| A | B |\n| --- | --- |\n| 1 | 2 |\n\n{table header=blue sortable}\n\nNext`,
@@ -68,7 +70,9 @@ test("rewriting a table directive inserts and removes only the directive", () =>
     withDirective,
     withDirective.indexOf("2"),
   );
+
   assert.ok(updatedTable);
+
   const cleared = rewriteTableDirectiveSource(withDirective, updatedTable, {
     header: "",
     rows: {},
@@ -77,6 +81,7 @@ test("rewriting a table directive inserts and removes only the directive", () =>
     sortable: false,
     filterable: false,
   });
+
   assert.equal(cleared, source);
 });
 
@@ -84,6 +89,7 @@ test("palette parser preserves existing semantic table tones", () => {
   const source =
     "{table header=accent col:2=info row:1=warning cell:1,2=danger filterable}";
   const directive = parseTableDirective(source);
+
   assert.ok(directive);
   assert.equal(serializeTableDirective(directive), source);
 });

@@ -22,6 +22,7 @@ func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 	})
 
 	validation, ok := errors.AsType[*ValidationError](err)
+
 	require.True(t, ok)
 	assert.Equal(t, []FieldError{
 		{Field: "slug", Message: "A page path is required."},
@@ -39,6 +40,7 @@ func TestMoveValidatesDestinationBeforePersistence(t *testing.T) {
 	err := pages.Move(context.Background(), "guide", "", MovePageOptions{}, User{})
 
 	validation, ok := errors.AsType[*ValidationError](err)
+
 	require.True(t, ok)
 	assert.Equal(t, "slug", validation.Fields[0].Field)
 }
@@ -62,6 +64,7 @@ func TestSaveRequiresExplicitSlugAndStatus(t *testing.T) {
 			field: "status",
 		},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -111,6 +114,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 			field: "action",
 		},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

@@ -114,6 +114,7 @@ func loadFS(source fs.FS, root string) ([]Theme, error) {
 	}
 
 	var available []Theme
+
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.EqualFold(path.Ext(entry.Name()), ".toml") {
 			continue
@@ -138,6 +139,7 @@ func loadFS(source fs.FS, root string) ([]Theme, error) {
 		if err := validate(theme); err != nil {
 			return nil, fmt.Errorf("theme %s: %w", entry.Name(), err)
 		}
+
 		available = append(available, theme)
 	}
 
@@ -148,6 +150,7 @@ func loadFS(source fs.FS, root string) ([]Theme, error) {
 // merge overlays themes with matching titles and preserves deterministic ordering.
 func merge(base, overlays []Theme) []Theme {
 	byName := make(map[string]Theme, len(base)+len(overlays))
+
 	for _, theme := range base {
 		byName[strings.ToLower(theme.Title)] = theme
 	}
@@ -156,9 +159,11 @@ func merge(base, overlays []Theme) []Theme {
 	}
 
 	merged := make([]Theme, 0, len(byName))
+
 	for _, theme := range byName {
 		merged = append(merged, theme)
 	}
+
 	sortThemes(merged)
 
 	return merged
@@ -199,6 +204,7 @@ func validate(theme Theme) error {
 		"selection_text":       theme.Colors.SelectionText,
 		"selection_background": theme.Colors.SelectionBackground,
 	}
+
 	for name, value := range required {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("colors.%s is required", name)

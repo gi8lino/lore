@@ -18,15 +18,20 @@ ORDER BY a.created_at DESC,a.id DESC`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var attachments []Attachment
+
 	for rows.Next() {
 		var item Attachment
 		if err := rows.Scan(&item.ID, &item.Filename, &item.ContentType, &item.SizeBytes, &item.UploadedBy, &item.Uploader, &item.CreatedAt, &item.UsageCount); err != nil {
 			return nil, err
 		}
+
 		attachments = append(attachments, item)
 	}
+
 	return attachments, rows.Err()
 }
 
@@ -51,6 +56,7 @@ WHERE a.id=$1`, id).Scan(
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Attachment{}, ErrNotFound
 	}
+
 	return item, err
 }
 
@@ -65,6 +71,7 @@ WHERE id=$1`, id).
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AttachmentData{}, ErrNotFound
 	}
+
 	return item, err
 }
 
@@ -83,6 +90,7 @@ RETURNING id,filename,content_type,size_bytes,coalesce(uploaded_by,0),created_at
 			&item.UploadedBy,
 			&item.CreatedAt,
 		)
+
 	return item, err
 }
 
@@ -94,5 +102,6 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }

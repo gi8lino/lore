@@ -20,7 +20,9 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		request := httptest.NewRequest(http.MethodGet, "/pages/example", nil)
+
 		request.Header.Set("Sec-Fetch-Site", "cross-site")
+
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, request)
@@ -35,7 +37,9 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		request := httptest.NewRequest(http.MethodPost, "/pages/example", nil)
+
 		request.Header.Set("Sec-Fetch-Site", "same-origin")
+
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, request)
@@ -50,7 +54,9 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 			t.Fatal("handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodPost, "/pages/example", nil)
+
 		request.Header.Set("Sec-Fetch-Site", "cross-site")
+
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, request)
@@ -66,7 +72,9 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 			t.Fatal("handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodDelete, "/api/pages/example", nil)
+
 		request.Header.Set("Sec-Fetch-Site", "cross-site")
+
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, request)
@@ -88,13 +96,16 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 			t.Fatal("handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodPatch, "/api/pages/example", nil)
+
 		request.Header.Set("Sec-Fetch-Site", "cross-site")
 		request.Header.Set("Origin", "https://attacker.example")
+
 		response := httptest.NewRecorder()
 
 		handler.ServeHTTP(response, request)
 
 		logLine := output.String()
+
 		assert.Contains(t, logLine, "event=cross_site_write_rejected")
 		assert.Contains(t, logLine, "method=PATCH")
 		assert.Contains(t, logLine, "path=/api/pages/example")

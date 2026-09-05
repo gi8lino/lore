@@ -16,7 +16,9 @@ func TestChain(t *testing.T) {
 		return func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls = append(calls, name+":before")
+
 				next.ServeHTTP(w, r)
+
 				calls = append(calls, name+":after")
 			})
 		}
@@ -33,6 +35,7 @@ func TestChain(t *testing.T) {
 	)
 
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	assert.Equal(t, http.StatusNoContent, response.Code)

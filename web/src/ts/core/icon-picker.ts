@@ -13,7 +13,9 @@ interface IconPage {
 
 function isIconPage(value: unknown): value is IconPage {
   if (typeof value !== "object" || value === null) return false;
+
   const page = value as Partial<IconPage>;
+
   return Array.isArray(page.items) && typeof page.has_more === "boolean";
 }
 
@@ -27,6 +29,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   );
   const empty = dialog.querySelector<HTMLElement>("[data-icon-picker-empty]");
   if (!search || !grid || !close || !empty) return;
+
   const searchInput = search;
   const iconGrid = grid;
   const emptyState = empty;
@@ -51,6 +54,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   // Chooses icon.
   function chooseIcon(name: string, svg: string): void {
     if (!activeOwner) return;
+
     const value = activeOwner.querySelector<HTMLInputElement>(
       "[data-icon-picker-value]",
     );
@@ -60,6 +64,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
     const label = activeOwner.querySelector<HTMLElement>(
       "[data-icon-picker-label]",
     );
+
     if (value) {
       value.value = name;
       value.dispatchEvent(new Event("input", { bubbles: true }));
@@ -77,23 +82,32 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
             '<path d="M12 5v14M5 12h14"></path></svg>',
         );
     }
+
     closePicker();
   }
 
   // Builds one icon-picker option button.
   function optionButton({ name, label, svg }: IconOption): HTMLButtonElement {
     const button = document.createElement("button");
+
     button.className = "icon-picker-option";
     button.type = "button";
     button.dataset.iconName = name;
+
     const glyph = document.createElement("span");
+
     glyph.className = `icon-picker-glyph${name ? "" : " icon-picker-empty"}`;
+
     if (svg) glyph.insertAdjacentHTML("afterbegin", svg);
     else glyph.textContent = "—";
+
     const text = document.createElement("span");
     const strong = document.createElement("strong");
+
     strong.textContent = label;
+
     const small = document.createElement("small");
+
     small.textContent = name || "None";
     text.append(strong, small);
     button.append(glyph, text);
@@ -108,6 +122,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   ): Promise<void> {
     query = query.trim();
     if (append && (loading || !hasMore || query !== currentQuery)) return;
+
     if (!append) {
       currentQuery = query;
       nextOffset = 0;
@@ -118,8 +133,10 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
 
     const currentRequest = append ? requestNumber : ++requestNumber;
     const offset = append ? nextOffset : 0;
+
     loading = true;
     iconGrid.setAttribute("aria-busy", "true");
+
     try {
       const separator = iconsURL.includes("?") ? "&" : "?";
       const response = await fetch(
@@ -127,20 +144,26 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
         { headers: { Accept: "application/json" } },
       );
       if (!response.ok || currentRequest !== requestNumber) return;
+
       const value: unknown = await response.json();
       if (!isIconPage(value) || currentRequest !== requestNumber) return;
+
       const options: IconOption[] = [];
+
       if (
         !append &&
         (!query || "no icon none empty".includes(query.toLocaleLowerCase()))
       ) {
         options.push({ name: "", label: "No icon", svg: "" });
       }
+
       options.push(...value.items);
       iconGrid.append(...options.map(optionButton));
       nextOffset += value.items.length;
       hasMore = value.has_more;
+
       const selected = ownerValue();
+
       for (const option of iconGrid.querySelectorAll<HTMLElement>(
         "[data-icon-name]",
       )) {
@@ -149,6 +172,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
           option.dataset.iconName === selected,
         );
       }
+
       emptyState.hidden = iconGrid.childElementCount !== 0;
     } catch {
       if (currentRequest === requestNumber) hasMore = false;

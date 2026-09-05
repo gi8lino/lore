@@ -24,6 +24,7 @@ func NewFieldProblem(field, message string) FieldProblem {
 func Respond(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
+
 	if value != nil {
 		_ = json.NewEncoder(w).Encode(value)
 	}
@@ -32,6 +33,7 @@ func Respond(w http.ResponseWriter, status int, value any) {
 // Problem writes a consistent JSON error response with optional field problems.
 func Problem(w http.ResponseWriter, status int, message string, problems ...FieldProblem) {
 	var fields map[string]string
+
 	if len(problems) > 0 {
 		fields = make(map[string]string, len(problems))
 		for _, problem := range problems {

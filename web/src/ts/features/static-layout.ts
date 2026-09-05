@@ -26,8 +26,10 @@ function initNavigationTree(): void {
 
   const active = navigation.querySelector<HTMLElement>('[aria-current="page"]');
   if (!active) return;
+
   const navigationRect = navigation.getBoundingClientRect();
   const activeRect = active.getBoundingClientRect();
+
   if (
     activeRect.top < navigationRect.top ||
     activeRect.bottom > navigationRect.bottom
@@ -52,10 +54,12 @@ function initMobileSidebar(): void {
 
   function setOpen(open: boolean, restoreFocus = false): void {
     const nextOpen = open && mobile.matches;
+
     sidebarElement.classList.toggle("open", nextOpen);
     document.body.classList.toggle("sidebar-open", nextOpen);
     menuTrigger.setAttribute("aria-expanded", String(nextOpen));
     sidebarBackdrop.hidden = !nextOpen;
+
     if (restoreFocus) menuTrigger.focus();
   }
 
@@ -65,12 +69,15 @@ function initMobileSidebar(): void {
   sidebarBackdrop.addEventListener("click", () => setOpen(false, true));
   sidebarElement.addEventListener("click", (event: MouseEvent) => {
     if (!mobile.matches) return;
+
     const target = event.target;
+
     if (target instanceof Element && target.closest("a[href]")) setOpen(false);
   });
   document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !sidebarElement.classList.contains("open"))
       return;
+
     event.preventDefault();
     setOpen(false, true);
   });
@@ -100,24 +107,31 @@ function initSidebarVisibility(): void {
         // Storage may be unavailable in restricted browser contexts.
       }
     }
+
     const hidden =
       !mobile.matches &&
       document.documentElement.classList.contains("sidebar-hidden");
+
     visibilityToggle.setAttribute("aria-expanded", String(!hidden));
+
     const label = hidden ? "Show navigation" : "Hide navigation";
+
     visibilityToggle.setAttribute("aria-label", label);
     visibilityToggle.title = label;
   }
 
   visibilityToggle.addEventListener("click", () => {
     if (mobile.matches) return;
+
     const hidden = document.documentElement.classList.toggle("sidebar-hidden");
+
     try {
       if (hidden) window.localStorage.setItem(SIDEBAR_HIDDEN_KEY, "true");
       else window.localStorage.removeItem(SIDEBAR_HIDDEN_KEY);
     } catch {
       // Storage may be unavailable in restricted browser contexts.
     }
+
     sync();
   });
   mobile.addEventListener("change", sync);

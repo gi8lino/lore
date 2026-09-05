@@ -43,6 +43,7 @@ func (l *Local) Authenticate(r *http.Request) (model.User, error) {
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, ErrUnauthenticated
 	}
+
 	return user, err
 }
 
@@ -66,6 +67,7 @@ func (l *Local) SignIn(ctx context.Context, username, password string) (model.Us
 	if err := l.repository.CreateLocalSession(ctx, user.ID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
 		return model.User{}, "", err
 	}
+
 	return user, token, nil
 }
 
@@ -85,6 +87,7 @@ func (l *Local) ChangePassword(
 	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(currentPassword)) != nil {
 		return "", ErrInvalidCredentials
 	}
+
 	newHash, err := localPasswordHash(newPassword)
 	if err != nil {
 		return "", err
@@ -92,6 +95,7 @@ func (l *Local) ChangePassword(
 	if err := l.repository.SetLocalCredential(ctx, userID, newHash); err != nil {
 		return "", err
 	}
+
 	token, err := newLocalSessionToken()
 	if err != nil {
 		return "", err
@@ -99,6 +103,7 @@ func (l *Local) ChangePassword(
 	if err := l.repository.CreateLocalSession(ctx, userID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
 		return "", err
 	}
+
 	return token, nil
 }
 
@@ -111,6 +116,7 @@ func (l *Local) Setup(
 	if err != nil {
 		return model.User{}, "", err
 	}
+
 	user, err := l.repository.CreateInitialLocalAdministrator(ctx, username, email, displayName, passwordHash)
 	if err != nil {
 		return model.User{}, "", err
@@ -123,6 +129,7 @@ func (l *Local) Setup(
 	if err := l.repository.CreateLocalSession(ctx, user.ID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
 		return model.User{}, "", err
 	}
+
 	return user, token, nil
 }
 
@@ -132,6 +139,7 @@ func (l *Local) SetPassword(ctx context.Context, userID int64, password string) 
 	if err != nil {
 		return err
 	}
+
 	return l.repository.SetLocalCredential(ctx, userID, passwordHash)
 }
 
@@ -174,7 +182,9 @@ func localPasswordHash(password string) (string, error) {
 	if !ValidLocalPassword(password) {
 		return "", errors.New("local password must be at least 12 characters")
 	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
 	return string(hash), err
 }
 
@@ -184,6 +194,7 @@ func newLocalSessionToken() (string, error) {
 	if _, err := rand.Read(data); err != nil {
 		return "", err
 	}
+
 	return base64.RawURLEncoding.EncodeToString(data), nil
 }
 

@@ -23,6 +23,7 @@ interface FormattedTable {
 function openingFence(line: string): Fence | null {
   const match = line.match(/^ {0,3}(`{3,}|~{3,})(?:[^`~].*)?$/);
   if (!match?.[1]) return null;
+
   return { character: match[1][0] ?? "`", length: match[1].length };
 }
 
@@ -32,7 +33,9 @@ function closesFence(line: string, fence: Fence): boolean {
   if (!trimmed || trimmed[0] !== fence.character) return false;
 
   let length = 0;
+
   while (trimmed[length] === fence.character) length += 1;
+
   return length >= fence.length && trimmed.slice(length).trim() === "";
 }
 
@@ -80,12 +83,15 @@ function splitTableCells(line: string): string[] | null {
       current = "";
       continue;
     }
+
     current += character;
   }
+
   cells.push(current.trim());
 
   if (cells[0] === "") cells.shift();
   if (cells.at(-1) === "") cells.pop();
+
   return cells.length ? cells : null;
 }
 
@@ -93,6 +99,7 @@ function splitTableCells(line: string): string[] | null {
 function separatorAlignment(cell: string): TableAlignment | null {
   const value = cell.trim();
   if (!/^:?-{3,}:?$/.test(value)) return null;
+
   return {
     left: value.startsWith(":"),
     right: value.endsWith(":"),
@@ -102,7 +109,9 @@ function separatorAlignment(cell: string): TableAlignment | null {
 // Builds a normalized Markdown table separator cell.
 function tableSeparator(cells: string[] | null): TableAlignment[] | null {
   if (!cells?.length) return null;
+
   const alignments = cells.map(separatorAlignment);
+
   return alignments.every((alignment): alignment is TableAlignment =>
     Boolean(alignment),
   )
@@ -114,6 +123,7 @@ function tableSeparator(cells: string[] | null): TableAlignment[] | null {
 function separatorWidth(alignment: TableAlignment): number {
   if (alignment.left && alignment.right) return 5;
   if (alignment.left || alignment.right) return 4;
+
   return 3;
 }
 
@@ -123,6 +133,7 @@ function renderSeparator(width: number, alignment: TableAlignment): string {
     return `:${"-".repeat(Math.max(3, width - 2))}:`;
   if (alignment.left) return `:${"-".repeat(Math.max(3, width - 1))}`;
   if (alignment.right) return `${"-".repeat(Math.max(3, width - 1))}:`;
+
   return "-".repeat(Math.max(3, width));
 }
 
@@ -146,6 +157,7 @@ function formatTable(
   const first = lines[start];
   const second = lines[start + 1];
   if (!first || !second) return null;
+
   const header = splitTableCells(first.text);
   const separator = splitTableCells(second.text);
   const alignments = tableSeparator(separator);
@@ -160,12 +172,15 @@ function formatTable(
 
   const rows = [header];
   let end = start + 2;
+
   while (end < lines.length && !lines[end]?.protected) {
     const current = lines[end];
     if (!current) break;
+
     const cells = splitTableCells(current.text);
     if (!cells) break;
     if (cells.length > header.length) break;
+
     rows.push(cells);
     end += 1;
   }
@@ -173,12 +188,16 @@ function formatTable(
   const widths = header.map((_, column) => {
     const alignment = alignments[column];
     if (!alignment) return 3;
+
     let width = separatorWidth(alignment);
+
     for (const row of rows) width = Math.max(width, (row[column] || "").length);
+
     return width;
   });
   const indent = first.text.match(/^ */)?.[0] || "";
   const formatted = [renderTableRow(header, widths, indent)];
+
   formatted.push(
     `${indent}| ${widths
       .map((width, column) =>
@@ -189,6 +208,7 @@ function formatTable(
       )
       .join(" | ")} |`,
   );
+
   for (const row of rows.slice(1))
     formatted.push(renderTableRow(row, widths, indent));
 
@@ -207,6 +227,7 @@ function normalizeLines(source: string): MarkdownLine[] {
   for (const rawLine of rawLines) {
     if (fence) {
       lines.push({ text: rawLine, protected: true });
+
       if (closesFence(rawLine, fence)) fence = null;
       continue;
     }
@@ -219,6 +240,7 @@ function normalizeLines(source: string): MarkdownLine[] {
     }
 
     const protectedLine = /^( {4}|\t)/.test(rawLine);
+
     lines.push({
       text: normalizeEditableLine(rawLine),
       protected: protectedLine,
@@ -231,11 +253,14 @@ function normalizeLines(source: string): MarkdownLine[] {
 // Formats Markdown tables outside protected blocks.
 function formatTables(lines: MarkdownLine[]): MarkdownLine[] {
   const result: MarkdownLine[] = [];
+
   for (let index = 0; index < lines.length;) {
     const table = formatTable(lines, index);
     if (!table) {
       const line = lines[index];
+
       if (line) result.push(line);
+
       index += 1;
       continue;
     }
@@ -243,6 +268,7 @@ function formatTables(lines: MarkdownLine[]): MarkdownLine[] {
     result.push(...table.lines.map((text) => ({ text, protected: false })));
     index = table.end;
   }
+
   return result;
 }
 
@@ -254,10 +280,13 @@ function collapseBlankLines(lines: MarkdownLine[]): MarkdownLine[] {
   // Flushes pending blank lines within the allowed limit.
   function flushBlanks(nextProtected: boolean): void {
     if (!pendingBlanks) return;
+
     const previousProtected = result.at(-1)?.protected === true;
     const count = previousProtected && nextProtected ? pendingBlanks : 1;
+
     for (let index = 0; index < count; index += 1)
       result.push({ text: "", protected: previousProtected && nextProtected });
+
     pendingBlanks = 0;
   }
 
@@ -266,12 +295,14 @@ function collapseBlankLines(lines: MarkdownLine[]): MarkdownLine[] {
       pendingBlanks += 1;
       continue;
     }
+
     flushBlanks(line.protected);
     result.push(line);
   }
 
   while (result[0]?.text === "") result.shift();
   while (result.at(-1)?.text === "") result.pop();
+
   return result;
 }
 
@@ -283,5 +314,6 @@ export function formatMarkdownDocument(source: string): string {
 
   const lines = collapseBlankLines(formatTables(normalizeLines(source)));
   if (!lines.length) return "";
+
   return `${lines.map((line) => line.text).join("\n")}\n`;
 }

@@ -32,6 +32,7 @@ func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger)
 			writeAdminProblem(logger, w, err, "PDF settings")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/configuration#pdf-rendering", http.StatusSeeOther)
 	}
 }

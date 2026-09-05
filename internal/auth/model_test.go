@@ -17,6 +17,7 @@ func TestConfigureBrowserAuth(t *testing.T) {
 		BrowserConfig{ModeOverride: AuthModeNone},
 		nil,
 	)
+
 	require.NoError(t, err)
 	assert.NotNil(t, configured.Authenticator)
 	assert.NotNil(t, configured.Login)
@@ -36,6 +37,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 			context.Background(),
 			store.AuthenticationSettings{Mode: string(AuthModeNone)},
 		)
+
 		require.NoError(t, err)
 		assert.IsType(t, &None{}, authenticator)
 	})
@@ -45,6 +47,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 			context.Background(),
 			store.AuthenticationSettings{Mode: string(AuthModeLocal)},
 		)
+
 		require.NoError(t, err)
 		assert.IsType(t, &Local{}, authenticator)
 	})
@@ -57,6 +60,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 				TrustedUsernameHeaders: []string{"X-User"},
 			},
 		)
+
 		require.NoError(t, err)
 		assert.IsType(t, &TrustedProxy{}, authenticator)
 	})
@@ -79,8 +83,10 @@ func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 		OIDCClientID: "lore",
 	}
 	browser := &browserAuthenticator{}
+
 	assert.EqualError(t, browser.validateSettings(settings), "OIDC client secret is not configured")
 
 	browser.oidcConfig.ClientSecret = "client-secret"
+
 	assert.EqualError(t, browser.validateSettings(settings), "OIDC session secret must be at least 32 characters")
 }

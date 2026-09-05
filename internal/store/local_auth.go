@@ -14,6 +14,7 @@ func (s *Store) SetupRequired(ctx context.Context) (bool, error) {
 	var required bool
 	err := s.pool.QueryRow(ctx, `
 SELECT NOT EXISTS(SELECT 1 FROM users)`).Scan(&required)
+
 	return required, err
 }
 
@@ -28,6 +29,7 @@ func (s *Store) CreateInitialLocalAdministrator(
 	if username == "" || passwordHash == "" {
 		return User{}, errors.New("username and password hash are required")
 	}
+
 	if displayName == "" {
 		displayName = username
 	}
@@ -36,6 +38,7 @@ func (s *Store) CreateInitialLocalAdministrator(
 	if err != nil {
 		return User{}, err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Lock the singleton settings row so only one concurrent setup can win.
@@ -48,6 +51,7 @@ FROM application_settings
 WHERE singleton=true FOR UPDATE`).Scan(&singleton); err != nil {
 		return User{}, err
 	}
+
 	var exists bool
 	if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM users)`).Scan(&exists); err != nil {
@@ -86,6 +90,7 @@ WHERE singleton=true`); err != nil {
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }
 
@@ -110,6 +115,7 @@ WHERE u.username=$1 AND u.enabled AND c.enabled`, strings.TrimSpace(username)).S
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, "", ErrNotFound
 	}
+
 	return user, passwordHash, err
 }
 
@@ -118,6 +124,7 @@ func (s *Store) HasLocalCredential(ctx context.Context, userID int64) (bool, err
 	var exists bool
 	err := s.pool.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM local_credentials WHERE user_id=$1)`, userID).Scan(&exists)
+
 	return exists, err
 }
 
@@ -131,6 +138,7 @@ SELECT EXISTS(
   JOIN users u ON u.id=c.user_id
   WHERE u.role='admin' AND u.enabled AND c.enabled
 )`).Scan(&exists)
+
 	return exists, err
 }
 
@@ -139,10 +147,12 @@ func (s *Store) SetLocalCredential(ctx context.Context, userID int64, passwordHa
 	if userID <= 0 || passwordHash == "" {
 		return errors.New("user and password hash are required")
 	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `
@@ -161,6 +171,7 @@ DELETE FROM local_sessions
 WHERE user_id=$1`, userID); err != nil {
 		return err
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -170,6 +181,7 @@ func (s *Store) CreateLocalSession(ctx context.Context, userID int64, tokenHash 
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if _, err := tx.Exec(ctx, `
@@ -182,6 +194,7 @@ INSERT INTO local_sessions(token_hash,user_id,expires_at)
 VALUES($1,$2,$3)`, tokenHash, userID, expiresAt); err != nil {
 		return err
 	}
+
 	tag, err := tx.Exec(ctx, `
 UPDATE users
 SET last_login=now()
@@ -192,6 +205,7 @@ WHERE id=$1`, userID)
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -207,6 +221,7 @@ WHERE s.token_hash=$1 AND s.expires_at>now() AND u.enabled AND c.enabled`, token
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
+
 	return user, err
 }
 

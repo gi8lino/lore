@@ -12,7 +12,9 @@ interface GroupMember {
 
 function isGroupMember(value: unknown): value is GroupMember {
   if (typeof value !== "object" || value === null) return false;
+
   const member = value as Partial<GroupMember>;
+
   return typeof member.id === "number" && typeof member.username === "string";
 }
 
@@ -55,22 +57,31 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
   // Renders members.
   function renderMembers(): void {
     renderedMembers.replaceChildren();
+
     if (!members.length) {
       const empty = document.createElement("p");
+
       empty.className = "muted";
       empty.textContent = "No members yet.";
       renderedMembers.append(empty);
     }
     for (const member of members) {
       const chip = document.createElement("div");
+
       chip.className = "group-member-chip";
+
       const label = document.createElement("span");
       const name = document.createElement("strong");
+
       name.textContent = member.display_name || member.username;
+
       const detail = document.createElement("span");
+
       detail.textContent = member.email || `@${member.username}`;
       label.append(name, detail);
+
       const remove = document.createElement("button");
+
       remove.type = "button";
       remove.title = `Remove ${name.textContent}`;
       remove.setAttribute("aria-label", remove.title);
@@ -83,6 +94,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
             headers: { Accept: "application/json" },
           });
           if (!response.ok) throw await responseProblem(response);
+
           members = members.filter((item) => item.id !== member.id);
           renderMembers();
         } catch (error) {
@@ -109,6 +121,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw await responseProblem(response);
+
       members = groupMembers(await response.json());
       renderMembers();
     } catch (error) {
@@ -121,28 +134,38 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
   // Renders results.
   function renderResults(users: GroupMember[]): void {
     resultList.replaceChildren();
+
     const existing = memberIDs();
     const available = users.filter((user) => !existing.has(user.id));
+
     if (!available.length) {
       const empty = document.createElement("div");
+
       empty.className = "muted live-person-result-empty";
       empty.textContent = "No matching people to add.";
       resultList.append(empty);
     }
     for (const user of available) {
       const option = document.createElement("button");
+
       option.type = "button";
       option.className = "live-person-result";
       option.setAttribute("role", "option");
+
       const avatar = document.createElement("span");
+
       avatar.className = "avatar";
       avatar.textContent = (user.display_name || user.username || "?")
         .slice(0, 1)
         .toUpperCase();
+
       const label = document.createElement("span");
       const name = document.createElement("strong");
+
       name.textContent = user.display_name || user.username;
+
       const detail = document.createElement("span");
+
       detail.textContent = user.email || `@${user.username}`;
       label.append(name, detail);
       option.append(avatar, label);
@@ -161,8 +184,10 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
           if (!response.ok) throw await responseProblem(response, payload);
           if (!isGroupMember(payload))
             throw new Error("Invalid member response.");
+
           if (!members.some((member) => member.id === payload.id))
             members.push(payload);
+
           renderMembers();
           personInput.value = "";
           resultList.hidden = true;
@@ -179,6 +204,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
       });
       resultList.append(option);
     }
+
     resultList.hidden = false;
   }
 
@@ -191,8 +217,10 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
       resultList.replaceChildren();
       return;
     }
+
     controller?.abort();
     controller = new AbortController();
+
     try {
       const response = await fetch(
         `${userSearchURL}?q=${encodeURIComponent(query)}`,
@@ -202,9 +230,11 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
         },
       );
       if (!response.ok) throw await responseProblem(response);
+
       renderResults(groupMembers(await response.json()));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
+
       console.error("person search failed", error);
       resultList.hidden = true;
     }

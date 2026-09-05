@@ -19,6 +19,7 @@ func Build(
 	stdout io.Writer,
 ) error {
 	setupLogger := logging.Setup(logging.LogFormatText, false, stdout).With("component", "setup")
+
 	if len(overrides) > 0 {
 		setupLogger.Info(
 			"CLI Overrides",
@@ -31,6 +32,8 @@ func Build(
 	if err != nil {
 		return err
 	}
+
 	_, _ = fmt.Fprintf(stdout, "Built %d pages into %s\n", result.Pages, result.OutputDir)
+
 	return nil
 }

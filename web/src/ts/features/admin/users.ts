@@ -46,7 +46,9 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   localPassword?.addEventListener("toggle", () => {
     for (const input of [localPasswordInput, localPasswordConfirm]) {
       if (!input) continue;
+
       input.disabled = !localPassword.open;
+
       if (!localPassword.open) input.value = "";
     }
   });
@@ -59,6 +61,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
       if (!userID) return;
 
       const groups = selectedGroupIDs(button);
+
       form.reset();
       form.action = `/admin/users/${encodeURIComponent(userID)}`;
       name.textContent =
@@ -66,8 +69,10 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
 
       const username = button.dataset.userUsername || "";
       const email = button.dataset.userEmail || "";
+
       identity.textContent = email ? `${username} · ${email}` : username;
       role.value = button.dataset.userRole || "viewer";
+
       if (accountEnabled) {
         accountEnabled.checked = button.dataset.userEnabled === "true";
       }
@@ -76,6 +81,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
           button.dataset.userHasLocalCredential === "true";
         const canManageLocalCredential =
           hasLocalCredential && dialog.dataset.externalAuthActive === "true";
+
         localLogin.hidden = !canManageLocalCredential;
         localCredentialEnabled.checked =
           button.dataset.userLocalCredentialEnabled === "true";
@@ -89,6 +95,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
         localPasswordInput.value = "";
         localPasswordConfirm.value = "";
       }
+
       groupInputs.forEach((input) => {
         input.checked = groups.has(input.value);
       });
@@ -103,6 +110,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   )) {
     button.addEventListener("click", () => dialog.close());
   }
+
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) dialog.close();
   });
@@ -153,25 +161,31 @@ export function setupPendingOIDCEditor(dialog: HTMLDialogElement): void {
       if (!pendingID) return;
 
       name.textContent = button.dataset.pendingName || "Review OIDC identity";
+
       const username = button.dataset.pendingUsername || "";
       const email = button.dataset.pendingEmail || "";
+
       profile.textContent = email ? `${username} · ${email}` : username;
       issuer.textContent = button.dataset.pendingIssuer || "";
       subject.textContent = button.dataset.pendingSubject || "";
 
       const base = `/admin/oidc/pending/${encodeURIComponent(pendingID)}`;
+
       linkForm.action = `${base}/link`;
       approveForm.action = `${base}/approve`;
       rejectForm.action = `${base}/reject`;
 
       const suggestedID = button.dataset.suggestedUserId || "";
+
       user.value = [...user.options].some(
         (option) => option.value === suggestedID,
       )
         ? suggestedID
         : "";
+
       if (match) {
         const suggestedName = button.dataset.suggestedUserName || "";
+
         match.hidden = !suggestedID;
         match.textContent = suggestedName
           ? `Possible match: ${suggestedName}`
@@ -188,6 +202,7 @@ export function setupPendingOIDCEditor(dialog: HTMLDialogElement): void {
   )) {
     button.addEventListener("click", () => dialog.close());
   }
+
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) dialog.close();
   });

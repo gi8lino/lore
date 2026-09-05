@@ -23,6 +23,7 @@ test("graphNeighborhood returns the complete graph without a filter", () => {
 
 test("graphNeighborhood returns a focused node and its direct neighbors", () => {
   const result = graphNeighborhood(graph, "b");
+
   assert.deepEqual(result.nodes.map((node) => node.slug).sort(), [
     "a",
     "b",
@@ -33,6 +34,7 @@ test("graphNeighborhood returns a focused node and its direct neighbors", () => 
 
 test("graphNeighborhood expands matching search results with their relationships", () => {
   const result = graphNeighborhood(graph, "", "database");
+
   assert.deepEqual(result.nodes.map((node) => node.slug).sort(), ["c", "d"]);
   assert.deepEqual(result.edges, [{ source: "d", target: "c" }]);
 });

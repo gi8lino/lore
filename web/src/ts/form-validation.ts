@@ -21,6 +21,7 @@ function controlFor(form: HTMLFormElement, name: string): FormControl | null {
   ) {
     return control;
   }
+
   return null;
 }
 
@@ -42,6 +43,7 @@ function setDescribedBy(control: FormControl, id: string): void {
       .split(/\s+/)
       .filter(Boolean),
   );
+
   ids.add(id);
   control.setAttribute("aria-describedby", [...ids].join(" "));
 }
@@ -67,6 +69,7 @@ function showFieldError(
 ): void {
   const id = errorID(control);
   let error = document.getElementById(id);
+
   if (!error) {
     error = document.createElement("small");
     error.id = id;
@@ -79,11 +82,13 @@ function showFieldError(
   control.classList.add(invalidClass);
   control.setAttribute("aria-invalid", "true");
   setDescribedBy(control, id);
+
   if (animate) shake(control);
 }
 
 function clearFieldError(control: FormControl): void {
   const id = errorID(control);
+
   document.getElementById(id)?.remove();
   control.classList.remove(invalidClass, shakeClass);
   control.removeAttribute("aria-invalid");
@@ -105,6 +110,7 @@ function localMessage(control: FormControl): string {
   }
 
   const match = control.dataset.validateMatch;
+
   if (match) {
     const expected = controlFor(control.form!, match);
     if (expected && expected.value !== "" && control.value === "") {
@@ -114,6 +120,7 @@ function localMessage(control: FormControl): string {
       return control.dataset.errorMatch || "Values do not match.";
     }
   }
+
   return "";
 }
 
@@ -123,6 +130,7 @@ function validateControl(control: FormControl, animate = true): boolean {
 
   const message = localMessage(control);
   if (!message) return true;
+
   showFieldError(control, message, animate);
   return false;
 }
@@ -152,6 +160,7 @@ function clearForm(form: HTMLFormElement): void {
 
 function validateForm(form: HTMLFormElement): boolean {
   let firstInvalid: FormControl | null = null;
+
   for (const control of form.elements) {
     if (
       !(control instanceof HTMLInputElement) &&
@@ -173,7 +182,9 @@ function clearFormMessage(form: HTMLFormElement): void {
 
 function showFormMessage(form: HTMLFormElement, message: string): void {
   clearFormMessage(form);
+
   const error = document.createElement("div");
+
   error.className = "form-validation-error";
   error.dataset.validationFormError = "true";
   error.setAttribute("role", "alert");
@@ -186,9 +197,11 @@ function showServerProblems(
   problem: ProblemResponse,
 ): boolean {
   let firstInvalid: FormControl | null = null;
+
   for (const [name, message] of Object.entries(problem.problems || {})) {
     const control = controlFor(form, name);
     if (!control) continue;
+
     clearFieldError(control);
     showFieldError(control, message);
     firstInvalid ||= control;
@@ -198,24 +211,29 @@ function showServerProblems(
     firstInvalid.focus();
     return true;
   }
+
   return false;
 }
 
 function formBody(form: HTMLFormElement): URLSearchParams {
   const body = new URLSearchParams();
+
   for (const [name, value] of new FormData(form)) {
     if (typeof value === "string") body.append(name, value);
   }
+
   return body;
 }
 
 async function submitForm(form: HTMLFormElement): Promise<void> {
   clearFormMessage(form);
+
   const submitters = [
     ...form.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
       'button[type="submit"], input[type="submit"]',
     ),
   ];
+
   submitters.forEach((button) => (button.disabled = true));
 
   try {
@@ -243,6 +261,7 @@ async function submitForm(form: HTMLFormElement): Promise<void> {
     }
 
     const problem = (await response.json()) as ProblemResponse;
+
     if (!showServerProblems(form, problem)) {
       showFormMessage(
         form,
@@ -271,15 +290,18 @@ function initForm(form: HTMLFormElement, index: number): void {
     ) {
       continue;
     }
+
     control.addEventListener("input", () => {
       if (control.classList.contains(invalidClass))
         validateControl(control, false);
+
       revalidateDependents(form, control.name);
       clearFormMessage(form);
     });
     control.addEventListener("change", () => {
       if (control.classList.contains(invalidClass))
         validateControl(control, false);
+
       revalidateDependents(form, control.name);
       clearFormMessage(form);
     });
@@ -292,6 +314,7 @@ function initForm(form: HTMLFormElement, index: number): void {
     event.preventDefault();
     clearFormMessage(form);
     if (!validateForm(form)) return;
+
     void submitForm(form);
   });
 }

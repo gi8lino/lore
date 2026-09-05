@@ -18,7 +18,9 @@ export function initEditor(): void {
   const pageIconPicker = document.querySelector<HTMLDialogElement>(
     "[data-page-icon-picker-dialog]",
   );
+
   if (pageIconPicker) setupIconPicker(pageIconPicker);
+
   initTags();
   initAttachments();
   initMarkdownToolbar();

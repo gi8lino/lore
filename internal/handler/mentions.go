@@ -33,6 +33,7 @@ func MentionUsers(userUseCases userDirectoryService, logger *slog.Logger) http.H
 		}
 
 		result := make([]mentionUser, 0, len(users))
+
 		for _, user := range users {
 			result = append(result, mentionUser{
 				Username:    user.Username,
@@ -41,6 +42,7 @@ func MentionUsers(userUseCases userDirectoryService, logger *slog.Logger) http.H
 				Self:        user.ID == current.ID,
 			})
 		}
+
 		httpresponse.Respond(w, http.StatusOK, result)
 	}
 }

@@ -60,13 +60,16 @@ function isDraftValues(value: unknown): value is DraftValues {
 export function slugifyEditorPath(value: string): string {
   let output = "";
   let separator = false;
+
   for (const character of value.trim().toLocaleLowerCase()) {
     if (/[a-z0-9/_-]/.test(character)) {
       if (separator && output) output += "-";
+
       separator = false;
       output += character;
     } else separator = true;
   }
+
   return output.replace(/^-+|-+$/g, "");
 }
 
@@ -86,8 +89,10 @@ export function editorWordStats(value: string): {
 
 function formSnapshot(form: HTMLFormElement): string {
   const values: [string, string][] = [];
+
   for (const [name, value] of new FormData(form).entries())
     values.push([name, String(value)]);
+
   values.sort(([leftName, leftValue], [rightName, rightValue]) =>
     leftName === rightName
       ? leftValue.localeCompare(rightValue)
@@ -98,10 +103,12 @@ function formSnapshot(form: HTMLFormElement): string {
 
 function draftValues(form: HTMLFormElement): DraftValues {
   const values: DraftValues = {};
+
   for (const [name, value] of new FormData(form).entries()) {
     values[name] ??= [];
     values[name].push(String(value));
   }
+
   return values;
 }
 
@@ -124,10 +131,12 @@ function draftStorageKeys(form: HTMLFormElement): string[] {
   const originalSlug = String(
     namedControl(form, "original_slug")?.value || "",
   ).trim();
+
   if (originalSlug) {
     const legacy = `${draftPrefix}${originalSlug}`;
     if (!keys.includes(legacy)) keys.push(legacy);
   }
+
   return keys;
 }
 
@@ -136,6 +145,7 @@ function normalizeLocalDraft(
   value: unknown,
 ): DraftCandidate | null {
   if (typeof value !== "object" || value === null) return null;
+
   const draft = value as Record<string, unknown>;
   const savedAt = Number(draft.savedAt);
   if (!Number.isFinite(savedAt) || savedAt <= 0) return null;
@@ -151,9 +161,11 @@ function normalizeLocalDraft(
   }
 
   const values = draftValues(form);
+
   for (const field of ["title", "slug", "markdown", "message"]) {
     if (field in draft) values[field] = [String(draft[field] || "")];
   }
+
   return {
     pageID: Number.parseInt(form.dataset.pageId || "0", 10) || 0,
     title: String(draft.title || ""),
@@ -169,6 +181,7 @@ function parseStoredDraft(form: HTMLFormElement): DraftCandidate | null {
     try {
       const value = localStorage.getItem(storageKey);
       if (!value) continue;
+
       const draft = normalizeLocalDraft(form, JSON.parse(value) as unknown);
       if (draft) return { ...draft, storageKey };
     } catch {
@@ -180,11 +193,14 @@ function parseStoredDraft(form: HTMLFormElement): DraftCandidate | null {
 
 function normalizeServerDraft(value: unknown): DraftCandidate | null {
   if (typeof value !== "object" || value === null) return null;
+
   const draft = value as ServerDraftPayload;
   if (!isDraftValues(draft.values)) return null;
+
   const savedAt = Date.parse(
     typeof draft.updated_at === "string" ? draft.updated_at : "",
   );
+
   return {
     pageID: Number(draft.page_id || 0),
     title: String(draft.title || ""),
@@ -219,6 +235,7 @@ function restoreDraftValues(form: HTMLFormElement, values: DraftValues): void {
   form.dispatchEvent(
     new CustomEvent("editor:restore-draft", { detail: { values } }),
   );
+
   const dynamicNames = new Set(["property_key", "property_value"]);
   const protectedNames = new Set(["original_slug"]);
   const controls = [...form.elements].filter(
@@ -232,14 +249,18 @@ function restoreDraftValues(form: HTMLFormElement, values: DraftValues): void {
   const names = new Set(
     controls.map((element) => element.name).filter(Boolean),
   );
+
   for (const name of Object.keys(values)) names.add(name);
 
   for (const name of names) {
     if (dynamicNames.has(name) || protectedNames.has(name)) continue;
+
     const matching = controls.filter((element) => element.name === name);
     const desired = (values[name] || []).map(String);
     if (!matching.length) continue;
+
     let valueIndex = 0;
+
     for (const control of matching) {
       if (
         control instanceof HTMLInputElement &&
@@ -253,6 +274,7 @@ function restoreDraftValues(form: HTMLFormElement, values: DraftValues): void {
         control.value = desired[valueIndex] ?? desired[0] ?? "";
         valueIndex += 1;
       }
+
       control.dispatchEvent(new Event("input", { bubbles: true }));
       control.dispatchEvent(new Event("change", { bubbles: true }));
     }
@@ -264,11 +286,13 @@ async function loadServerDraft(
 ): Promise<DraftCandidate | null> {
   const url = form.dataset.draftUrl;
   if (!url) return null;
+
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
     });
     if (response.status === 404 || !response.ok) return null;
+
     return normalizeServerDraft(await response.json());
   } catch {
     return null;
@@ -281,6 +305,7 @@ async function saveServerDraft(
 ): Promise<unknown> {
   const url = form.dataset.draftUrl;
   if (!url) throw new Error("server draft URL is missing");
+
   const response = await fetch(url, {
     method: "PUT",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -292,12 +317,14 @@ async function saveServerDraft(
     }),
   });
   if (!response.ok) throw new Error("server draft save failed");
+
   return response.json();
 }
 
 async function deleteServerDraft(form: HTMLFormElement): Promise<void> {
   const url = form.dataset.draftUrl;
   if (!url) return;
+
   const response = await fetch(url, {
     method: "DELETE",
     headers: { Accept: "application/json" },
@@ -336,11 +363,13 @@ function setupDrafts(
   void (async () => {
     const local = parseStoredDraft(form);
     const server = await loadServerDraft(form);
+
     candidate =
       [local, server]
         .filter((item): item is DraftCandidate => item !== null)
         .sort((left, right) => right.savedAt - left.savedAt)[0] ?? null;
     if (!draftDiffers(candidate, draftValue(form))) return;
+
     if (bannerMessage && candidate) {
       bannerMessage.textContent = candidate.stale
         ? "A private draft is available, but the page changed after this draft was started."
@@ -348,11 +377,13 @@ function setupDrafts(
           ? "A newer private server draft is available."
           : "A newer browser fallback draft is available.";
     }
+
     banner.hidden = false;
   })();
 
   restore.addEventListener("click", () => {
     if (!candidate) return;
+
     if (candidate.storageKey && candidate.storageKey !== draftKey(form)) {
       try {
         localStorage.removeItem(candidate.storageKey);
@@ -360,6 +391,7 @@ function setupDrafts(
         /* best effort */
       }
     }
+
     restoreDraftValues(form, candidate.values);
     banner.hidden = true;
     markDirty();
@@ -369,6 +401,7 @@ function setupDrafts(
 
   const clearDraft = async (deleteServer = true): Promise<void> => {
     generation += 1;
+
     if (timer) clearTimeout(timer);
     try {
       for (const storageKey of draftStorageKeys(form))
@@ -393,6 +426,7 @@ function setupDrafts(
 
   const persistLocalDraft = (): DraftValue => {
     const value = draftValue(form);
+
     try {
       localStorage.setItem(
         draftKey(form),
@@ -401,6 +435,7 @@ function setupDrafts(
     } catch {
       /* best effort */
     }
+
     return value;
   };
 
@@ -411,7 +446,9 @@ function setupDrafts(
     setDraftState("saving");
     try {
       await saveServerDraft(form, value);
+
       if (currentGeneration === generation) setDraftState("saved");
+
       return true;
     } catch {
       if (currentGeneration === generation) setDraftState("local");
@@ -421,9 +458,12 @@ function setupDrafts(
 
   const schedule = (): void => {
     if (timer) clearTimeout(timer);
+
     generation += 1;
+
     const currentGeneration = generation;
     const value = persistLocalDraft();
+
     setDraftState("pending");
     timer = setTimeout(
       () => void persistServerDraft(value, currentGeneration),
@@ -433,8 +473,11 @@ function setupDrafts(
 
   const flushDraft = async (): Promise<boolean> => {
     if (timer) clearTimeout(timer);
+
     generation += 1;
+
     const currentGeneration = generation;
+
     return persistServerDraft(persistLocalDraft(), currentGeneration);
   };
 
@@ -451,17 +494,22 @@ function setupPathPreview(form: HTMLFormElement): void {
     "[data-editor-chrome-title]",
   );
   if (!title || !slug || !preview) return;
+
   const titleField = title;
   const slugField = slug;
   const pathPreview = preview;
+
   function update(): void {
     const path = slugField.value.trim() || slugifyEditorPath(titleField.value);
+
     pathPreview.textContent = path
       ? `Pages / ${path.split("/").join(" / ")}`
       : "Pages / new-page";
+
     if (chromeTitle)
       chromeTitle.textContent = titleField.value.trim() || "Untitled";
   }
+
   titleField.addEventListener("input", update);
   slugField.addEventListener("input", update);
   update();
@@ -477,16 +525,20 @@ function setupStats(form: HTMLFormElement): void {
   );
   const lines = form.querySelector<HTMLElement>("[data-editor-line-count]");
   if (!source || !words || !characters || !lines) return;
+
   const editor = source;
   const wordCount = words;
   const characterCount = characters;
   const lineCount = lines;
+
   function update(): void {
     const stats = editorWordStats(editor.value);
+
     wordCount.textContent = `${stats.words} word${stats.words === 1 ? "" : "s"}`;
     characterCount.textContent = `${stats.characters} character${stats.characters === 1 ? "" : "s"}`;
     lineCount.textContent = `${stats.lines} line${stats.lines === 1 ? "" : "s"}`;
   }
+
   editor.addEventListener("input", update);
   update();
 }
@@ -497,8 +549,10 @@ function setupFocusMode(form: HTMLFormElement): void {
   );
   const label = button?.querySelector<HTMLElement>("[data-editor-focus-label]");
   if (!button || !label) return;
+
   const focusButton = button;
   const focusLabel = label;
+
   function setFocusMode(active: boolean): void {
     document.body.classList.toggle("editor-focus-mode", active);
     form.classList.toggle("focus-mode", active);
@@ -506,6 +560,7 @@ function setupFocusMode(form: HTMLFormElement): void {
     focusButton.setAttribute("aria-pressed", String(active));
     focusLabel.textContent = active ? "Exit focus" : "Focus";
   }
+
   focusButton.addEventListener("click", () =>
     setFocusMode(!form.classList.contains("focus-mode")),
   );
@@ -519,6 +574,7 @@ function isSameDocumentAnchor(link: HTMLAnchorElement): boolean {
   try {
     const current = new URL(window.location.href);
     const target = new URL(link.href, current);
+
     return (
       target.origin === current.origin &&
       target.pathname === current.pathname &&
@@ -565,6 +621,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
     "[data-editor-discard]",
   );
   if (!status || !source) return;
+
   const saveStatus = status;
 
   let submitting = false;
@@ -581,6 +638,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
       saveStatus.textContent = pristineLabel;
       return;
     }
+
     switch (draftState) {
       case "saving":
         saveStatus.textContent = "Saving draft…";
@@ -610,6 +668,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
     updateDirty,
     setDraftState,
   );
+
   setupPathPreview(form);
   setupStats(form);
   setupFocusMode(form);
@@ -628,6 +687,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
         return;
       }
     } else if (keepDraft) await flushDraft();
+
     submitting = true;
     window.location.assign(url);
   }
@@ -652,21 +712,28 @@ function setupEditorExperience(form: HTMLFormElement): void {
       return;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
+
     const targetNode = event.target;
     if (!(targetNode instanceof Element)) return;
+
     const link = targetNode.closest<HTMLAnchorElement>("a[href]");
     if (!link || link.hasAttribute("download")) return;
+
     const target = link.getAttribute("target");
     if (target && target !== "_self") return;
     if (isSameDocumentAnchor(link)) return;
+
     event.preventDefault();
     if (!(await confirmLeaveEditor())) return;
+
     await navigate(link.href, { keepDraft: true });
   });
 
   document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (!(event.ctrlKey || event.metaKey)) return;
+
     const key = event.key.toLocaleLowerCase();
+
     if (key === "s") {
       event.preventDefault();
       form.requestSubmit();

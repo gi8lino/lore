@@ -33,6 +33,7 @@ function setupTagEditor(editor: HTMLElement): void {
   function syncValue(): void {
     const next = selectedTags.join(",");
     if (tagValue.value === next) return;
+
     tagValue.value = next;
     tagValue.dispatchEvent(new Event("input", { bubbles: true }));
   }
@@ -42,11 +43,15 @@ function setupTagEditor(editor: HTMLElement): void {
     chipList.replaceChildren();
     for (const tag of selectedTags) {
       const chip = document.createElement("span");
+
       chip.className = "tag-chip";
 
       const label = document.createElement("span");
+
       label.textContent = tag;
+
       const remove = document.createElement("button");
+
       remove.type = "button";
       remove.textContent = "×";
       remove.setAttribute("aria-label", `Remove tag ${tag}`);
@@ -89,10 +94,12 @@ function setupTagEditor(editor: HTMLElement): void {
         !selectedTags.includes(tag.toLocaleLowerCase()) &&
         tag.toLocaleLowerCase().includes(query),
     );
+
     suggestionList.replaceChildren();
 
     for (const tag of matching) {
       const option = document.createElement("button");
+
       option.type = "button";
       option.className = "tag-suggestion";
       option.setAttribute("role", "option");
@@ -117,7 +124,9 @@ function setupTagEditor(editor: HTMLElement): void {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw await responseProblem(response);
+
       const payload: unknown = await response.json();
+
       availableTags = Array.isArray(payload)
         ? payload.filter((tag): tag is string => typeof tag === "string")
         : [];
@@ -154,7 +163,9 @@ function setupTagEditor(editor: HTMLElement): void {
     if (tagInput.value.trim()) addTag(tagInput.value);
     setTimeout(() => (suggestionList.hidden = true), 0);
   });
+
   const form = editor.closest<HTMLFormElement>("form");
+
   form?.addEventListener("submit", () => {
     if (tagInput.value.trim()) addTag(tagInput.value);
     syncValue();
@@ -162,6 +173,7 @@ function setupTagEditor(editor: HTMLElement): void {
   form?.addEventListener("editor:restore-draft", (event: Event) => {
     const detail = (event as CustomEvent<RestoreDraftDetail>).detail;
     const raw = String(detail?.values?.tags?.[0] || "");
+
     selectedTags = raw
       .split(",")
       .map((tag) => tag.trim().toLocaleLowerCase())

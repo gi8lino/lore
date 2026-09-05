@@ -12,6 +12,7 @@ export function initAdmin(): void {
   const navigationIconPicker = document.querySelector<HTMLDialogElement>(
     "[data-icon-picker-dialog]",
   );
+
   if (navigationIconPicker) setupNavigationIconPicker(navigationIconPicker);
   for (const card of document.querySelectorAll<HTMLElement>(
     "[data-group-members]",
@@ -21,11 +22,13 @@ export function initAdmin(): void {
   const userEditor = document.querySelector<HTMLDialogElement>(
     "[data-admin-user-dialog]",
   );
+
   if (userEditor) setupAdminUserEditor(userEditor);
 
   const identityEditor = document.querySelector<HTMLDialogElement>(
     "[data-pending-oidc-dialog]",
   );
+
   if (identityEditor) setupPendingOIDCEditor(identityEditor);
 
   setupAuthenticationSettings();
@@ -34,6 +37,7 @@ export function initAdmin(): void {
   const mermaidPreview = document.querySelector<HTMLElement>(
     "[data-rendering-mermaid-preview]",
   );
+
   if (mermaidPreview) {
     void renderMermaid(mermaidPreview, true).catch((error: unknown) => {
       console.error("rendering Mermaid preview failed", error);
@@ -41,6 +45,7 @@ export function initAdmin(): void {
   }
 
   const bulk = document.querySelector<HTMLFormElement>("[data-bulk-pages]");
+
   if (bulk) {
     const pages = [
       ...bulk.querySelectorAll<HTMLInputElement>("[data-bulk-page]"),
@@ -55,16 +60,19 @@ export function initAdmin(): void {
     // Refreshes the active administration page state.
     const refresh = (): void => {
       const selected = pages.filter((input) => input.checked).length;
+
       if (count) count.textContent = `${selected} selected`;
       if (selectAll)
         selectAll.checked = selected > 0 && selected === pages.length;
       if (selectAll)
         selectAll.indeterminate = selected > 0 && selected < pages.length;
       if (submit) submit.disabled = !selected || !action?.value;
+
       fields.forEach((field) => {
         field.hidden = field.dataset.bulkField !== action?.value;
       });
     };
+
     pages.forEach((input) => input.addEventListener("change", refresh));
     selectAll?.addEventListener("change", () => {
       pages.forEach((input) => {
@@ -76,7 +84,9 @@ export function initAdmin(): void {
     bulk.addEventListener("submit", async (event: SubmitEvent) => {
       if (bulk.dataset.confirming === "true" || action?.value !== "delete")
         return;
+
       event.preventDefault();
+
       const selected = pages.filter((input) => input.checked).length;
       const accepted = await requestConfirmation(
         `Move ${selected} selected page${selected === 1 ? "" : "s"} to the recycle bin?`,
@@ -89,6 +99,7 @@ export function initAdmin(): void {
         },
       );
       if (!accepted) return;
+
       bulk.dataset.confirming = "true";
       bulk.requestSubmit();
     });
@@ -125,6 +136,7 @@ function setupPDFSettings(): void {
 
     button.disabled = true;
     setStatus("testing", "Rendering a small test document…");
+
     try {
       const body = new URLSearchParams({ pdf_url: pdfURL });
       const response = await fetch("/admin/pdf/test", {
@@ -134,7 +146,9 @@ function setupPDFSettings(): void {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw await responseProblem(response);
+
       const payload = (await response.json()) as { message?: string };
+
       setStatus("success", payload.message || "PDF service is reachable.");
     } catch (error: unknown) {
       setStatus("error", errorMessage(error));
@@ -186,6 +200,7 @@ function setupAuthenticationSettings(): void {
       .querySelector<HTMLButtonElement>("[data-oidc-group-mapping-remove]")
       ?.addEventListener("click", () => row.remove());
   };
+
   mappingList
     ?.querySelectorAll<HTMLElement>("[data-oidc-group-mapping-row]")
     .forEach(bindMapping);
@@ -194,6 +209,7 @@ function setupAuthenticationSettings(): void {
     const row = mappingTemplate?.content.firstElementChild?.cloneNode(true) as
       HTMLElement | null | undefined;
     if (!row || !mappingList) return;
+
     mappingList.append(row);
     bindMapping(row);
     row
@@ -205,6 +221,7 @@ function setupAuthenticationSettings(): void {
   const refreshGroupSync = (): void => {
     if (groupOptions) groupOptions.hidden = !groupSync?.checked;
   };
+
   groupSync?.addEventListener("change", refreshGroupSync);
   refreshGroupSync();
 }

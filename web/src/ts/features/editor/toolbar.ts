@@ -29,6 +29,7 @@ function replaceMarkdownSelection(
 ): void {
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? start;
+
   textarea.setRangeText(replacement, start, end, "select");
   textarea.setSelectionRange(start + selectionStart, start + selectionEnd);
   textarea.focus();
@@ -48,6 +49,7 @@ function wrapMarkdownSelection(
   );
   const content = selected || placeholder;
   const replacement = `${before}${content}${after}`;
+
   replaceMarkdownSelection(
     textarea,
     replacement,
@@ -71,6 +73,7 @@ function prefixMarkdownLines(
   const replacement = lines
     .map((line, index) => `${prefixer(index)}${line}`)
     .join("\n");
+
   replaceMarkdownSelection(textarea, replacement, 0, replacement.length);
 }
 
@@ -96,6 +99,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
     "[data-markdown-editor]",
   );
   if (!textarea) return;
+
   const editor = textarea;
 
   // Returns selected Markdown or the action placeholder.
@@ -113,9 +117,11 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
     if (!action) return;
     if (action.startsWith("heading-")) {
       const level = Number(action.slice("heading-".length));
+
       if (level >= 1 && level <= 6) {
         prefixMarkdownLines(editor, () => `${"#".repeat(level)} `, "Heading");
       }
+
       return;
     }
 
@@ -124,6 +130,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
       const content = selectedText("Important information.");
       const replacement = `!!! ${type}\n${content}`;
       const offset = type.length + 5;
+
       replaceMarkdownSelection(
         editor,
         replacement,
@@ -147,6 +154,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
         const label = selectedText("link text");
         const replacement = `[${label}](https://example.com)`;
         const urlStart = label.length + 3;
+
         replaceMarkdownSelection(
           editor,
           replacement,
@@ -164,6 +172,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
       case "code-block": {
         const content = selectedText("command");
         const replacement = `\`\`\`\n${content}\n\`\`\``;
+
         replaceMarkdownSelection(editor, replacement, 4, 4 + content.length);
         break;
       }
@@ -179,12 +188,14 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
       case "tabs": {
         const content = indentMarkdownBlock(selectedText("First tab content."));
         const replacement = `=== "Tab 1"\n\n${content}\n\n=== "Tab 2"\n\n    Second tab content.`;
+
         replaceMarkdownSelection(editor, replacement, 5, 10);
         break;
       }
       case "details": {
         const content = indentMarkdownBlock(selectedText("Hidden details."));
         const replacement = `??? "Details"\n\n${content}`;
+
         replaceMarkdownSelection(editor, replacement, 5, 12);
         break;
       }
@@ -213,6 +224,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
           formatted.length,
         );
         const scrollTop = editor.scrollTop;
+
         editor.value = formatted;
         editor.setSelectionRange(selectionStart, selectionEnd);
         editor.scrollTop = scrollTop;
@@ -228,15 +240,19 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
   toolbar.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const button = target.closest<HTMLElement>("[data-markdown-action]");
     if (!button) return;
+
     applyAction(button.dataset.markdownAction);
     closeToolbarMenus(toolbar);
   });
 
   editor.addEventListener("keydown", (event: KeyboardEvent) => {
     if (!(event.ctrlKey || event.metaKey)) return;
+
     const key = event.key.toLocaleLowerCase();
+
     if (key === "b") {
       event.preventDefault();
       applyAction("bold");

@@ -51,6 +51,7 @@ func addRoutes(
 	mux.Handle("POST /auth/local", handler.LocalLogin(settingsUseCases, systemUseCases, browserAuth, views))
 	mux.Handle("GET /setup", handler.Setup(settingsUseCases, systemUseCases, browserAuth, views))
 	mux.Handle("POST /setup", handler.Setup(settingsUseCases, systemUseCases, browserAuth, views))
+
 	if browserAuth.Callback != nil {
 		mux.Handle("GET /auth/callback", browserAuth.Callback)
 	}

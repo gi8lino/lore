@@ -54,10 +54,13 @@ export function requestConfirmation(
   if (!title || !body || !accept) return Promise.resolve(false);
 
   if (eyebrow) eyebrow.textContent = options.eyebrow || "Confirmation";
+
   title.textContent = options.title || "Confirm action";
   body.textContent = message || "Continue?";
   accept.textContent = options.confirmLabel || "Continue";
+
   if (cancelLabel) cancelLabel.textContent = options.cancelLabel || "Cancel";
+
   accept.classList.toggle("danger", options.danger !== false);
   accept.classList.toggle("primary", options.danger === false);
 
@@ -66,12 +69,14 @@ export function requestConfirmation(
     // Completes the active dialog request.
     const finish = (value: boolean) => {
       if (settled) return;
+
       settled = true;
       dialog.close();
       resolve(value);
     };
 
     for (const button of cancelButtons) button.onclick = () => finish(false);
+
     accept.onclick = () => finish(true);
     dialog.oncancel = (event: Event) => {
       event.preventDefault();
@@ -109,12 +114,14 @@ export function showNotice(
     // Completes the active dialog request.
     const finish = () => {
       if (settled) return;
+
       settled = true;
       dialog.close();
       resolve();
     };
 
     for (const button of closeButtons) button.onclick = finish;
+
     dialog.oncancel = (event: Event) => {
       event.preventDefault();
       finish();
@@ -139,6 +146,7 @@ export function initConfirmForms(): void {
       }
 
       event.preventDefault();
+
       const accepted = await requestConfirmation(
         form.dataset.confirm || "Continue?",
         {
@@ -152,6 +160,7 @@ export function initConfirmForms(): void {
       if (!accepted) return;
 
       form.dataset.confirmBypass = "true";
+
       if (event.submitter instanceof HTMLElement)
         form.requestSubmit(event.submitter);
       else form.requestSubmit();

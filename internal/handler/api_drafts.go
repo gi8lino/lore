@@ -27,6 +27,7 @@ func GetPageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.Ha
 			writeDraftProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, draft)
 	}
 }
@@ -44,6 +45,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 			)
 			return
 		}
+
 		user := currentUser(r)
 		draft, err := draftUseCases.Save(r.Context(), service.PageDraftSaveInput{
 			Key:    strings.TrimSpace(r.PathValue("key")),
@@ -57,6 +59,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 			writeDraftProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, draft)
 	}
 }
@@ -69,6 +72,7 @@ func DeletePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http
 			writeDraftProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

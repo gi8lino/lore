@@ -52,11 +52,13 @@ func TestOIDCAuthenticateExternalAdministrator(t *testing.T) {
 	})
 
 	user, err := authenticator.Authenticate(request)
+
 	require.NoError(t, err)
 	assert.Equal(t, "admin", user.Role)
 
 	authenticator.adminGroup = ""
 	user, err = authenticator.Authenticate(request)
+
 	require.NoError(t, err)
 	assert.Equal(t, "viewer", user.Role, "a removed administrator-group setting must stop stale elevation")
 }
@@ -75,6 +77,7 @@ func TestOIDCAuthenticateRejectsRevokedSession(t *testing.T) {
 	})
 
 	_, err := authenticator.Authenticate(request)
+
 	assert.ErrorIs(t, err, ErrUnauthenticated)
 }
 
@@ -96,6 +99,7 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		})
 
 		_, err := authenticator.Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
@@ -108,6 +112,7 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		})
 
 		_, err := authenticator.Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
@@ -121,6 +126,7 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		})
 
 		_, err := authenticator.Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
@@ -140,6 +146,7 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		})
 
 		_, err := authenticator.Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 }
@@ -149,13 +156,16 @@ func oidcSessionRequest(t *testing.T, authenticator *OIDC, value any) *http.Requ
 	t.Helper()
 
 	response := httptest.NewRecorder()
+
 	authenticator.setCookie(response, "lore_session", value, 3600)
+
 	cookies := response.Result().Cookies()
 	if !assert.Len(t, cookies, 1) {
 		return httptest.NewRequest("GET", "/", nil)
 	}
 
 	request := httptest.NewRequest("GET", "/", nil)
+
 	request.AddCookie(cookies[0])
 	return request
 }
@@ -167,6 +177,7 @@ func TestOIDCGroupValues(t *testing.T) {
 		t.Parallel()
 
 		groups, err := oidcGroupValues([]byte(`["/admins"," /family ","/admins"]`))
+
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"/admins", "/family"}, groups)
 	})
@@ -175,6 +186,7 @@ func TestOIDCGroupValues(t *testing.T) {
 		t.Parallel()
 
 		groups, err := oidcGroupValues([]byte(`"/admins"`))
+
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"/admins"}, groups)
 	})
@@ -183,6 +195,7 @@ func TestOIDCGroupValues(t *testing.T) {
 		t.Parallel()
 
 		groups, err := oidcGroupValues(nil)
+
 		assert.NoError(t, err)
 		assert.Empty(t, groups)
 	})
@@ -191,6 +204,7 @@ func TestOIDCGroupValues(t *testing.T) {
 		t.Parallel()
 
 		_, err := oidcGroupValues([]byte(`{"name":"admins"}`))
+
 		assert.Error(t, err)
 	})
 }

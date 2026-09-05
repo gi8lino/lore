@@ -97,6 +97,7 @@ serviceWorker.addEventListener("fetch", (event: FetchEvent) => {
   }
 
   if (!pageCacheName || !cacheablePage(url)) return;
+
   event.respondWith(
     fetch(request)
       .then((response) => {

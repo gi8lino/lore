@@ -88,12 +88,15 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 	}
 
 	result := make(map[string]template.HTML, len(previews))
+
 	for name, preview := range previews {
 		rendered, err := renderer.RenderResolvedWithOptions(preview.source, md.Slug, preview.options)
 		if err != nil {
 			return nil, err
 		}
+
 		result[name] = template.HTML(rendered)
 	}
+
 	return result, nil
 }

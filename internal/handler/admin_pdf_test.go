@@ -25,6 +25,7 @@ type pdfSettingsStub struct {
 func (s *pdfSettingsStub) SavePDFSettings(_ context.Context, pdfURL string, actorID int64) error {
 	s.url = pdfURL
 	s.actorID = actorID
+
 	return nil
 }
 
@@ -42,7 +43,9 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 	settings := &pdfSettingsStub{}
 	form := url.Values{"pdf_url": {" http://html2pdf:8080/render "}}
 	request := httptest.NewRequest(http.MethodPost, "/admin/pdf", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	request = auth.WithUser(request, model.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
 
@@ -60,17 +63,22 @@ func TestTestAdminPDFService(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/render", r.URL.Path)
+
 		body, err := io.ReadAll(r.Body)
+
 		require.NoError(t, err)
 		assert.Contains(t, string(body), "PDF service test")
 		w.Header().Set("Content-Type", "application/pdf")
+
 		_, _ = io.WriteString(w, "%PDF-1.7\nfixture\n")
 	}))
 	defer server.Close()
 
 	form := url.Values{"pdf_url": {server.URL + "/render"}}
 	request := httptest.NewRequest(http.MethodPost, "/admin/pdf/test", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	response := httptest.NewRecorder()
 
 	TestAdminPDFService(slog.Default())(response, request)

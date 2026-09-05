@@ -43,12 +43,14 @@ func Run(
 ) error {
 	logger := logging.Setup(logFormat, debug, stdout)
 	setupLogger := logger.With("component", "setup")
+
 	setupLogger.Info(
 		"starting Lore",
 		"event", "app_starting",
 		"version", version,
 		"commit", commit,
 	)
+
 	if len(overrides) > 0 {
 		setupLogger.Info(
 			"CLI Overrides",
@@ -77,6 +79,7 @@ func Run(
 		)
 		return err
 	}
+
 	defer database.Close()
 
 	// Construct application services here so internal/app remains the single
@@ -133,6 +136,7 @@ func Run(
 		)
 		return err
 	}
+
 	bearerAuth := auth.NewBearer(database)
 
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{

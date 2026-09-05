@@ -14,7 +14,9 @@ interface WikiLinkPage {
 
 function isWikiLinkPage(value: unknown): value is WikiLinkPage {
   if (typeof value !== "object" || value === null) return false;
+
   const page = value as Partial<WikiLinkPage>;
+
   return typeof page.slug === "string" && typeof page.title === "string";
 }
 
@@ -26,10 +28,13 @@ export function wikiLinkTrigger(
   const before = value.slice(0, caret);
   const open = before.lastIndexOf("[[");
   if (open < 0) return null;
+
   const body = before.slice(open + 2);
   if (body.includes("]]")) return null;
   if (body.includes("\n")) return null;
+
   const query = body.split("|", 1)[0]?.trim() ?? "";
+
   return { start: open, query };
 }
 
@@ -41,6 +46,7 @@ export function wikiLinkReplacement(title: string): string {
 // Creates menu.
 function createMenu(source: HTMLTextAreaElement): HTMLDivElement {
   const menu = document.createElement("div");
+
   menu.className = "editor-suggestion-menu";
   menu.dataset.editorWikiLinks = "";
   menu.hidden = true;
@@ -54,8 +60,10 @@ function createMenu(source: HTMLTextAreaElement): HTMLDivElement {
 function setMenuPosition(source: HTMLTextAreaElement, menu: HTMLElement): void {
   const pane = source.closest<HTMLElement>(".editor-source-pane");
   if (!pane) return;
+
   const sourceRect = source.getBoundingClientRect();
   const paneRect = pane.getBoundingClientRect();
+
   menu.style.left = `${Math.max(12, sourceRect.left - paneRect.left + 18)}px`;
   menu.style.top = `${Math.max(12, sourceRect.top - paneRect.top + 52)}px`;
 }
@@ -66,6 +74,7 @@ function setupWikiLinks(form: HTMLFormElement): void {
     "[data-markdown-editor]",
   );
   if (!source) return;
+
   const editor = source;
 
   const menu = createMenu(editor);
@@ -87,27 +96,33 @@ function setupWikiLinks(form: HTMLFormElement): void {
   // Renders wiki-link suggestions.
   function render(): void {
     menu.replaceChildren();
+
     if (!results.length) {
       const empty = document.createElement("div");
+
       empty.className = "editor-suggestion-empty";
       empty.textContent = "No matching pages.";
       menu.append(empty);
     } else {
       results.forEach((page, index) => {
         const button = document.createElement("button");
+
         button.type = "button";
         button.className = "editor-suggestion-option";
         button.dataset.index = String(index);
         button.setAttribute("role", "option");
         button.setAttribute("aria-selected", String(index === active));
+
         const strong = document.createElement("strong");
         const small = document.createElement("small");
+
         strong.textContent = page.title;
         small.textContent = page.slug;
         button.append(strong, small);
         menu.append(button);
       });
     }
+
     setMenuPosition(editor, menu);
     menu.hidden = false;
     editor.setAttribute("aria-expanded", "true");
@@ -118,8 +133,10 @@ function setupWikiLinks(form: HTMLFormElement): void {
     const page = results[index];
     const currentTrigger = trigger;
     if (!page || !currentTrigger) return;
+
     const end = editor.selectionStart ?? currentTrigger.start;
     const replacement = wikiLinkReplacement(page.title);
+
     editor.setRangeText(replacement, currentTrigger.start, end, "end");
     editor.dispatchEvent(new Event("input", { bubbles: true }));
     close();
@@ -134,15 +151,20 @@ function setupWikiLinks(form: HTMLFormElement): void {
       close();
       return;
     }
+
     trigger = next;
+
     const currentRequest = ++request;
+
     try {
       const response = await fetch(
         `/api/search?q=${encodeURIComponent(next.query)}`,
         { headers: { Accept: "application/json" } },
       );
       if (!response.ok || currentRequest !== request) return;
+
       const payload: unknown = await response.json();
+
       results = Array.isArray(payload)
         ? payload.filter(isWikiLinkPage).slice(0, resultLimit)
         : [];
@@ -180,13 +202,16 @@ function setupWikiLinks(form: HTMLFormElement): void {
   menu.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const option = target.closest<HTMLElement>("[data-index]");
+
     if (option) select(Number(option.dataset.index));
   });
 
   document.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Node)) return;
+
     if (target !== editor && !menu.contains(target)) close();
   });
 }

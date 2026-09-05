@@ -54,11 +54,14 @@ func expandKnowledgeMarkdown(
 	if depth > maxKnowledgeExpansionDepth {
 		return "", fmt.Errorf("knowledge expansion exceeds maximum depth of %d", maxKnowledgeExpansionDepth)
 	}
+
 	if seen == nil {
 		seen = map[string]bool{}
 	}
+
 	lines := strings.Split(source, "\n")
 	fence := ""
+
 	for index, line := range lines {
 		trimmed := strings.TrimLeft(line, " ")
 		if marker := renderFenceMarker(trimmed); marker != "" {
@@ -72,32 +75,41 @@ func expandKnowledgeMarkdown(
 		if fence != "" || !strings.Contains(line, "{{") {
 			continue
 		}
+
 		var expandErr error
 		lines[index] = knowledgeMacroPattern.ReplaceAllStringFunc(line, func(raw string) string {
 			if expandErr != nil {
 				return raw
 			}
+
 			match := knowledgeMacroPattern.FindStringSubmatch(raw)
 			if len(match) != 3 {
 				return raw
 			}
+
 			kind := match[1]
 			name := strings.TrimSpace(match[2])
+
 			switch kind {
 			case "var", "snippet":
 				storedKind := kind
+
 				if kind == "var" {
 					storedKind = "variable"
 				}
+
 				item, err := content.KnowledgeSnippetByName(ctx, storedKind, name)
 				if err != nil {
 					if errors.Is(err, service.ErrNotFound) {
 						expandErr = fmt.Errorf("%s %q not found: %w", kind, name, err)
 						return raw
 					}
+
 					expandErr = err
+
 					return raw
 				}
+
 				return item.Content
 			case "include":
 				slug := strings.Trim(name, "/")
@@ -109,33 +121,42 @@ func expandKnowledgeMarkdown(
 					expandErr = fmt.Errorf("recursive page include %q", slug)
 					return raw
 				}
+
 				page, err := content.GetPage(ctx, slug)
 				if err != nil {
 					if errors.Is(err, service.ErrNotFound) {
 						expandErr = fmt.Errorf("included page %q not found: %w", slug, err)
 						return raw
 					}
+
 					expandErr = err
+
 					return raw
 				}
+
 				nextSeen := make(map[string]bool, len(seen)+1)
+
 				for key, value := range seen {
 					nextSeen[key] = value
 				}
+
 				nextSeen[slug] = true
 				expanded, err := expandKnowledgeMarkdown(ctx, content, page.Markdown, nextSeen, depth+1)
 				if err != nil {
 					expandErr = fmt.Errorf("expand include %s: %w", slug, err)
 					return raw
 				}
+
 				return expanded
 			}
+
 			return raw
 		})
 		if expandErr != nil {
 			return "", expandErr
 		}
 	}
+
 	return strings.Join(lines, "\n"), nil
 }
 
@@ -147,5 +168,6 @@ func renderFenceMarker(line string) string {
 	if strings.HasPrefix(line, "~~~") {
 		return "~~~"
 	}
+
 	return ""
 }

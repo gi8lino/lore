@@ -12,6 +12,7 @@ export function tabularTextToMarkdown(value: string): string | null {
     .trimEnd();
   const rows = normalized.split("\n").map((line) => line.split("\t"));
   if (rows.length < 2) return null;
+
   const columns = Math.max(...rows.map((row) => row.length));
   if (columns < 2) return null;
   if (!rows.every((row) => row.length === columns)) return null;
@@ -20,6 +21,7 @@ export function tabularTextToMarkdown(value: string): string | null {
   // Renders one Markdown table row.
   const line = (row: string[]): string => `| ${row.join(" | ")} |`;
   const separator = line(Array.from({ length: columns }, () => "---"));
+
   return [line(cells[0]), separator, ...cells.slice(1).map(line)].join("\n");
 }
 
@@ -32,13 +34,16 @@ function setupTablePaste(form: HTMLFormElement): void {
 
   textarea.addEventListener("paste", (event: ClipboardEvent) => {
     if ((event.clipboardData?.files?.length || 0) > 0) return;
+
     const text = event.clipboardData?.getData("text/plain") || "";
     const markdown = tabularTextToMarkdown(text);
     if (!markdown) return;
 
     event.preventDefault();
+
     const start = textarea.selectionStart ?? textarea.value.length;
     const end = textarea.selectionEnd ?? start;
+
     textarea.setRangeText(markdown, start, end, "end");
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
   });

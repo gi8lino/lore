@@ -115,11 +115,13 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (Page, error) {
 	}
 
 	action := "page.updated"
+
 	if input.PreviousSlug == "" {
 		action = "page.created"
 	} else if strings.TrimSpace(input.PreviousSlug) != page.Slug {
 		action = "page.renamed"
 	}
+
 	_ = s.repository.LogAudit(ctx, input.Actor.ID, action, "page", page.Slug, page.Title)
 	_ = s.repository.NotifyMentions(
 		ctx,
@@ -128,6 +130,7 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (Page, error) {
 		"Mention in "+page.Title,
 		"/pages/"+page.Slug,
 	)
+
 	return page, nil
 }
 
@@ -140,6 +143,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (Page, error) {
 	input.Language = strings.TrimSpace(input.Language)
 	input.DeprecatedTarget = md.Slug(input.DeprecatedTarget)
 	validation := &ValidationError{}
+
 	if input.Slug == "" {
 		validation.Fields = append(validation.Fields, FieldError{Field: "slug", Message: "A page path is required."})
 	}
@@ -167,6 +171,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (Page, error) {
 			Message: "Choose valid page workflow settings.",
 		})
 	}
+
 	if len(validation.Fields) > 0 {
 		return Page{}, validation
 	}
@@ -201,7 +206,9 @@ func (s *Pages) Delete(ctx context.Context, slug string, actor User) error {
 	if err := s.repository.DeletePage(ctx, slug, actor.ID); err != nil {
 		return err
 	}
+
 	_ = s.repository.LogAudit(ctx, actor.ID, "page.deleted", "page", slug, "Moved page to recycle bin")
+
 	return nil
 }
 
@@ -220,7 +227,9 @@ func (s *Pages) Move(
 	if err := s.repository.MovePage(ctx, oldSlug, newSlug, options, actor); err != nil {
 		return err
 	}
+
 	_ = s.repository.LogAudit(ctx, actor.ID, "page.moved", "page", newSlug, oldSlug+" → "+newSlug)
+
 	return nil
 }
 
@@ -230,7 +239,9 @@ func (s *Pages) Review(ctx context.Context, slug string, actor User) error {
 	if err := s.repository.MarkPageReviewed(ctx, slug); err != nil {
 		return err
 	}
+
 	_ = s.repository.LogAudit(ctx, actor.ID, "page.reviewed", "page", slug, "Documentation review completed")
+
 	return nil
 }
 
@@ -239,22 +250,29 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 	if number <= 0 {
 		return Page{}, &ValidationError{Fields: []FieldError{{Field: "revision", Message: "Invalid revision."}}}
 	}
+
 	page, err := s.repository.GetPage(ctx, slug)
 	if err != nil {
 		return Page{}, err
 	}
+
 	record, err := s.repository.Revision(ctx, slug, number)
 	if err != nil {
 		return Page{}, err
 	}
+
 	groupIDs := make([]int64, 0, len(page.Groups))
+
 	for _, group := range page.Groups {
 		groupIDs = append(groupIDs, group.ID)
 	}
+
 	properties := make(map[string]string, len(page.Properties))
+
 	for _, property := range page.Properties {
 		properties[property.Key] = property.Value
 	}
+
 	page, err = s.save(ctx, PageSaveInput{
 		PreviousSlug:       page.Slug,
 		Slug:               page.Slug,
@@ -275,6 +293,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 	if err != nil {
 		return Page{}, err
 	}
+
 	_ = s.repository.LogAudit(
 		ctx,
 		actor.ID,
@@ -283,6 +302,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 		page.Slug,
 		"Restored revision "+fmt.Sprint(number),
 	)
+
 	return page, nil
 }
 
@@ -295,12 +315,15 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 	if !settings.DiscussionsEnabled {
 		return ErrDiscussionsDisabled
 	}
+
 	slug = strings.TrimSpace(slug)
 	body = strings.TrimSpace(body)
 	if _, err := s.repository.AddPageComment(ctx, slug, actor.ID, anchor, body); err != nil {
 		return err
 	}
+
 	_ = s.repository.NotifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
+
 	return nil
 }
 
@@ -309,6 +332,7 @@ func (s *Pages) ResolveComment(ctx context.Context, id int64, resolved bool) err
 	if id <= 0 {
 		return &ValidationError{Fields: []FieldError{{Field: "comment", Message: "Invalid comment."}}}
 	}
+
 	settings, err := s.repository.ApplicationSettings(ctx)
 	if err != nil {
 		return err
@@ -316,6 +340,7 @@ func (s *Pages) ResolveComment(ctx context.Context, id int64, resolved bool) err
 	if !settings.DiscussionsEnabled {
 		return ErrDiscussionsDisabled
 	}
+
 	return s.repository.ResolvePageComment(ctx, id, resolved)
 }
 
@@ -326,6 +351,7 @@ func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format st
 			return 0, err
 		}
 	}
+
 	_ = s.repository.LogAudit(
 		ctx,
 		actor.ID,
@@ -334,6 +360,7 @@ func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format st
 		format,
 		fmt.Sprintf("Imported %d pages", len(candidates)),
 	)
+
 	return len(candidates), nil
 }
 
@@ -354,6 +381,7 @@ func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor Us
 		Actor:      actor,
 	}
 	current, err := s.repository.GetPage(ctx, slug)
+
 	if err == nil {
 		input.Icon = current.Icon
 		input.Language = current.Language
@@ -363,6 +391,7 @@ func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor Us
 		input.ReviewIntervalDays = current.ReviewIntervalDays
 		input.DeprecatedTarget = current.DeprecatedTarget
 		input.GroupIDs = make([]int64, 0, len(current.Groups))
+
 		for _, group := range current.Groups {
 			input.GroupIDs = append(input.GroupIDs, group.ID)
 		}
@@ -372,7 +401,9 @@ func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor Us
 	} else if !errors.Is(err, ErrNotFound) {
 		return err
 	}
+
 	_, err = s.save(ctx, input)
+
 	return err
 }
 
@@ -383,6 +414,7 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 	}
 
 	var err error
+
 	switch input.Action {
 	case "status":
 		if !ValidPageStatus(input.Status) {
@@ -406,9 +438,11 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 	default:
 		return newValidationError("action", "Choose a valid bulk action.")
 	}
+
 	if err != nil {
 		return err
 	}
+
 	_ = s.repository.LogAudit(
 		ctx,
 		input.Actor.ID,
@@ -417,6 +451,7 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 		strings.Join(input.Slugs, ","),
 		fmt.Sprintf("%d pages", len(input.Slugs)),
 	)
+
 	return nil
 }
 
@@ -426,10 +461,13 @@ func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, act
 	if target == "" {
 		return newValidationError("target", "A target path is required.")
 	}
+
 	orderedSlugs := append([]string(nil), slugs...)
+
 	sort.Slice(orderedSlugs, func(i, j int) bool {
 		return len(orderedSlugs[i]) > len(orderedSlugs[j])
 	})
+
 	for _, slug := range orderedSlugs {
 		destination := strings.Trim(target, "/") + "/" + path.Base(slug)
 		if err := s.repository.MovePage(
@@ -442,6 +480,7 @@ func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, act
 			return err
 		}
 	}
+
 	return nil
 }
 

@@ -16,6 +16,7 @@ const (
 // SetExternalAdminStatus records the most recently asserted external administrator state.
 func (s *Store) SetExternalAdminStatus(ctx context.Context, userID int64, method string, admin bool) error {
 	var query string
+
 	switch method {
 	case "oidc":
 		query = `UPDATE users SET oidc_admin_observed=true,oidc_external_admin=$2 WHERE id=$1`
@@ -24,10 +25,12 @@ func (s *Store) SetExternalAdminStatus(ctx context.Context, userID int64, method
 	default:
 		return errors.New("unsupported external authentication method")
 	}
+
 	tag, err := s.pool.Exec(ctx, query, userID, admin)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -48,6 +51,7 @@ WHERE oi.issuer=$1 AND oi.subject=$2 AND u.enabled`, issuer, subject).Scan(&user
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
+
 	return user, err
 }
 
@@ -60,16 +64,20 @@ ORDER BY user_id,issuer,created_at`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	identities := make([]OIDCIdentity, 0)
+
 	for rows.Next() {
 		var identity OIDCIdentity
 		if err := rows.Scan(&identity.UserID, &identity.Issuer, &identity.Subject, &identity.CreatedAt); err != nil {
 			return nil, err
 		}
+
 		identities = append(identities, identity)
 	}
+
 	return identities, rows.Err()
 }
 
@@ -83,16 +91,20 @@ ORDER BY lower(m.oidc_group),m.oidc_group,g.id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	mappings := make([]OIDCGroupMapping, 0)
+
 	for rows.Next() {
 		var mapping OIDCGroupMapping
 		if err := rows.Scan(&mapping.OIDCGroup, &mapping.GroupID, &mapping.GroupName); err != nil {
 			return nil, err
 		}
+
 		mappings = append(mappings, mapping)
 	}
+
 	return mappings, rows.Err()
 }
 
@@ -105,6 +117,7 @@ func (s *Store) SyncOIDCGroups(
 	authoritative bool,
 ) error {
 	claimed := make(map[string]bool, len(claimedGroups))
+
 	for _, group := range claimedGroups {
 		if group = strings.TrimSpace(group); group != "" {
 			claimed[group] = true
@@ -113,11 +126,14 @@ func (s *Store) SyncOIDCGroups(
 
 	managed := make(map[int64]bool, len(mappings))
 	desired := make(map[int64]bool, len(mappings))
+
 	for _, mapping := range mappings {
 		if mapping.GroupID <= 0 {
 			continue
 		}
+
 		managed[mapping.GroupID] = true
+
 		if claimed[strings.TrimSpace(mapping.OIDCGroup)] {
 			desired[mapping.GroupID] = true
 		}
@@ -127,6 +143,7 @@ func (s *Store) SyncOIDCGroups(
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if authoritative {
@@ -149,6 +166,7 @@ ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
 			return err
 		}
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -187,9 +205,11 @@ ORDER BY
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	identities := make([]PendingOIDCIdentity, 0)
+
 	for rows.Next() {
 		var identity PendingOIDCIdentity
 		if err := rows.Scan(
@@ -208,8 +228,10 @@ ORDER BY
 		); err != nil {
 			return nil, err
 		}
+
 		identities = append(identities, identity)
 	}
+
 	return identities, rows.Err()
 }
 
@@ -231,6 +253,7 @@ func (s *Store) LoginOIDCUser(
 	if err != nil {
 		return User{}, err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	user, found, err := oidcUserForUpdate(ctx, tx, issuer, subject)
@@ -250,6 +273,7 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 		if err := tx.Commit(ctx); err != nil {
 			return User{}, err
 		}
+
 		return user, nil
 	}
 
@@ -277,6 +301,7 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 		if err := tx.Commit(ctx); err != nil {
 			return User{}, err
 		}
+
 		return user, nil
 	}
 
@@ -287,6 +312,7 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 		if err := tx.Commit(ctx); err != nil {
 			return User{}, err
 		}
+
 		return User{}, ErrIdentityRejected
 	}
 
@@ -304,6 +330,7 @@ WHERE singleton=true`).Scan(&registrationEnabled); err != nil {
 		if err := tx.Commit(ctx); err != nil {
 			return User{}, err
 		}
+
 		return User{}, ErrIdentityApprovalRequired
 	}
 
@@ -319,6 +346,7 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }
 
@@ -328,6 +356,7 @@ func (s *Store) ApprovePendingOIDCIdentity(ctx context.Context, pendingID int64)
 	if err != nil {
 		return User{}, err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	pending, err := pendingOIDCIdentityForUpdate(ctx, tx, pendingID)
@@ -364,6 +393,7 @@ WHERE id=$1`, pendingID); err != nil {
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }
 
@@ -373,6 +403,7 @@ func (s *Store) LinkPendingOIDCIdentity(ctx context.Context, pendingID, userID i
 	if err != nil {
 		return User{}, err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	pending, err := pendingOIDCIdentityForUpdate(ctx, tx, pendingID)
@@ -382,6 +413,7 @@ func (s *Store) LinkPendingOIDCIdentity(ctx context.Context, pendingID, userID i
 	if pending.Status != pendingOIDCStatusPending {
 		return User{}, ErrForbidden
 	}
+
 	if _, found, err := oidcUserForUpdate(ctx, tx, pending.Issuer, pending.Subject); err != nil {
 		return User{}, err
 	} else if found {
@@ -389,6 +421,7 @@ func (s *Store) LinkPendingOIDCIdentity(ctx context.Context, pendingID, userID i
 	}
 
 	var user User
+
 	if err := tx.QueryRow(ctx, `
 SELECT id,username,email,display_name,role
 FROM users
@@ -409,6 +442,7 @@ RETURNING subject`, userID, pending.Issuer).Scan(&previousSubject)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return User{}, err
 	}
+
 	if previousSubject != "" && previousSubject != pending.Subject {
 		if err := rejectOIDCIdentity(
 			ctx,
@@ -422,6 +456,7 @@ RETURNING subject`, userID, pending.Issuer).Scan(&previousSubject)
 			return User{}, err
 		}
 	}
+
 	if _, err := tx.Exec(ctx, `
 INSERT INTO oidc_identities(issuer,subject,user_id)
 VALUES($1,$2,$3)`, pending.Issuer, pending.Subject, userID); err != nil {
@@ -435,6 +470,7 @@ WHERE id=$1`, pendingID); err != nil {
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }
 
@@ -446,9 +482,11 @@ func (s *Store) RemoveOIDCIdentity(ctx context.Context, userID int64, issuer, su
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var username, email, displayName string
+
 	if err := tx.QueryRow(ctx, `
 SELECT username,email,display_name
 FROM users
@@ -471,6 +509,7 @@ WHERE user_id=$1 AND issuer=$2 AND subject=$3`, userID, issuer, subject)
 	if err := rejectOIDCIdentity(ctx, tx, issuer, subject, username, email, displayName); err != nil {
 		return err
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -495,9 +534,11 @@ SET username=EXCLUDED.username,
 // SetPendingOIDCIdentityRejected rejects or reopens a pending identity request.
 func (s *Store) SetPendingOIDCIdentityRejected(ctx context.Context, pendingID int64, rejected bool) error {
 	status := pendingOIDCStatusPending
+
 	if rejected {
 		status = pendingOIDCStatusRejected
 	}
+
 	tag, err := s.pool.Exec(ctx, `
 UPDATE pending_oidc_identities
 SET status=$2
@@ -508,6 +549,7 @@ WHERE id=$1`, pendingID, status)
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return nil
 }
 
@@ -523,6 +565,7 @@ FOR UPDATE OF u`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil
 	}
+
 	return user, err == nil, err
 }
 
@@ -547,6 +590,7 @@ FOR UPDATE`, pendingID).Scan(
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PendingOIDCIdentity{}, ErrNotFound
 	}
+
 	return pending, err
 }
 
@@ -561,6 +605,7 @@ FOR UPDATE`, issuer, subject).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}
+
 	return status, err
 }
 
@@ -580,6 +625,7 @@ SET username=EXCLUDED.username,
     display_name=EXCLUDED.display_name,
     last_seen_at=now()
 RETURNING status`, issuer, subject, username, email, displayName).Scan(&status)
+
 	return status, err
 }
 
@@ -595,6 +641,7 @@ func refreshOIDCUser(
 	} else if !available {
 		return User{}, ErrAlreadyExists
 	}
+
 	user.Username = username
 
 	err := tx.QueryRow(ctx, `
@@ -613,6 +660,7 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, user.ID,
 		&user.Enabled,
 		&user.SessionVersion,
 	)
+
 	return user, err
 }
 
@@ -626,6 +674,7 @@ func createOIDCUser(
 	if username == "" {
 		return User{}, errors.New("OIDC preferred username is required")
 	}
+
 	available, err := usernameAvailable(ctx, tx, username, 0)
 	if err != nil {
 		return User{}, err
@@ -654,6 +703,7 @@ INSERT INTO oidc_identities(issuer,subject,user_id)
 VALUES($1,$2,$3)`, issuer, subject, user.ID); err != nil {
 		return User{}, err
 	}
+
 	return user, nil
 }
 
@@ -665,5 +715,6 @@ SELECT NOT EXISTS(
   SELECT 1 FROM users
   WHERE lower(username)=lower($1) AND id<>$2
 )`, username, exceptUserID).Scan(&available)
+
 	return available, err
 }

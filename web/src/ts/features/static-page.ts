@@ -22,6 +22,7 @@ export function initStaticPage(): void {
   function updateHeadingHeight(): void {
     const sticky = window.matchMedia("(min-width: 801px)").matches;
     const height = sticky && pageHeading ? pageHeading.offsetHeight : 0;
+
     document.documentElement.style.setProperty(
       "--page-heading-height",
       `${height}px`,
@@ -30,11 +31,13 @@ export function initStaticPage(): void {
 
   updateHeadingHeight();
   window.addEventListener("resize", updateHeadingHeight);
+
   if (pageHeading && "ResizeObserver" in window) {
     new ResizeObserver(updateHeadingHeight).observe(pageHeading);
   }
 
   let scheduleActiveHeadingUpdate = (): void => {};
+
   if (pageContents) {
     const entries = [
       ...pageContents.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'),
@@ -55,6 +58,7 @@ export function initStaticPage(): void {
 
     function setActive(link: HTMLAnchorElement): void {
       if (activeLink === link) return;
+
       activeLink?.classList.remove("active");
       activeLink?.removeAttribute("aria-current");
       link.classList.add("active");
@@ -64,11 +68,14 @@ export function initStaticPage(): void {
 
     function updateActive(): void {
       scheduled = false;
+
       const first = entries[0];
       if (!first) return;
+
       const headingBottom = pageHeading?.getBoundingClientRect().bottom ?? 0;
       const threshold = Math.max(96, headingBottom + 12);
       let current = first;
+
       for (const entry of entries) {
         if (entry.heading.getBoundingClientRect().top <= threshold)
           current = entry;
@@ -80,11 +87,13 @@ export function initStaticPage(): void {
       ) {
         current = entries.at(-1) ?? current;
       }
+
       setActive(current.link);
     }
 
     scheduleActiveHeadingUpdate = () => {
       if (scheduled) return;
+
       scheduled = true;
       requestAnimationFrame(updateActive);
     };
@@ -97,24 +106,33 @@ export function initStaticPage(): void {
 
   function setDesktopVisible(show: boolean): void {
     if (!pageReading || !toggle) return;
+
     desktopVisible = show;
     pageReading.classList.toggle("with-contents", show);
     pageReading.classList.toggle("contents-hidden", !show);
     toggle.setAttribute("aria-pressed", String(show));
+
     const label = show ? "Hide page contents" : "Show page contents";
+
     toggle.setAttribute("aria-label", label);
     toggle.title = label;
+
     if (show) scheduleActiveHeadingUpdate();
   }
 
   function setMobileOpen(open: boolean, restoreFocus = false): void {
     if (!pageReading || !pageContents || !toggle) return;
+
     const nextOpen = open && mobile.matches;
+
     pageReading.classList.toggle("contents-popover-open", nextOpen);
     document.body.classList.toggle("contents-popover-open", nextOpen);
+
     if (backdrop) backdrop.hidden = !nextOpen;
+
     toggle.setAttribute("aria-expanded", String(nextOpen));
     pageContents.setAttribute("aria-hidden", String(!nextOpen));
+
     if (nextOpen) close?.focus();
     else if (restoreFocus) toggle.focus();
   }
@@ -127,6 +145,7 @@ export function initStaticPage(): void {
       pageContents.setAttribute("aria-hidden", "true");
       return;
     }
+
     pageContents.removeAttribute("aria-hidden");
     setDesktopVisible(desktopVisible);
   }
@@ -137,6 +156,7 @@ export function initStaticPage(): void {
       setMobileOpen(!pageReading.classList.contains("contents-popover-open"));
       return;
     }
+
     setDesktopVisible(!pageReading.classList.contains("with-contents"));
   });
   close?.addEventListener("click", () => setMobileOpen(false, true));

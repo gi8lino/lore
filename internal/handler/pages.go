@@ -29,27 +29,33 @@ func Home(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		recent, err := catalogUseCases.ListPages(r.Context(), 8)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		viewed, err := catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		popular, err := catalogUseCases.Popular(r.Context(), 8)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		recentEdits, err := catalogUseCases.RecentEdited(r.Context(), user.ID, 6)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		var drafts []service.PageDraft
+
 		if user.Role == "admin" || user.Role == "editor" {
 			drafts, err = draftUseCases.List(r.Context(), user.ID, 6)
 			if err != nil {
@@ -57,14 +63,17 @@ func Home(
 				return
 			}
 		}
+
 		data, err := viewData(r, viewDataUseCases, views, "Home")
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		data.Favorites, data.Recent, data.Pages, data.Popular = favorites, recent, viewed, popular
 		data.RecentEdits = recentEdits
 		data.Drafts = drafts
+
 		render(views, w, "home", data)
 	}
 }
@@ -81,16 +90,19 @@ func ViewPage(
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
 		page, err := catalogUseCases.GetPage(r.Context(), slug)
+
 		if errors.Is(err, service.ErrNotFound) {
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				http.Redirect(w, r, "/pages/"+target, http.StatusPermanentRedirect)
 				return
 			}
 		}
+
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		user, _ := auth.User(r)
 		_ = catalogUseCases.RecordView(r.Context(), slug, user.ID)
 		pageFavorite, err := catalogUseCases.IsFavorite(r.Context(), slug, user.ID)
@@ -98,27 +110,33 @@ func ViewPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		backlinks, err := catalogUseCases.Backlinks(r.Context(), slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		outgoingLinks, err := catalogUseCases.PageLinks(r.Context(), slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		latestRevision, revisionCount, err := catalogUseCases.LatestRevision(r.Context(), slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		var related []service.Page
+
 		if len(page.Tags) > 0 {
 			related, err = catalogUseCases.Search(r.Context(), "tag:"+page.Tags[0], 6)
 			if err != nil {
@@ -126,12 +144,15 @@ func ViewPage(
 				return
 			}
 		}
+
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		var comments []service.PageComment
+
 		if data.ApplicationSettings.DiscussionsEnabled {
 			comments, err = catalogUseCases.PageComments(r.Context(), slug)
 			if err != nil {
@@ -142,12 +163,14 @@ func ViewPage(
 		if page.Language != "" {
 			data.PageContentLanguage = page.Language
 		}
+
 		data.Subpages = navigation.Children(data.Navigation, slug)
 		subpages, err := renderTemplateHTML(views, "page", "subpage-toc", data)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		expandedMarkdown, err := expandKnowledgeMarkdown(
 			r.Context(),
 			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
@@ -159,6 +182,7 @@ func ViewPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
 			expandedMarkdown,
 			md.Slug,
@@ -169,12 +193,15 @@ func ViewPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		renderedHTML := rendered.HTML
 		var brokenLinks []service.PageLink
+
 		for _, link := range outgoingLinks {
 			if link.Exists {
 				continue
 			}
+
 			brokenLinks = append(brokenLinks, link)
 			renderedHTML = strings.ReplaceAll(
 				renderedHTML,
@@ -182,18 +209,22 @@ func ViewPage(
 				`<a class="wiki-link-broken" href="/pages/`+link.TargetSlug+`"`,
 			)
 		}
+
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
 		data.OutgoingLinks = outgoingLinks
 		data.BrokenLinks = brokenLinks
 		data.Comments = comments
 		data.PageFavorite = pageFavorite
 		data.RevisionCount = revisionCount
+
 		if revisionCount > 0 {
 			latestRevision = revision.Analyze(latestRevision)
 			data.LatestRevision = &latestRevision
 		}
+
 		data.PageContents = rendered.Contents
 		data.Related = withoutSlug(related, slug)
+
 		render(views, w, "page", data)
 	}
 }
@@ -214,11 +245,13 @@ func EditPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		groups, err := groupUseCases.AssignableGroups(r.Context(), user)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		data.Groups = groups
 		data.RenderingLanguages = renderingLanguageOptions
 		data.PageStatuses = service.PageStatuses()
@@ -227,7 +260,9 @@ func EditPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		data.KnowledgeSnippets = snippets
+
 		if r.PathValue("slug") == "" {
 			data.EditorInitialSlug = md.Slug(r.URL.Query().Get("slug"))
 		}
@@ -238,7 +273,9 @@ func EditPage(
 				writePageProblem(views.logger, w, err)
 				return
 			}
+
 			data.PageTemplates = templates
+
 			if value := r.URL.Query().Get("template"); value != "" {
 				id, parseErr := strconv.ParseInt(value, 10, 64)
 				if parseErr == nil && id > 0 {
@@ -256,11 +293,14 @@ func EditPage(
 				writePageProblem(views.logger, w, err)
 				return
 			}
+
 			data.Title, data.Page = "Edit "+page.Title, &page
+
 			if page.Language != "" {
 				data.PageContentLanguage = page.Language
 			}
 		}
+
 		render(views, w, "edit", data)
 	}
 }
@@ -278,12 +318,14 @@ func SavePageForm(
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid form.")
 			return
 		}
+
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, err.Error())
 			return
 		}
+
 		properties := pagePropertiesFromForm(r)
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
 			PreviousSlug:       originalSlug,
@@ -307,7 +349,9 @@ func SavePageForm(
 			writePageSaveProblem(views.logger, w, err)
 			return
 		}
+
 		draftKey := "new"
+
 		if originalSlug != "" {
 			draftKey = service.PageDraftKey(page.ID)
 		}
@@ -320,6 +364,7 @@ func SavePageForm(
 				"error", err,
 			)
 		}
+
 		http.Redirect(w, r, "/pages/"+page.Slug, http.StatusSeeOther)
 	}
 }
@@ -333,6 +378,7 @@ func DeletePageForm(pageUseCases pageWriterService, views *Views) http.HandlerFu
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
@@ -345,12 +391,14 @@ func FavoritePage(catalogUseCases favoriteService, views *Views) http.HandlerFun
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
+
 		slug := strings.TrimSuffix(value, "/favorite")
 		user, _ := auth.User(r)
 		if err := catalogUseCases.SetFavorite(r.Context(), slug, user.ID, r.FormValue("on") != "false"); err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+
 		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
 	}
 }
@@ -359,25 +407,30 @@ func FavoritePage(catalogUseCases favoriteService, views *Views) http.HandlerFun
 func splitTags(value string) []string {
 	parts := strings.Split(value, ",")
 	result := parts[:0]
+
 	for _, part := range parts {
 		if part = strings.TrimSpace(part); part != "" {
 			result = append(result, part)
 		}
 	}
+
 	return result
 }
 
 // parseGroupIDs parses positive group identifiers from form values and leaves invalid values for store validation.
 func parseGroupIDs(values []string) []int64 {
 	groupIDs := make([]int64, 0, len(values))
+
 	for _, value := range values {
 		id, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			groupIDs = append(groupIDs, -1)
 			continue
 		}
+
 		groupIDs = append(groupIDs, id)
 	}
+
 	return groupIDs
 }
 
@@ -387,22 +440,29 @@ func pageMetadataFromForm(r *http.Request) (service.PageMetadata, error) {
 	if !service.ValidPageStatus(status) {
 		return service.PageMetadata{}, errors.New("invalid page status")
 	}
+
 	var ownerGroupID int64
+
 	if value := strings.TrimSpace(r.FormValue("owner_group_id")); value != "" {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil || parsed <= 0 {
 			return service.PageMetadata{}, errors.New("invalid owner group")
 		}
+
 		ownerGroupID = parsed
 	}
+
 	interval := 0
+
 	if value := strings.TrimSpace(r.FormValue("review_interval_days")); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 0 || parsed > 3650 {
 			return service.PageMetadata{}, errors.New("invalid review interval")
 		}
+
 		interval = parsed
 	}
+
 	return service.PageMetadata{
 		Status:             status,
 		OwnerGroupID:       ownerGroupID,
@@ -417,26 +477,32 @@ func pagePropertiesFromForm(r *http.Request) map[string]string {
 	keys := r.Form["property_key"]
 	values := r.Form["property_value"]
 	properties := map[string]string{}
+
 	for index, key := range keys {
 		key = strings.TrimSpace(key)
 		if key == "" || index >= len(values) {
 			continue
 		}
+
 		value := strings.TrimSpace(values[index])
+
 		if value != "" {
 			properties[key] = value
 		}
 	}
+
 	return properties
 }
 
 // withoutSlug returns pages excluding the supplied slug.
 func withoutSlug(pages []service.Page, slug string) []service.Page {
 	result := pages[:0]
+
 	for _, page := range pages {
 		if page.Slug != slug {
 			result = append(result, page)
 		}
 	}
+
 	return result
 }

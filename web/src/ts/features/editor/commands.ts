@@ -91,11 +91,15 @@ const commands: SlashCommand[] = [
 
 function catalogSnippets(value: unknown): CatalogSnippet[] {
   if (typeof value !== "object" || value === null) return [];
+
   const snippets = (value as { snippets?: unknown }).snippets;
   if (!Array.isArray(snippets)) return [];
+
   return snippets.filter((item): item is CatalogSnippet => {
     if (typeof item !== "object" || item === null) return false;
+
     const snippet = item as Partial<CatalogSnippet>;
+
     return typeof snippet.kind === "string" && typeof snippet.name === "string";
   });
 }
@@ -109,6 +113,7 @@ export function slashCommandTrigger(
   const fragment = value.slice(lineStart, caret);
   const match = fragment.match(/^\s*\/([^\s]*)$/u);
   if (!match) return null;
+
   return { start: lineStart, query: (match[1] ?? "").toLocaleLowerCase() };
 }
 
@@ -116,6 +121,7 @@ export function slashCommandTrigger(
 function filterCommands(items: SlashCommand[], query: string): SlashCommand[] {
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return items;
+
   return items.filter((command) =>
     `${command.label} ${command.description} ${command.id}`
       .toLocaleLowerCase()
@@ -138,22 +144,26 @@ function setupSlashCommands(form: HTMLFormElement): void {
 
   const editor = source;
   let availableCommands: SlashCommand[] = [...commands];
+
   fetch("/api/editor/catalog", { headers: { Accept: "application/json" } })
     .then((response) => (response.ok ? response.json() : null))
     .then((catalog: unknown) => {
       const snippets = catalogSnippets(catalog);
       if (!snippets.length) return;
+
       const reusable: SlashCommand[] = snippets.map((item) => ({
         id: `${item.kind}-${item.name}`,
         label: `${item.kind === "variable" ? "Variable" : "Snippet"}: ${item.name}`,
         description: item.description || `Insert reusable ${item.kind}`,
         markdown: `{{${item.kind === "variable" ? "var" : "snippet"}:${item.name}}}`,
       }));
+
       availableCommands = [...commands, ...reusable];
     })
     .catch(() => {});
 
   const menu = document.createElement("div");
+
   menu.className = "editor-suggestion-menu editor-command-menu";
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
@@ -177,24 +187,30 @@ function setupSlashCommands(form: HTMLFormElement): void {
     menu.replaceChildren();
     matches.forEach((command, index) => {
       const button = document.createElement("button");
+
       button.type = "button";
       button.className = "editor-suggestion-option";
       button.dataset.commandIndex = String(index);
       button.setAttribute("role", "option");
       button.setAttribute("aria-selected", String(index === active));
+
       const strong = document.createElement("strong");
       const small = document.createElement("small");
+
       strong.textContent = command.label;
       small.textContent = command.description;
       button.append(strong, small);
       menu.append(button);
     });
+
     if (!matches.length) {
       const empty = document.createElement("div");
+
       empty.className = "editor-suggestion-empty";
       empty.textContent = "No matching commands.";
       menu.append(empty);
     }
+
     menu.style.left = "18px";
     menu.style.top = "52px";
     menu.hidden = false;
@@ -205,7 +221,9 @@ function setupSlashCommands(form: HTMLFormElement): void {
     const command = matches[index];
     const currentTrigger = trigger;
     if (!command || !currentTrigger) return;
+
     const end = editor.selectionStart ?? currentTrigger.start;
+
     if (command.markdown) {
       editor.setRangeText(command.markdown, currentTrigger.start, end, "end");
       editor.dispatchEvent(new Event("input", { bubbles: true }));
@@ -219,6 +237,7 @@ function setupSlashCommands(form: HTMLFormElement): void {
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       form.querySelector<HTMLElement>("[data-media-dialog-open]")?.click();
     }
+
     close();
   }
 
@@ -229,6 +248,7 @@ function setupSlashCommands(form: HTMLFormElement): void {
       close();
       return;
     }
+
     trigger = next;
     matches = filterCommands(availableCommands, next.query);
     active = 0;
@@ -262,7 +282,9 @@ function setupSlashCommands(form: HTMLFormElement): void {
   menu.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const option = target.closest<HTMLElement>("[data-command-index]");
+
     if (option) choose(Number(option.dataset.commandIndex));
   });
 }

@@ -14,6 +14,7 @@ func TestSetupLogger(t *testing.T) {
 		t.Parallel()
 
 		var output bytes.Buffer
+
 		Setup(LogFormatJSON, false, &output).Info("ready",
 			"event", "test",
 		)
@@ -26,6 +27,7 @@ func TestSetupLogger(t *testing.T) {
 		t.Parallel()
 
 		var output bytes.Buffer
+
 		Setup(LogFormatText, true, &output).Debug("details")
 
 		assert.Contains(t, output.String(), "level=DEBUG")

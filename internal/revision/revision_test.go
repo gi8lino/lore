@@ -16,6 +16,7 @@ func TestAnalyzeUsesUnifiedFormat(t *testing.T) {
 		PreviousMarkdown: "# Runbook\nold command\n",
 		Markdown:         "# Runbook\nnew command\n",
 	})
+
 	require.NotEmpty(t, record.Diff)
 	assert.True(t, hasDiffLine(record.Diff, "header", "revision 1"))
 	assert.True(t, hasDiffLine(record.Diff, "hunk", "@@"))
@@ -29,6 +30,7 @@ func TestAnalyzeIsEmptyWithoutContentChanges(t *testing.T) {
 	t.Parallel()
 
 	record := Analyze(Revision{Number: 3, PreviousMarkdown: "unchanged\n", Markdown: "unchanged\n"})
+
 	assert.Empty(t, record.Diff)
 	assert.Zero(t, record.AddedLines)
 	assert.Zero(t, record.RemovedLines)
@@ -38,6 +40,7 @@ func TestAnalyzeFirstRevisionStartsAtDevNull(t *testing.T) {
 	t.Parallel()
 
 	record := Analyze(Revision{Number: 1, Markdown: "# First page\n"})
+
 	require.NotEmpty(t, record.Diff)
 	assert.Equal(t, "header", record.Diff[0].Kind)
 	assert.Contains(t, record.Diff[0].Text, "/dev/null")

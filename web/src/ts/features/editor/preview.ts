@@ -127,6 +127,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
       await renderMermaid(previewPanel);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
+
       console.error("markdown preview failed", error);
       previewStatus.hidden = false;
       previewStatus.textContent =
@@ -137,7 +138,9 @@ function setupEditorPreview(form: HTMLFormElement): void {
   // Schedules preview.
   function schedulePreview(): void {
     if (mode === "write") return;
+
     if (timer !== undefined) clearTimeout(timer);
+
     timer = setTimeout(() => void renderPreview(), 180);
   }
 
@@ -147,11 +150,14 @@ function setupEditorPreview(form: HTMLFormElement): void {
     form.dataset.editorMode = mode;
     editorWorkspace.dataset.editorMode = mode;
     previewPanel.hidden = mode === "write";
+
     const copy = editorModeCopy(mode);
+
     if (sectionTitle) sectionTitle.textContent = copy.title;
     if (sectionDescription) sectionDescription.textContent = copy.description;
     for (const button of buttons) {
       const active = button.dataset.editorMode === mode;
+
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
     }
@@ -162,9 +168,11 @@ function setupEditorPreview(form: HTMLFormElement): void {
   // Synchronizes scroll.
   function syncScroll(from: HTMLElement, to: HTMLElement): void {
     if (mode !== "split" || syncing) return;
+
     const fromRange = from.scrollHeight - from.clientHeight;
     const toRange = to.scrollHeight - to.clientHeight;
     if (fromRange <= 0 || toRange <= 0) return;
+
     syncing = true;
     to.scrollTop = (from.scrollTop / fromRange) * toRange;
     requestAnimationFrame(() => (syncing = false));
@@ -173,6 +181,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
   for (const button of buttons) {
     button.addEventListener("click", () => setMode(button.dataset.editorMode));
   }
+
   form.addEventListener("editor:toggle-preview", () =>
     setMode(mode === "write" ? "split" : "write"),
   );

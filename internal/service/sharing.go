@@ -67,6 +67,7 @@ func (s *Sharing) CreatePageShareLink(
 		page.Slug,
 		"Created public permalink",
 	)
+
 	return IssuedPageShareLink{Token: token}, nil
 }
 
@@ -84,6 +85,7 @@ func newPageShareToken() (string, error) {
 	if _, err := rand.Read(data); err != nil {
 		return "", fmt.Errorf("generate page share token: %w", err)
 	}
+
 	return base64.RawURLEncoding.EncodeToString(data), nil
 }
 

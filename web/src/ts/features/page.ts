@@ -23,6 +23,7 @@ export function initPage(): void {
   function updatePageHeadingHeight(): void {
     const sticky = window.matchMedia("(min-width: 801px)").matches;
     const height = sticky && pageHeading ? pageHeading.offsetHeight : 0;
+
     document.documentElement.style.setProperty(
       "--page-heading-height",
       `${height}px`,
@@ -31,6 +32,7 @@ export function initPage(): void {
 
   updatePageHeadingHeight();
   window.addEventListener("resize", updatePageHeadingHeight);
+
   if (pageHeading && "ResizeObserver" in window)
     new ResizeObserver(updatePageHeadingHeight).observe(pageHeading);
 
@@ -55,8 +57,10 @@ export function initPage(): void {
 
     function revealActiveLink(link: HTMLAnchorElement): void {
       if (contents.offsetParent === null) return;
+
       const container = contents.getBoundingClientRect();
       const item = link.getBoundingClientRect();
+
       if (item.top < container.top)
         contents.scrollTop -= container.top - item.top;
       else if (item.bottom > container.bottom)
@@ -65,6 +69,7 @@ export function initPage(): void {
 
     function setActiveHeading(link: HTMLAnchorElement): void {
       if (activeLink === link) return;
+
       activeLink?.classList.remove("active");
       activeLink?.removeAttribute("aria-current");
       link.classList.add("active");
@@ -75,11 +80,14 @@ export function initPage(): void {
 
     function updateActiveHeading(): void {
       scheduled = false;
+
       const first = entries[0];
       if (!first) return;
+
       const headingBottom = pageHeading?.getBoundingClientRect().bottom ?? 0;
       const threshold = Math.max(96, headingBottom + 12);
       let current = first;
+
       for (const entry of entries) {
         if (entry.heading.getBoundingClientRect().top <= threshold)
           current = entry;
@@ -91,11 +99,13 @@ export function initPage(): void {
       ) {
         current = entries.at(-1) ?? current;
       }
+
       setActiveHeading(current.link);
     }
 
     scheduleActiveHeadingUpdate = () => {
       if (scheduled) return;
+
       scheduled = true;
       requestAnimationFrame(updateActiveHeading);
     };
@@ -110,6 +120,7 @@ export function initPage(): void {
   async function persistPageContentsPreference(show: boolean): Promise<void> {
     const url = pageContentsToggle?.dataset.preferenceUrl;
     if (!url) return;
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -123,27 +134,38 @@ export function initPage(): void {
 
   function setPageContentsVisible(show: boolean): void {
     if (!pageReading || !pageContentsToggle) return;
+
     desktopContentsVisible = show;
     pageReading.classList.toggle("with-contents", show);
     pageReading.classList.toggle("contents-hidden", !show);
     pageContentsToggle.setAttribute("aria-pressed", String(show));
+
     const label = show ? "Hide page contents" : "Show page contents";
+
     pageContentsToggle.setAttribute("aria-label", label);
     pageContentsToggle.title = label;
+
     if (show) scheduleActiveHeadingUpdate();
   }
 
   function setContentsPopoverOpen(open: boolean, restoreFocus = false): void {
     if (!pageReading || !pageContents || !pageContentsToggle) return;
+
     const nextOpen = open && mobileContents.matches;
+
     pageReading.classList.toggle("contents-popover-open", nextOpen);
     document.body.classList.toggle("contents-popover-open", nextOpen);
+
     if (pageContentsBackdrop) pageContentsBackdrop.hidden = !nextOpen;
+
     pageContentsToggle.setAttribute("aria-expanded", String(nextOpen));
     pageContents.setAttribute("aria-hidden", String(!nextOpen));
+
     const label = nextOpen ? "Hide page contents" : "Show page contents";
+
     pageContentsToggle.setAttribute("aria-label", label);
     pageContentsToggle.title = label;
+
     if (nextOpen) pageContentsClose?.focus();
     else if (restoreFocus) pageContentsToggle.focus();
   }
@@ -156,14 +178,17 @@ export function initPage(): void {
       pageContents.setAttribute("aria-hidden", "true");
       return;
     }
+
     pageContents.removeAttribute("aria-hidden");
     pageContentsToggle.setAttribute(
       "aria-pressed",
       String(desktopContentsVisible),
     );
+
     const label = desktopContentsVisible
       ? "Hide page contents"
       : "Show page contents";
+
     pageContentsToggle.setAttribute("aria-label", label);
     pageContentsToggle.title = label;
   }
@@ -176,10 +201,13 @@ export function initPage(): void {
       );
       return;
     }
+
     const previous = pageReading.classList.contains("with-contents");
     const next = !previous;
+
     setPageContentsVisible(next);
     pageContentsToggle.disabled = true;
+
     try {
       await persistPageContentsPreference(next);
     } catch (error) {
@@ -210,6 +238,7 @@ export function initPage(): void {
       !pageReading?.classList.contains("contents-popover-open")
     )
       return;
+
     event.preventDefault();
     setContentsPopoverOpen(false, true);
   });
@@ -233,16 +262,20 @@ export function initPage(): void {
   async function loadRevisionHistory(): Promise<void> {
     if (revisionHistoryLoaded || !revisionDialogOpen || !revisionDialogBody)
       return;
+
     const revisionURL = revisionDialogOpen.dataset.revisionUrl;
     if (!revisionURL) return;
+
     revisionDialogOpen.disabled = true;
     revisionDialogBody.innerHTML =
       '<p class="muted">Loading revision history…</p>';
+
     try {
       const response = await fetch(revisionURL, {
         headers: { Accept: "text/html" },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       revisionDialogBody.innerHTML = await response.text();
       revisionHistoryLoaded = true;
     } catch (error) {
@@ -266,6 +299,7 @@ export function initPage(): void {
   const moveDialog = document.querySelector<HTMLDialogElement>(
     "[data-move-page-dialog]",
   );
+
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-move-page-open]",
   )) {
@@ -276,6 +310,7 @@ export function initPage(): void {
   ) || []) {
     button.addEventListener("click", () => moveDialog?.close());
   }
+
   moveDialog?.addEventListener("click", (event) => {
     if (event.target === moveDialog) moveDialog.close();
   });
@@ -290,9 +325,11 @@ export function initPage(): void {
   function selectedPageText(): string {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !selection.rangeCount) return "";
+
     const range = selection.getRangeAt(0);
     const prose = document.querySelector<HTMLElement>(".page-reading .prose");
     if (!prose || !prose.contains(range.commonAncestorContainer)) return "";
+
     return selection.toString().trim().slice(0, 500);
   }
 
@@ -302,6 +339,7 @@ export function initPage(): void {
     button.addEventListener("click", () => {
       if (commentAnchor && !commentAnchor.value.trim())
         commentAnchor.value = selectedPageText();
+
       commentDialog?.showModal();
       requestAnimationFrame(() =>
         commentDialog
@@ -315,6 +353,7 @@ export function initPage(): void {
   ) || []) {
     button.addEventListener("click", () => commentDialog?.close());
   }
+
   commentDialog?.addEventListener("click", (event) => {
     if (event.target === commentDialog) commentDialog.close();
   });

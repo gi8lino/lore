@@ -70,6 +70,7 @@ func (b *browserAuthenticator) Authenticate(r *http.Request) (model.User, error)
 	if err != nil {
 		return model.User{}, err
 	}
+
 	if b.modeOverride == "" && AuthMode(settings.Mode) == AuthModeNone {
 		setupRequired, err := b.repository.SetupRequired(r.Context())
 		if err != nil {
@@ -93,6 +94,7 @@ func (b *browserAuthenticator) Authenticate(r *http.Request) (model.User, error)
 	if err != nil {
 		return model.User{}, err
 	}
+
 	return authenticator.Authenticate(r)
 }
 
@@ -103,6 +105,7 @@ func (b *browserAuthenticator) login(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 		return
 	}
+
 	if b.modeOverride == "" {
 		setupRequired, err := b.repository.SetupRequired(r.Context())
 		if err != nil {
@@ -118,9 +121,11 @@ func (b *browserAuthenticator) login(w http.ResponseWriter, r *http.Request) {
 	case AuthModeLocal:
 		next := r.URL.Query().Get("next")
 		target := "/auth/local"
+
 		if next != "" {
 			target += "?next=" + url.QueryEscape(next)
 		}
+
 		http.Redirect(w, r, target, http.StatusFound)
 		return
 	case AuthModeOIDC:
@@ -137,6 +142,7 @@ func (b *browserAuthenticator) login(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 		return
 	}
+
 	oidcAuth.Login().ServeHTTP(w, r)
 }
 
@@ -157,6 +163,7 @@ func (b *browserAuthenticator) callback(w http.ResponseWriter, r *http.Request) 
 		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 		return
 	}
+
 	oidcAuth.Callback().ServeHTTP(w, r)
 }
 
@@ -171,9 +178,11 @@ func (b *browserAuthenticator) validate(ctx context.Context, settings model.Auth
 			return nil
 		}
 	}
+
 	if err := b.validateSettings(settings); err != nil {
 		return err
 	}
+
 	if AuthMode(settings.Mode) == AuthModeLocal {
 		configured, err := b.repository.HasLocalAdministratorCredential(ctx)
 		if err != nil {
@@ -183,10 +192,12 @@ func (b *browserAuthenticator) validate(ctx context.Context, settings model.Auth
 			return errors.New("local authentication requires an administrator with a local password")
 		}
 	}
+
 	if AuthMode(settings.Mode) == AuthModeOIDC {
 		_, err := b.oidcFor(ctx, settings)
 		return err
 	}
+
 	return nil
 }
 
@@ -217,13 +228,16 @@ func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.Authe
 	if err != nil {
 		return model.AuthenticationSettings{}, err
 	}
+
 	authentication := settings.Authentication
+
 	if authentication.OIDCGroupSync {
 		authentication.OIDCGroupMappings, err = b.repository.OIDCGroupMappings(ctx)
 		if err != nil {
 			return model.AuthenticationSettings{}, err
 		}
 	}
+
 	return authentication, nil
 }
 
@@ -281,6 +295,7 @@ func (b *browserAuthenticator) validateSettings(settings model.AuthenticationSet
 		if len(b.oidcConfig.SessionSecret) < 32 {
 			return errors.New("OIDC session secret must be at least 32 characters")
 		}
+
 		return nil
 	default:
 		return fmt.Errorf("unsupported auth mode %q", settings.Mode)
@@ -293,18 +308,22 @@ func (b *browserAuthenticator) localLoginAllowed(ctx context.Context) (bool, err
 	if err != nil {
 		return false, err
 	}
+
 	return AuthMode(settings.Mode) == AuthModeLocal || b.localLoginEnabled, nil
 }
 
 // oidcFor returns a cached OIDC integration for the supplied public settings.
 func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.AuthenticationSettings) (*OIDC, error) {
 	key := oidcSettingsKey(settings)
+
 	b.mu.Lock()
 	if b.oidc != nil && b.oidcKey == key {
 		configured := b.oidc
+
 		b.mu.Unlock()
 		return configured, nil
 	}
+
 	b.mu.Unlock()
 
 	configured, err := NewOIDC(ctx, OIDCConfig{
@@ -324,8 +343,10 @@ func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.Authe
 	}
 
 	b.mu.Lock()
+
 	b.oidcKey = key
 	b.oidc = configured
+
 	b.mu.Unlock()
 	return configured, nil
 }
@@ -343,8 +364,10 @@ func oidcSettingsKey(settings model.AuthenticationSettings) string {
 		settings.OIDCGroupsAuthoritative,
 		strings.TrimSpace(settings.OIDCAdminGroup),
 	)
+
 	for _, mapping := range settings.OIDCGroupMappings {
 		_, _ = fmt.Fprintf(&key, "\x00%s=%d", strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID)
 	}
+
 	return key.String()
 }

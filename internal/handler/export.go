@@ -64,7 +64,9 @@ func ExportPageMarkdown(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		defer cleanup()
+
 		serveExportArchive(w, r, path.Base(slug)+".zip", file, modTime)
 	}
 }
@@ -86,11 +88,13 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		pdfURL := effectivePDFURL(views.runtime.PDFURL, applicationSettings.PDFURL)
 		if pdfURL == "" {
 			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is not configured. Configure a PDF service in Administration or set LORE__PDF_URL.")
 			return
 		}
+
 		slug := strings.TrimSpace(r.PathValue("slug"))
 		if slug == "" {
 			httpresponse.Problem(w,
@@ -106,6 +110,7 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		settings := applicationSettings.Rendering
 		options := renderingOptionsFromSettings(settings)
 		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
@@ -113,6 +118,7 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		expandedMarkdown, err := expandKnowledgeMarkdown(
 			r.Context(),
 			knowledgeContentFrom(
@@ -127,6 +133,7 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		page, err := renderer.RenderPageResolvedWithFunctions(
 			expandedMarkdown,
 			md.Slug,
@@ -137,6 +144,7 @@ func ExportPagePDF(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		rendered, err := inlineRenderedMedia(r.Context(), mediaUseCases, page.HTML)
 		if err != nil {
 			writePageProblem(logger, w, err)
@@ -144,9 +152,11 @@ func ExportPagePDF(
 		}
 
 		language := settings.ContentLanguage
+
 		if pageData.Language != "" {
 			language = pageData.Language
 		}
+
 		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered)
 		if err != nil {
 			logger.Error("generate PDF", "event", "pdf_generation_failed", "slug", slug, "error", err)
@@ -156,9 +166,11 @@ func ExportPagePDF(
 			)
 			return
 		}
+
 		defer cleanup()
 
 		filename := path.Base(slug) + ".pdf"
+
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
 		http.ServeContent(w, r, filename, time.Now(), pdfFile)
@@ -191,6 +203,7 @@ func ExportPages(
 			)
 			return
 		}
+
 		if len(slugs) == 1 {
 			pageData, err := catalogUseCases.GetPage(r.Context(), slugs[0])
 			if err != nil {
@@ -213,9 +226,11 @@ func ExportPages(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		defer cleanup()
 
 		filename := "lore-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+
 		serveExportArchive(w, r, filename, file, modTime)
 	}
 }
@@ -223,8 +238,10 @@ func ExportPages(
 // serveMarkdown writes one page as a plain Markdown attachment.
 func serveMarkdown(w http.ResponseWriter, pageData service.Page) {
 	filename := path.Base(pageData.Slug) + ".md"
+
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+
 	_, _ = io.WriteString(w, pageData.Markdown)
 }
 
@@ -239,6 +256,7 @@ func createExportArchive(
 	if err != nil {
 		return nil, time.Time{}, nil, err
 	}
+
 	name := file.Name()
 	cleanup := func() {
 		_ = file.Close()
@@ -253,11 +271,13 @@ func createExportArchive(
 		cleanup()
 		return nil, time.Time{}, nil, err
 	}
+
 	info, err := file.Stat()
 	if err != nil {
 		cleanup()
 		return nil, time.Time{}, nil, err
 	}
+
 	return file, info.ModTime(), cleanup, nil
 }
 
@@ -275,23 +295,29 @@ func exportSlugs(r *http.Request, navigationUseCases navigationService) ([]strin
 		if err != nil {
 			return nil, err
 		}
+
 		slugs := make([]string, 0, len(pages))
+
 		for _, page := range pages {
 			slugs = append(slugs, page.Slug)
 		}
+
 		return slugs, nil
 	}
 
 	seen := map[string]bool{}
 	var slugs []string
+
 	for _, slug := range r.Form["slug"] {
 		slug = strings.TrimSpace(slug)
 		if slug == "" || seen[slug] {
 			continue
 		}
+
 		seen[slug] = true
 		slugs = append(slugs, slug)
 	}
+
 	return slugs, nil
 }
 
@@ -307,6 +333,7 @@ func writeExportArchive(
 
 	exportedImages := map[int64]bool{}
 	imageCache := map[int64]service.ImageData{}
+
 	for _, slug := range slugs {
 		pageData, err := catalogUseCases.GetPage(ctx, slug)
 		if err != nil {
@@ -317,6 +344,7 @@ func writeExportArchive(
 		if cleanSlug == "" || cleanSlug == "." {
 			return fmt.Errorf("invalid page slug %q", pageData.Slug)
 		}
+
 		markdownPath := path.Join("pages", cleanSlug+".md")
 		markdown, imageIDs, err := exportedMarkdown(
 			ctx,
@@ -328,6 +356,7 @@ func writeExportArchive(
 		if err != nil {
 			return err
 		}
+
 		entry, err := archive.Create(markdownPath)
 		if err != nil {
 			return err
@@ -340,6 +369,7 @@ func writeExportArchive(
 			if exportedImages[imageID] {
 				continue
 			}
+
 			image := imageCache[imageID]
 			imageEntry, err := archive.Create(
 				path.Join("media", strconv.FormatInt(imageID, 10), path.Base(image.Filename)),
@@ -350,6 +380,7 @@ func writeExportArchive(
 			if _, err := imageEntry.Write(image.Data); err != nil {
 				return err
 			}
+
 			exportedImages[imageID] = true
 		}
 	}
@@ -372,21 +403,26 @@ func exportedMarkdown(
 		if exportErr != nil {
 			return reference
 		}
+
 		match := mediaReference.FindStringSubmatch(reference)
 		if len(match) != 3 {
 			return reference
 		}
+
 		id, err := strconv.ParseInt(match[1], 10, 64)
 		if err != nil {
 			return reference
 		}
+
 		image, ok := imageCache[id]
+
 		if !ok {
 			image, err = mediaUseCases.ImageContent(ctx, id)
 			if err != nil {
 				exportErr = err
 				return reference
 			}
+
 			imageCache[id] = image
 		}
 		if !seen[id] {
@@ -401,11 +437,13 @@ func exportedMarkdown(
 			exportErr = err
 			return reference
 		}
+
 		return filepath.ToSlash(relative)
 	})
 	if exportErr != nil {
 		return "", nil, exportErr
 	}
+
 	return result, ids, nil
 }
 
@@ -413,14 +451,17 @@ func exportedMarkdown(
 func referencedImageIDs(source string) []int64 {
 	seen := map[int64]bool{}
 	var ids []int64
+
 	for _, match := range mediaReference.FindAllStringSubmatch(source, -1) {
 		id, err := strconv.ParseInt(match[1], 10, 64)
 		if err != nil || seen[id] {
 			continue
 		}
+
 		seen[id] = true
 		ids = append(ids, id)
 	}
+
 	return ids
 }
 
@@ -432,10 +473,12 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 		if inlineErr != nil {
 			return reference
 		}
+
 		match := renderedMediaReference.FindStringSubmatch(reference)
 		if len(match) != 2 {
 			return reference
 		}
+
 		id, err := strconv.ParseInt(match[1], 10, 64)
 		if err != nil {
 			return reference
@@ -443,14 +486,18 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 		if dataURL, ok := cache[id]; ok {
 			return dataURL
 		}
+
 		image, err := mediaUseCases.ImageContent(ctx, id)
 		if err != nil {
 			inlineErr = err
 			return reference
 		}
+
 		dataURL := "data:" + image.ContentType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
 		cache[id] = dataURL
+
 		return dataURL
 	})
+
 	return result, inlineErr
 }

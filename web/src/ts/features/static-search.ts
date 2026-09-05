@@ -13,7 +13,9 @@ interface RankedEntry {
 
 function isStaticSearchEntry(value: unknown): value is StaticSearchEntry {
   if (typeof value !== "object" || value === null) return false;
+
   const entry = value as Partial<StaticSearchEntry>;
+
   return (
     typeof entry.title === "string" &&
     typeof entry.url === "string" &&
@@ -30,12 +32,15 @@ let indexPromise: Promise<StaticSearchEntry[]> | null = null;
 
 async function loadIndex(): Promise<StaticSearchEntry[]> {
   if (indexPromise) return indexPromise;
+
   indexPromise = fetch(searchIndexURL(), {
     headers: { Accept: "application/json" },
   })
     .then(async (response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const payload: unknown = await response.json();
+
       return Array.isArray(payload) ? payload.filter(isStaticSearchEntry) : [];
     })
     .catch((error: unknown) => {
@@ -56,6 +61,7 @@ function rank(entry: StaticSearchEntry, query: string): number {
   const title = normalize(entry.title);
   const text = normalize(entry.text);
   let score = 0;
+
   for (const term of terms) {
     if (title === term) score += 50;
     else if (title.startsWith(term)) score += 30;
@@ -63,6 +69,7 @@ function rank(entry: StaticSearchEntry, query: string): number {
     else if (text.includes(term)) score += 5;
     else return 0;
   }
+
   return score;
 }
 
@@ -88,12 +95,16 @@ function resultLink(
   className: string,
 ): HTMLAnchorElement {
   const link = document.createElement("a");
+
   link.className = className;
   link.href = entry.url;
 
   const title = document.createElement("strong");
+
   title.textContent = entry.title;
+
   const path = document.createElement("small");
+
   path.textContent = new URL(entry.url, window.location.href).pathname;
   link.append(title, path);
   return link;
@@ -105,6 +116,7 @@ function initSuggestions(form: HTMLFormElement): void {
 
   const searchInput = input;
   const results = document.createElement("div");
+
   results.className = "search-suggestions";
   results.setAttribute("role", "listbox");
   results.hidden = true;
@@ -123,9 +135,11 @@ function initSuggestions(form: HTMLFormElement): void {
 
   function select(index: number): void {
     if (!resultLinks.length) return;
+
     activeIndex = Math.max(0, Math.min(index, resultLinks.length - 1));
     resultLinks.forEach((link, candidateIndex) => {
       const active = candidateIndex === activeIndex;
+
       link.classList.toggle("active", active);
       link.setAttribute("aria-selected", String(active));
     });
@@ -138,21 +152,27 @@ function initSuggestions(form: HTMLFormElement): void {
       close();
       return;
     }
+
     const entries = searchEntries(await loadIndex(), query, 8);
+
     results.replaceChildren();
     resultLinks = entries.map((entry) => {
       const link = resultLink(entry, "search-suggestion");
+
       link.setAttribute("role", "option");
       link.setAttribute("aria-selected", "false");
       results.append(link);
       return link;
     });
+
     if (!entries.length) {
       const empty = document.createElement("div");
+
       empty.className = "search-suggestion-empty";
       empty.textContent = "No pages found.";
       results.append(empty);
     }
+
     results.hidden = false;
     searchInput.setAttribute("aria-expanded", "true");
     activeIndex = -1;
@@ -192,17 +212,24 @@ async function renderSearchPage(container: HTMLElement): Promise<void> {
   const title = document.querySelector<HTMLElement>(
     "[data-static-search-title]",
   );
+
   if (title) title.textContent = query ? `Results for “${query}”` : "All pages";
 
   const entries = await loadIndex();
   const results = query ? searchEntries(entries, query, 100) : entries;
+
   container.replaceChildren();
   if (!results.length) {
     const empty = document.createElement("div");
+
     empty.className = "empty";
+
     const strong = document.createElement("strong");
+
     strong.textContent = "No pages found.";
+
     const detail = document.createElement("p");
+
     detail.textContent = "Try fewer words or a different phrase.";
     empty.append(strong, detail);
     container.append(empty);
@@ -212,6 +239,7 @@ async function renderSearchPage(container: HTMLElement): Promise<void> {
   for (const entry of results) {
     const row = resultLink(entry, "page-row");
     const summary = document.createElement("p");
+
     summary.className = "muted";
     summary.textContent = entry.text.slice(0, 220);
     row.append(summary);
@@ -229,5 +257,6 @@ export function initStaticSearch(): void {
   const pageResults = document.querySelector<HTMLElement>(
     "[data-static-search-results]",
   );
+
   if (pageResults) void renderSearchPage(pageResults);
 }

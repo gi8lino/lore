@@ -51,6 +51,7 @@ func TestAuthenticateAPIStopsOnInvalidCredentials(t *testing.T) {
 	}))
 
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/search", nil))
 
 	assert.Equal(t, http.StatusUnauthorized, response.Code)
@@ -76,12 +77,14 @@ func TestAuthenticateAPIContinuesWhenCredentialsAreAbsent(t *testing.T) {
 		authenticatorStub{user: store.User{ID: 1, Role: "admin"}, calls: &fallbackCalls},
 	)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.User(r)
+
 		require.True(t, ok)
 		assert.Equal(t, int64(1), user.ID)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/search", nil))
 
 	assert.Equal(t, http.StatusNoContent, response.Code)
@@ -104,6 +107,7 @@ func TestAuthenticateAPIReturnsServerErrorForUnexpectedAuthFailure(t *testing.T)
 	)
 
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/search", nil))
 	assert.Equal(t, http.StatusInternalServerError, response.Code)
 	assert.JSONEq(
@@ -129,8 +133,11 @@ func TestAuthenticateAPILogsDeniedRequests(t *testing.T) {
 	)
 
 	request := httptest.NewRequest("GET", "/api/search?q=postgres", nil)
+
 	request.Header.Set("Authorization", "Bearer super-secret-token")
+
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, request)
 
 	assert.Equal(t, http.StatusUnauthorized, response.Code)
@@ -156,6 +163,7 @@ func TestAuthenticateAPILogsMissingCredentials(t *testing.T) {
 	)
 
 	response := httptest.NewRecorder()
+
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/search", nil))
 
 	assert.Equal(t, http.StatusUnauthorized, response.Code)
@@ -177,9 +185,12 @@ func TestBrowserUnauthorizedReturnsToReadablePage(t *testing.T) {
 	} {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
 			response := httptest.NewRecorder()
+
 			browserUnauthorized(response, httptest.NewRequest(tc.method, tc.path, nil), unauthorizedCredentialsRequired)
 			require.Equal(t, http.StatusFound, response.Code)
+
 			location, err := url.Parse(response.Header().Get("Location"))
+
 			require.NoError(t, err)
 			assert.Equal(t, tc.next, location.Query().Get("next"))
 		})

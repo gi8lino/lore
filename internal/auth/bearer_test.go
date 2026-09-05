@@ -16,6 +16,7 @@ func TestBearerAuthenticateHeaderValidation(t *testing.T) {
 
 		request := httptest.NewRequest("GET", "/api/search", nil)
 		_, err := NewBearer(nil).Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
@@ -23,8 +24,11 @@ func TestBearerAuthenticateHeaderValidation(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("GET", "/api/search", nil)
+
 		request.Header.Set("Authorization", "Bearer")
+
 		_, err := NewBearer(nil).Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
 	})
 
@@ -34,6 +38,7 @@ func TestBearerAuthenticateHeaderValidation(t *testing.T) {
 		request := httptest.NewRequest("GET", "/api/search", nil)
 		request.Header["Authorization"] = []string{"Bearer   "}
 		_, err := NewBearer(nil).Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
 	})
 
@@ -41,8 +46,11 @@ func TestBearerAuthenticateHeaderValidation(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("GET", "/api/search", nil)
+
 		request.Header.Set("Authorization", "Basic abc")
+
 		_, err := NewBearer(nil).Authenticate(request)
+
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
 	})
 }

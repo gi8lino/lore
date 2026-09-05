@@ -16,6 +16,7 @@ func TestProblemWritesStructuredJSON(t *testing.T) {
 		t.Parallel()
 
 		response := httptest.NewRecorder()
+
 		Problem(
 			response,
 			http.StatusUnprocessableEntity,
@@ -39,6 +40,7 @@ func TestProblemWritesStructuredJSON(t *testing.T) {
 		t.Parallel()
 
 		response := httptest.NewRecorder()
+
 		Problem(response, http.StatusNotFound, "Page not found.")
 
 		assert.Equal(t, http.StatusNotFound, response.Code)

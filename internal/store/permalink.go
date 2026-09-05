@@ -17,5 +17,6 @@ WHERE id=$1 AND deleted_at IS NULL`, id).Scan(&slug)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrNotFound
 	}
+
 	return slug, err
 }

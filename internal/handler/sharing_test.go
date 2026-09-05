@@ -11,6 +11,7 @@ func TestPublicShareHeaders(t *testing.T) {
 	t.Parallel()
 
 	response := httptest.NewRecorder()
+
 	publicShareHeaders(response)
 
 	assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))

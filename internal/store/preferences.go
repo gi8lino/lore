@@ -39,6 +39,7 @@ WHERE user_id=$1`, userID).Scan(
 	if errors.Is(err, pgx.ErrNoRows) {
 		return preferences, nil
 	}
+
 	return preferences, err
 }
 
@@ -102,12 +103,14 @@ func (s *Store) SetSidebarWidth(ctx context.Context, userID int64, width int) er
 	if width < MinSidebarWidth || width > MaxSidebarWidth {
 		return errors.New("sidebar width out of range")
 	}
+
 	_, err := s.pool.Exec(ctx, `
 INSERT INTO user_preferences(user_id,sidebar_width,updated_at)
 VALUES($1,$2,now())
 ON CONFLICT(user_id) DO UPDATE
 SET sidebar_width=EXCLUDED.sidebar_width,
     updated_at=now()`, userID, width)
+
 	return err
 }
 
@@ -115,13 +118,16 @@ SET sidebar_width=EXCLUDED.sidebar_width,
 func normalizeNavigationPaths(values []string) []string {
 	seen := make(map[string]bool, len(values))
 	result := make([]string, 0, len(values))
+
 	for _, value := range values {
 		value = strings.Trim(strings.TrimSpace(value), "/")
 		if value == "" || seen[value] {
 			continue
 		}
+
 		seen[value] = true
 		result = append(result, value)
 	}
+
 	return result
 }

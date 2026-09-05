@@ -41,6 +41,7 @@ func (r *draftRepositoryStub) SavePageDraft(
 	r.savedTitle = title
 	r.savedSlug = slug
 	r.savedValues = values
+
 	return PageDraft{Key: key, PageID: pageID, Title: title, Slug: slug, Values: values}, nil
 }
 
@@ -66,6 +67,7 @@ func TestDraftsSaveValidatesStableKey(t *testing.T) {
 	})
 
 	validation, ok := err.(*ValidationError)
+
 	require.True(t, ok)
 	assert.Equal(t, "draft", validation.Fields[0].Field)
 }

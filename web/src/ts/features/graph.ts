@@ -28,31 +28,39 @@ function svgElement<K extends keyof SVGElementTagNameMap>(
   attributes: SVGAttributes = {},
 ): SVGElementTagNameMap[K] {
   const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+
   for (const [key, value] of Object.entries(attributes))
     element.setAttribute(key, String(value));
+
   return element;
 }
 
 function normalizedGraph(value: unknown): KnowledgeGraph {
   if (typeof value !== "object" || value === null)
     return { nodes: [], edges: [] };
+
   const candidate = value as { nodes?: unknown; edges?: unknown };
   const nodes = Array.isArray(candidate.nodes)
     ? candidate.nodes.filter((item): item is GraphNode => {
         if (typeof item !== "object" || item === null) return false;
+
         const node = item as Partial<GraphNode>;
+
         return typeof node.slug === "string" && typeof node.title === "string";
       })
     : [];
   const edges = Array.isArray(candidate.edges)
     ? candidate.edges.filter((item): item is GraphEdge => {
         if (typeof item !== "object" || item === null) return false;
+
         const edge = item as Partial<GraphEdge>;
+
         return (
           typeof edge.source === "string" && typeof edge.target === "string"
         );
       })
     : [];
+
   return { nodes, edges };
 }
 
@@ -77,6 +85,7 @@ export function graphNeighborhood(
       .map((node) => node.slug),
   );
   const selected = new Set<string>();
+
   if (focus) selected.add(focus);
   for (const edge of edges) {
     if (focus && (edge.source === focus || edge.target === focus)) {
@@ -91,12 +100,16 @@ export function graphNeighborhood(
       selected.add(edge.target);
     }
   }
+
   if (!focus && !normalizedQuery) return { nodes, edges };
+
   if (normalizedQuery) {
     for (const slug of matching) selected.add(slug);
   }
+
   const visibleNodes = nodes.filter((node) => selected.has(node.slug));
   const visible = new Set(visibleNodes.map((node) => node.slug));
+
   return {
     nodes: visibleNodes,
     edges: edges.filter(
@@ -125,6 +138,7 @@ function setupGraph(root: HTMLElement): void {
   function inspect(node: GraphNode, degree: number): void {
     selected = node.slug;
     inspectorPanel.hidden = false;
+
     const title =
       inspectorPanel.querySelector<HTMLElement>("[data-graph-title]");
     const slug = inspectorPanel.querySelector<HTMLElement>("[data-graph-slug]");
@@ -136,6 +150,7 @@ function setupGraph(root: HTMLElement): void {
     );
     const open =
       inspectorPanel.querySelector<HTMLAnchorElement>("[data-graph-open]");
+
     if (title) title.textContent = node.title;
     if (slug) slug.textContent = node.slug;
     if (status) {
@@ -145,28 +160,35 @@ function setupGraph(root: HTMLElement): void {
     if (degreeLabel)
       degreeLabel.textContent = `${degree} linked page${degree === 1 ? "" : "s"}`;
     if (open) open.href = `/pages/${node.slug}`;
+
     render();
   }
 
   // Renders the current graph neighborhood.
   function render(): void {
     const current = graphNeighborhood(graph, focus, graphSearch.value);
+
     graphSVG.replaceChildren();
     emptyState.hidden = current.nodes.length > 0;
     if (!current.nodes.length) return;
 
     const width = Math.max(700, graphSVG.clientWidth || 1000);
     const height = Math.max(560, Math.min(780, window.innerHeight - 260));
+
     graphSVG.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
     const center: Position = { x: width / 2, y: height / 2 };
     const radius = Math.max(120, Math.min(width, height) * 0.36);
     const positions = new Map<string, Position>();
     const ordered = [...current.nodes].sort((a, b) =>
       a.slug.localeCompare(b.slug),
     );
+
     if (focus && ordered.some((node) => node.slug === focus)) {
       positions.set(focus, center);
+
       const others = ordered.filter((node) => node.slug !== focus);
+
       others.forEach((node, index) => {
         const angle =
           (Math.PI * 2 * index) / Math.max(1, others.length) - Math.PI / 2;
@@ -189,6 +211,7 @@ function setupGraph(root: HTMLElement): void {
             : ordered.length - Math.ceil(ordered.length / 2);
         const angle =
           (Math.PI * 2 * ringIndex) / Math.max(1, ringCount) - Math.PI / 2;
+
         positions.set(node.slug, {
           x: center.x + Math.cos(angle) * radius * ring,
           y: center.y + Math.sin(angle) * radius * ring,
@@ -199,12 +222,15 @@ function setupGraph(root: HTMLElement): void {
     const degrees = new Map<string, number>(
       ordered.map((node) => [node.slug, 0]),
     );
+
     for (const edge of current.edges) {
       degrees.set(edge.source, (degrees.get(edge.source) || 0) + 1);
       degrees.set(edge.target, (degrees.get(edge.target) || 0) + 1);
+
       const from = positions.get(edge.source);
       const to = positions.get(edge.target);
       if (!from || !to) continue;
+
       graphSVG.append(
         svgElement("line", {
           x1: from.x,
@@ -219,11 +245,13 @@ function setupGraph(root: HTMLElement): void {
     for (const node of ordered) {
       const position = positions.get(node.slug);
       if (!position) continue;
+
       const group = svgElement("g", {
         class: `graph-node status-${node.status || "verified"}${selected === node.slug ? " selected" : ""}`,
         tabindex: "0",
         role: "button",
       });
+
       group.append(
         svgElement("circle", {
           cx: position.x,
@@ -231,11 +259,13 @@ function setupGraph(root: HTMLElement): void {
           r: node.slug === focus ? 23 : 17,
         }),
       );
+
       const label = svgElement("text", {
         x: position.x,
         y: position.y + (node.slug === focus ? 39 : 32),
         "text-anchor": "middle",
       });
+
       label.textContent =
         node.title.length > 26 ? `${node.title.slice(0, 24)}…` : node.title;
       group.append(label);
@@ -273,6 +303,7 @@ function setupGraph(root: HTMLElement): void {
 
   const graphURL = root.dataset.graphUrl;
   if (!graphURL) return;
+
   fetch(graphURL, { headers: { Accept: "application/json" } })
     .then((response) =>
       response.ok

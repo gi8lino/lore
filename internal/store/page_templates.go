@@ -18,15 +18,20 @@ ORDER BY lower(name),id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var templates []PageTemplate
+
 	for rows.Next() {
 		var item PageTemplate
 		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.Markdown); err != nil {
 			return nil, err
 		}
+
 		templates = append(templates, item)
 	}
+
 	return templates, rows.Err()
 }
 
@@ -41,6 +46,7 @@ WHERE id=$1`, id).
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PageTemplate{}, ErrNotFound
 	}
+
 	return item, err
 }
 
@@ -50,6 +56,7 @@ func (s *Store) CreatePageTemplate(ctx context.Context, name, description, markd
 	if name == "" {
 		return PageTemplate{}, errors.New("template name is required")
 	}
+
 	var item PageTemplate
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO page_templates(name,description,markdown_content)
@@ -59,6 +66,7 @@ RETURNING id,name,description,markdown_content`, name, strings.TrimSpace(descrip
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
 		return PageTemplate{}, ErrAlreadyExists
 	}
+
 	return item, err
 }
 
@@ -68,6 +76,7 @@ func (s *Store) UpdatePageTemplate(ctx context.Context, id int64, name, descript
 	if name == "" {
 		return errors.New("template name is required")
 	}
+
 	tag, err := s.pool.Exec(ctx, `
 UPDATE page_templates
 SET name=$2,description=$3,markdown_content=$4,updated_at=now()
@@ -78,6 +87,7 @@ WHERE id=$1`, id, name, strings.TrimSpace(description), markdown)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -89,5 +99,6 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }

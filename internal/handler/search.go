@@ -15,12 +15,15 @@ func Search(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data, err := viewData(r, viewDataUseCases, views, "Search")
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.Query, data.Pages = query, pages
+
 		render(views, w, "search", data)
 	}
 }

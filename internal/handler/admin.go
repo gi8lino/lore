@@ -55,6 +55,7 @@ func Administration(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AdminStats = stats
 
 		render(views, w, "admin", data)
@@ -74,11 +75,13 @@ func AdminConfiguration(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.Groups = groups
 		data.ApplicationSettings.Authentication.OIDCGroupMappings, err = userUseCases.OIDCGroupMappings(r.Context())
 		if err != nil {
@@ -104,6 +107,7 @@ func AdminRendering(viewDataUseCases viewDataService, renderer *md.Renderer, vie
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.RenderingPreviews = previews
 		data.RenderingLanguages = renderingLanguageOptions
 
@@ -144,6 +148,7 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) h
 			writeAdminProblem(logger, w, err, "Rendering settings")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/rendering", http.StatusSeeOther)
 	}
 }
@@ -194,12 +199,15 @@ func AdminDocumentationHealth(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		health, err := administrationUseCases.DocumentationHealth(r.Context(), time.Now().AddDate(0, -6, 0))
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.DocumentationHealth = health
+
 		render(views, w, "admin_health", data)
 	}
 }
@@ -216,12 +224,15 @@ func AdminAudit(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		events, err := administrationUseCases.AuditEvents(r.Context(), 500)
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AuditEvents = events
+
 		render(views, w, "admin_audit", data)
 	}
 }
@@ -245,17 +256,21 @@ func AdminUsers(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		identities, err := userUseCases.OIDCIdentities(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		identitiesByUser := make(map[int64][]service.OIDCIdentity)
+
 		for _, identity := range identities {
 			identitiesByUser[identity.UserID] = append(identitiesByUser[identity.UserID], identity)
 		}
@@ -268,6 +283,7 @@ func AdminUsers(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		identityCount := len(identities)
 		data.AdminUsers = users
 		data.Groups = groups
@@ -296,6 +312,7 @@ func AdminGroups(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.Groups = groups
 
 		render(views, w, "admin_groups", data)
@@ -314,12 +331,15 @@ func AdminPageTemplates(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		templates, err := templateUseCases.PageTemplates(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.PageTemplates = templates
+
 		render(views, w, "admin_templates", data)
 	}
 }
@@ -340,6 +360,7 @@ func CreateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 			writeAdminProblem(logger, w, err, "Page template")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/templates", http.StatusSeeOther)
 	}
 }
@@ -366,6 +387,7 @@ func UpdateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 			writeAdminProblem(logger, w, err, "Page template")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/templates", http.StatusSeeOther)
 	}
 }
@@ -382,6 +404,7 @@ func DeleteAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 			writeAdminProblem(logger, w, err, "Page template")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/templates", http.StatusSeeOther)
 	}
 }
@@ -404,7 +427,9 @@ func AdminNavigation(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AdminNavigation = items
+
 		render(views, w, "admin_navigation", data)
 	}
 }
@@ -420,8 +445,10 @@ func SearchIcons() http.HandlerFunc {
 		Items   []result `json:"items"`
 		HasMore bool     `json:"has_more"`
 	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		offset := 0
+
 		if value := r.URL.Query().Get("offset"); value != "" {
 			var err error
 			offset, err = strconv.Atoi(value)
@@ -430,14 +457,17 @@ func SearchIcons() http.HandlerFunc {
 				return
 			}
 		}
+
 		options, hasMore := icons.SearchPage(r.URL.Query().Get("q"), offset, 80)
 		results := make([]result, 0, len(options))
+
 		for _, option := range options {
 			results = append(
 				results,
 				result{Name: option.Name, Label: option.Label, SVG: string(icons.SVG(option.Name, 22))},
 			)
 		}
+
 		httpresponse.Respond(w, http.StatusOK, response{Items: results, HasMore: hasMore})
 	}
 }
@@ -464,6 +494,7 @@ func SaveAdminNavigationIcon(navigationUseCases navigationService, logger *slog.
 			writeAdminProblem(logger, w, err, "Navigation path")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/navigation", http.StatusSeeOther)
 	}
 }
@@ -486,6 +517,7 @@ func AdminTags(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AdminTags = tags
 
 		render(views, w, "admin_tags", data)
@@ -511,11 +543,13 @@ func AdminTokens(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		tokens, err := tokenUseCases.Tokens(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AdminUsers = users
 		data.AdminTokens = tokens
 
@@ -541,6 +575,7 @@ func AdminExports(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.AdminPages = pages
 
 		render(views, w, "admin_exports", data)
@@ -565,6 +600,7 @@ func AdminImages(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.Images = mediaItems(images)
 
 		render(views, w, "admin_images", data)
@@ -598,12 +634,15 @@ func SaveAdminAuthentication(
 				"mode", settings.Mode,
 				"error", err,
 			)
+
 			field := "auth_mode"
 			message := "The authentication configuration could not be verified."
+
 			if settings.Mode == string(auth.AuthModeOIDC) {
 				field = "oidc_issuer"
 				message = "OIDC provider discovery failed. Check the issuer and server connectivity."
 			}
+
 			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"Authentication validation failed.",
@@ -616,6 +655,7 @@ func SaveAdminAuthentication(
 			writeAdminProblem(views.logger, w, err, "Authentication settings")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 	}
 }
@@ -623,14 +663,17 @@ func SaveAdminAuthentication(
 // authenticationSettingsFromForm parses non-secret browser authentication settings.
 func authenticationSettingsFromForm(r *http.Request) service.AuthenticationSettings {
 	mappings := make([]service.OIDCGroupMapping, 0, len(r.Form["oidc_group_source"]))
+
 	for index, source := range r.Form["oidc_group_source"] {
 		source = strings.TrimSpace(source)
 		if source == "" || index >= len(r.Form["oidc_group_id"]) {
 			continue
 		}
+
 		groupID, _ := strconv.ParseInt(strings.TrimSpace(r.Form["oidc_group_id"][index]), 10, 64)
 		mappings = append(mappings, service.OIDCGroupMapping{OIDCGroup: source, GroupID: groupID})
 	}
+
 	return service.AuthenticationSettings{
 		Mode:                      strings.TrimSpace(r.FormValue("auth_mode")),
 		OIDCIssuer:                strings.TrimSpace(r.FormValue("oidc_issuer")),
@@ -654,6 +697,7 @@ func authenticationSettingsProblems(
 	runtime RuntimeInfo,
 ) []httpresponse.FieldProblem {
 	var problems []httpresponse.FieldProblem
+
 	switch auth.AuthMode(settings.Mode) {
 	case auth.AuthModeNone:
 	case auth.AuthModeLocal:
@@ -692,7 +736,9 @@ func authenticationSettingsProblems(
 				"Configure the OIDC claim containing group memberships.",
 			))
 		}
+
 		seenMappings := map[string]bool{}
+
 		for _, mapping := range settings.OIDCGroupMappings {
 			if mapping.OIDCGroup == "" || mapping.GroupID <= 0 {
 				problems = append(problems, httpresponse.NewFieldProblem(
@@ -708,6 +754,7 @@ func authenticationSettingsProblems(
 				))
 				break
 			}
+
 			seenMappings[mapping.OIDCGroup] = true
 		}
 	default:
@@ -727,6 +774,7 @@ func authenticationSettingsProblems(
 			}
 		}
 	}
+
 	return problems
 }
 
@@ -734,15 +782,18 @@ func authenticationSettingsProblems(
 func splitHeaderNames(value string) []string {
 	seen := map[string]bool{}
 	headers := make([]string, 0)
+
 	for _, value := range strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == '\n' }) {
 		header := strings.TrimSpace(value)
 		key := strings.ToLower(header)
 		if header == "" || seen[key] {
 			continue
 		}
+
 		seen[key] = true
 		headers = append(headers, header)
 	}
+
 	return headers
 }
 
@@ -760,6 +811,7 @@ func SaveAdminSettings(settingsUseCases settingsService, logger *slog.Logger) ht
 			writeAdminProblem(logger, w, err, "Settings")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 	}
 }
@@ -795,6 +847,7 @@ func UpdateAdminUser(
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user form.")
 			return
 		}
+
 		role := r.FormValue("role")
 		if role != "admin" && role != "editor" && role != "viewer" {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user role.")
@@ -808,6 +861,7 @@ func UpdateAdminUser(
 			)
 			return
 		}
+
 		enabled := r.FormValue("account_enabled") == "on"
 		if userID == admin.ID && !enabled {
 			httpresponse.Problem(w,
@@ -819,6 +873,7 @@ func UpdateAdminUser(
 		}
 
 		groupIDs := make([]int64, 0, len(r.Form["group_id"]))
+
 		for _, value := range r.Form["group_id"] {
 			groupID, err := strconv.ParseInt(value, 10, 64)
 			if err != nil || groupID <= 0 {
@@ -829,8 +884,10 @@ func UpdateAdminUser(
 				)
 				return
 			}
+
 			groupIDs = append(groupIDs, groupID)
 		}
+
 		password := r.FormValue("local_password")
 		updateLocalCredential := r.FormValue("update_local_credential") == "true"
 		if problems := localPasswordValidationProblems(
@@ -845,16 +902,20 @@ func UpdateAdminUser(
 		}
 
 		var localCredentialEnabled *bool
+
 		if updateLocalCredential {
 			settings, err := settingsUseCases.ApplicationSettings(r.Context())
 			if err != nil {
 				writeUnexpectedProblem(logger, w, err)
 				return
 			}
+
 			effectiveMode := settings.Authentication.Mode
+
 			if views.runtime.AuthModeOverride != "" {
 				effectiveMode = views.runtime.AuthModeOverride
 			}
+
 			if effectiveMode != string(auth.AuthModeOIDC) && effectiveMode != string(auth.AuthModeTrustedProxy) {
 				httpresponse.Problem(w,
 					http.StatusBadRequest,
@@ -863,19 +924,23 @@ func UpdateAdminUser(
 				)
 				return
 			}
+
 			enabled := password != "" || r.FormValue("local_credential_enabled") == "on"
 			localCredentialEnabled = &enabled
 		}
+
 		if err := userUseCases.UpdateUser(r.Context(), userID, role, enabled, groupIDs, localCredentialEnabled); err != nil {
 			writeAdminProblem(logger, w, err, "User")
 			return
 		}
+
 		if password != "" {
 			if err := local.SetPassword(r.Context(), userID, password); err != nil {
 				writeAdminProblem(logger, w, err, "Local credential")
 				return
 			}
 		}
+
 		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 	}
 }
@@ -893,6 +958,7 @@ func RevokeAdminUserSessions(userUseCases userManagementService, logger *slog.Lo
 			writeAdminProblem(logger, w, err, "User sessions")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 	}
 }
@@ -912,6 +978,7 @@ func ApprovePendingOIDCIdentity(userUseCases oidcIdentityService, logger *slog.L
 			writeAdminProblem(logger, w, err, "Identity request")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/users#pending-identities", http.StatusSeeOther)
 	}
 }
@@ -929,6 +996,7 @@ func LinkPendingOIDCIdentity(userUseCases oidcIdentityService, logger *slog.Logg
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid identity link form.")
 			return
 		}
+
 		userID, err := strconv.ParseInt(r.FormValue("user_id"), 10, 64)
 		if err != nil || userID <= 0 {
 			httpresponse.Problem(w,
@@ -944,6 +1012,7 @@ func LinkPendingOIDCIdentity(userUseCases oidcIdentityService, logger *slog.Logg
 			writeAdminProblem(logger, w, err, "Identity request")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/users#pending-identities", http.StatusSeeOther)
 	}
 }
@@ -980,6 +1049,7 @@ func pendingOIDCIdentityStatusHandler(
 			writeAdminProblem(logger, w, err, "Identity request")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/users#pending-identities", http.StatusSeeOther)
 	}
 }
@@ -990,6 +1060,7 @@ func pendingOIDCIdentityID(r *http.Request) (int64, error) {
 	if err != nil || id <= 0 {
 		return 0, errors.New("invalid pending OIDC identity")
 	}
+
 	return id, nil
 }
 
@@ -1006,6 +1077,7 @@ func RemoveAdminOIDCIdentity(userUseCases oidcIdentityService, logger *slog.Logg
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid identity form.")
 			return
 		}
+
 		issuer := strings.TrimSpace(r.FormValue("issuer"))
 		subject := strings.TrimSpace(r.FormValue("subject"))
 		if issuer == "" || subject == "" {
@@ -1022,6 +1094,7 @@ func RemoveAdminOIDCIdentity(userUseCases oidcIdentityService, logger *slog.Logg
 			writeAdminProblem(logger, w, err, "OIDC identity")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/users#oidc-identities", http.StatusSeeOther)
 	}
 }
@@ -1037,6 +1110,7 @@ func CreateAdminGroup(groupUseCases groupWriter, logger *slog.Logger) http.Handl
 			writeAdminProblem(logger, w, err, "Group")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/groups", http.StatusSeeOther)
 	}
 }
@@ -1057,6 +1131,7 @@ func DeleteAdminGroup(groupUseCases groupWriter, logger *slog.Logger) http.Handl
 			writeAdminProblem(logger, w, err, "Group")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/groups", http.StatusSeeOther)
 	}
 }
@@ -1073,6 +1148,7 @@ func DeleteAdminTag(administrationUseCases administrationService, logger *slog.L
 			writeAdminProblem(logger, w, err, "Tag")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
 	}
 }
@@ -1088,8 +1164,10 @@ func administrationData(
 	if err != nil {
 		return ViewData{}, err
 	}
+
 	data.AdminSection = section
 	data.Navigation = nil
+
 	return data, nil
 }
 
@@ -1139,12 +1217,15 @@ func AdminBin(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		pages, err := recycleBinUseCases.DeletedPages(r.Context())
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		data.DeletedPages = pages
+
 		render(views, w, "admin_bin", data)
 	}
 }
@@ -1165,6 +1246,7 @@ func RestoreAdminPage(recycleBinUseCases recycleBinService, logger *slog.Logger)
 			writeAdminProblem(logger, w, err, "Page")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/bin", http.StatusSeeOther)
 	}
 }
@@ -1185,6 +1267,7 @@ func PermanentlyDeleteAdminPage(recycleBinUseCases recycleBinService, logger *sl
 			writeAdminProblem(logger, w, err, "Page")
 			return
 		}
+
 		http.Redirect(w, r, "/admin/bin", http.StatusSeeOther)
 	}
 }
@@ -1197,11 +1280,13 @@ func SearchAdminUsers(userUseCases userDirectoryService, logger *slog.Logger) ht
 			httpresponse.Respond(w, http.StatusOK, []service.User{})
 			return
 		}
+
 		users, err := userUseCases.SearchUsers(r.Context(), query, 20)
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, users)
 	}
 }
@@ -1218,11 +1303,13 @@ func AdminGroupMembers(groupUseCases groupReader, logger *slog.Logger) http.Hand
 			)
 			return
 		}
+
 		members, err := groupUseCases.GroupMembers(r.Context(), groupID)
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, members)
 	}
 }
@@ -1247,6 +1334,7 @@ func AddAdminGroupMember(
 			)
 			return
 		}
+
 		request, err := decode[groupMemberRequest](w, r)
 		if err != nil {
 			httpresponse.Problem(w,
@@ -1268,11 +1356,13 @@ func AddAdminGroupMember(
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		user, err := userUseCases.User(r.Context(), request.UserID)
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusCreated, user)
 	}
 }
@@ -1289,6 +1379,7 @@ func RemoveAdminGroupMember(groupUseCases groupWriter, logger *slog.Logger) http
 			)
 			return
 		}
+
 		userID, err := strconv.ParseInt(r.PathValue("userID"), 10, 64)
 		if err != nil || userID <= 0 {
 			httpresponse.Problem(w,
@@ -1302,6 +1393,7 @@ func RemoveAdminGroupMember(groupUseCases groupWriter, logger *slog.Logger) http
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

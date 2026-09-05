@@ -29,6 +29,7 @@ func (s *Store) CreateToken(
 	if err != nil {
 		return IssuedToken{}, err
 	}
+
 	creator, err := s.User(ctx, createdBy)
 	if err != nil {
 		return IssuedToken{}, err
@@ -38,6 +39,7 @@ func (s *Store) CreateToken(
 	if _, err := rand.Read(secretBytes); err != nil {
 		return IssuedToken{}, err
 	}
+
 	secret := "lore_pat_" + base64.RawURLEncoding.EncodeToString(secretBytes)
 	hash := sha256.Sum256([]byte(secret))
 	hashString := hex.EncodeToString(hash[:])
@@ -56,10 +58,12 @@ RETURNING id,name,user_id,coalesce(created_by,0),created_at`, name, hashString, 
 	if err != nil {
 		return IssuedToken{}, err
 	}
+
 	token.ExpiresAt = expiresAt
 
 	token.Username = user.Username
 	token.Creator = creator.DisplayName
+
 	if token.Creator == "" {
 		token.Creator = creator.Username
 	}
@@ -98,9 +102,11 @@ ORDER BY t.created_at DESC,t.id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var tokens []APIToken
+
 	for rows.Next() {
 		var token APIToken
 		var lastUsed pgtype.Timestamptz
@@ -118,6 +124,7 @@ ORDER BY t.created_at DESC,t.id DESC`, args...)
 		); err != nil {
 			return nil, err
 		}
+
 		if lastUsed.Valid {
 			value := lastUsed.Time
 			token.LastUsed = &value
@@ -126,8 +133,10 @@ ORDER BY t.created_at DESC,t.id DESC`, args...)
 			value := expiresAt.Time
 			token.ExpiresAt = &value
 		}
+
 		tokens = append(tokens, token)
 	}
+
 	return tokens, rows.Err()
 }
 
@@ -139,6 +148,7 @@ WHERE id=$1 AND coalesce(user_id,created_by)=$2`, id, userID)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -150,5 +160,6 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }

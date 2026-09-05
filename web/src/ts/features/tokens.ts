@@ -19,7 +19,9 @@ interface CreateTokenResponse {
 
 function isTokenRecord(value: unknown): value is TokenRecord {
   if (typeof value !== "object" || value === null) return false;
+
   const token = value as Partial<TokenRecord>;
+
   return (
     typeof token.id === "number" &&
     typeof token.name === "string" &&
@@ -30,7 +32,9 @@ function isTokenRecord(value: unknown): value is TokenRecord {
 
 function isCreateTokenResponse(value: unknown): value is CreateTokenResponse {
   if (typeof value !== "object" || value === null) return false;
+
   const response = value as Partial<CreateTokenResponse>;
+
   return typeof response.secret === "string" && isTokenRecord(response.token);
 }
 
@@ -40,11 +44,16 @@ function renderTokenSecret(container: HTMLElement, secret: string): void {
   container.replaceChildren();
 
   const message = document.createElement("p");
+
   message.innerHTML =
     "<strong>Copy this token now.</strong> It will not be shown again.";
+
   const code = document.createElement("code");
+
   code.textContent = secret;
+
   const copy = document.createElement("button");
+
   copy.type = "button";
   copy.className = "button";
   copy.textContent = "Copy token";
@@ -61,12 +70,16 @@ function prependTokenRow(form: HTMLFormElement, token: TokenRecord): void {
   const list =
     form.parentElement?.querySelector<HTMLElement>("[data-token-list]");
   if (!list) return;
+
   list.querySelector("[data-token-empty]")?.remove();
 
   const row = document.createElement("tr");
+
   row.dataset.tokenRow = "";
+
   const expires = token.expires_at ? token.expires_at.slice(0, 10) : "Never";
   const admin = form.action.includes("/admin/tokens");
+
   row.innerHTML = admin
     ? `<td><strong></strong><small></small></td><td></td><td>just now</td>` +
       `<td><span class="muted">Never</span></td><td></td><td></td>`
@@ -74,10 +87,14 @@ function prependTokenRow(form: HTMLFormElement, token: TokenRecord): void {
       `<td><span class="muted">Never</span></td><td></td><td></td>`;
 
   const strong = row.querySelector<HTMLElement>("strong");
+
   if (strong) strong.textContent = token.name;
+
   const cells = row.querySelectorAll<HTMLTableCellElement>("td");
+
   if (admin) {
     const small = row.querySelector<HTMLElement>("small");
+
     if (small) small.textContent = `issued by ${token.creator}`;
     if (cells[1]) cells[1].textContent = token.username;
     if (cells[4]) cells[4].textContent = expires;
@@ -87,7 +104,9 @@ function prependTokenRow(form: HTMLFormElement, token: TokenRecord): void {
 
   const actionCell = cells[cells.length - 1];
   if (!actionCell) return;
+
   const revoke = document.createElement("button");
+
   revoke.type = "button";
   revoke.className = "button danger";
   revoke.dataset.tokenDelete = "";
@@ -102,9 +121,11 @@ function prependTokenRow(form: HTMLFormElement, token: TokenRecord): void {
 
 function formBody(form: HTMLFormElement): URLSearchParams {
   const params = new URLSearchParams();
+
   for (const [key, value] of new FormData(form).entries()) {
     params.append(key, String(value));
   }
+
   return params;
 }
 
@@ -115,6 +136,7 @@ function setupTokenForms(): void {
   )) {
     form.addEventListener("submit", async (event: SubmitEvent) => {
       event.preventDefault();
+
       const submit = form.querySelector<HTMLButtonElement>(
         'button[type="submit"]',
       );
@@ -124,6 +146,7 @@ function setupTokenForms(): void {
       if (!secret || !submit) return;
 
       submit.disabled = true;
+
       try {
         const response = await fetch(form.action, {
           method: "POST",
@@ -137,6 +160,7 @@ function setupTokenForms(): void {
         if (!response.ok) throw await responseProblem(response, payload);
         if (!isCreateTokenResponse(payload))
           throw new Error("Invalid token response.");
+
         renderTokenSecret(secret, payload.secret);
         prependTokenRow(form, payload.token);
         form.reset();
@@ -162,9 +186,12 @@ function setupTokenDeleteButton(button: HTMLButtonElement): void {
       ))
     )
       return;
+
     const deleteURL = button.dataset.deleteUrl;
     if (!deleteURL) return;
+
     button.disabled = true;
+
     try {
       const response = await fetch(deleteURL, {
         method: "DELETE",
@@ -174,6 +201,7 @@ function setupTokenDeleteButton(button: HTMLButtonElement): void {
         const payload: unknown = await response.json().catch(() => ({}));
         throw await responseProblem(response, payload);
       }
+
       button.closest("[data-token-row]")?.remove();
     } catch (error) {
       console.error("token revocation failed", error);

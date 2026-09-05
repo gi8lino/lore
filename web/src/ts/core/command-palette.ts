@@ -9,7 +9,9 @@ interface CommandPage {
 
 function isCommandPage(value: unknown): value is CommandPage {
   if (typeof value !== "object" || value === null) return false;
+
   const page = value as Partial<CommandPage>;
+
   return typeof page.slug === "string" && typeof page.title === "string";
 }
 
@@ -25,6 +27,7 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
     "[data-command-palette-close]",
   );
   if (!input || !results) return;
+
   const inputElement = input;
   const resultsElement = results;
 
@@ -48,6 +51,7 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
       active = -1;
       return;
     }
+
     active = ((index % options.length) + options.length) % options.length;
     options.forEach((option, optionIndex) =>
       option.setAttribute("aria-selected", String(optionIndex === active)),
@@ -60,12 +64,15 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
     resultsElement.replaceChildren();
     pages.forEach((page) => {
       const anchor = document.createElement("a");
+
       anchor.href = `/pages/${page.slug}`;
       anchor.dataset.commandOption = "";
       anchor.className = "command-palette-option";
       anchor.setAttribute("role", "option");
+
       const strong = document.createElement("strong");
       const small = document.createElement("small");
+
       strong.textContent = page.title;
       small.textContent = page.slug;
       anchor.append(strong, small);
@@ -80,13 +87,16 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
     if (!query) {
       pages = [];
       resultsElement.replaceChildren();
+
       for (const option of dialog.querySelectorAll<HTMLElement>(
         "[data-command-static]",
       ))
         option.hidden = false;
+
       setActive(0);
       return;
     }
+
     for (const option of dialog.querySelectorAll<HTMLElement>(
       "[data-command-static]",
     )) {
@@ -94,14 +104,18 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
         .toLocaleLowerCase()
         .includes(query.toLocaleLowerCase());
     }
+
     const current = ++requestID;
+
     try {
       const response = await fetch(
         `/api/search?q=${encodeURIComponent(query)}`,
         { headers: { Accept: "application/json" } },
       );
       if (!response.ok || current !== requestID) return;
+
       const value: unknown = await response.json();
+
       pages = Array.isArray(value)
         ? value.filter(isCommandPage).slice(0, maxResults)
         : [];
@@ -115,13 +129,16 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
   // Opens the command palette and resets its state.
   function open(): void {
     if (!dialog.open) dialog.showModal();
+
     inputElement.value = "";
     pages = [];
     resultsElement.replaceChildren();
+
     for (const option of dialog.querySelectorAll<HTMLElement>(
       "[data-command-static]",
     ))
       option.hidden = false;
+
     setActive(0);
     requestAnimationFrame(() => inputElement.focus());
   }
@@ -142,6 +159,7 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
       return;
     }
     if (!dialog.open) return;
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive(active + 1);

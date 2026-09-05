@@ -11,6 +11,7 @@ import (
 // RequireRole authorizes an authenticated request against one of the allowed roles.
 func RequireRole(roles ...string) Middleware {
 	allowed := make(map[string]struct{}, len(roles))
+
 	for _, role := range roles {
 		allowed[role] = struct{}{}
 	}
@@ -26,6 +27,7 @@ func RequireRole(roles ...string) Middleware {
 				roleForbidden(w, r)
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}

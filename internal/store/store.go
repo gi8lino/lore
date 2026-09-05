@@ -33,6 +33,7 @@ func Open(ctx context.Context, url string, logger *slog.Logger) (*Store, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	s := &Store{pool: pool}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
@@ -42,6 +43,7 @@ func Open(ctx context.Context, url string, logger *slog.Logger) (*Store, error) 
 		pool.Close()
 		return nil, err
 	}
+
 	return s, nil
 }
 
@@ -66,9 +68,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, appli
 	if err != nil {
 		return err
 	}
+
 	sort.Slice(entries, func(i, j int) bool {
 		left, _ := strconv.Atoi(strings.SplitN(entries[i].Name(), "_", 2)[0])
 		right, _ := strconv.Atoi(strings.SplitN(entries[j].Name(), "_", 2)[0])
+
 		return left < right
 	})
 
@@ -103,11 +107,13 @@ SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)`, v).Scan(&exist
 		if err != nil {
 			return err
 		}
+
 		if _, err = tx.Exec(ctx, string(sql)); err == nil {
 			_, err = tx.Exec(ctx, `
 INSERT INTO schema_migrations(version)
 VALUES($1)`, v)
 		}
+
 		if err != nil {
 			_ = tx.Rollback(ctx)
 			return fmt.Errorf("migration %d: %w", v, err)
@@ -115,6 +121,7 @@ VALUES($1)`, v)
 		if err := tx.Commit(ctx); err != nil {
 			return err
 		}
+
 		logger.Info(
 			"applied database migration",
 			"event", "database_migration_applied",
@@ -122,6 +129,7 @@ VALUES($1)`, v)
 			"migration", e.Name(),
 		)
 	}
+
 	return nil
 }
 
@@ -155,6 +163,7 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 		&user.Enabled,
 		&user.SessionVersion,
 	)
+
 	return user, err
 }
 
@@ -193,6 +202,7 @@ VALUES($1,$2,$3,now())
 ON CONFLICT(username) DO UPDATE
 SET email=EXCLUDED.email,display_name=EXCLUDED.display_name,last_login=now()
 RETURNING id,username,email,display_name,role,enabled,session_version`, username, email, displayName).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
+
 	return user, err
 }
 
@@ -207,9 +217,11 @@ SET last_used=now() FROM users u
 WHERE t.token_hash=$1 AND coalesce(t.user_id,t.created_by)=u.id AND u.enabled AND (t.expires_at IS NULL OR t.expires_at>now())
 RETURNING u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version`, hash).
 		Scan(&u.ID, &u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Enabled, &u.SessionVersion)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}
+
 	return u, err
 }
 
@@ -238,9 +250,11 @@ func scanPage(row pgx.Row) (Page, error) {
 		&p.ViewCount,
 		&p.Tags,
 	)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}
+
 	return p, err
 }
 
@@ -254,6 +268,7 @@ GROUP BY p.id,u.id`, slug),
 	if err != nil {
 		return Page{}, err
 	}
+
 	page.Groups, err = s.PageGroups(ctx, page.ID)
 	if err != nil {
 		return Page{}, err
@@ -273,10 +288,12 @@ WHERE p.id=$1`, page.ID).Scan(
 	); err != nil {
 		return Page{}, err
 	}
+
 	page.Properties, err = s.PageProperties(ctx, page.ID)
 	if err != nil {
 		return Page{}, err
 	}
+
 	return page, nil
 }
 
@@ -294,7 +311,9 @@ LIMIT $1`,
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	return collectPages(rows)
 }
 
@@ -309,28 +328,36 @@ ORDER BY p.slug`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var pages []Page
+
 	for rows.Next() {
 		var page Page
 		if err := rows.Scan(&page.Slug, &page.Title, &page.Icon); err != nil {
 			return nil, err
 		}
+
 		pages = append(pages, page)
 	}
+
 	return pages, rows.Err()
 }
 
 // collectPages scans all rows from a common page query.
 func collectPages(rows pgx.Rows) ([]Page, error) {
 	var out []Page
+
 	for rows.Next() {
 		p, e := scanPage(rows)
 		if e != nil {
 			return nil, e
 		}
+
 		out = append(out, p)
 	}
+
 	return out, rows.Err()
 }
 
@@ -350,12 +377,14 @@ func (s *Store) SavePage(
 	if metadata.ReviewIntervalDays < 0 {
 		return Page{}, errors.New("invalid review interval")
 	}
+
 	metadata.DeprecatedTarget = strings.TrimSpace(metadata.DeprecatedTarget)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Page{}, err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := validateAssignableGroup(ctx, tx, metadata.OwnerGroupID, user); err != nil {
@@ -363,6 +392,7 @@ func (s *Store) SavePage(
 	}
 
 	lookupSlug := slug
+
 	if strings.TrimSpace(previousSlug) != "" {
 		lookupSlug = strings.TrimSpace(previousSlug)
 	}
@@ -374,6 +404,7 @@ SELECT id,deleted_at IS NOT NULL
 FROM pages
 WHERE slug=$1 FOR UPDATE`, lookupSlug).
 		Scan(&id, &deleted)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		var aliasExists bool
 		if aliasErr := tx.QueryRow(ctx, `
@@ -383,6 +414,7 @@ SELECT EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1)`, slug).Scan(&aliasExis
 		if aliasExists {
 			return Page{}, ErrAlreadyExists
 		}
+
 		err = tx.QueryRow(ctx, `
 INSERT INTO pages(
   slug,title,content_language,markdown_content,created_by,updated_by,status,owner_group_id,last_reviewed_at,review_interval_days,deprecated_target
@@ -433,11 +465,13 @@ WHERE id=$1`,
 			id, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
 		)
 	}
+
 	if err != nil {
 		return Page{}, err
 	}
 
 	icon = strings.TrimSpace(icon)
+
 	if icon == "" {
 		if _, err = tx.Exec(ctx, `
 DELETE FROM navigation_icons
@@ -469,11 +503,13 @@ DELETE FROM page_tags
 WHERE page_id=$1`, id); err != nil {
 		return Page{}, err
 	}
+
 	for _, tag := range tags {
 		tag = strings.ToLower(strings.TrimSpace(tag))
 		if tag == "" {
 			continue
 		}
+
 		var tagID int64
 		if err = tx.QueryRow(ctx, `
 INSERT INTO tags(name)
@@ -504,6 +540,7 @@ DELETE FROM page_links
 WHERE source_page_id=$1`, id); err != nil {
 		return Page{}, err
 	}
+
 	for _, link := range links {
 		if _, err = tx.Exec(ctx, `
 INSERT INTO page_links(source_page_id,target_slug)
@@ -516,6 +553,7 @@ ON CONFLICT DO NOTHING`, id, link); err != nil {
 	if err = tx.Commit(ctx); err != nil {
 		return Page{}, err
 	}
+
 	return s.GetPage(ctx, slug)
 }
 
@@ -533,6 +571,7 @@ WHERE slug=$1 AND deleted_at IS NULL`,
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -555,15 +594,20 @@ ORDER BY p.deleted_at DESC,p.id DESC`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var pages []DeletedPage
+
 	for rows.Next() {
 		var item DeletedPage
 		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Icon, &item.Markdown, &item.CreatedBy, &item.UpdatedBy, &item.Author, &item.CreatedAt, &item.UpdatedAt, &item.ViewCount, &item.Tags, &item.DeletedAt, &item.DeletedBy); err != nil {
 			return nil, err
 		}
+
 		pages = append(pages, item)
 	}
+
 	return pages, rows.Err()
 }
 
@@ -580,6 +624,7 @@ WHERE slug=$1 AND deleted_at IS NOT NULL`,
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -589,6 +634,7 @@ func (s *Store) PermanentlyDeletePage(ctx context.Context, slug string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `
@@ -646,6 +692,7 @@ ON CONFLICT DO NOTHING`,
 		)
 		return err
 	}
+
 	_, err := s.pool.Exec(
 		ctx,
 		`
@@ -655,6 +702,7 @@ WHERE f.page_id=p.id AND p.slug=$1 AND p.deleted_at IS NULL AND f.user_id=$2`,
 		slug,
 		userID,
 	)
+
 	return err
 }
 
@@ -668,6 +716,7 @@ SELECT EXISTS(
   JOIN pages p ON p.id=f.page_id
   WHERE f.user_id=$2 AND p.slug=$1 AND p.deleted_at IS NULL
 )`, slug, userID).Scan(&favorite)
+
 	return favorite, err
 }
 
@@ -685,16 +734,20 @@ ORDER BY f.created_at DESC`,
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	return collectPages(rows)
 }
 
 // Backlinks returns pages that reference the supplied page slug.
 func (s *Store) Backlinks(ctx context.Context, slug string) ([]Page, error) {
 	base := slug
+
 	if index := strings.LastIndex(slug, "/"); index >= 0 {
 		base = slug[index+1:]
 	}
+
 	rows, err := s.pool.Query(
 		ctx,
 		pageSelect+`
@@ -708,7 +761,9 @@ ORDER BY p.title`,
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	return collectPages(rows)
 }
 
@@ -723,6 +778,7 @@ WHERE a.alias=$1`, alias).Scan(&slug)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrNotFound
 	}
+
 	return slug, err
 }
 
@@ -761,10 +817,12 @@ LIMIT 1`
 	if errors.Is(err, pgx.ErrNoRows) {
 		return revision.Revision{}, 0, nil
 	}
+
 	if err == nil {
 		record.Markdown = markdown
 		record.PreviousMarkdown = previous
 	}
+
 	return record, count, err
 }
 
@@ -787,6 +845,7 @@ WHERE p.slug=$1 AND p.deleted_at IS NULL AND r.revision_number=$2`, slug, number
 	if errors.Is(err, pgx.ErrNoRows) {
 		return revision.Revision{}, ErrNotFound
 	}
+
 	return record, err
 }
 
@@ -815,9 +874,11 @@ ORDER BY h.revision_number DESC`
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var revisions []revision.Revision
+
 	for rows.Next() {
 		var record revision.Revision
 		if err := rows.Scan(
@@ -831,8 +892,10 @@ ORDER BY h.revision_number DESC`
 		); err != nil {
 			return nil, err
 		}
+
 		revisions = append(revisions, record)
 	}
+
 	return revisions, rows.Err()
 }
 
@@ -845,14 +908,19 @@ ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var out []string
+
 	for rows.Next() {
 		var v string
 		if err := rows.Scan(&v); err != nil {
 			return nil, err
 		}
+
 		out = append(out, v)
 	}
+
 	return out, rows.Err()
 }

@@ -34,6 +34,7 @@ func (s *Settings) SaveApplicationSettings(
 	if err := s.repository.SaveApplicationSettings(ctx, settings); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -42,6 +43,7 @@ func (s *Settings) SaveApplicationSettings(
 		"application",
 		"Updated application settings",
 	)
+
 	return nil
 }
 
@@ -50,6 +52,7 @@ func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID i
 	if err := s.repository.SavePDFSettings(ctx, pdfURL); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -58,6 +61,7 @@ func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID i
 		"pdf",
 		"Updated PDF service settings",
 	)
+
 	return nil
 }
 
@@ -70,6 +74,7 @@ func (s *Settings) SaveAuthenticationSettings(
 	if err := s.repository.SaveAuthenticationSettings(ctx, settings); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -78,6 +83,7 @@ func (s *Settings) SaveAuthenticationSettings(
 		"authentication",
 		"Updated authentication settings",
 	)
+
 	return nil
 }
 
@@ -90,6 +96,7 @@ func (s *Settings) SaveRenderingSettings(
 	if err := s.repository.SaveRenderingSettings(ctx, settings); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -98,6 +105,7 @@ func (s *Settings) SaveRenderingSettings(
 		"rendering",
 		"Updated rendering settings",
 	)
+
 	return nil
 }
 

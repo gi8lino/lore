@@ -12,6 +12,7 @@ func TestWikiLinksAndCallouts(t *testing.T) {
 
 	renderer := New()
 	got, err := renderer.Render("See [[Postgres Restore|the runbook]].\n\n!!! warning\nDanger zone\n")
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `href="/pages/postgres-restore"`)
 	assert.Contains(t, got, `class="callout warning"`)
@@ -26,6 +27,7 @@ func TestWikiLinkPrefix(t *testing.T) {
 	got, err := renderer.RenderResolvedWithOptions("[[Hello World]]", func(target string) string {
 		return Slug(target) + "/"
 	}, options)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `href="/docs/hello-world/"`)
 }
@@ -34,6 +36,7 @@ func TestLinksAreUnique(t *testing.T) {
 	t.Parallel()
 
 	got := Links("[[Hello World]] [[Hello World]] [[infra/DNS]]")
+
 	assert.Equal(t, []string{"hello-world", "infra/dns"}, got)
 }
 
@@ -55,6 +58,7 @@ func TestTabsRenderMarkdownPanels(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="markdown-tabs"`)
 	assert.Contains(t, got, `class="markdown-tab active"`)
@@ -75,6 +79,7 @@ func TestDetailsRenderMarkdownBody(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `<details class="markdown-details" open`)
 	assert.Contains(t, got, `<summary>Why this works</summary>`)
@@ -89,6 +94,7 @@ func TestCustomBlocksAreIgnoredInsideFences(t *testing.T) {
 	source := "```text\n=== \"Not a tab\"\n??? \"Not details\"\n!!! warning\n```\n"
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.NotContains(t, got, `class="markdown-tabs"`)
 	assert.NotContains(t, got, `class="markdown-details"`)
@@ -103,6 +109,7 @@ func TestAdditionalCalloutKinds(t *testing.T) {
 
 	renderer := New()
 	got, err := renderer.Render("!!! info\nInformation\n\n!!! success\nWorked\n\n!!! danger\nStop\n")
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `callout info`)
 	assert.Contains(t, got, `callout success`)
@@ -114,6 +121,7 @@ func TestCalloutBodyRendersMarkdown(t *testing.T) {
 
 	renderer := New()
 	got, err := renderer.Render("!!! warning\n`$(VAR_NAME)` does not work with **envFrom**!\n")
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `<code>$(VAR_NAME)</code>`)
 	assert.Contains(t, got, `<strong>envFrom</strong>`)
@@ -127,11 +135,13 @@ func TestWikiLinksAreIgnoredInsideFencedCode(t *testing.T) {
 	source := "Before [[Real Page]]\n\n```text\n[[Literal Link]]\n```\n"
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `href="/pages/real-page"`)
 	assert.NotContains(t, got, `href="/pages/literal-link"`)
 
 	links := Links(source)
+
 	assert.Equal(t, []string{"real-page"}, links)
 }
 
@@ -140,6 +150,7 @@ func TestRenderPageExtractsHeadingTextWithoutHTMLMarkup(t *testing.T) {
 
 	renderer := New()
 	rendered, err := renderer.RenderPageResolved("# Main *heading*\n\n## Child `code`\n", Slug)
+
 	require.NoError(t, err)
 	require.Len(t, rendered.Contents, 2)
 	assert.Equal(t, 1, rendered.Contents[0].Level)
@@ -158,6 +169,7 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 		DefaultOptions(),
 		Functions{Subpages: `<nav class="subpage-toc">Generated pages</nav>`},
 	)
+
 	require.NoError(t, err)
 	assert.Contains(t, rendered.HTML, "<p>Before</p>\n<nav class=\"subpage-toc\">Generated pages</nav>\n<p>After</p>")
 	assert.NotContains(t, rendered.HTML, "{{subpages}}")
@@ -173,6 +185,7 @@ func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 		DefaultOptions(),
 		Functions{Subpages: `<nav>Generated pages</nav>`},
 	)
+
 	require.NoError(t, err)
 	assert.Contains(t, rendered.HTML, "{{subpages}}")
 	assert.NotContains(t, rendered.HTML, "Generated pages")
@@ -212,6 +225,7 @@ func TestTableStyleDirective(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `lore-table-styled`)
 	assert.Contains(t, got, `table-tone-accent`)
@@ -234,6 +248,7 @@ func TestConfluenceTablePalette(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `table-tone-blue`)
 	assert.Contains(t, got, `table-tone-gray`)
@@ -255,6 +270,7 @@ func TestInteractiveTableDirective(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `lore-table-sortable`)
 	assert.Contains(t, got, `lore-table-filterable`)
@@ -275,6 +291,7 @@ func TestConfluenceInteractiveTableDirective(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="lore-table-sortable lore-table-filterable lore-table-styled"`)
 	assert.Contains(t, got, `class="table-tone-gray"`)
@@ -288,6 +305,7 @@ func TestTableDirectiveMarkerUsesNearestPrecedingTable(t *testing.T) {
 		`<div class="marker-wrapper"><div class="lore-table-style-marker" data-table-style="{table header=gray sortable filterable}"></div></div>`
 
 	got, err := applyTableDirectiveMarkers(rendered, DefaultOptions())
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="lore-table-sortable lore-table-filterable lore-table-styled"`)
 	assert.Contains(t, got, `class="table-tone-gray"`)
@@ -310,6 +328,7 @@ func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 `
 
 	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `{table sortable filterable}`)
 	assert.NotContains(t, got, `lore-table-sortable`)
@@ -330,6 +349,7 @@ func TestTableStyleDirectiveInsideTab(t *testing.T) {
 `
 
 	got, err := renderer.Render(source)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `markdown-tabs`)
 	assert.Contains(t, got, `table-tone-accent`)
@@ -358,6 +378,7 @@ Do not restart.
 {table header=accent}
 `
 	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
+
 	require.NoError(t, err)
 	assert.NotContains(t, got, `href="/pages/runbook"`)
 	assert.NotContains(t, got, `class="callout`)
@@ -381,6 +402,7 @@ Term
 : Definition
 `
 	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `footnote`)
 	assert.Contains(t, got, `<dl>`)
@@ -394,6 +416,7 @@ func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	options := DefaultOptions()
 	options.SyntaxHighlighting = true
 	got, err := renderer.RenderResolvedWithOptions("```go\nfunc main() { println(\"Lore\") }\n```\n", Slug, options)
+
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="chroma"`)
 	assert.Contains(t, got, `class="kd"`)

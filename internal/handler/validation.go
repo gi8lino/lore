@@ -12,12 +12,14 @@ import (
 // setupValidationProblems validates the fields required to create the initial administrator.
 func setupValidationProblems(r *http.Request) []httpresponse.FieldProblem {
 	var problems []httpresponse.FieldProblem
+
 	if strings.TrimSpace(r.FormValue("username")) == "" {
 		problems = append(problems, httpresponse.NewFieldProblem("username", "Username is required."))
 	}
 	if email := strings.TrimSpace(r.FormValue("email")); email != "" && !validEmailAddress(email) {
 		problems = append(problems, httpresponse.NewFieldProblem("email", "Enter a valid email address."))
 	}
+
 	problems = append(problems, localPasswordValidationProblems(
 		r.FormValue("password"),
 		r.FormValue("password_confirm"),
@@ -25,6 +27,7 @@ func setupValidationProblems(r *http.Request) []httpresponse.FieldProblem {
 		"password_confirm",
 		true,
 	)...)
+
 	return problems
 }
 
@@ -39,6 +42,7 @@ func localPasswordValidationProblems(
 	}
 
 	var problems []httpresponse.FieldProblem
+
 	if password == "" {
 		problems = append(problems, httpresponse.NewFieldProblem(passwordField, "Password is required."))
 	} else if !auth.ValidLocalPassword(password) {
@@ -50,6 +54,7 @@ func localPasswordValidationProblems(
 	} else if password != confirmation {
 		problems = append(problems, httpresponse.NewFieldProblem(confirmationField, "Passwords do not match."))
 	}
+
 	return problems
 }
 

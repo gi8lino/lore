@@ -46,6 +46,7 @@ func Settings(
 			writeUnexpectedProblem(views.logger, w, err)
 			return
 		}
+
 		if localUser, localErr := local.Authenticate(r); localErr == nil && localUser.ID == data.User.ID {
 			data.LocalCredentialAuthenticated = true
 		}
@@ -62,6 +63,7 @@ func Settings(
 				writeUnexpectedProblem(views.logger, w, err)
 				return
 			}
+
 			data.Images = mediaItems(images)
 		}
 
@@ -78,11 +80,13 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 			httpresponse.Problem(w, http.StatusForbidden, "A local-password session is required to change this password.")
 			return
 		}
+
 		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 		if err := r.ParseForm(); err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid password form.")
 			return
 		}
+
 		currentPassword := r.FormValue("current_password")
 		if currentPassword == "" {
 			httpresponse.Problem(
@@ -93,6 +97,7 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 			)
 			return
 		}
+
 		newPassword := r.FormValue("new_password")
 		if problems := localPasswordValidationProblems(
 			newPassword,
@@ -104,6 +109,7 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Password validation failed.", problems...)
 			return
 		}
+
 		token, err := local.ChangePassword(r.Context(), user.ID, user.Username, currentPassword, newPassword)
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.", httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
@@ -113,6 +119,7 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		local.WriteSessionCookie(w, token)
 		http.Redirect(w, r, "/settings#password", http.StatusSeeOther)
 	}
@@ -138,16 +145,19 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			httpresponse.Problem(w, http.StatusBadRequest, "Unknown theme.")
 			return
 		}
+
 		density := r.FormValue("navigation_density")
 		if density != service.NavigationDensityComfortable && density != service.NavigationDensityCompact {
 			httpresponse.Problem(w, http.StatusBadRequest, "Unknown navigation density.")
 			return
 		}
+
 		sidebarWidth, err := strconv.Atoi(r.FormValue("sidebar_width"))
 		if err != nil || sidebarWidth < service.MinSidebarWidth || sidebarWidth > service.MaxSidebarWidth {
 			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
 			return
 		}
+
 		current, err := preferenceUseCases.Preferences(r.Context(), user.ID)
 		if err != nil {
 			writeUnexpectedProblem(views.logger, w, err)
@@ -217,6 +227,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 			)
 			return
 		}
+
 		request, err := decode[navigationStateRequest](w, r)
 		if err != nil {
 			httpresponse.Problem(w,
@@ -238,6 +249,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -254,6 +266,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 			)
 			return
 		}
+
 		request, err := decode[sidebarWidthRequest](w, r)
 		if err != nil {
 			httpresponse.Problem(w,
@@ -275,6 +288,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

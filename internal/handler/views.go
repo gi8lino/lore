@@ -76,6 +76,7 @@ func publicViewData(views *Views, title string) (ViewData, error) {
 	if err != nil {
 		return ViewData{}, err
 	}
+
 	return ViewData{
 		Title:        title,
 		Preferences:  preferences,
@@ -321,6 +322,7 @@ func NewViews(
 		},
 	}
 	templates := make(map[string]*template.Template, len(pageTemplateNames))
+
 	for _, name := range pageTemplateNames {
 		files := make([]string, 0, len(sharedTemplateFiles)+1)
 		files = append(files, sharedTemplateFiles...)
@@ -330,6 +332,7 @@ func NewViews(
 		if err != nil {
 			return nil, fmt.Errorf("parse %s template: %w", name, err)
 		}
+
 		templates[name] = parsed
 	}
 
@@ -359,10 +362,12 @@ func fingerprintAssets(appFS fs.FS) (string, error) {
 		if err != nil {
 			return err
 		}
+
 		_, _ = hash.Write([]byte(path))
 		_, _ = hash.Write([]byte{0})
 		_, _ = hash.Write(data)
 		_, _ = hash.Write([]byte{0})
+
 		return nil
 	})
 	if err != nil {
@@ -370,6 +375,7 @@ func fingerprintAssets(appFS fs.FS) (string, error) {
 	}
 
 	sum := hash.Sum(nil)
+
 	return hex.EncodeToString(sum[:8]), nil
 }
 
@@ -385,20 +391,26 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	var pageNavigation []navigation.Node
 	var sidebarPinned []service.Page
 	var sidebarRecent []service.Page
+
 	if !strings.HasPrefix(r.URL.Path, "/admin") {
 		pages, err := l.navigationUseCases.NavigationPages(r.Context())
 		if err != nil {
 			return ViewData{}, err
 		}
+
 		navigationIcons, err := l.navigationUseCases.NavigationIcons(r.Context())
 		if err != nil {
 			return ViewData{}, err
 		}
+
 		expanded := preferences.ExpandedNavigation
+
 		if !preferences.RememberNavigationState {
 			expanded = nil
 		}
+
 		navigationPages := make([]navigation.Page, 0, len(pages))
+
 		for _, page := range pages {
 			navigationPages = append(navigationPages, navigation.Page{
 				Slug:  page.Slug,
@@ -406,12 +418,14 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 				Icon:  page.Icon,
 			})
 		}
+
 		pageNavigation = navigation.Build(navigationPages, navigation.Options{
 			ActiveSlug:     activeNavigationSlug(r.URL.Path),
 			Expanded:       expanded,
 			ShowPageCounts: preferences.ShowNavigationPageCounts,
 			Icons:          navigationIcons,
 		})
+
 		if preferences.ShowPinnedPages {
 			sidebarPinned, err = l.catalogUseCases.Favorites(r.Context(), user.ID)
 			if err != nil {
@@ -423,6 +437,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			if err != nil {
 				return ViewData{}, err
 			}
+
 			sidebarRecent = pagesWithout(sidebarRecent, sidebarPinned, 5)
 		}
 	}
@@ -433,9 +448,11 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	}
 
 	activeTheme := themes.DefaultTheme
+
 	if selected, ok := themes.Find(views.themes, preferences.Theme); ok {
 		activeTheme = selected.Title
 	}
+
 	preferences.Theme = activeTheme
 
 	themeData, err := json.Marshal(views.themes)
@@ -447,6 +464,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	if err != nil {
 		return ViewData{}, err
 	}
+
 	notifications, unreadNotifications, err := l.knowledgeUseCases.Notifications(r.Context(), user.ID, 8)
 	if err != nil {
 		return ViewData{}, err
@@ -485,19 +503,24 @@ func viewData(r *http.Request, loader viewDataService, views *Views, title strin
 // pagesWithout returns up to limit pages excluding any page present in excluded.
 func pagesWithout(pages, excluded []service.Page, limit int) []service.Page {
 	excludedIDs := make(map[int64]bool, len(excluded))
+
 	for _, page := range excluded {
 		excludedIDs[page.ID] = true
 	}
+
 	result := make([]service.Page, 0, min(limit, len(pages)))
+
 	for _, page := range pages {
 		if excludedIDs[page.ID] {
 			continue
 		}
+
 		result = append(result, page)
 		if len(result) == limit {
 			break
 		}
 	}
+
 	return result
 }
 
@@ -553,6 +576,7 @@ func renderTemplate(views *Views, w http.ResponseWriter, page, name string, data
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 	if _, err := w.Write(output.Bytes()); err != nil {
 		views.logger.Error(
 			"write template response",
@@ -574,10 +598,12 @@ func renderTemplateHTML(views *Views, page, name string, data ViewData) (templat
 	if !ok {
 		return "", fmt.Errorf("page template %q not found", page)
 	}
+
 	var output bytes.Buffer
 	if err := pageTemplate.ExecuteTemplate(&output, name, data); err != nil {
 		return "", fmt.Errorf("render %s template %s: %w", page, name, err)
 	}
+
 	return template.HTML(output.String()), nil
 }
 
@@ -605,9 +631,11 @@ func fileSize(size int64) string {
 
 	divisor := int64(unit)
 	exponent := 0
+
 	for value := size / unit; value >= unit && exponent < 3; value /= unit {
 		divisor *= unit
 		exponent++
 	}
+
 	return fmt.Sprintf("%.1f %ciB", float64(size)/float64(divisor), "KMGT"[exponent])
 }

@@ -15,6 +15,7 @@ func TestBuildFromPageSlugs(t *testing.T) {
 		{Slug: "infrastructure/monitoring", Title: "Monitoring"},
 		{Slug: "home", Title: "Home"},
 	}, Options{ActiveSlug: "infrastructure/postgres/restore", ShowPageCounts: true, Icons: map[string]string{"infrastructure": "server"}})
+
 	require.Len(t, tree, 2)
 	assert.Equal(t, "infrastructure", tree[0].Title)
 	assert.Len(t, tree[0].Children, 2)
@@ -53,10 +54,13 @@ func TestBuildUsesPersistedExpandedFolders(t *testing.T) {
 
 	require.Len(t, tree, 1)
 	assert.True(t, tree[0].Open)
+
 	identity := tree[0].Children[1]
+
 	if identity.Slug != "applications/identity" {
 		identity = tree[0].Children[0]
 	}
+
 	assert.Equal(t, "applications/identity", identity.Slug)
 	assert.True(t, identity.Open)
 }
@@ -88,7 +92,9 @@ func TestBuildUsesIconsAtEveryNavigationDepth(t *testing.T) {
 	require.Len(t, tree, 1)
 	assert.Equal(t, "user", tree[0].Icon)
 	require.Len(t, tree[0].Children, 1)
+
 	household := tree[0].Children[0]
+
 	assert.Equal(t, "house", household.Icon)
 	require.Len(t, household.Children, 1)
 	assert.Equal(t, "washing-machine", household.Children[0].Icon)
@@ -105,6 +111,7 @@ func TestChildrenReturnsTheCompleteSubtree(t *testing.T) {
 	}, Options{})
 
 	children := Children(tree, "applications")
+
 	require.Len(t, children, 2)
 	assert.Equal(t, "applications/analytics", children[0].Slug)
 	require.Len(t, children[0].Children, 1)

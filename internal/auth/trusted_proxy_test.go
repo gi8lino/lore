@@ -23,6 +23,7 @@ func (r *trustedProxyRepositoryStub) TrustedProxyUser(context.Context, string, s
 func (r *trustedProxyRepositoryStub) SetExternalAdminStatus(_ context.Context, _ int64, method string, admin bool) error {
 	r.method = method
 	r.admin = admin
+
 	return nil
 }
 
@@ -36,10 +37,12 @@ func TestTrustedProxyExternalAdministrator(t *testing.T) {
 		AdminGroup: "/lore-admins",
 	})
 	request := httptest.NewRequest("GET", "/", nil)
+
 	request.Header.Set("X-User", "daniel")
 	request.Header.Set("X-Groups", "/family, /lore-admins")
 
 	user, err := authenticator.Authenticate(request)
+
 	require.NoError(t, err)
 	assert.Equal(t, "admin", user.Role)
 	assert.True(t, user.ExternalAdmin)
@@ -55,9 +58,11 @@ func TestTrustedProxyDisabledAccount(t *testing.T) {
 		TrustedProxyHeaders{Username: []string{"X-User"}},
 	)
 	request := httptest.NewRequest("GET", "/", nil)
+
 	request.Header.Set("X-User", "daniel")
 
 	_, err := authenticator.Authenticate(request)
+
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 }
 
@@ -68,6 +73,7 @@ func TestFirstHeader(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("GET", "/", nil)
+
 		request.Header.Set("X-Secondary-User", "daniel")
 		request.Header.Set("X-Tertiary-User", "ignored")
 
@@ -82,6 +88,7 @@ func TestFirstHeader(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("GET", "/", nil)
+
 		request.Header.Set("X-User", "  daniel  ")
 
 		assert.Equal(t, "daniel", firstHeader(request, []string{"X-User"}))
@@ -91,6 +98,7 @@ func TestFirstHeader(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("GET", "/", nil)
+
 		assert.Empty(t, firstHeader(request, []string{"X-User"}))
 	})
 }

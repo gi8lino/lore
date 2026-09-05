@@ -14,10 +14,12 @@ function setupAdminExport(): void {
     ...(exportForm?.querySelectorAll<HTMLInputElement>('input[name="slug"]') ??
       []),
   ];
+
   exportAll?.addEventListener("change", () => {
     for (const checkbox of exportPageCheckboxes)
       checkbox.checked = exportAll.checked;
   });
+
   for (const checkbox of exportPageCheckboxes) {
     checkbox.addEventListener("change", () => {
       if (exportAll)
@@ -26,6 +28,7 @@ function setupAdminExport(): void {
           exportPageCheckboxes.every((item) => item.checked);
     });
   }
+
   exportForm?.addEventListener("submit", async (event: SubmitEvent) => {
     if (
       event.submitter instanceof HTMLButtonElement &&
@@ -33,6 +36,7 @@ function setupAdminExport(): void {
     )
       return;
     if (exportPageCheckboxes.some((checkbox) => checkbox.checked)) return;
+
     event.preventDefault();
     await showNotice("Select at least one page to export.", {
       title: "Nothing selected",
@@ -44,6 +48,7 @@ function setupAdminExport(): void {
 function downloadBlob(blob: Blob, filename: string): void {
   const objectURL = URL.createObjectURL(blob);
   const link = document.createElement("a");
+
   link.href = objectURL;
   link.download = filename;
   document.body.append(link);
@@ -57,7 +62,9 @@ function downloadFilename(response: Response, fallback: string): string {
   const disposition = response.headers.get("Content-Disposition") || "";
   const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
   if (encoded?.[1]) return decodeURIComponent(encoded[1]);
+
   const plain = disposition.match(/filename="?([^";]+)"?/i);
+
   return plain?.[1] || fallback;
 }
 
@@ -104,7 +111,9 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
     try {
       const path = permalink.dataset.url;
       if (!path) throw new Error("Permalink URL is missing.");
+
       const url = new URL(path, window.location.href).href;
+
       await copyText(url);
       permalinkStatus.textContent = "Copied. Authentication is still required.";
       setTimeout(() => {
@@ -131,7 +140,9 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   pdf.addEventListener("click", async () => {
     const pdfURL = pdf.dataset.url;
     if (!pdfURL) return;
+
     pdf.disabled = true;
+
     let progressVisible = false;
     const progressTimer = setTimeout(() => {
       progress.hidden = false;
@@ -146,7 +157,9 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
         const payload: unknown = await response.json().catch(() => ({}));
         throw await responseProblem(response, payload);
       }
+
       const blob = await response.blob();
+
       downloadBlob(blob, downloadFilename(response, "lore-page.pdf"));
       dialog.close();
     } catch (error) {
@@ -157,7 +170,9 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
       });
     } finally {
       clearTimeout(progressTimer);
+
       if (progressVisible) progress.hidden = true;
+
       pdf.disabled = false;
     }
   });
@@ -166,8 +181,10 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
 // Initializes exports.
 export function initExports(): void {
   setupAdminExport();
+
   const shareDialog = document.querySelector<HTMLDialogElement>(
     "[data-share-dialog]",
   );
+
   if (shareDialog) setupShareDialog(shareDialog);
 }

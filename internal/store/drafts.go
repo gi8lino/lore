@@ -62,16 +62,20 @@ LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	result := make([]PageDraft, 0)
+
 	for rows.Next() {
 		draft, err := scanPageDraft(rows)
 		if err != nil {
 			return nil, err
 		}
+
 		result = append(result, draft)
 	}
+
 	return result, rows.Err()
 }
 
@@ -91,6 +95,7 @@ func (s *Store) SavePageDraft(
 	}
 
 	baseRevision := 0
+
 	if pageID > 0 {
 		err := s.pool.QueryRow(ctx, `
 SELECT coalesce(max(r.revision_number),0)
@@ -118,6 +123,7 @@ ON CONFLICT(user_id,draft_key) DO UPDATE SET
 	if err != nil {
 		return PageDraft{}, err
 	}
+
 	return s.PageDraft(ctx, userID, key)
 }
 
@@ -152,11 +158,14 @@ func scanPageDraft(row pageDraftScanner) (PageDraft, error) {
 	if err != nil {
 		return PageDraft{}, err
 	}
+
 	if len(payload) > 0 {
 		if err := json.Unmarshal(payload, &draft.Values); err != nil {
 			return PageDraft{}, err
 		}
 	}
+
 	draft.Stale = draft.PageID > 0 && draft.CurrentRevision > draft.BaseRevision
+
 	return draft, nil
 }

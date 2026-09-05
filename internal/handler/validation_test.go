@@ -23,6 +23,7 @@ func TestSetupValidationProblems(t *testing.T) {
 			"password":         {"correct-horse-battery-staple"},
 			"password_confirm": {"correct-horse-battery-staple"},
 		})
+
 		assert.Empty(t, problems)
 	})
 
@@ -34,6 +35,7 @@ func TestSetupValidationProblems(t *testing.T) {
 			"password":         {"correct-horse-battery-staple"},
 			"password_confirm": {"correct-horse-battery-staple"},
 		})
+
 		assert.Empty(t, problems)
 	})
 
@@ -46,6 +48,7 @@ func TestSetupValidationProblems(t *testing.T) {
 			"password":         {"short"},
 			"password_confirm": {"different"},
 		})
+
 		assert.Equal(t, []httpresponse.FieldProblem{
 			httpresponse.NewFieldProblem("username", "Username is required."),
 			httpresponse.NewFieldProblem("email", "Enter a valid email address."),
@@ -68,6 +71,7 @@ func TestLocalPasswordValidationProblems(t *testing.T) {
 			"password_confirm",
 			true,
 		)
+
 		assert.Empty(t, problems)
 	})
 
@@ -108,6 +112,7 @@ func TestWantsJSON(t *testing.T) {
 	t.Parallel()
 
 	request := httptest.NewRequest("POST", "/setup", nil)
+
 	request.Header.Set("Accept", "text/html, application/json")
 	assert.True(t, wantsJSON(request))
 }
@@ -116,6 +121,7 @@ func setupProblems(t *testing.T, form url.Values) []httpresponse.FieldProblem {
 	t.Helper()
 
 	request := httptest.NewRequest("POST", "/setup", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	require.NoError(t, request.ParseForm())
 	return setupValidationProblems(request)

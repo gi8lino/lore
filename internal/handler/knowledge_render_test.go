@@ -19,6 +19,7 @@ func (s knowledgeContentStub) GetPage(_ context.Context, slug string) (service.P
 	if !ok {
 		return service.Page{}, service.ErrNotFound
 	}
+
 	return page, nil
 }
 
@@ -31,6 +32,7 @@ func (s knowledgeContentStub) KnowledgeSnippetByName(
 	if !ok {
 		return service.KnowledgeSnippet{}, service.ErrNotFound
 	}
+
 	return item, nil
 }
 

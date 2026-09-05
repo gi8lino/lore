@@ -24,7 +24,9 @@ type DraftValues = Record<string, string[]>;
 
 function isCatalog(value: unknown): value is EditorCatalog {
   if (typeof value !== "object" || value === null) return false;
+
   const candidate = value as Partial<EditorCatalog>;
+
   return (
     Array.isArray(candidate.pages) &&
     Array.isArray(candidate.snippets) &&
@@ -37,15 +39,18 @@ function isCatalog(value: unknown): value is EditorCatalog {
 export function editorSlug(value: unknown): string {
   let output = "";
   let separator = false;
+
   for (const character of String(value || "")
     .trim()
     .toLocaleLowerCase()) {
     if (/[a-z0-9/_-]/.test(character)) {
       if (separator && output) output += "-";
+
       separator = false;
       output += character;
     } else separator = true;
   }
+
   return output.replace(/^-+|-+$/g, "");
 }
 
@@ -54,8 +59,10 @@ export function markdownHeadings(source: string): MarkdownHeading[] {
   const headings: MarkdownHeading[] = [];
   let offset = 0;
   let fence = "";
+
   for (const line of String(source || "").split("\n")) {
     const trimmed = line.trimStart();
+
     if (!fence && (/^```/.test(trimmed) || /^~~~/.test(trimmed)))
       fence = trimmed.slice(0, 3);
     else if (fence && trimmed.startsWith(fence)) fence = "";
@@ -68,8 +75,10 @@ export function markdownHeadings(source: string): MarkdownHeading[] {
           offset,
         });
     }
+
     offset += line.length + 1;
   }
+
   return headings;
 }
 
@@ -77,6 +86,7 @@ export function markdownHeadings(source: string): MarkdownHeading[] {
 export function wikiLinkRanges(source: string): WikiLinkRange[] {
   const ranges: WikiLinkRange[] = [];
   const pattern = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/gu;
+
   for (const match of String(source || "").matchAll(pattern)) {
     ranges.push({
       start: match.index,
@@ -85,6 +95,7 @@ export function wikiLinkRanges(source: string): WikiLinkRange[] {
       raw: match[0],
     });
   }
+
   return ranges;
 }
 
@@ -100,16 +111,21 @@ function protectedRanges(source: string): SourceRange[] {
   const ranges: SourceRange[] = wikiLinkRanges(source);
   const fencePattern =
     /(^|\n)\s{0,3}(```|~~~)[^\n]*\n[\s\S]*?\n\s{0,3}\2(?=\n|$)/gu;
+
   for (const match of source.matchAll(fencePattern))
     ranges.push({ start: match.index, end: match.index + match[0].length });
+
   const inlineCode = /`[^`\n]+`/gu;
+
   for (const match of source.matchAll(inlineCode))
     ranges.push({ start: match.index, end: match.index + match[0].length });
+
   return ranges;
 }
 
 function normalizedCatalog(value: unknown): EditorCatalog {
   if (!isCatalog(value)) return { pages: [], aliases: {}, snippets: [] };
+
   const pages = value.pages.filter(
     (page): page is CatalogPage =>
       typeof page?.slug === "string" && typeof page?.title === "string",
@@ -118,6 +134,7 @@ function normalizedCatalog(value: unknown): EditorCatalog {
     (item): item is CatalogSnippet =>
       typeof item?.kind === "string" && typeof item?.name === "string",
   );
+
   return { pages, aliases: value.aliases, snippets };
 }
 
@@ -150,9 +167,11 @@ export function editorDiagnostics(
   }
 
   const headings = markdownHeadings(source);
+
   for (let index = 1; index < headings.length; index += 1) {
     const previous = headings[index - 1];
     const current = headings[index];
+
     if (current.level > previous.level + 1) {
       diagnostics.push({
         kind: "warning",
@@ -172,6 +191,7 @@ export function editorDiagnostics(
         `${item.kind === "variable" ? "var" : item.kind}:${item.name.toLocaleLowerCase()}`,
     ),
   );
+
   for (const match of source.matchAll(macros)) {
     const kind = match[1];
     const name = match[2].trim();
@@ -179,6 +199,7 @@ export function editorDiagnostics(
       kind === "include"
         ? pageBySlug.has(editorSlug(name)) || Boolean(aliases[editorSlug(name)])
         : snippetKeys.has(`${kind}:${name.toLocaleLowerCase()}`);
+
     if (!valid) {
       diagnostics.push({
         kind: "error",
@@ -202,20 +223,26 @@ export function editorDiagnostics(
     )
     .sort((left, right) => right.title.length - left.title.length);
   let suggestions = 0;
+
   for (const page of candidates) {
     if (suggestions >= 5) break;
+
     const title = page.title.trim();
     const needle = title.toLocaleLowerCase();
     let start = lowered.indexOf(needle);
+
     while (start >= 0 && inRanges(start, protectedContent))
       start = lowered.indexOf(needle, start + needle.length);
+
     if (start < 0) continue;
+
     const before = start === 0 ? " " : source[start - 1];
     const after =
       start + title.length >= source.length
         ? " "
         : source[start + title.length];
     if (/\p{L}|\p{N}/u.test(before) || /\p{L}|\p{N}/u.test(after)) continue;
+
     diagnostics.push({
       kind: "suggestion",
       code: "link-suggestion",
@@ -227,6 +254,7 @@ export function editorDiagnostics(
     });
     suggestions += 1;
   }
+
   return diagnostics;
 }
 
@@ -239,28 +267,37 @@ function createInlineSummary(
     "[data-editor-inline-diagnostics]",
   );
   const bar = existing || document.createElement("div");
+
   bar.className = "editor-inline-diagnostics";
   bar.dataset.editorInlineDiagnostics = "";
+
   if (!existing) pane?.append(bar);
+
   const errors = diagnostics.filter((item) => item.kind === "error").length;
   const warnings = diagnostics.filter((item) => item.kind === "warning").length;
   const suggestions = diagnostics.filter(
     (item) => item.kind === "suggestion",
   ).length;
+
   bar.replaceChildren();
   if (!errors && !warnings && !suggestions) {
     bar.hidden = true;
     return;
   }
+
   bar.hidden = false;
+
   const summaries: [string, number, DiagnosticKind][] = [
     ["problem", errors, "error"],
     ["warning", warnings, "warning"],
     ["link suggestion", suggestions, "suggestion"],
   ];
+
   for (const [label, count, kind] of summaries) {
     if (!count) continue;
+
     const button = document.createElement("button");
+
     button.type = "button";
     button.dataset.inlineDiagnosticKind = kind;
     button.textContent = `${count} ${label}${count === 1 ? "" : "s"}`;
@@ -272,17 +309,21 @@ function setupProperties(form: HTMLFormElement): void {
   const list = form.querySelector<HTMLElement>("[data-page-property-list]");
   const add = form.querySelector<HTMLButtonElement>("[data-page-property-add]");
   if (!list || !add) return;
+
   const propertyList = list;
 
   const makeRow = (): HTMLDivElement => {
     const row = document.createElement("div");
+
     row.className = "editor-property-row";
     row.innerHTML =
       '<input name="property_key" placeholder="Environment"><input name="property_value" placeholder="Production"><button class="icon-button" type="button" data-page-property-remove aria-label="Remove property">×</button>';
     return row;
   };
+
   add.addEventListener("click", () => {
     const row = makeRow();
+
     propertyList.append(row);
     row.querySelector<HTMLInputElement>("input")?.focus();
     form.dispatchEvent(new Event("change", { bubbles: true }));
@@ -290,6 +331,7 @@ function setupProperties(form: HTMLFormElement): void {
   propertyList.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     target
       .closest("[data-page-property-remove]")
       ?.closest(".editor-property-row")
@@ -304,7 +346,9 @@ function setupProperties(form: HTMLFormElement): void {
     const propertyValues = Array.isArray(values.property_value)
       ? values.property_value
       : [];
+
     propertyList.replaceChildren();
+
     for (
       let index = 0;
       index < Math.max(keys.length, propertyValues.length);
@@ -312,8 +356,10 @@ function setupProperties(form: HTMLFormElement): void {
     ) {
       const row = makeRow();
       const inputs = row.querySelectorAll<HTMLInputElement>("input");
+
       if (inputs[0]) inputs[0].value = String(keys[index] || "");
       if (inputs[1]) inputs[1].value = String(propertyValues[index] || "");
+
       propertyList.append(row);
     }
   });
@@ -323,6 +369,7 @@ function setupProperties(form: HTMLFormElement): void {
   const updateStatus = (): void => {
     if (target) target.hidden = status?.value !== "deprecated";
   };
+
   status?.addEventListener("change", updateStatus);
   updateStatus();
 }
@@ -336,6 +383,7 @@ function setupIntelligence(form: HTMLFormElement): void {
   const outline = form.querySelector<HTMLElement>("[data-editor-outline]");
   const count = form.querySelector<HTMLElement>("[data-editor-problem-count]");
   if (!source || !inspector || !problems || !outline || !count) return;
+
   const editor = source;
   const inspectorPanel = inspector;
   const problemPanel = problems;
@@ -350,9 +398,11 @@ function setupIntelligence(form: HTMLFormElement): void {
   function focusRange(start: number, end: number): void {
     editor.focus();
     editor.setSelectionRange(start, end);
+
     const line = editor.value.slice(0, start).split("\n").length - 1;
     const lineHeight =
       Number.parseFloat(getComputedStyle(editor).lineHeight) || 22;
+
     editor.scrollTop = Math.max(0, line * lineHeight - editor.clientHeight / 3);
   }
 
@@ -364,26 +414,36 @@ function setupIntelligence(form: HTMLFormElement): void {
     createInlineSummary(editor, diagnostics);
     if (!diagnostics.length) {
       const empty = document.createElement("div");
+
       empty.className = "editor-inspector-empty";
       empty.textContent = "No problems found.";
       problemPanel.append(empty);
       return;
     }
+
     diagnostics.forEach((item) => {
       const row = document.createElement("article");
+
       row.className = `editor-diagnostic ${item.kind}`;
+
       const text = document.createElement("button");
+
       text.type = "button";
       text.className = "editor-diagnostic-main";
       text.innerHTML = "<strong></strong><small></small>";
+
       const strong = text.querySelector<HTMLElement>("strong");
       const small = text.querySelector<HTMLElement>("small");
+
       if (strong) strong.textContent = item.title;
       if (small) small.textContent = item.detail || "";
+
       text.addEventListener("click", () => focusRange(item.start, item.end));
       row.append(text);
+
       if (item.replacement) {
         const fix = document.createElement("button");
+
         fix.type = "button";
         fix.className = "button compact";
         fix.textContent = "Link";
@@ -399,28 +459,36 @@ function setupIntelligence(form: HTMLFormElement): void {
         });
         row.append(fix);
       }
+
       problemPanel.append(row);
     });
   }
 
   function renderOutline(): void {
     outlinePanel.replaceChildren();
+
     const headings = markdownHeadings(editor.value);
     if (!headings.length) {
       const empty = document.createElement("div");
+
       empty.className = "editor-inspector-empty";
       empty.textContent = "Add headings to build an outline.";
       outlinePanel.append(empty);
       return;
     }
+
     headings.forEach((heading) => {
       const button = document.createElement("button");
+
       button.type = "button";
       button.className = "editor-outline-item";
       button.style.setProperty("--outline-level", String(heading.level));
       button.innerHTML = `<span>H${heading.level}</span><strong></strong>`;
+
       const title = button.querySelector<HTMLElement>("strong");
+
       if (title) title.textContent = heading.title;
+
       button.addEventListener("click", () =>
         focusRange(
           heading.offset,
@@ -448,14 +516,19 @@ function setupIntelligence(form: HTMLFormElement): void {
 
   function selectTab(tab: string | undefined, open = true): void {
     if (tab !== "problems" && tab !== "outline") return;
+
     activeTab = tab;
+
     if (open) inspectorPanel.hidden = false;
+
     problemPanel.hidden = tab !== "problems";
     outlinePanel.hidden = tab !== "outline";
+
     for (const button of form.querySelectorAll<HTMLElement>(
       "[data-editor-inspector-tab]",
     )) {
       const selected = button.dataset.editorInspectorTab === tab;
+
       button.classList.toggle("active", selected);
       button.setAttribute("aria-selected", String(selected));
     }
@@ -475,6 +548,7 @@ function setupIntelligence(form: HTMLFormElement): void {
       selectTab(button.dataset.editorInspectorTab),
     );
   }
+
   form
     .querySelector<HTMLElement>("[data-editor-inspector-close]")
     ?.addEventListener("click", () => {
@@ -490,6 +564,7 @@ function setupIntelligence(form: HTMLFormElement): void {
         !target.closest("[data-inline-diagnostic-kind]")
       )
         return;
+
       selectTab("problems");
     });
 

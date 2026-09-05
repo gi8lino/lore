@@ -65,29 +65,35 @@ function cloneDirective(directive: TableDirective): TableDirective {
 
 function lineStarts(source: string): number[] {
   const starts = [0];
+
   for (let index = 0; index < source.length; index += 1) {
     if (source[index] === "\n") starts.push(index + 1);
   }
+
   return starts;
 }
 
 function lineAtOffset(starts: number[], offset: number): number {
   let low = 0;
   let high = starts.length - 1;
+
   while (low <= high) {
     const middle = Math.floor((low + high) / 2);
     if ((starts[middle] ?? 0) <= offset) low = middle + 1;
     else high = middle - 1;
   }
+
   return Math.max(0, high);
 }
 
 function cellParts(line: string): string[] {
   const trimmed = line.trim();
   if (!trimmed.includes("|")) return [];
+
   const parts: string[] = [];
   let current = "";
   let escaped = false;
+
   for (const char of trimmed) {
     if (escaped) {
       current += char;
@@ -104,20 +110,28 @@ function cellParts(line: string): string[] {
       current = "";
       continue;
     }
+
     current += char;
   }
+
   parts.push(current);
+
   if (parts[0]?.trim() === "") parts.shift();
   if (parts.at(-1)?.trim() === "") parts.pop();
+
   return parts;
 }
 
 function isSeparatorCell(value: string): boolean {
   value = value.trim();
+
   if (value.startsWith(":")) value = value.slice(1);
   if (value.endsWith(":")) value = value.slice(0, -1);
+
   if (value.length < 3) return false;
+
   for (const char of value) if (char !== "-") return false;
+
   return true;
 }
 
@@ -134,6 +148,7 @@ function cellIndexAtColumn(line: string, column: number): number {
   const leadingPipe = line.trimStart().startsWith("|");
   let pipes = 0;
   let escaped = false;
+
   for (let index = 0; index < Math.min(column, line.length); index += 1) {
     const char = line[index];
     if (escaped) {
@@ -144,8 +159,10 @@ function cellIndexAtColumn(line: string, column: number): number {
       escaped = true;
       continue;
     }
+
     if (char === "|") pipes += 1;
   }
+
   return Math.max(1, leadingPipe ? pipes : pipes + 1);
 }
 
@@ -158,6 +175,7 @@ function tableDirectiveLine(line: string): boolean {
 export function parseTableDirective(line: string): TableDirective | null {
   const trimmed = line.trim();
   if (!tableDirectiveLine(trimmed)) return null;
+
   const directive = emptyDirective();
   const body = trimmed.slice("{table".length, -1).trim();
   if (!body) return null;
@@ -171,8 +189,10 @@ export function parseTableDirective(line: string): TableDirective | null {
       directive.filterable = true;
       continue;
     }
+
     const equals = token.indexOf("=");
     if (equals <= 0) return null;
+
     const key = token.slice(0, equals);
     const tone = token.slice(equals + 1);
     if (!tableTones.has(tone)) return null;
@@ -184,6 +204,7 @@ export function parseTableDirective(line: string): TableDirective | null {
     if (key.startsWith("row:")) {
       const row = Number.parseInt(key.slice(4), 10);
       if (!Number.isInteger(row) || row < 1) return null;
+
       directive.rows[String(row)] = tone;
       continue;
     }
@@ -191,6 +212,7 @@ export function parseTableDirective(line: string): TableDirective | null {
       const prefixLength = key.startsWith("column:") ? 7 : 4;
       const column = Number.parseInt(key.slice(prefixLength), 10);
       if (!Number.isInteger(column) || column < 1) return null;
+
       directive.columns[String(column)] = tone;
       continue;
     }
@@ -206,11 +228,14 @@ export function parseTableDirective(line: string): TableDirective | null {
         column < 1
       )
         return null;
+
       directive.cells[`${row},${column}`] = tone;
       continue;
     }
+
     return null;
   }
+
   return directive;
 }
 
@@ -224,6 +249,7 @@ function cellEntries(values: Record<string, string>): [string, string][] {
   return Object.entries(values).sort(([left], [right]) => {
     const [leftRow = 0, leftColumn = 0] = left.split(",").map(Number);
     const [rightRow = 0, rightColumn = 0] = right.split(",").map(Number);
+
     return leftRow - rightRow || leftColumn - rightColumn;
   });
 }
@@ -231,6 +257,7 @@ function cellEntries(values: Record<string, string>): [string, string][] {
 // Serializes table-format state back to Markdown.
 export function serializeTableDirective(directive: TableDirective): string {
   const tokens: string[] = [];
+
   if (directive.header) tokens.push(`header=${directive.header}`);
   for (const [column, tone] of numericEntries(directive.columns || {}))
     tokens.push(`col:${column}=${tone}`);
@@ -240,12 +267,15 @@ export function serializeTableDirective(directive: TableDirective): string {
     tokens.push(`cell:${cell}=${tone}`);
   if (directive.sortable) tokens.push("sortable");
   if (directive.filterable) tokens.push("filterable");
+
   return tokens.length ? `{table ${tokens.join(" ")}}` : "";
 }
 
 function previousTableRow(lines: string[], start: number): number {
   let index = start;
+
   while (index >= 0 && (lines[index] ?? "").trim() === "") index -= 1;
+
   return index >= 0 && isTableRow(lines[index] ?? "") ? index : -1;
 }
 
@@ -266,6 +296,7 @@ export function findMarkdownTable(
   }
 
   let separatorLine = -1;
+
   for (let index = probeLine; index >= 1; index -= 1) {
     if (
       isTableSeparator(lines[index] ?? "") &&
@@ -291,23 +322,28 @@ export function findMarkdownTable(
       }
     }
   }
+
   if (separatorLine < 1) return null;
 
   const headerLine = separatorLine - 1;
   let endLine = separatorLine;
+
   while (endLine + 1 < lines.length && isTableRow(lines[endLine + 1] ?? ""))
     endLine += 1;
 
   let directiveLine = endLine + 1;
+
   while (
     directiveLine < lines.length &&
     (lines[directiveLine] ?? "").trim() === ""
   )
     directiveLine += 1;
+
   const parsedDirective =
     directiveLine < lines.length
       ? parseTableDirective(lines[directiveLine] ?? "")
       : null;
+
   if (!parsedDirective) directiveLine = -1;
 
   const cursorInTable = cursorLine >= headerLine && cursorLine <= endLine;
@@ -319,6 +355,7 @@ export function findMarkdownTable(
   let kind: TableContextKind = "table";
   let row = 0;
   let column = 1;
+
   if (cursorLine === headerLine) kind = "header";
   else if (cursorLine === separatorLine) kind = "separator";
   else if (cursorLine > separatorLine && cursorLine <= endLine) {
@@ -328,6 +365,7 @@ export function findMarkdownTable(
 
   if (cursorInTable && cursorLine !== separatorLine) {
     const currentLine = lines[cursorLine] ?? "";
+
     column = cellIndexAtColumn(
       currentLine,
       safeOffset - (starts[cursorLine] ?? 0),
@@ -357,7 +395,9 @@ export function rewriteTableDirectiveSource(
     if (serialized) lines[table.directiveLine] = serialized;
     else {
       lines.splice(table.directiveLine, 1);
+
       const afterTable = table.endLine + 1;
+
       if (
         afterTable < lines.length &&
         (lines[afterTable] ?? "").trim() === "" &&
@@ -368,6 +408,7 @@ export function rewriteTableDirectiveSource(
     return lines.join("\n");
   }
   if (!serialized) return source;
+
   lines.splice(table.endLine + 1, 0, "", serialized);
   return lines.join("\n");
 }
@@ -378,6 +419,7 @@ function directiveTone(directive: TableDirective, target: string): string {
   if (target.startsWith("col:"))
     return directive.columns[target.slice(4)] || "";
   if (target.startsWith("cell:")) return directive.cells[target.slice(5)] || "";
+
   return "";
 }
 
@@ -387,6 +429,7 @@ function setDirectiveTone(
   tone: string,
 ): TableDirective {
   const next = cloneDirective(directive);
+
   if (target === "header") next.header = tone;
   else if (target.startsWith("row:")) {
     const key = target.slice(4);
@@ -401,6 +444,7 @@ function setDirectiveTone(
     if (tone) next.cells[key] = tone;
     else delete next.cells[key];
   }
+
   return next;
 }
 
@@ -412,8 +456,10 @@ function buildMarkdownTable(bodyRows: number, columns: number): string {
   const separator = Array.from({ length: columns }, () => "---");
   const empty = Array.from({ length: columns }, () => "");
   const lines = [`| ${header.join(" | ")} |`, `| ${separator.join(" | ")} |`];
+
   for (let row = 0; row < bodyRows; row += 1)
     lines.push(`| ${empty.join(" | ")} |`);
+
   return lines.join("\n");
 }
 
@@ -423,7 +469,9 @@ function replaceTextarea(
   cursor: number,
 ): void {
   textarea.setRangeText(nextValue, 0, textarea.value.length, "preserve");
+
   const safeCursor = Math.max(0, Math.min(cursor, textarea.value.length));
+
   textarea.setSelectionRange(safeCursor, safeCursor);
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -440,8 +488,11 @@ function insertTable(
   const prefix = before && !before.endsWith("\n") ? "\n" : "";
   const suffix = after && !after.startsWith("\n") ? "\n" : "";
   const markdown = buildMarkdownTable(rows, columns);
+
   textarea.setRangeText(`${prefix}${markdown}${suffix}`, start, end, "end");
+
   const firstCellStart = start + prefix.length + 2;
+
   textarea.setSelectionRange(
     firstCellStart,
     firstCellStart + "Column 1".length,
@@ -545,14 +596,17 @@ function setupTablePalette(toolbar: HTMLElement): void {
     enabled: boolean,
   ): void {
     if (!input) return;
+
     input.value = value;
     input.disabled = !enabled;
+
     const targetName = input.dataset.tableTarget;
     const text = targetName
       ? tableDialog.querySelector<HTMLElement>(
           `[data-table-target-label="${targetName}"]`,
         )
       : null;
+
     if (text) text.textContent = label;
   }
 
@@ -563,6 +617,7 @@ function setupTablePalette(toolbar: HTMLElement): void {
     if (!currentTable) return;
 
     const { kind, row, column } = currentTable.context;
+
     if (kind === "header")
       tableContext.textContent = `Header · column ${column}`;
     else if (kind === "body")
@@ -572,6 +627,7 @@ function setupTablePalette(toolbar: HTMLElement): void {
     const byKind = Object.fromEntries(
       targetInputs.map((input) => [input.dataset.tableTarget || "", input]),
     ) as Record<string, TableTargetInput>;
+
     setTarget(byKind.header, "header", "Header", true);
     setTarget(byKind.row, `row:${row}`, `Row ${row}`, kind === "body");
     setTarget(
@@ -592,7 +648,9 @@ function setupTablePalette(toolbar: HTMLElement): void {
     let selected = targetInputs.find(
       (input) => !input.disabled && input.value === desired,
     );
+
     selected ||= targetInputs.find((input) => !input.disabled);
+
     if (selected) selected.checked = true;
 
     sortableControl.checked = currentTable.directive.sortable;
@@ -602,12 +660,14 @@ function setupTablePalette(toolbar: HTMLElement): void {
 
   function writeDirective(nextDirective: TableDirective): void {
     if (!currentTable) return;
+
     const cursor = editor.selectionStart ?? 0;
     const nextValue = rewriteTableDirectiveSource(
       editor.value,
       currentTable,
       nextDirective,
     );
+
     replaceTextarea(editor, nextValue, cursor);
     refresh(selectedTarget());
   }
@@ -616,11 +676,14 @@ function setupTablePalette(toolbar: HTMLElement): void {
     refresh();
     tableDialog.showModal();
   });
+
   for (const button of closeButtons)
     button.addEventListener("click", () => tableDialog.close());
+
   tableDialog.addEventListener("click", (event) => {
     if (event.target === tableDialog) tableDialog.close();
   });
+
   for (const input of targetInputs)
     input.addEventListener("change", () => {
       if (currentTable) syncTone(currentTable.directive);
@@ -632,15 +695,20 @@ function setupTablePalette(toolbar: HTMLElement): void {
         setDirectiveTone(currentTable.directive, selectedTarget(), input.value),
       );
     });
+
   sortableControl.addEventListener("change", () => {
     if (!currentTable || sortableControl.disabled) return;
+
     const next = cloneDirective(currentTable.directive);
+
     next.sortable = sortableControl.checked;
     writeDirective(next);
   });
   filterableControl.addEventListener("change", () => {
     if (!currentTable || filterableControl.disabled) return;
+
     const next = cloneDirective(currentTable.directive);
+
     next.filterable = filterableControl.checked;
     writeDirective(next);
   });
@@ -656,6 +724,7 @@ function setupTablePalette(toolbar: HTMLElement): void {
       1,
       Math.min(10, Number.parseInt(columnInput.value, 10) || 3),
     );
+
     rowInput.value = String(rowCount);
     columnInput.value = String(columnCount);
     tableDialog.close();

@@ -18,6 +18,7 @@ func TestRunShowsRootHelpWhenCommandIsMissing(t *testing.T) {
 
 	var stderr bytes.Buffer
 	err := Run(context.Background(), nil, nil, "test", "deadbeef", io.Discard, &stderr)
+
 	require.NoError(t, err)
 	assert.Contains(t, stderr.String(), "serve")
 	assert.Contains(t, stderr.String(), "build")
@@ -28,6 +29,7 @@ func TestRunShowsServeHelpWithoutRuntimeConfiguration(t *testing.T) {
 
 	var stdout bytes.Buffer
 	err := Run(context.Background(), []string{"serve", "--help"}, nil, "test", "deadbeef", &stdout, io.Discard)
+
 	require.NoError(t, err)
 	assert.Contains(t, stdout.String(), "--database-url")
 	assert.Contains(t, stdout.String(), "--listen-address")
@@ -38,6 +40,7 @@ func TestRunShowsBuildHelp(t *testing.T) {
 
 	var stdout bytes.Buffer
 	err := Run(context.Background(), []string{"build", "--help"}, nil, "test", "deadbeef", &stdout, io.Discard)
+
 	require.NoError(t, err)
 	assert.Contains(t, stdout.String(), "--config")
 	assert.Contains(t, stdout.String(), "--site-name")
@@ -48,6 +51,7 @@ func TestBuildFlagsOverrideConfigurationFile(t *testing.T) {
 
 	root := t.TempDir()
 	configPath := filepath.Join(root, "site.toml")
+
 	require.NoError(t, os.WriteFile(configPath, []byte(`
 site_name = "From file"
 site_url = "https://example.com/docs/"
@@ -60,6 +64,7 @@ mermaid = true
 
 	flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
 	resolve := bindBuildFlags(flags)
+
 	require.NoError(t, flags.Parse([]string{
 		"--config", configPath,
 		"--site-name", "From CLI",
@@ -67,6 +72,7 @@ mermaid = true
 	}))
 
 	cfg, err := resolve()
+
 	require.NoError(t, err)
 	assert.Equal(t, "From CLI", cfg.SiteName)
 	assert.Equal(t, "https://example.com/docs/", cfg.SiteURL)

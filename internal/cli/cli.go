@@ -22,10 +22,12 @@ func Run(
 	stdout, stderr io.Writer,
 ) error {
 	root := tinyflags.NewCommand("lore", tinyflags.ContinueOnError).RequireCommand()
+
 	root.Version(version)
 
 	serve := root.Command("serve", "Run the Lore server")
 	serveConfig := config.BindFlags(serve.FlagSet)
+
 	serve.Run(func(ctx context.Context) error {
 		cfg := serveConfig()
 		return app.Run(
@@ -57,11 +59,13 @@ func Run(
 
 	build := root.Command("build", "Build a read-only static documentation site")
 	buildConfig := bindBuildFlags(build.FlagSet)
+
 	build.Run(func(ctx context.Context) error {
 		cfg, err := buildConfig()
 		if err != nil {
 			return err
 		}
+
 		return site.Build(
 			ctx,
 			appFS,
@@ -74,6 +78,7 @@ func Run(
 	})
 
 	runner, err := root.ParseRunner(args)
+
 	if err != nil {
 		switch {
 		case tinyflags.IsHelpRequested(err), tinyflags.IsVersionRequested(err):
@@ -82,11 +87,13 @@ func Run(
 		case tinyflags.IsCommandRequired(err):
 			help, _ := tinyflags.HelpText(err)
 			_, _ = fmt.Fprint(stderr, help)
+
 			return nil
 		default:
 			return err
 		}
 	}
+
 	return runner.Run(ctx)
 }
 
@@ -136,6 +143,7 @@ func bindBuildFlags(flags *tinyflags.FlagSet) func() (site.Config, error) {
 		if mermaid.Changed() {
 			cfg.Mermaid = *mermaid.Value()
 		}
+
 		return cfg, nil
 	}
 }

@@ -43,6 +43,7 @@ func TestConfigureBrowserAuthAllowsSetupWithStaleLocalMode(t *testing.T) {
 	}
 
 	configured, err := ConfigureBrowserAuth(context.Background(), BrowserConfig{}, repository)
+
 	require.NoError(t, err)
 	assert.NotNil(t, configured.Authenticator)
 	assert.False(t, repository.localCredentialChecked)

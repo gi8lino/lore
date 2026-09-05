@@ -10,6 +10,7 @@ func TestDefaultUserPreferences(t *testing.T) {
 	t.Parallel()
 
 	preferences := DefaultUserPreferences()
+
 	assert.True(t, preferences.ShowPageContents)
 	assert.Equal(t, NavigationDensityComfortable, preferences.NavigationDensity)
 	assert.Equal(t, DefaultSidebarWidth, preferences.SidebarWidth)

@@ -11,6 +11,7 @@ func AccessLog(logger *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			started := time.Now()
+
 			next.ServeHTTP(w, r)
 			logger.Info(
 				"request",

@@ -34,6 +34,7 @@ export function initKeyboardWorkflow(): void {
     "[data-shortcuts-close]",
   ) || [])
     button.addEventListener("click", closeShortcuts);
+
   shortcuts?.addEventListener("click", (event: MouseEvent) => {
     if (event.target === shortcuts) closeShortcuts();
   });
@@ -57,9 +58,12 @@ export function initKeyboardWorkflow(): void {
     const key = event.key.toLocaleLowerCase();
     if (pendingG) {
       if (timer !== undefined) clearTimeout(timer);
+
       pendingG = false;
+
       if (key === "h") window.location.assign("/");
       else if (key === "g") window.location.assign("/graph");
+
       return;
     }
     if (key === "g") {
@@ -74,6 +78,7 @@ export function initKeyboardWorkflow(): void {
       window.location.assign("/pages/new");
       return;
     }
+
     if (
       key === "e" &&
       document.body.dataset.canEdit === "true" &&

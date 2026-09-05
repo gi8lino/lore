@@ -17,6 +17,7 @@ func SearchAPI(catalogUseCases pageSearchService, logger *slog.Logger) http.Hand
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		stripMarkdown(pages)
 		httpresponse.Respond(w, http.StatusOK, pages)
 	}
@@ -30,6 +31,7 @@ func Tags(catalogUseCases pageTagService, logger *slog.Logger) http.HandlerFunc 
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, tags)
 	}
 }
@@ -42,6 +44,7 @@ func Recent(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFu
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		stripMarkdown(pages)
 		httpresponse.Respond(w, http.StatusOK, pages)
 	}
@@ -59,11 +62,13 @@ func GroupsAPI(groupUseCases groupReader, logger *slog.Logger) http.HandlerFunc 
 			)
 			return
 		}
+
 		groups, err := groupUseCases.AssignableGroups(r.Context(), user)
 		if err != nil {
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, groups)
 	}
 }

@@ -29,8 +29,10 @@ JOIN pages p ON p.id=l.page_id
 WHERE l.token_hash=$1
   AND l.revoked_at IS NULL
   AND p.deleted_at IS NULL`, tokenHash).Scan(&link.PageID, &link.Slug, &link.Title)
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound
 	}
+
 	return link, err
 }

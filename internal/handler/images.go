@@ -42,6 +42,7 @@ func ListImages(mediaUseCases imageService, logger *slog.Logger) http.HandlerFun
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, mediaItems(images))
 	}
 }
@@ -61,6 +62,7 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 			)
 			return
 		}
+
 		defer file.Close() // nolint:errcheck
 
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxImageBytes+1))
@@ -68,12 +70,14 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
+
 		image, err := mediaUseCases.UploadImage(r.Context(), header.Filename, data, user)
 		if writeMediaUploadProblem(logger, w, err, imageMedia) {
 			return
 		}
 
 		items := mediaItems([]service.Image{image})
+
 		httpresponse.Respond(w, http.StatusCreated, items[0])
 	}
 }
@@ -93,6 +97,7 @@ func ServeImage(mediaUseCases imageService) http.HandlerFunc {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
+
 			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 			return
 		}
@@ -100,6 +105,7 @@ func ServeImage(mediaUseCases imageService) http.HandlerFunc {
 		w.Header().Set("Content-Type", image.ContentType)
 		w.Header().Set("Content-Length", strconv.Itoa(len(image.Data)))
 		w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+
 		_, _ = w.Write(image.Data)
 	}
 }
@@ -119,6 +125,7 @@ func DeleteImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 		if writeMediaDeleteProblem(logger, w, err, imageMedia) {
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -126,6 +133,7 @@ func DeleteImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 // mediaItems converts store image metadata into browser-facing media items.
 func mediaItems(images []service.Image) []MediaItem {
 	items := make([]MediaItem, 0, len(images))
+
 	for _, image := range images {
 		items = append(items, MediaItem{
 			ID:          image.ID,
@@ -139,6 +147,7 @@ func mediaItems(images []service.Image) []MediaItem {
 			URL:         mediaURL(image.ID, image.Filename),
 		})
 	}
+
 	return items
 }
 

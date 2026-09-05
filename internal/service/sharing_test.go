@@ -11,6 +11,7 @@ func TestPageShareToken(t *testing.T) {
 	t.Parallel()
 
 	token, err := newPageShareToken()
+
 	require.NoError(t, err)
 	assert.True(t, validPageShareToken(token))
 	assert.Len(t, pageShareTokenHash(token), 64)

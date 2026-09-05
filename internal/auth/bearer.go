@@ -35,6 +35,7 @@ func (a *Bearer) Authenticate(r *http.Request) (model.User, error) {
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, ErrInvalidCredentials
 	}
+
 	return user, err
 }
 
@@ -44,6 +45,8 @@ func parseBearerValue(value string) (string, bool) {
 	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") {
 		return "", false
 	}
+
 	token := strings.TrimSpace(fields[1])
+
 	return token, token != ""
 }

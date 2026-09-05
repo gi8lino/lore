@@ -55,6 +55,7 @@ func New(
 	// routes further based on the authenticated user's role.
 	adminAuthz := middleware.RequireRole("admin")
 	editorAuthz := middleware.RequireRole("admin", "editor")
+
 	addRoutes(
 		mux,
 		appFS,
@@ -86,9 +87,11 @@ func New(
 	)
 
 	middlewares := make([]middleware.Middleware, 0, 4)
+
 	if accessLog {
 		middlewares = append(middlewares, middleware.AccessLog(logger))
 	}
+
 	middlewares = append(
 		middlewares,
 		middleware.RecoverPanics(logger),

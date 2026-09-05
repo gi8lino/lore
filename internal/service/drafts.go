@@ -60,9 +60,11 @@ func (s *Drafts) Save(ctx context.Context, input PageDraftSaveInput) (PageDraft,
 	if input.PageID < 0 || !validPageDraftKey(input.Key, input.PageID, true) {
 		return PageDraft{}, newValidationError("draft", "Invalid page draft identifier.")
 	}
+
 	if input.Values == nil {
 		input.Values = map[string][]string{}
 	}
+
 	return s.repository.SavePageDraft(
 		ctx,
 		input.Actor.ID,
@@ -80,6 +82,7 @@ func (s *Drafts) Delete(ctx context.Context, userID int64, key string) error {
 	if userID <= 0 || !validPageDraftKey(key, 0, false) {
 		return nil
 	}
+
 	return s.repository.DeletePageDraft(ctx, userID, key)
 }
 
@@ -89,14 +92,17 @@ func validPageDraftKey(key string, pageID int64, requireMatch bool) bool {
 	if key == "new" {
 		return !requireMatch || pageID == 0
 	}
+
 	const prefix = "page:"
 	if !strings.HasPrefix(key, prefix) {
 		return false
 	}
+
 	id, err := strconv.ParseInt(strings.TrimPrefix(key, prefix), 10, 64)
 	if err != nil || id <= 0 {
 		return false
 	}
+
 	return !requireMatch || id == pageID
 }
 

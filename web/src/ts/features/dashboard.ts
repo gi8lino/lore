@@ -36,17 +36,23 @@ export function localDrafts(
   storage: StorageReader = localStorage,
 ): LocalDraft[] {
   const drafts: LocalDraft[] = [];
+
   for (let index = 0; index < storage.length; index += 1) {
     const storageKey = storage.key(index);
     if (!storageKey?.startsWith(draftPrefix)) continue;
+
     try {
       const raw = storage.getItem(storageKey);
       if (raw === null) continue;
+
       const value: unknown = JSON.parse(raw);
       if (!isBrowserDraftValue(value) || !value.savedAt) continue;
+
       const savedAt = Number(value.savedAt);
       if (!Number.isFinite(savedAt) || savedAt <= 0) continue;
+
       const key = storageKey.slice(draftPrefix.length);
+
       drafts.push({
         storageKey,
         key,
@@ -59,12 +65,14 @@ export function localDrafts(
       // Ignore malformed browser storage.
     }
   }
+
   return drafts.sort((a, b) => b.savedAt - a.savedAt);
 }
 
 // Resolves the editor URL for a browser fallback draft.
 function localDraftEditURL(key: string, draft: BrowserDraftValue): string {
   if (key === "new") return "/pages/new";
+
   const values = draft.values ?? {};
   const originalSlug = Array.isArray(values.original_slug)
     ? String(values.original_slug[0] || "")
@@ -72,6 +80,7 @@ function localDraftEditURL(key: string, draft: BrowserDraftValue): string {
   if (originalSlug) return `/edit/${originalSlug}`;
   if (draft.pageSlug) return `/edit/${String(draft.pageSlug)}`;
   if (!key.startsWith("page:")) return `/edit/${key}`;
+
   return "/";
 }
 
@@ -93,7 +102,9 @@ function createDraftItem(
   item.dataset.draftKey = draft.key;
   link.href = draft.editURL;
   title.textContent = draft.title;
+
   const age = Math.max(0, Math.round((Date.now() - draft.savedAt) / 60000));
+
   detail.textContent = `Browser fallback · ${age < 1 ? "just now" : `${age}m ago`}`;
   discard.dataset.draftKey = draft.key;
   discard.dataset.draftServer = "false";
@@ -108,6 +119,7 @@ async function deleteServerDraft(key: string): Promise<void> {
   });
   if (!response.ok) {
     let message = "Draft could not be discarded.";
+
     try {
       const body: unknown = await response.json();
       if (
@@ -120,6 +132,7 @@ async function deleteServerDraft(key: string): Promise<void> {
     } catch {
       // Keep the generic message for non-JSON failures.
     }
+
     throw new Error(message);
   }
 }
@@ -149,6 +162,7 @@ export function initDashboard(): void {
   );
 
   let drafts: LocalDraft[] = [];
+
   try {
     drafts = localDrafts().filter(
       (draft) =>
@@ -170,8 +184,10 @@ export function initDashboard(): void {
   container.addEventListener("click", async (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
     const button = target.closest<HTMLButtonElement>("[data-draft-discard]");
     if (!button) return;
+
     const item = button.closest<HTMLElement>("[data-draft-item]");
     const key = button.dataset.draftKey || item?.dataset.draftKey;
     if (!item || !key) return;
@@ -189,6 +205,7 @@ export function initDashboard(): void {
     if (!accepted) return;
 
     button.disabled = true;
+
     try {
       if (button.dataset.draftServer === "true") await deleteServerDraft(key);
       try {
@@ -201,9 +218,12 @@ export function initDashboard(): void {
       } catch {
         // Browser fallback cleanup is best effort.
       }
+
       item.remove();
+
       if (!container.querySelector("[data-draft-item]")) {
         const empty = document.createElement("p");
+
         empty.className = "muted";
         empty.dataset.homeDraftsEmpty = "";
         empty.textContent = "No private drafts.";

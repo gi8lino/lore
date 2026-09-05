@@ -16,14 +16,19 @@ ORDER BY l.target_slug`, slug)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var links []PageLink
+
 	for rows.Next() {
 		var link PageLink
 		if err := rows.Scan(&link.TargetSlug, &link.TargetTitle, &link.Exists); err != nil {
 			return nil, err
 		}
+
 		links = append(links, link)
 	}
+
 	return links, rows.Err()
 }

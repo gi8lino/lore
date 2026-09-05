@@ -135,6 +135,7 @@ type tabSection struct {
 // New constructs the package default implementation.
 func New() *Renderer {
 	policy := bluemonday.UGCPolicy()
+
 	policy.AllowElements("div", "button", "details", "summary")
 	policy.AllowAttrs("class").
 		OnElements("aside", "pre", "code", "span", "div", "button", "details", "summary", "table", "thead", "tbody", "tr", "th", "td")
@@ -149,6 +150,7 @@ func New() *Renderer {
 // engine constructs a Goldmark renderer from administrator-controlled options.
 func engine(options Options) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
+
 	if options.Tables {
 		extensions = append(extensions, extension.Table)
 	}
@@ -197,7 +199,9 @@ func Slug(value string) string {
 			if separator && output.Len() > 0 {
 				output.WriteByte('-')
 			}
+
 			separator = false
+
 			output.WriteRune(r)
 		default:
 			separator = true
@@ -211,11 +215,13 @@ func Slug(value string) string {
 func Links(source string) []string {
 	seen := make(map[string]bool)
 	var links []string
+
 	walkWikiLinks(source, func(target, _ string) {
 		slug := Slug(target)
 		if slug == "" || seen[slug] {
 			return
 		}
+
 		seen[slug] = true
 		links = append(links, slug)
 	})
@@ -242,6 +248,7 @@ func (r *Renderer) RenderResolvedWithOptions(
 	if err != nil {
 		return "", err
 	}
+
 	return rendered.HTML, nil
 }
 
@@ -275,6 +282,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	html := r.sanitizer.Sanitize(raw)
 	contents := extractHeadings(html)
 	html = strings.ReplaceAll(html, subpagesPlaceholder, functions.Subpages)
+
 	return RenderedPage{HTML: html, Contents: contents}, nil
 }
 
@@ -282,24 +290,29 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 func preprocessFunctions(source string) string {
 	lines := strings.Split(source, "\n")
 	output := make([]string, 0, len(lines))
+
 	for index := 0; index < len(lines); {
 		if marker := fenceDelimiter(lines[index]); marker != "" {
 			index = appendFencedBlock(lines, index, marker, &output)
 			continue
 		}
+
 		if strings.TrimSpace(lines[index]) == "{{subpages}}" {
 			output = append(output, subpagesPlaceholder)
 		} else {
 			output = append(output, lines[index])
 		}
+
 		index++
 	}
+
 	return strings.Join(output, "\n")
 }
 
 // renderRawResolved renders Markdown extensions into unsanitized HTML for recursive block rendering.
 func (r *Renderer) renderRawResolved(source string, resolve func(string) string, options Options) (string, error) {
 	var err error
+
 	if options.Tabs {
 		source, err = r.preprocessTabs(source, resolve, options)
 		if err != nil {
@@ -329,13 +342,16 @@ func (r *Renderer) renderRawResolved(source string, resolve func(string) string,
 	if err := engine(options).Convert([]byte(source), &output); err != nil {
 		return "", err
 	}
+
 	raw := output.String()
+
 	if tableDirectivesEnabled(options) {
 		raw, err = applyTableDirectiveMarkers(raw, options)
 		if err != nil {
 			return "", err
 		}
 	}
+
 	return raw, nil
 }
 
@@ -353,11 +369,13 @@ func (r *Renderer) preprocessTabs(source string, resolve func(string) string, op
 		title, ok := parseTabTitle(lines[index])
 		if !ok {
 			out = append(out, lines[index])
+
 			index++
 			continue
 		}
 
 		var sections []tabSection
+
 		for ok {
 			bodyLines, next := indentedBody(lines, index+1)
 			sections = append(sections, tabSection{title: title, body: strings.Join(bodyLines, "\n")})
@@ -365,6 +383,7 @@ func (r *Renderer) preprocessTabs(source string, resolve func(string) string, op
 			if index >= len(lines) {
 				break
 			}
+
 			title, ok = parseTabTitle(lines[index])
 		}
 
@@ -372,6 +391,7 @@ func (r *Renderer) preprocessTabs(source string, resolve func(string) string, op
 		if err != nil {
 			return "", err
 		}
+
 		out = append(out, "", html, "")
 	}
 
@@ -381,18 +401,23 @@ func (r *Renderer) preprocessTabs(source string, resolve func(string) string, op
 // renderTabs renders parsed tab sections while recursively supporting Markdown inside each panel.
 func (r *Renderer) renderTabs(sections []tabSection, resolve func(string) string, options Options) (string, error) {
 	var output strings.Builder
+
 	output.WriteString(`<div class="markdown-tabs"><div class="markdown-tab-list" role="tablist">`)
+
 	for index, section := range sections {
 		class := "markdown-tab"
 		selected := "false"
+
 		if index == 0 {
 			class += " active"
 			selected = "true"
 		}
+
 		output.WriteString(`<button type="button" class="` + class + `" role="tab" aria-selected="` + selected + `">`)
 		output.WriteString(stdhtml.EscapeString(section.title))
 		output.WriteString(`</button>`)
 	}
+
 	output.WriteString(`</div><div class="markdown-tab-panels">`)
 
 	for index, section := range sections {
@@ -400,14 +425,18 @@ func (r *Renderer) renderTabs(sections []tabSection, resolve func(string) string
 		if err != nil {
 			return "", err
 		}
+
 		class := "markdown-tab-panel"
+
 		if index != 0 {
 			class += " markdown-tab-panel-hidden"
 		}
+
 		output.WriteString(`<div class="` + class + `" role="tabpanel">`)
 		output.WriteString(body)
 		output.WriteString(`</div>`)
 	}
+
 	output.WriteString(`</div></div>`)
 	return output.String(), nil
 }
@@ -426,6 +455,7 @@ func (r *Renderer) preprocessDetails(source string, resolve func(string) string,
 		title, open, ok := parseDetailsTitle(lines[index])
 		if !ok {
 			out = append(out, lines[index])
+
 			index++
 			continue
 		}
@@ -437,9 +467,11 @@ func (r *Renderer) preprocessDetails(source string, resolve func(string) string,
 		}
 
 		openAttribute := ""
+
 		if open {
 			openAttribute = " open"
 		}
+
 		markup := `<details class="markdown-details"` + openAttribute + `><summary>` + stdhtml.EscapeString(
 			title,
 		) + `</summary><div class="markdown-details-body">` + body + `</div></details>`
@@ -455,10 +487,12 @@ func parseTabTitle(line string) (string, bool) {
 	if strings.TrimLeft(line, " \t") != line {
 		return "", false
 	}
+
 	trimmed := strings.TrimSpace(line)
 	if !strings.HasPrefix(trimmed, "===") {
 		return "", false
 	}
+
 	return parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, "===")))
 }
 
@@ -467,9 +501,11 @@ func parseDetailsTitle(line string) (string, bool, bool) {
 	if strings.TrimLeft(line, " \t") != line {
 		return "", false, false
 	}
+
 	trimmed := strings.TrimSpace(line)
 	open := strings.HasPrefix(trimmed, "???+")
 	prefix := "???"
+
 	if open {
 		prefix = "???+"
 	} else if !strings.HasPrefix(trimmed, prefix) {
@@ -477,6 +513,7 @@ func parseDetailsTitle(line string) (string, bool, bool) {
 	}
 
 	title, ok := parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, prefix)))
+
 	return title, open, ok
 }
 
@@ -485,10 +522,12 @@ func parseQuotedTitle(value string) (string, bool) {
 	if len(value) < 2 || value[0] != '"' || value[len(value)-1] != '"' {
 		return "", false
 	}
+
 	title, err := strconv.Unquote(value)
 	if err != nil || strings.TrimSpace(title) == "" {
 		return "", false
 	}
+
 	return title, true
 }
 
@@ -496,19 +535,25 @@ func parseQuotedTitle(value string) (string, bool) {
 func indentedBody(lines []string, start int) ([]string, int) {
 	body := make([]string, 0)
 	index := start
+
 	for index < len(lines) {
 		if strings.TrimSpace(lines[index]) == "" {
 			body = append(body, "")
+
 			index++
 			continue
 		}
+
 		line, ok := stripBlockIndent(lines[index])
 		if !ok {
 			break
 		}
+
 		body = append(body, line)
+
 		index++
 	}
+
 	return body, index
 }
 
@@ -520,6 +565,7 @@ func stripBlockIndent(line string) (string, bool) {
 	if strings.HasPrefix(line, "    ") {
 		return strings.TrimPrefix(line, "    "), true
 	}
+
 	return "", false
 }
 
@@ -532,18 +578,21 @@ func fenceDelimiter(line string) string {
 	if strings.HasPrefix(trimmed, "~~~") {
 		return "~~~"
 	}
+
 	return ""
 }
 
 // appendFencedBlock copies a complete fenced code block without interpreting custom block syntax.
 func appendFencedBlock(lines []string, start int, marker string, out *[]string) int {
 	*out = append(*out, lines[start])
+
 	for index := start + 1; index < len(lines); index++ {
 		*out = append(*out, lines[index])
 		if strings.HasPrefix(strings.TrimSpace(lines[index]), marker) {
 			return index + 1
 		}
 	}
+
 	return len(lines)
 }
 
@@ -551,6 +600,7 @@ func appendFencedBlock(lines []string, start int, marker string, out *[]string) 
 func walkWikiLinks(source string, visit func(target, label string)) {
 	lines := strings.Split(source, "\n")
 	fence := ""
+
 	for _, line := range lines {
 		marker := fenceDelimiter(line)
 		if fence != "" {
@@ -563,6 +613,7 @@ func walkWikiLinks(source string, visit func(target, label string)) {
 			fence = marker
 			continue
 		}
+
 		walkWikiLinksLine(line, visit)
 	}
 }
@@ -574,20 +625,25 @@ func walkWikiLinksLine(line string, visit func(target, label string)) {
 		if start < 0 {
 			return
 		}
+
 		start += offset
 		if start > 0 && line[start-1] == '\\' {
 			offset = start + 2
 			continue
 		}
+
 		end := strings.Index(line[start+2:], "]]")
 		if end < 0 {
 			return
 		}
+
 		end += start + 2
 		target, label, ok := parseWikiLink(line[start+2 : end])
+
 		if ok {
 			visit(target, label)
 		}
+
 		offset = end + 2
 	}
 }
@@ -599,11 +655,13 @@ func parseWikiLink(value string) (string, string, bool) {
 	if target == "" {
 		return "", "", false
 	}
+
 	if !hasLabel || strings.TrimSpace(label) == "" {
 		label = target
 	} else {
 		label = strings.TrimSpace(label)
 	}
+
 	return target, label, true
 }
 
@@ -619,6 +677,7 @@ func wikiLinkPrefix(options Options) string {
 func rewriteWikiLinks(source string, resolve func(string) string, prefix string) string {
 	lines := strings.Split(source, "\n")
 	fence := ""
+
 	for index, line := range lines {
 		marker := fenceDelimiter(line)
 		if fence != "" {
@@ -631,8 +690,10 @@ func rewriteWikiLinks(source string, resolve func(string) string, prefix string)
 			fence = marker
 			continue
 		}
+
 		lines[index] = rewriteWikiLinksLine(line, resolve, prefix)
 	}
+
 	return strings.Join(lines, "\n")
 }
 
@@ -640,30 +701,37 @@ func rewriteWikiLinks(source string, resolve func(string) string, prefix string)
 func rewriteWikiLinksLine(line string, resolve func(string) string, prefix string) string {
 	var output strings.Builder
 	offset := 0
+
 	for offset < len(line) {
 		start := strings.Index(line[offset:], "[[")
 		if start < 0 {
 			output.WriteString(line[offset:])
 			break
 		}
+
 		start += offset
 		if start > 0 && line[start-1] == '\\' {
 			output.WriteString(line[offset : start+2])
+
 			offset = start + 2
 			continue
 		}
+
 		end := strings.Index(line[start+2:], "]]")
 		if end < 0 {
 			output.WriteString(line[offset:])
 			break
 		}
+
 		end += start + 2
 		target, label, ok := parseWikiLink(line[start+2 : end])
 		if !ok {
 			output.WriteString(line[offset : end+2])
+
 			offset = end + 2
 			continue
 		}
+
 		output.WriteString(line[offset:start])
 		output.WriteByte('[')
 		output.WriteString(label)
@@ -671,8 +739,10 @@ func rewriteWikiLinksLine(line string, resolve func(string) string, prefix strin
 		output.WriteString(prefix)
 		output.WriteString(resolve(target))
 		output.WriteByte(')')
+
 		offset = end + 2
 	}
+
 	return output.String()
 }
 
@@ -686,10 +756,12 @@ func preprocessTableDirectives(source string, options Options) string {
 	lines := strings.Split(source, "\n")
 	out := make([]string, 0, len(lines))
 	fence := ""
+
 	for index, line := range lines {
 		marker := fenceDelimiter(line)
 		if fence != "" {
 			out = append(out, line)
+
 			if marker == fence {
 				fence = ""
 			}
@@ -702,6 +774,7 @@ func preprocessTableDirectives(source string, options Options) string {
 		}
 
 		trimmed := strings.TrimSpace(line)
+
 		if previousTableLine(lines, index) {
 			if directive, ok := parseTableDirective(trimmed); ok && tableDirectiveActive(directive, options) {
 				out = append(
@@ -711,8 +784,10 @@ func preprocessTableDirectives(source string, options Options) string {
 				continue
 			}
 		}
+
 		out = append(out, line)
 	}
+
 	return strings.Join(out, "\n")
 }
 
@@ -721,10 +796,13 @@ func previousTableLine(lines []string, index int) bool {
 	if index == 0 {
 		return false
 	}
+
 	previous := index - 1
+
 	for previous >= 0 && strings.TrimSpace(lines[previous]) == "" {
 		previous--
 	}
+
 	return previous >= 0 && strings.Contains(lines[previous], "|")
 }
 
@@ -733,11 +811,13 @@ func parseTableDirective(line string) (tableStyle, bool) {
 	if !strings.HasPrefix(line, "{table ") || !strings.HasSuffix(line, "}") {
 		return tableStyle{}, false
 	}
+
 	directive := tableStyle{rows: map[int]string{}, columns: map[int]string{}, cells: map[[2]int]string{}}
 	body := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(line, "{table"), "}"))
 	if body == "" {
 		return tableStyle{}, false
 	}
+
 	for _, token := range strings.Fields(body) {
 		switch token {
 		case "sortable":
@@ -756,38 +836,45 @@ func parseTableDirective(line string) (tableStyle, bool) {
 			directive.header = tone
 			continue
 		}
+
 		kind, target, ok := strings.Cut(key, ":")
 		if !ok {
 			return tableStyle{}, false
 		}
+
 		switch kind {
 		case "row":
 			row, err := strconv.Atoi(target)
 			if err != nil || row < 1 {
 				return tableStyle{}, false
 			}
+
 			directive.rows[row] = tone
 		case "col", "column":
 			column, err := strconv.Atoi(target)
 			if err != nil || column < 1 {
 				return tableStyle{}, false
 			}
+
 			directive.columns[column] = tone
 		case "cell":
 			rowValue, columnValue, ok := strings.Cut(target, ",")
 			if !ok {
 				return tableStyle{}, false
 			}
+
 			row, rowErr := strconv.Atoi(rowValue)
 			column, columnErr := strconv.Atoi(columnValue)
 			if rowErr != nil || columnErr != nil || row < 1 || column < 1 {
 				return tableStyle{}, false
 			}
+
 			directive.cells[[2]int{row, column}] = tone
 		default:
 			return tableStyle{}, false
 		}
 	}
+
 	return directive, true
 }
 
@@ -833,7 +920,9 @@ func applyTableDirectiveMarkers(rendered string, options Options) (string, error
 					lastTable != nil {
 					applyTableDirective(lastTable, directive, options)
 				}
+
 				markers = append(markers, node)
+
 				return
 			}
 		}
@@ -841,6 +930,7 @@ func applyTableDirectiveMarkers(rendered string, options Options) (string, error
 			walk(child)
 		}
 	}
+
 	for _, node := range nodes {
 		walk(node)
 	}
@@ -852,11 +942,13 @@ func applyTableDirectiveMarkers(rendered string, options Options) (string, error
 	}
 
 	var output strings.Builder
+
 	for _, node := range nodes {
 		if err := xhtml.Render(&output, node); err != nil {
 			return "", err
 		}
 	}
+
 	return output.String(), nil
 }
 
@@ -868,6 +960,7 @@ func applyTableDirective(table *xhtml.Node, directive tableStyle, options Option
 	if options.TableFiltering && directive.filterable {
 		addHTMLClass(table, "lore-table-filterable")
 	}
+
 	if !options.TableStyles {
 		return
 	}
@@ -876,12 +969,15 @@ func applyTableDirective(table *xhtml.Node, directive tableStyle, options Option
 	if len(rows) == 0 {
 		return
 	}
+
 	colors := directive.header != "" || len(directive.rows) > 0 || len(directive.columns) > 0 ||
 		len(directive.cells) > 0
 	if !colors {
 		return
 	}
+
 	addHTMLClass(table, "lore-table-styled")
+
 	if directive.header != "" {
 		for _, cell := range rowCells(rows[0]) {
 			setTableTone(cell, directive.header)
@@ -895,7 +991,9 @@ func applyTableDirective(table *xhtml.Node, directive tableStyle, options Option
 			}
 		}
 	}
+
 	bodyRows := rows
+
 	if hasAncestorSection(rows[0], "thead") {
 		bodyRows = rows[1:]
 	}
@@ -912,7 +1010,9 @@ func applyTableDirective(table *xhtml.Node, directive tableStyle, options Option
 		if row > len(bodyRows) {
 			continue
 		}
+
 		cells := rowCells(bodyRows[row-1])
+
 		if column <= len(cells) {
 			setTableTone(cells[column-1], tone)
 		}
@@ -932,6 +1032,7 @@ func tableRows(table *xhtml.Node) []*xhtml.Node {
 			walk(child)
 		}
 	}
+
 	walk(table)
 	return rows
 }
@@ -939,11 +1040,13 @@ func tableRows(table *xhtml.Node) []*xhtml.Node {
 // rowCells returns direct th and td children for one rendered row.
 func rowCells(row *xhtml.Node) []*xhtml.Node {
 	var cells []*xhtml.Node
+
 	for child := row.FirstChild; child != nil; child = child.NextSibling {
 		if child.Type == xhtml.ElementNode && (child.Data == "th" || child.Data == "td") {
 			cells = append(cells, child)
 		}
 	}
+
 	return cells
 }
 
@@ -963,12 +1066,15 @@ func hasAncestorSection(node *xhtml.Node, section string) bool {
 // addHTMLClass adds a class to one rendered HTML element when it is not already present.
 func addHTMLClass(node *xhtml.Node, className string) {
 	classes := strings.Fields(htmlAttribute(node, "class"))
+
 	for _, existing := range classes {
 		if existing == className {
 			return
 		}
 	}
+
 	classes = append(classes, className)
+
 	setHTMLAttribute(node, "class", strings.Join(classes, " "))
 }
 
@@ -977,12 +1083,15 @@ func setTableTone(node *xhtml.Node, tone string) {
 	const prefix = "table-tone-"
 	classes := strings.Fields(htmlAttribute(node, "class"))
 	kept := classes[:0]
+
 	for _, className := range classes {
 		if !strings.HasPrefix(className, prefix) {
 			kept = append(kept, className)
 		}
 	}
+
 	kept = append(kept, prefix+tone)
+
 	setHTMLAttribute(node, "class", strings.Join(kept, " "))
 }
 
@@ -1022,6 +1131,7 @@ func extractHeadings(rendered string) []Heading {
 			walk(child)
 		}
 	}
+
 	walk(document)
 	return contents
 }
@@ -1048,6 +1158,7 @@ func htmlText(node *xhtml.Node) string {
 			walk(child)
 		}
 	}
+
 	walk(node)
 	return output.String()
 }
@@ -1056,6 +1167,7 @@ func htmlText(node *xhtml.Node) string {
 func (r *Renderer) preprocessCallouts(source string, resolve func(string) string, options Options) (string, error) {
 	lines := strings.Split(source, "\n")
 	out := make([]string, 0, len(lines))
+
 	for index := 0; index < len(lines); index++ {
 		if marker := fenceDelimiter(lines[index]); marker != "" {
 			next := appendFencedBlock(lines, index, marker, &out)
@@ -1065,19 +1177,23 @@ func (r *Renderer) preprocessCallouts(source string, resolve func(string) string
 
 		line := strings.TrimSpace(lines[index])
 		kind := ""
+
 		if after, ok := strings.CutPrefix(line, "!!! "); ok {
 			parts := strings.Fields(after)
 			if len(parts) > 0 {
 				kind = strings.ToLower(parts[0])
 			}
 		}
+
 		if !supportedCallout(kind) {
 			out = append(out, lines[index])
 			continue
 		}
 
 		body := make([]string, 0)
+
 		index++
+
 		for index < len(lines) && strings.TrimSpace(lines[index]) != "" {
 			body = append(body, strings.TrimSpace(lines[index]))
 			index++
@@ -1087,6 +1203,7 @@ func (r *Renderer) preprocessCallouts(source string, resolve func(string) string
 		if err != nil {
 			return "", err
 		}
+
 		label := strings.ToUpper(kind[:1]) + kind[1:]
 		out = append(
 			out,
@@ -1095,6 +1212,7 @@ func (r *Renderer) preprocessCallouts(source string, resolve func(string) string
 			)+`</strong><div class="callout-body">`+bodyHTML+`</div></aside>`+"\n",
 		)
 	}
+
 	return strings.Join(out, "\n"), nil
 }
 

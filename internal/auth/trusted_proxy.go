@@ -52,17 +52,20 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (model.User, error) {
 	if !user.Enabled {
 		return model.User{}, ErrInvalidCredentials
 	}
+
 	if a.headers.AdminGroup != "" {
 		groups := splitHeaderValues(firstHeader(r, a.headers.Groups))
 		externalAdmin := containsGroup(groups, a.headers.AdminGroup)
 		if err := a.repository.SetExternalAdminStatus(r.Context(), user.ID, "trusted-proxy", externalAdmin); err != nil {
 			return model.User{}, err
 		}
+
 		if externalAdmin {
 			user.ExternalAdmin = true
 			user.Role = "admin"
 		}
 	}
+
 	return user, err
 }
 
@@ -70,11 +73,13 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (model.User, error) {
 func splitHeaderValues(value string) []string {
 	parts := strings.Split(value, ",")
 	groups := make([]string, 0, len(parts))
+
 	for _, part := range parts {
 		if group := strings.TrimSpace(part); group != "" {
 			groups = append(groups, group)
 		}
 	}
+
 	return groups
 }
 

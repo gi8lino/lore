@@ -125,6 +125,7 @@ func unauthorized(
 // browserUnauthorized redirects an unauthenticated browser request to the login endpoint.
 func browserUnauthorized(w http.ResponseWriter, r *http.Request, _ unauthorizedReason) {
 	destination := r.URL.RequestURI()
+
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		// Login resumes with GET, so never return to a POST-only action URL.
 		destination = "/"
@@ -132,13 +133,16 @@ func browserUnauthorized(w http.ResponseWriter, r *http.Request, _ unauthorizedR
 			destination = "/admin/users"
 		}
 	}
+
 	next := url.QueryEscape(destination)
+
 	http.Redirect(w, r, "/auth/login?next="+next, http.StatusFound)
 }
 
 // apiUnauthorized writes the JSON response for an unauthenticated API request.
 func apiUnauthorized(w http.ResponseWriter, _ *http.Request, reason unauthorizedReason) {
 	message := "Authentication credentials are required."
+
 	if reason == unauthorizedInvalidCredentials {
 		message = "Authorization header must contain a valid Bearer token."
 	}

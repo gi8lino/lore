@@ -26,10 +26,12 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 		"discussions_enabled":     {"on"},
 	}
 	request := httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	require.NoError(t, request.ParseForm())
 
 	settings := applicationSettingsFromForm(request)
+
 	assert.True(t, settings.AllowUserRegistration)
 	assert.True(t, settings.DiscussionsEnabled)
 }
@@ -44,10 +46,12 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 		"syntax_highlighting": {"on"},
 	}
 	request := httptest.NewRequest("POST", "/admin/rendering", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	require.NoError(t, request.ParseForm())
 
 	settings := renderingSettingsFromForm(request)
+
 	assert.Equal(t, "de-CH", settings.ContentLanguage)
 	assert.True(t, settings.CodingLigatures)
 	assert.True(t, settings.WikiLinks)
@@ -83,10 +87,12 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 		"trusted_admin_group":          {" lore-admins "},
 	}
 	request := httptest.NewRequest("POST", "/admin/authentication", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	require.NoError(t, request.ParseForm())
 
 	settings := authenticationSettingsFromForm(request)
+
 	assert.Equal(t, "trusted-proxy", settings.Mode)
 	assert.Equal(t, "https://identity.example.com", settings.OIDCIssuer)
 	assert.Equal(t, "lore", settings.OIDCClientID)
@@ -123,6 +129,7 @@ func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T)
 		OIDCClientSecretConfigured: true,
 		SessionSecretConfigured:    true,
 	})
+
 	require.Len(t, problems, 2)
 	assert.Equal(t, "oidc_group_claim", problems[0].Field)
 	assert.Equal(t, "oidc_group_mapping", problems[1].Field)
@@ -137,6 +144,7 @@ func TestAuthenticationSettingsProblems(t *testing.T) {
 		OIDCClientID: "lore",
 	}
 	problems := authenticationSettingsProblems(settings, RuntimeInfo{})
+
 	require.Len(t, problems, 2)
 	assert.Equal(t, "oidc_client_secret", problems[0].Field)
 	assert.Equal(t, "session_secret", problems[1].Field)
@@ -149,8 +157,11 @@ func TestPendingOIDCIdentityID(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("POST", "/admin/oidc/pending/42/link", nil)
+
 		request.SetPathValue("id", "42")
+
 		id, err := pendingOIDCIdentityID(request)
+
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), id)
 	})
@@ -159,8 +170,11 @@ func TestPendingOIDCIdentityID(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest("POST", "/admin/oidc/pending/nope/link", nil)
+
 		request.SetPathValue("id", "nope")
+
 		_, err := pendingOIDCIdentityID(request)
+
 		require.Error(t, err)
 	})
 }
@@ -178,9 +192,12 @@ func (s *pendingIdentityStatusStub) SetPendingOIDCIdentityRejected(_ context.Con
 func TestReopenPendingOIDCIdentity(t *testing.T) {
 	users := &pendingIdentityStatusStub{rejected: true}
 	mux := http.NewServeMux()
+
 	mux.Handle("POST /admin/oidc/pending/{id}/reopen", ReopenPendingOIDCIdentity(users, slog.Default()))
+
 	request := auth.WithUser(httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), model.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
+
 	mux.ServeHTTP(response, request)
 	assert.Equal(t, http.StatusSeeOther, response.Code)
 	assert.Equal(t, "/admin/users#pending-identities", response.Header().Get("Location"))
@@ -209,10 +226,13 @@ func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) 
 	repository := &passwordRepositoryStub{}
 	form := url.Values{"role": {"admin"}, "account_enabled": {"on"}, "local_password": {"a-long-password-123"}, "local_password_confirm": {"a-long-password-123"}}
 	request := httptest.NewRequest("POST", "/admin/users/7", strings.NewReader(form.Encode()))
+
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.SetPathValue("id", "7")
+
 	request = auth.WithUser(request, model.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
+
 	UpdateAdminUser(&passwordUserStub{}, nil, auth.NewLocal(repository, "http://localhost"), &Views{}, slog.Default())(response, request)
 	assert.Equal(t, http.StatusSeeOther, response.Code)
 	assert.Equal(t, int64(7), repository.id)
@@ -221,10 +241,13 @@ func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) 
 }
 func TestAdminAuthenticationTemplates(t *testing.T) {
 	views, err := NewViews(web.Assets, slog.Default(), "test", "test", nil, RuntimeInfo{})
+
 	require.NoError(t, err)
+
 	data := ViewData{Runtime: RuntimeInfo{AuthModeOverride: "oidc"}}
 	data.ApplicationSettings.Authentication.Mode = "none"
 	html, err := renderTemplateHTML(views, "admin_configuration", "content", data)
+
 	require.NoError(t, err)
 	assert.Contains(t, string(html), "Authentication mode (active)")
 	assert.Contains(t, string(html), "<option>OpenID Connect (OIDC)</option>")
@@ -233,7 +256,9 @@ func TestAdminAuthenticationTemplates(t *testing.T) {
 	assert.Contains(t, string(html), "PDF rendering")
 	assert.Contains(t, string(html), "Test endpoint")
 	assert.NotContains(t, string(html), "auth-recovery-form")
+
 	html, err = renderTemplateHTML(views, "admin_users", "content", data)
+
 	require.NoError(t, err)
 	assert.Contains(t, string(html), `<details class="admin-user-local-password" data-admin-user-local-password>`)
 }

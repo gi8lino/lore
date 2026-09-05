@@ -14,6 +14,7 @@ func TestPermalinkPageID(t *testing.T) {
 		t.Parallel()
 
 		id, err := permalinkPageID("42")
+
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), id)
 	})
@@ -22,6 +23,7 @@ func TestPermalinkPageID(t *testing.T) {
 		t.Parallel()
 
 		_, err := permalinkPageID("page")
+
 		require.Error(t, err)
 	})
 
@@ -29,6 +31,7 @@ func TestPermalinkPageID(t *testing.T) {
 		t.Parallel()
 
 		_, err := permalinkPageID("0")
+
 		require.Error(t, err)
 	})
 }

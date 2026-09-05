@@ -22,15 +22,20 @@ ORDER BY lower(key),key`, pageID)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var properties []PageProperty
+
 	for rows.Next() {
 		var item PageProperty
 		if err := rows.Scan(&item.Key, &item.Value); err != nil {
 			return nil, err
 		}
+
 		properties = append(properties, item)
 	}
+
 	return properties, rows.Err()
 }
 
@@ -41,11 +46,15 @@ DELETE FROM page_properties
 WHERE page_id=$1`, pageID); err != nil {
 		return err
 	}
+
 	keys := make([]string, 0, len(properties))
+
 	for key := range properties {
 		keys = append(keys, key)
 	}
+
 	sort.Strings(keys)
+
 	for _, key := range keys {
 		key = strings.TrimSpace(key)
 		value := strings.TrimSpace(properties[key])
@@ -58,6 +67,7 @@ VALUES($1,$2,$3)`, pageID, key, value); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -70,15 +80,20 @@ ORDER BY kind,lower(name),id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var items []KnowledgeSnippet
+
 	for rows.Next() {
 		var item KnowledgeSnippet
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Name, &item.Description, &item.Content, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, rows.Err()
 }
 
@@ -93,6 +108,7 @@ WHERE kind=$1 AND lower(name)=lower($2)`, kind, strings.TrimSpace(name)).
 	if errors.Is(err, pgx.ErrNoRows) {
 		return KnowledgeSnippet{}, ErrNotFound
 	}
+
 	return item, err
 }
 
@@ -103,8 +119,10 @@ func (s *Store) SaveKnowledgeSnippet(ctx context.Context, id, userID int64, kind
 	if (kind != "variable" && kind != "snippet") || name == "" {
 		return KnowledgeSnippet{}, errors.New("invalid snippet")
 	}
+
 	var item KnowledgeSnippet
 	var err error
+
 	if id == 0 {
 		err = s.pool.QueryRow(ctx, `
 INSERT INTO knowledge_snippets(kind,name,description,content,updated_by)
@@ -119,12 +137,14 @@ WHERE id=$1
 RETURNING id,kind,name,description,content,updated_at`, id, kind, name, strings.TrimSpace(description), content, userID).
 			Scan(&item.ID, &item.Kind, &item.Name, &item.Description, &item.Content, &item.UpdatedAt)
 	}
+
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
 		return KnowledgeSnippet{}, ErrAlreadyExists
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return KnowledgeSnippet{}, ErrNotFound
 	}
+
 	return item, err
 }
 
@@ -136,6 +156,7 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -149,15 +170,20 @@ ORDER BY pinned DESC,lower(name),id`, userID)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var items []SavedSearch
+
 	for rows.Next() {
 		var item SavedSearch
 		if err := rows.Scan(&item.ID, &item.Name, &item.Query, &item.Pinned); err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, rows.Err()
 }
 
@@ -175,8 +201,10 @@ VALUES($1,$2,$3,$4)`, userID, name, query, pinned)
 		if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
 			return ErrAlreadyExists
 		}
+
 		return err
 	}
+
 	tag, err := s.pool.Exec(ctx, `
 UPDATE saved_searches
 SET name=$3,query=$4,pinned=$5
@@ -184,6 +212,7 @@ WHERE id=$1 AND user_id=$2`, id, userID, name, query, pinned)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -195,6 +224,7 @@ WHERE id=$1 AND user_id=$2`, id, userID)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -207,6 +237,7 @@ FROM notifications
 WHERE user_id=$1 AND read_at IS NULL`, userID).Scan(&unread); err != nil {
 		return nil, 0, err
 	}
+
 	rows, err := s.pool.Query(ctx, `
 SELECT id,kind,title,body,url,read_at,created_at
 FROM notifications
@@ -216,15 +247,20 @@ LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, 0, err
 	}
+
 	defer rows.Close()
+
 	var items []Notification
+
 	for rows.Next() {
 		var item Notification
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Title, &item.Body, &item.URL, &item.ReadAt, &item.CreatedAt); err != nil {
 			return nil, 0, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, unread, rows.Err()
 }
 
@@ -245,10 +281,12 @@ SET read_at=coalesce(read_at,now())
 WHERE user_id=$1`, userID)
 		return err
 	}
+
 	_, err := s.pool.Exec(ctx, `
 UPDATE notifications
 SET read_at=coalesce(read_at,now())
 WHERE id=$1 AND user_id=$2`, id, userID)
+
 	return err
 }
 
@@ -257,14 +295,17 @@ var mentionPattern = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_.-]+)`)
 // NotifyMentions creates notifications for @username references in text.
 func (s *Store) NotifyMentions(ctx context.Context, actorID int64, text, title, url string) error {
 	seen := map[string]bool{}
+
 	for _, match := range mentionPattern.FindAllStringSubmatch(text, -1) {
 		if len(match) != 2 {
 			continue
 		}
+
 		username := strings.ToLower(match[1])
 		if seen[username] {
 			continue
 		}
+
 		seen[username] = true
 		var userID int64
 		err := s.pool.QueryRow(ctx, `
@@ -281,6 +322,7 @@ WHERE lower(username)=lower($1) AND id<>$2`, username, actorID).Scan(&userID)
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -296,15 +338,20 @@ ORDER BY (c.resolved_at IS NOT NULL),c.created_at`, slug)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var items []PageComment
+
 	for rows.Next() {
 		var item PageComment
 		if err := rows.Scan(&item.ID, &item.PageID, &item.Author, &item.Anchor, &item.Body, &item.Resolved, &item.CreatedAt); err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, rows.Err()
 }
 
@@ -314,6 +361,7 @@ func (s *Store) AddPageComment(ctx context.Context, slug string, userID int64, a
 	if body == "" {
 		return PageComment{}, errors.New("comment is required")
 	}
+
 	var item PageComment
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO page_comments(page_id,user_id,anchor,body)
@@ -324,15 +372,18 @@ RETURNING id,page_id,$5,anchor,body,resolved_at,created_at`, slug, userID, strin
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PageComment{}, ErrNotFound
 	}
+
 	return item, err
 }
 
 // ResolvePageComment resolves or reopens one page comment.
 func (s *Store) ResolvePageComment(ctx context.Context, id int64, resolved bool) error {
 	var value any
+
 	if resolved {
 		value = time.Now()
 	}
+
 	tag, err := s.pool.Exec(ctx, `
 UPDATE page_comments
 SET resolved_at=$2,updated_at=now()
@@ -340,6 +391,7 @@ WHERE id=$1`, id, value)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -348,6 +400,7 @@ func (s *Store) KnowledgeGraph(ctx context.Context, limit int) (KnowledgeGraph, 
 	if limit <= 0 || limit > 500 {
 		limit = 250
 	}
+
 	graph := KnowledgeGraph{}
 	rows, err := s.pool.Query(ctx, `
 SELECT slug,title,status
@@ -358,20 +411,25 @@ LIMIT $1`, limit)
 	if err != nil {
 		return graph, err
 	}
+
 	allowed := map[string]bool{}
+
 	for rows.Next() {
 		var node GraphNode
 		if err := rows.Scan(&node.Slug, &node.Title, &node.Status); err != nil {
 			rows.Close()
 			return graph, err
 		}
+
 		graph.Nodes = append(graph.Nodes, node)
 		allowed[node.Slug] = true
 	}
+
 	if err := rows.Err(); err != nil {
 		rows.Close()
 		return graph, err
 	}
+
 	rows.Close()
 
 	rows, err = s.pool.Query(ctx, `
@@ -385,16 +443,20 @@ WHERE target.id IS NOT NULL OR alias_target.id IS NOT NULL`)
 	if err != nil {
 		return graph, err
 	}
+
 	defer rows.Close()
+
 	for rows.Next() {
 		var edge GraphEdge
 		if err := rows.Scan(&edge.Source, &edge.Target); err != nil {
 			return graph, err
 		}
+
 		if allowed[edge.Source] && allowed[edge.Target] && edge.Source != edge.Target {
 			graph.Edges = append(graph.Edges, edge)
 		}
 	}
+
 	return graph, rows.Err()
 }
 
@@ -411,15 +473,20 @@ LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var items []RecentEdit
+
 	for rows.Next() {
 		var item RecentEdit
 		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Icon, &item.UpdatedAt, &item.RevisionMessage); err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, rows.Err()
 }
 
@@ -434,15 +501,20 @@ LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var pages []Page
+
 	for rows.Next() {
 		var page Page
 		if err := rows.Scan(&page.Slug, &page.Title, &page.Status, &page.ReviewIntervalDays, &page.LastReviewedAt); err != nil {
 			return nil, err
 		}
+
 		pages = append(pages, page)
 	}
+
 	return pages, rows.Err()
 }
 
@@ -455,6 +527,7 @@ WHERE slug=$1 AND deleted_at IS NULL`, slug)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -473,6 +546,7 @@ func (s *Store) MovePage(ctx context.Context, oldSlug, newSlug string, options M
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	query := `
@@ -480,6 +554,7 @@ SELECT id,slug
 FROM pages
 WHERE deleted_at IS NULL AND slug=$1
 ORDER BY length(slug),slug`
+
 	if options.MoveChildren {
 		query = `
 SELECT id,slug
@@ -487,35 +562,42 @@ FROM pages
 WHERE deleted_at IS NULL AND (slug=$1 OR slug LIKE $1 || '/%')
 ORDER BY length(slug),slug`
 	}
+
 	rows, err := tx.Query(ctx, query, oldSlug)
 	if err != nil {
 		return err
 	}
+
 	type movedPage struct {
 		id  int64
 		old string
 		new string
 	}
 	var moved []movedPage
+
 	for rows.Next() {
 		var item movedPage
 		if err := rows.Scan(&item.id, &item.old); err != nil {
 			rows.Close()
 			return err
 		}
+
 		item.new = newSlug + strings.TrimPrefix(item.old, oldSlug)
 		moved = append(moved, item)
 	}
+
 	if err := rows.Err(); err != nil {
 		rows.Close()
 		return err
 	}
+
 	rows.Close()
 	if len(moved) == 0 {
 		return ErrNotFound
 	}
 
 	movingIDs := make([]int64, 0, len(moved))
+
 	for _, item := range moved {
 		movingIDs = append(movingIDs, item.id)
 	}
@@ -545,6 +627,7 @@ SET path=$2
 WHERE path=$1`, item.old, item.new); err != nil {
 			return err
 		}
+
 		if options.KeepAliases {
 			if _, err := tx.Exec(ctx, `
 INSERT INTO page_aliases(alias,page_id)
@@ -573,18 +656,22 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 		if err != nil {
 			return err
 		}
+
 		type sourceEdit struct {
 			id       int64
 			markdown string
 		}
 		var edits []sourceEdit
+
 		for rows.Next() {
 			var item sourceEdit
 			if err := rows.Scan(&item.id, &item.markdown); err != nil {
 				rows.Close()
 				return err
 			}
+
 			updated := item.markdown
+
 			for _, page := range moved {
 				updated = rewriteDirectWikiTarget(updated, page.old, page.new)
 			}
@@ -593,11 +680,14 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 				edits = append(edits, item)
 			}
 		}
+
 		if err := rows.Err(); err != nil {
 			rows.Close()
 			return err
 		}
+
 		rows.Close()
+
 		for _, edit := range edits {
 			if _, err := tx.Exec(ctx, `
 UPDATE pages
@@ -605,6 +695,7 @@ SET markdown_content=$2,updated_by=$3,updated_at=now()
 WHERE id=$1`, edit.id, edit.markdown, user.ID); err != nil {
 				return err
 			}
+
 			var revisionNumber int
 			if err := tx.QueryRow(ctx, `
 SELECT coalesce(max(revision_number),0)+1
@@ -627,6 +718,7 @@ VALUES($1,$2,$3,$4,$5)`, edit.id, revisionNumber, edit.markdown, user.ID, "Updat
 func rewriteDirectWikiTarget(source, oldSlug, newSlug string) string {
 	source = strings.ReplaceAll(source, "[["+oldSlug+"]]", "[["+newSlug+"]]")
 	source = strings.ReplaceAll(source, "[["+oldSlug+"|", "[["+newSlug+"|")
+
 	return source
 }
 
@@ -641,15 +733,20 @@ ORDER BY p.slug`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var pages []Page
+
 	for rows.Next() {
 		var page Page
 		if err := rows.Scan(&page.ID, &page.Slug, &page.Title, &page.Status, &page.OwnerGroupID, &page.OwnerGroup, &page.LastReviewedAt, &page.ReviewIntervalDays, &page.UpdatedAt); err != nil {
 			return nil, err
 		}
+
 		pages = append(pages, page)
 	}
+
 	return pages, rows.Err()
 }
 
@@ -658,10 +755,12 @@ func (s *Store) BulkSetPageStatus(ctx context.Context, slugs []string, status st
 	if !ValidPageStatus(status) {
 		return errors.New("invalid page status")
 	}
+
 	_, err := s.pool.Exec(ctx, `
 UPDATE pages
 SET status=$2,updated_at=now()
 WHERE slug=ANY($1::text[]) AND deleted_at IS NULL`, slugs, status)
+
 	return err
 }
 
@@ -671,11 +770,14 @@ func (s *Store) BulkAddPageTag(ctx context.Context, slugs []string, tag string) 
 	if tag == "" {
 		return errors.New("tag is required")
 	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
+
 	var tagID int64
 	if err := tx.QueryRow(ctx, `
 INSERT INTO tags(name)
@@ -692,6 +794,7 @@ WHERE slug=ANY($1::text[]) AND deleted_at IS NULL
 ON CONFLICT DO NOTHING`, slugs, tagID); err != nil {
 		return err
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -700,11 +803,13 @@ func (s *Store) BulkAssignPageGroup(ctx context.Context, slugs []string, groupID
 	if groupID <= 0 {
 		return errors.New("group is required")
 	}
+
 	_, err := s.pool.Exec(ctx, `
 INSERT INTO page_groups(page_id,group_id)
 SELECT id,$2 FROM pages
 WHERE slug=ANY($1::text[]) AND deleted_at IS NULL
 ON CONFLICT DO NOTHING`, slugs, groupID)
+
 	return err
 }
 
@@ -728,14 +833,19 @@ ORDER BY a.alias`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	aliases := map[string]string{}
+
 	for rows.Next() {
 		var alias, target string
 		if err := rows.Scan(&alias, &target); err != nil {
 			return nil, err
 		}
+
 		aliases[alias] = target
 	}
+
 	return aliases, rows.Err()
 }

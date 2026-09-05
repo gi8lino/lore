@@ -21,18 +21,22 @@ ORDER BY source.slug,links.target_slug`)
 	if err != nil {
 		return health, err
 	}
+
 	for rows.Next() {
 		var item BrokenWikiLink
 		if err := rows.Scan(&item.SourceSlug, &item.SourceTitle, &item.TargetSlug); err != nil {
 			rows.Close()
 			return health, err
 		}
+
 		health.BrokenLinks = append(health.BrokenLinks, item)
 	}
+
 	if err := rows.Err(); err != nil {
 		rows.Close()
 		return health, err
 	}
+
 	rows.Close()
 
 	queries := []struct {
@@ -83,19 +87,24 @@ ORDER BY p.slug`, nil},
 		if err != nil {
 			return health, err
 		}
+
 		for rows.Next() {
 			var page Page
 			if err := rows.Scan(&page.Slug, &page.Title); err != nil {
 				rows.Close()
 				return health, err
 			}
+
 			*item.target = append(*item.target, page)
 		}
+
 		if err := rows.Err(); err != nil {
 			rows.Close()
 			return health, err
 		}
+
 		rows.Close()
 	}
+
 	return health, nil
 }

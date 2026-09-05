@@ -20,6 +20,7 @@ func TestLocalPasswordHash(t *testing.T) {
 	t.Parallel()
 
 	hash, err := localPasswordHash("correct-horse-battery-staple")
+
 	require.NoError(t, err)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("correct-horse-battery-staple")))
 	assert.Error(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("wrong-password")))

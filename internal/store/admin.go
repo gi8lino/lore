@@ -29,6 +29,7 @@ SELECT
 		&stats.Images,
 		&stats.Tokens,
 	)
+
 	return stats, err
 }
 
@@ -58,9 +59,11 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var users []AdminUser
+
 	for rows.Next() {
 		var user AdminUser
 		if err := rows.Scan(
@@ -80,8 +83,10 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 		); err != nil {
 			return nil, err
 		}
+
 		users = append(users, user)
 	}
+
 	return users, rows.Err()
 }
 
@@ -102,6 +107,7 @@ func (s *Store) UpdateUser(
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `
@@ -116,6 +122,7 @@ WHERE id=$1`, userID, role, enabled)
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	if !enabled {
 		if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
@@ -138,11 +145,13 @@ WHERE user_id=$1`, userID); err != nil {
 			}
 		}
 	}
+
 	if _, err := tx.Exec(ctx, `
 DELETE FROM user_groups
 WHERE user_id=$1`, userID); err != nil {
 		return err
 	}
+
 	for _, groupID := range groupIDs {
 		if _, err := tx.Exec(ctx, `
 INSERT INTO user_groups(user_id,group_id)
@@ -151,6 +160,7 @@ ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
 			return err
 		}
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -160,6 +170,7 @@ func (s *Store) RevokeUserSessions(ctx context.Context, userID int64) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	tag, err := tx.Exec(ctx, `
@@ -177,6 +188,7 @@ DELETE FROM local_sessions
 WHERE user_id=$1`, userID); err != nil {
 		return err
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -197,16 +209,20 @@ ORDER BY lower(g.name),g.id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var groups []Group
+
 	for rows.Next() {
 		var group Group
 		if err := rows.Scan(&group.ID, &group.Name, &group.UserCount, &group.PageCount); err != nil {
 			return nil, err
 		}
+
 		groups = append(groups, group)
 	}
+
 	return groups, rows.Err()
 }
 
@@ -226,6 +242,7 @@ RETURNING id,name`, name).
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
 		return Group{}, ErrAlreadyExists
 	}
+
 	return group, err
 }
 
@@ -237,6 +254,7 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -252,16 +270,20 @@ ORDER BY lower(t.name),t.id`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var tags []TagInfo
+
 	for rows.Next() {
 		var tag TagInfo
 		if err := rows.Scan(&tag.ID, &tag.Name, &tag.PageCount); err != nil {
 			return nil, err
 		}
+
 		tags = append(tags, tag)
 	}
+
 	return tags, rows.Err()
 }
 
@@ -273,6 +295,7 @@ WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }
 
@@ -287,6 +310,7 @@ WHERE id=$1`, id).
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrNotFound
 	}
+
 	return user, err
 }
 
@@ -301,16 +325,20 @@ ORDER BY lower(g.name),g.id`, userID)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var groups []Group
+
 	for rows.Next() {
 		var group Group
 		if err := rows.Scan(&group.ID, &group.Name); err != nil {
 			return nil, err
 		}
+
 		groups = append(groups, group)
 	}
+
 	return groups, rows.Err()
 }
 
@@ -396,6 +424,7 @@ WHERE singleton=true`).Scan(
 		&settings.Rendering.DefinitionLists,
 		&settings.Rendering.Typographer,
 	)
+
 	return settings, err
 }
 
@@ -427,6 +456,7 @@ func (s *Store) SaveAuthenticationSettings(ctx context.Context, settings Authent
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	// A changed assertion source invalidates previously observed external role state.
@@ -489,6 +519,7 @@ WHERE singleton=true`,
 DELETE FROM oidc_group_mappings`); err != nil {
 		return err
 	}
+
 	for _, mapping := range settings.OIDCGroupMappings {
 		if _, err := tx.Exec(ctx, `
 INSERT INTO oidc_group_mappings(oidc_group,group_id)
@@ -499,6 +530,7 @@ VALUES($1,$2)`, strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID); err != n
 			return err
 		}
 	}
+
 	return tx.Commit(ctx)
 }
 
@@ -551,9 +583,11 @@ WHERE singleton=true`,
 // SearchUsers returns accounts matching a username, display name, or email prefix/substring.
 func (s *Store) SearchUsers(ctx context.Context, query string, limit int) ([]User, error) {
 	query = strings.TrimSpace(query)
+
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
+
 	rows, err := s.pool.Query(ctx, `
 SELECT id,username,email,display_name,role
 FROM users
@@ -565,15 +599,20 @@ LIMIT $3`, "%"+query+"%", query+"%", limit)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	users := make([]User, 0)
+
 	for rows.Next() {
 		var user User
 		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); err != nil {
 			return nil, err
 		}
+
 		users = append(users, user)
 	}
+
 	return users, rows.Err()
 }
 
@@ -588,15 +627,20 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`, groupID)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	users := make([]User, 0)
+
 	for rows.Next() {
 		var user User
 		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); err != nil {
 			return nil, err
 		}
+
 		users = append(users, user)
 	}
+
 	return users, rows.Err()
 }
 
@@ -607,6 +651,7 @@ INSERT INTO user_groups(user_id,group_id)
 SELECT u.id,g.id FROM users u CROSS JOIN wiki_groups g
 WHERE u.id=$2 AND g.id=$1
 ON CONFLICT DO NOTHING`, groupID, userID)
+
 	if err == nil && tag.RowsAffected() == 0 {
 		var exists bool
 		err = s.pool.QueryRow(ctx, `
@@ -616,6 +661,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$2 AND group_id=$1)`, grou
 			return ErrNotFound
 		}
 	}
+
 	return err
 }
 
@@ -627,5 +673,6 @@ WHERE group_id=$1 AND user_id=$2`, groupID, userID)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
+
 	return err
 }

@@ -25,6 +25,7 @@ func PagePermalink(catalogUseCases pagePermalinkService, logger *slog.Logger) ht
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
+
 			writeUnexpectedProblem(logger, w, err)
 			return
 		}
@@ -40,5 +41,6 @@ func permalinkPageID(value string) (int64, error) {
 	if err != nil || id <= 0 {
 		return 0, strconv.ErrSyntax
 	}
+
 	return id, nil
 }

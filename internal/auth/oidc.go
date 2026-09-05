@@ -130,9 +130,11 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	if err == nil && current.Version != user.SessionVersion {
 		return model.User{}, ErrUnauthenticated
 	}
+
 	if err == nil && o.adminGroup != "" && user.ExternalAdmin {
 		user.Role = "admin"
 	}
+
 	return user, err
 }
 
@@ -146,6 +148,7 @@ func (o *OIDC) Login() http.HandlerFunc {
 		}
 
 		state := base64.RawURLEncoding.EncodeToString(stateBytes)
+
 		o.setCookie(w, "lore_state", loginState{
 			State:   state,
 			Expires: time.Now().Add(10 * time.Minute).Unix(),
@@ -202,6 +205,7 @@ func (o *OIDC) Callback() http.HandlerFunc {
 		}
 
 		var groups []string
+
 		if o.groupSync || o.adminGroup != "" {
 			groups, err = oidcGroups(idToken, o.groupClaim)
 			if err != nil {
@@ -268,9 +272,11 @@ func (o *OIDC) Callback() http.HandlerFunc {
 
 		next := "/"
 		var savedNext nextLocation
+
 		if o.decodeCookie(r, "lore_next", &savedNext) == nil && isLocalPath(savedNext.Path) {
 			next = savedNext.Path
 		}
+
 		http.Redirect(w, r, next, http.StatusFound)
 	}
 }
@@ -281,11 +287,13 @@ func containsGroup(groups []string, expected string) bool {
 	if expected == "" {
 		return false
 	}
+
 	for _, group := range groups {
 		if strings.TrimSpace(group) == expected {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -300,6 +308,7 @@ func oidcGroups(idToken *oidc.IDToken, claim string) ([]string, error) {
 	if err := idToken.Claims(&values); err != nil {
 		return nil, err
 	}
+
 	return oidcGroupValues(values[claim])
 }
 
@@ -310,24 +319,29 @@ func oidcGroupValues(raw json.RawMessage) ([]string, error) {
 	}
 
 	var groups []string
+
 	if err := json.Unmarshal(raw, &groups); err != nil {
 		var group string
 		if stringErr := json.Unmarshal(raw, &group); stringErr != nil {
 			return nil, errors.New("OIDC group claim must be a string or string array")
 		}
+
 		groups = []string{group}
 	}
 
 	seen := make(map[string]bool, len(groups))
 	normalized := groups[:0]
+
 	for _, group := range groups {
 		group = strings.TrimSpace(group)
 		if group == "" || seen[group] {
 			continue
 		}
+
 		seen[group] = true
 		normalized = append(normalized, group)
 	}
+
 	return normalized, nil
 }
 
@@ -337,6 +351,7 @@ func Logout(local *Local) http.HandlerFunc {
 		if local != nil {
 			local.ClearSession(w, r)
 		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "lore_session",
 			Value:    "",
@@ -409,6 +424,7 @@ func (o *OIDC) decodeCookie(r *http.Request, name string, out any) error {
 	if err := json.Unmarshal(data, out); err != nil {
 		return fmt.Errorf("decode cookie: %w", err)
 	}
+
 	return nil
 }
 

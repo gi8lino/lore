@@ -23,14 +23,19 @@ LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
+
 	var events []AuditEvent
+
 	for rows.Next() {
 		var event AuditEvent
 		if err := rows.Scan(&event.ID, &event.Actor, &event.Action, &event.ObjectType, &event.ObjectKey, &event.Detail, &event.CreatedAt); err != nil {
 			return nil, err
 		}
+
 		events = append(events, event)
 	}
+
 	return events, rows.Err()
 }

@@ -14,14 +14,17 @@ export async function responseProblem(
   payload: unknown = null,
 ): Promise<Error> {
   let body = payload;
+
   if (!isProblemPayload(body)) {
     body = await response.json().catch(() => ({}));
   }
+
   const problem = isProblemPayload(body) ? body : {};
   const details = Object.entries(problem.problems ?? {})
     .filter(([, message]) => message)
     .map(([field, message]) => `${field.replaceAll("_", " ")}: ${message}`);
   const message = problem.error || `HTTP ${response.status}`;
+
   return new Error(
     details.length ? `${message}\n\n${details.join("\n")}` : message,
   );

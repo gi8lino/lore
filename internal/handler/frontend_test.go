@@ -23,6 +23,7 @@ func TestAssets(t *testing.T) {
 
 		request := httptest.NewRequest(http.MethodGet, "/assets/v-abc123/css/app.css", nil)
 		response := httptest.NewRecorder()
+
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusOK, response.Code)
@@ -35,6 +36,7 @@ func TestAssets(t *testing.T) {
 
 		request := httptest.NewRequest(http.MethodGet, "/assets/css/app.css", nil)
 		response := httptest.NewRecorder()
+
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusOK, response.Code)
@@ -48,10 +50,12 @@ func TestAssetPath(t *testing.T) {
 	t.Parallel()
 
 	path, versioned := assetPath("/assets/v-deadbeef/js/main.js")
+
 	assert.Equal(t, "js/main.js", path)
 	assert.True(t, versioned)
 
 	path, versioned = assetPath("/assets/js/main.js")
+
 	assert.Equal(t, "js/main.js", path)
 	assert.False(t, versioned)
 }

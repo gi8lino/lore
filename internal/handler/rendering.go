@@ -13,6 +13,7 @@ func renderingOptions(ctx context.Context, settingsUseCases settingsService) (md
 	if err != nil {
 		return md.Options{}, service.RenderingSettings{}, err
 	}
+
 	return renderingOptionsFromSettings(settings.Rendering), settings.Rendering, nil
 }
 

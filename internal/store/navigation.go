@@ -29,16 +29,20 @@ ORDER BY paths.path`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var items []NavigationItem
+
 	for rows.Next() {
 		var item NavigationItem
 		if err := rows.Scan(&item.Path, &item.Title, &item.Icon, &item.Page); err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, rows.Err()
 }
 
@@ -51,16 +55,20 @@ WHERE icon <> ''`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	icons := make(map[string]string)
+
 	for rows.Next() {
 		var path, icon string
 		if err := rows.Scan(&path, &icon); err != nil {
 			return nil, err
 		}
+
 		icons[path] = icon
 	}
+
 	return icons, rows.Err()
 }
 
@@ -77,9 +85,11 @@ DELETE FROM navigation_icons
 WHERE path=$1`, path)
 		return err
 	}
+
 	_, err := s.pool.Exec(ctx, `
 INSERT INTO navigation_icons(path,icon)
 VALUES($1,$2)
 ON CONFLICT(path) DO UPDATE SET icon=EXCLUDED.icon`, path, icon)
+
 	return err
 }

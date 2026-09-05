@@ -19,6 +19,7 @@ test("editorSlug follows Lore page path rules", () => {
 test("markdownHeadings ignores fenced code and preserves offsets", () => {
   const source = "# One\n\n```md\n## Hidden\n```\n\n### Three\n";
   const headings = markdownHeadings(source);
+
   assert.deepEqual(
     headings.map(({ level, title }) => ({ level, title })),
     [
@@ -56,6 +57,7 @@ test("editorDiagnostics reports broken links, heading jumps, macros and link sug
     "PostgreSQL is documented elsewhere.",
   ].join("\n");
   const diagnostics = editorDiagnostics(source, catalog, "runbook");
+
   assert.equal(
     diagnostics.some(
       (item) => item.code === "broken-link" && item.title.includes("missing"),

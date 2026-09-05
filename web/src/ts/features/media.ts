@@ -18,7 +18,9 @@ export type ImageItem = {
 
 function isImageItem(value: unknown): value is ImageItem {
   if (typeof value !== "object" || value === null) return false;
+
   const item = value as Partial<ImageItem>;
+
   return (
     typeof item.id === "number" &&
     typeof item.filename === "string" &&
@@ -43,7 +45,9 @@ export function imageMarkdown(
 // Uploads one image and returns its stored metadata.
 async function uploadImage(url: string, file: File): Promise<ImageItem> {
   const data = new FormData();
+
   data.append("file", file);
+
   const response = await fetch(url, {
     method: "POST",
     headers: { Accept: "application/json" },
@@ -52,6 +56,7 @@ async function uploadImage(url: string, file: File): Promise<ImageItem> {
   const payload: unknown = await response.json();
   if (!response.ok) throw await responseProblem(response, payload);
   if (!isImageItem(payload)) throw new Error("Invalid image response.");
+
   return payload;
 }
 
@@ -91,6 +96,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   const listURL = dialog.dataset.mediaListUrl;
   const uploadURL = dialog.dataset.mediaUploadUrl;
   if (!listURL || !uploadURL) return;
+
   const mediaListURL = listURL;
   const mediaUploadURL = uploadURL;
 
@@ -102,6 +108,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
     mediaBody.replaceChildren();
     if (!images.length) {
       const empty = document.createElement("p");
+
       empty.className = "muted";
       empty.textContent = "No images uploaded yet.";
       mediaBody.append(empty);
@@ -110,17 +117,23 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
 
     for (const image of images) {
       const item = document.createElement("article");
+
       item.className = "media-dialog-item";
 
       const preview = document.createElement("img");
+
       preview.src = image.url;
       preview.alt = "";
       preview.loading = "lazy";
 
       const info = document.createElement("div");
+
       info.className = "media-dialog-info";
+
       const name = document.createElement("strong");
+
       name.textContent = image.filename;
+
       const meta = document.createElement("small");
       const kib = image.size_bytes / 1024;
       const size =
@@ -128,10 +141,12 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
           ? `${(kib / 1024).toFixed(1)} MiB`
           : `${kib.toFixed(1)} KiB`;
       const references = `reference${image.usage_count === 1 ? "" : "s"}`;
+
       meta.textContent = `${size} · ${image.usage_count} ${references}`;
       info.append(name, meta);
 
       const insert = document.createElement("button");
+
       insert.type = "button";
       insert.className = "button";
       insert.textContent = "Insert";
@@ -147,13 +162,17 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
 
   async function loadImages(force = false): Promise<void> {
     if (loaded && !force) return;
+
     mediaBody.innerHTML = '<p class="muted">Loading images…</p>';
+
     try {
       const response = await fetch(mediaListURL, {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) throw await responseProblem(response);
+
       const payload: unknown = await response.json();
+
       images = Array.isArray(payload) ? payload.filter(isImageItem) : [];
       loaded = true;
       renderImages();
@@ -170,6 +189,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   ): Promise<void> {
     const accepted = imageFiles(files);
     if (!accepted.length || uploading) return;
+
     uploading = true;
     mediaUploadInput.disabled = true;
     sourcePane?.classList.add("is-uploading-image");
@@ -178,22 +198,31 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
       for (let index = 0; index < accepted.length; index += 1) {
         const file = accepted[index];
         const label = `Uploading image ${index + 1} of ${accepted.length}…`;
+
         mediaUploadStatus.textContent = label;
+
         if (dropStatus) dropStatus.textContent = label;
 
         const image = await uploadImage(mediaUploadURL, file);
+
         images.unshift(image);
         loaded = true;
         insertMarkdownAtSelection(editor, imageMarkdown(image));
       }
+
       renderImages();
+
       if (dropStatus) dropStatus.textContent = "Image uploaded and inserted.";
       if (closeDialog && dialog.open) dialog.close();
     } catch (error) {
       console.error("image upload failed", error);
+
       const message = errorMessage(error) || "Upload failed.";
+
       mediaUploadStatus.textContent = message;
+
       if (dropStatus) dropStatus.textContent = message;
+
       return;
     } finally {
       uploading = false;
@@ -204,6 +233,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
     }
 
     mediaUploadStatus.textContent = "JPEG, PNG, GIF or WebP · max 10 MiB";
+
     if (dropStatus) {
       setTimeout(() => {
         dropStatus.textContent =
@@ -229,6 +259,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   editor.addEventListener("paste", (event: ClipboardEvent) => {
     const files = imageFiles(event.clipboardData?.files || []);
     if (!files.length) return;
+
     event.preventDefault();
     void uploadFiles(files);
   });
@@ -242,6 +273,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
         )
       )
         return;
+
       event.preventDefault();
       sourcePane.classList.add("is-dragging-image");
     });
@@ -252,8 +284,11 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
         )
       )
         return;
+
       event.preventDefault();
+
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+
       sourcePane.classList.add("is-dragging-image");
     });
     sourcePane.addEventListener("dragleave", (event: DragEvent) => {
@@ -263,8 +298,10 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
     });
     sourcePane.addEventListener("drop", (event: DragEvent) => {
       const files = imageFiles(event.dataTransfer?.files || []);
+
       sourcePane.classList.remove("is-dragging-image");
       if (!files.length) return;
+
       event.preventDefault();
       editor.focus();
       void uploadFiles(files);
@@ -277,6 +314,7 @@ export function initMedia(): void {
   const mediaDialog = document.querySelector<HTMLDialogElement>(
     "[data-media-dialog]",
   );
+
   if (mediaDialog) setupMediaDialog(mediaDialog);
 
   for (const button of document.querySelectorAll<HTMLButtonElement>(
@@ -285,6 +323,7 @@ export function initMedia(): void {
     button.addEventListener("click", async () => {
       const item = button.closest<HTMLElement>("[data-media-settings-item]");
       if (!item) return;
+
       const usage = Number(button.dataset.mediaUsage || 0);
       const message =
         usage > 0
@@ -300,7 +339,9 @@ export function initMedia(): void {
 
       const deleteURL = button.dataset.deleteUrl;
       if (!deleteURL) return;
+
       button.disabled = true;
+
       try {
         const response = await fetch(deleteURL, {
           method: "DELETE",
@@ -310,13 +351,16 @@ export function initMedia(): void {
           const payload: unknown = await response.json().catch(() => ({}));
           throw await responseProblem(response, payload);
         }
+
         item.remove();
 
         const list = document.querySelector<HTMLElement>(
           "[data-media-settings-list]",
         );
+
         if (list && !list.querySelector("[data-media-settings-item]")) {
           const empty = document.createElement("p");
+
           empty.className = "muted";
           empty.dataset.mediaSettingsEmpty = "";
           empty.textContent =

@@ -9,7 +9,9 @@ interface SearchPage {
 
 function isSearchPage(value: unknown): value is SearchPage {
   if (typeof value !== "object" || value === null) return false;
+
   const page = value as Partial<SearchPage>;
+
   return typeof page.slug === "string" && typeof page.title === "string";
 }
 
@@ -17,9 +19,11 @@ function isSearchPage(value: unknown): value is SearchPage {
 function setupLiveSearch(form: HTMLFormElement): void {
   const input = form.querySelector<HTMLInputElement>('input[type="search"]');
   if (!input) return;
+
   const searchInput = input;
 
   const results = document.createElement("div");
+
   results.className = "search-suggestions";
   results.setAttribute("role", "listbox");
   results.hidden = true;
@@ -41,7 +45,9 @@ function setupLiveSearch(form: HTMLFormElement): void {
   // Selects result.
   function selectResult(index: number): void {
     if (!resultLinks.length) return;
+
     activeIndex = Math.max(0, Math.min(index, resultLinks.length - 1));
+
     for (const [candidateIndex, link] of resultLinks.entries()) {
       link.classList.toggle("active", candidateIndex === activeIndex);
       link.setAttribute(
@@ -49,6 +55,7 @@ function setupLiveSearch(form: HTMLFormElement): void {
         candidateIndex === activeIndex ? "true" : "false",
       );
     }
+
     resultLinks[activeIndex]?.scrollIntoView({ block: "nearest" });
   }
 
@@ -59,6 +66,7 @@ function setupLiveSearch(form: HTMLFormElement): void {
 
     if (!pages.length) {
       const empty = document.createElement("div");
+
       empty.className = "search-suggestion-empty";
       empty.textContent = "No pages found.";
       results.append(empty);
@@ -66,14 +74,18 @@ function setupLiveSearch(form: HTMLFormElement): void {
     } else {
       resultLinks = pages.map((page) => {
         const link = document.createElement("a");
+
         link.className = "search-suggestion";
         link.href = `/pages/${page.slug}`;
         link.setAttribute("role", "option");
         link.setAttribute("aria-selected", "false");
 
         const title = document.createElement("strong");
+
         title.textContent = page.title;
+
         const path = document.createElement("small");
+
         path.textContent = page.slug;
         link.append(title, path);
         results.append(link);
@@ -101,9 +113,11 @@ function setupLiveSearch(form: HTMLFormElement): void {
       if (!response.ok) throw await responseProblem(response);
 
       const payload: unknown = await response.json();
+
       renderResults(Array.isArray(payload) ? payload.filter(isSearchPage) : []);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
+
       console.error("live search failed", error);
       closeResults();
     }

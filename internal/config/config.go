@@ -69,6 +69,7 @@ type Config struct {
 // BindFlags registers the lore serve flags and returns a resolver for the parsed Config.
 func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	cfg := Config{}
+
 	flags.EnvPrefix("LORE_")
 
 	// Server
@@ -76,6 +77,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Short("a").
 		Placeholder("ADDR").
 		Value()
+
 	flags.StringVar(&cfg.DatabaseURL, "database-url", "", "PostgreSQL connection URL").
 		Required().
 		Placeholder("URL").
@@ -128,6 +130,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 			if len(value) < 32 {
 				return fmt.Errorf("session secret must be at least 32 characters")
 			}
+
 			return nil
 		}).
 		Value()
@@ -138,6 +141,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Short("l").
 		Placeholder("FORMAT").
 		Value()
+
 	flags.BoolVar(&cfg.Debug, "debug", false, "Enable verbose diagnostic logging").
 		Short("d").
 		Value()
@@ -146,11 +150,14 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 
 	return func() Config {
 		resolved := cfg
+
 		if authModeFlag.Changed() {
 			resolved.AuthModeOverride = *authModeFlag.Value()
 		}
+
 		resolved.ListenAddress = (*listen).String()
 		resolved.LogFormat = logging.LogFormat(*logFormat)
+
 		return resolved
 	}
 }

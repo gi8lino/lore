@@ -21,11 +21,13 @@
     const saved = window.sessionStorage.getItem(scrollKey);
     if (saved !== null) {
       window.sessionStorage.removeItem(scrollKey);
+
       const state = JSON.parse(saved) as {
         destination?: unknown;
         scrollTop?: unknown;
       };
       const destination = `${window.location.pathname}${window.location.search}`;
+
       if (
         state.destination === destination &&
         typeof state.scrollTop === "number" &&
@@ -58,6 +60,7 @@
       if (active) {
         const navigationRect = navigation.getBoundingClientRect();
         const activeRect = active.getBoundingClientRect();
+
         if (
           activeRect.top < navigationRect.top ||
           activeRect.bottom > navigationRect.bottom
@@ -78,6 +81,7 @@
     if (!prepareNavigation()) return;
     observer.disconnect();
   });
+
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,

@@ -46,11 +46,13 @@ func LoadConfig(path string, required bool) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+
 	defer file.Close() // nolint:errcheck
 
 	if err := toml.NewDecoder(file).DisallowUnknownFields().Decode(&config); err != nil {
 		return Config{}, fmt.Errorf("parse %s: %w", path, err)
 	}
+
 	return config, config.validate()
 }
 
@@ -75,6 +77,7 @@ func (c Config) validate() error {
 	if err != nil {
 		return err
 	}
+
 	output, err := filepath.Abs(c.OutputDir)
 	if err != nil {
 		return err
@@ -82,6 +85,7 @@ func (c Config) validate() error {
 	if source == output || directoryContains(source, output) || directoryContains(output, source) {
 		return errors.New("source_dir and output_dir must be separate directories")
 	}
+
 	return nil
 }
 
@@ -90,5 +94,6 @@ func directoryContains(parent, child string) bool {
 	if err != nil || relative == "." {
 		return false
 	}
+
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }

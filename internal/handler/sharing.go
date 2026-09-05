@@ -28,6 +28,7 @@ func CreatePageShareLink(sharingUseCases sharingService, logger *slog.Logger) ht
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusCreated, createPageShareLinkResponse{
 			URL: "/share/" + issued.Token,
 		})
@@ -47,11 +48,13 @@ func SharedPage(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		publicShareHeaders(w)
+
 		link, err := sharingUseCases.PageShareLink(r.Context(), strings.TrimSpace(r.PathValue("token")))
 		if err != nil {
 			writePublicShareError(logger, w, err)
 			return
 		}
+
 		renderSharedPage(
 			w,
 			r,
@@ -85,11 +88,13 @@ func renderSharedPage(
 		writePublicShareError(logger, w, err)
 		return
 	}
+
 	options, settings, err := renderingOptions(r.Context(), settingsUseCases)
 	if err != nil {
 		writePublicShareError(logger, w, err)
 		return
 	}
+
 	expanded, err := expandKnowledgeMarkdown(
 		r.Context(),
 		knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
@@ -101,6 +106,7 @@ func renderSharedPage(
 		writePublicShareError(logger, w, err)
 		return
 	}
+
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		expanded,
 		md.Slug,
@@ -111,6 +117,7 @@ func renderSharedPage(
 		writePublicShareError(logger, w, err)
 		return
 	}
+
 	standaloneHTML, err := inlineRenderedMedia(r.Context(), mediaUseCases, rendered.HTML)
 	if err != nil {
 		writePublicShareError(logger, w, err)
@@ -122,14 +129,17 @@ func renderSharedPage(
 		writePublicShareError(logger, w, err)
 		return
 	}
+
 	data.Page = &page
 	data.HTML = template.HTML(standaloneHTML)
 	data.ApplicationSettings.Rendering = settings
 	data.RenderMermaid = settings.Mermaid
 	data.PageContentLanguage = settings.ContentLanguage
+
 	if page.Language != "" {
 		data.PageContentLanguage = page.Language
 	}
+
 	renderTemplate(views, w, "shared_page", "shared-layout", data)
 }
 
@@ -146,6 +156,7 @@ func writePublicShareError(logger *slog.Logger, w http.ResponseWriter, err error
 		httpresponse.Problem(w, http.StatusNotFound, "Share link not found or no longer available.")
 		return
 	}
+
 	logger.Error("public share request failed", "event", "public_share_failed", "error", err)
 	httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 }

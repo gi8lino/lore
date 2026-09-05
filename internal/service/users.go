@@ -62,7 +62,9 @@ func (s *Users) RevokeUserSessions(ctx context.Context, userID, actorID int64) e
 	if err := s.repository.RevokeUserSessions(ctx, userID); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository, ctx, actorID, "user.sessions_revoked", "user", fmt.Sprint(userID), "Revoked browser sessions")
+
 	return nil
 }
 
@@ -95,6 +97,7 @@ func (s *Users) ApprovePendingOIDCIdentity(
 	if err != nil {
 		return User{}, err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -103,6 +106,7 @@ func (s *Users) ApprovePendingOIDCIdentity(
 		fmt.Sprint(user.ID),
 		"Created user from pending OIDC identity",
 	)
+
 	return user, nil
 }
 
@@ -116,6 +120,7 @@ func (s *Users) LinkPendingOIDCIdentity(
 	if err != nil {
 		return User{}, err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -124,6 +129,7 @@ func (s *Users) LinkPendingOIDCIdentity(
 		fmt.Sprint(user.ID),
 		"Replaced OIDC identity binding for "+user.Username,
 	)
+
 	return user, nil
 }
 
@@ -137,13 +143,17 @@ func (s *Users) SetPendingOIDCIdentityRejected(
 	if err := s.repository.SetPendingOIDCIdentityRejected(ctx, pendingID, rejected); err != nil {
 		return err
 	}
+
 	action := "identity.oidc_reopened"
 	detail := "Reopened pending OIDC identity"
+
 	if rejected {
 		action = "identity.oidc_rejected"
 		detail = "Rejected pending OIDC identity"
 	}
+
 	_ = audit(s.repository, ctx, actorID, action, "oidc_identity", fmt.Sprint(pendingID), detail)
+
 	return nil
 }
 
@@ -157,6 +167,7 @@ func (s *Users) RemoveOIDCIdentity(
 	if err := s.repository.RemoveOIDCIdentity(ctx, userID, issuer, subject); err != nil {
 		return err
 	}
+
 	_ = audit(s.repository,
 		ctx,
 		actorID,
@@ -165,6 +176,7 @@ func (s *Users) RemoveOIDCIdentity(
 		fmt.Sprint(userID),
 		"Disconnected OIDC identity",
 	)
+
 	return nil
 }
 

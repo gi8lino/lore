@@ -80,12 +80,14 @@ func PreviewMarkdown(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		slug := md.Slug(request.Slug)
 		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
 		if err != nil {
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		expandedMarkdown, err := expandKnowledgeMarkdown(
 			r.Context(),
 			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
@@ -97,6 +99,7 @@ func PreviewMarkdown(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
 			expandedMarkdown,
 			md.Slug,
@@ -107,6 +110,7 @@ func PreviewMarkdown(
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, map[string]string{"html": rendered.HTML})
 	}
 }
@@ -122,15 +126,20 @@ func subpagesHTML(
 	if err != nil {
 		return "", err
 	}
+
 	icons, err := navigationUseCases.NavigationIcons(ctx)
 	if err != nil {
 		return "", err
 	}
+
 	items := make([]navigation.Page, 0, len(pages))
+
 	for _, page := range pages {
 		items = append(items, navigation.Page{Slug: page.Slug, Title: page.Title, Icon: page.Icon})
 	}
+
 	data := ViewData{Subpages: navigation.Children(navigation.Build(items, navigation.Options{Icons: icons}), slug)}
+
 	return renderTemplateHTML(views, "page", "subpage-toc", data)
 }
 
@@ -142,6 +151,7 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		stripMarkdown(pages)
 		httpresponse.Respond(w, http.StatusOK, pages)
 	}
@@ -157,21 +167,28 @@ func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.Handle
 				writePageProblem(logger, w, err)
 				return
 			}
+
 			w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+
 			_, _ = w.Write([]byte(page.Markdown))
+
 			return
 		}
+
 		page, err := catalogUseCases.GetPage(r.Context(), slug)
+
 		if errors.Is(err, service.ErrNotFound) {
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				w.Header().Set("Content-Location", "/api/pages/"+target)
 				page, err = catalogUseCases.GetPage(r.Context(), target)
 			}
 		}
+
 		if err != nil {
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		httpresponse.Respond(w, http.StatusOK, page)
 	}
 }
@@ -189,10 +206,13 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 			)
 			return
 		}
+
 		slug := r.PathValue("slug")
+
 		if slug == "" {
 			slug = request.Slug
 		}
+
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
 			PreviousSlug:       r.PathValue("slug"),
 			Slug:               slug,
@@ -215,11 +235,14 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 			writePageSaveProblem(logger, w, err)
 			return
 		}
+
 		status := http.StatusOK
+
 		if r.Method == http.MethodPost {
 			status = http.StatusCreated
 			w.Header().Set("Location", "/api/pages/"+page.Slug)
 		}
+
 		httpresponse.Respond(w, status, page)
 	}
 }
@@ -232,6 +255,7 @@ func DeletePage(pageUseCases pageWriterService, logger *slog.Logger) http.Handle
 			writePageProblem(logger, w, err)
 			return
 		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

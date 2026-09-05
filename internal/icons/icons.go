@@ -46,12 +46,15 @@ func SearchPage(query string, offset, limit int) ([]Option, bool) {
 	if limit <= 0 {
 		return nil, false
 	}
+
 	if offset < 0 {
 		offset = 0
 	}
+
 	query = strings.ToLower(strings.TrimSpace(query))
 	result := make([]Option, 0, min(limit+1, len(navigationOptions)))
 	matched := 0
+
 	for _, option := range navigationOptions {
 		if query != "" && !strings.Contains(option.Name, query) &&
 			!strings.Contains(strings.ToLower(option.Label), query) {
@@ -61,14 +64,17 @@ func SearchPage(query string, offset, limit int) ([]Option, bool) {
 			matched++
 			continue
 		}
+
 		result = append(result, option)
 		if len(result) > limit {
 			break
 		}
 	}
+
 	if len(result) > limit {
 		return result[:limit], true
 	}
+
 	return result, false
 }
 
@@ -78,8 +84,10 @@ func IsNavigationIcon(name string) bool {
 	if name == "" {
 		return true
 	}
+
 	_, found := slices.BinarySearchFunc(navigationOptions, name, func(option Option, candidate string) int {
 		return strings.Compare(option.Name, candidate)
 	})
+
 	return found
 }

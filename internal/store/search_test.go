@@ -11,5 +11,6 @@ func TestSearchTokensPreserveQuotedFilterValues(t *testing.T) {
 
 	got := searchTokens(`group:"Platform Team" tag:kubernetes postgres restore`)
 	want := []string{"group:Platform Team", "tag:kubernetes", "postgres", "restore"}
+
 	assert.Equal(t, want, got)
 }

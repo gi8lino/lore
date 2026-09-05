@@ -12,6 +12,7 @@ export function replaceAllPlainText(
   matchCase = false,
 ): ReplaceResult {
   if (!query) return { value: source, count: 0 };
+
   const haystack = matchCase ? source : source.toLocaleLowerCase();
   const needle = matchCase ? query : query.toLocaleLowerCase();
   let cursor = 0;
@@ -21,12 +22,14 @@ export function replaceAllPlainText(
   while (cursor < source.length) {
     const index = haystack.indexOf(needle, cursor);
     if (index < 0) break;
+
     value += source.slice(cursor, index) + replacement;
     cursor = index + query.length;
     count += 1;
   }
 
   if (!count) return { value: source, count: 0 };
+
   value += source.slice(cursor);
   return { value, count };
 }
@@ -71,13 +74,18 @@ function setupEditorSearch(form: HTMLFormElement): void {
     const haystack = normalized(sourceEditor.value);
     const needle = normalized(query);
     let index: number;
+
     if (direction < 0) {
       const from = Math.max(0, (sourceEditor.selectionStart ?? 0) - 1);
+
       index = haystack.lastIndexOf(needle, from);
+
       if (index < 0) index = haystack.lastIndexOf(needle);
     } else {
       const from = sourceEditor.selectionEnd ?? 0;
+
       index = haystack.indexOf(needle, from);
+
       if (index < 0) index = haystack.indexOf(needle);
     }
 
@@ -88,8 +96,10 @@ function setupEditorSearch(form: HTMLFormElement): void {
 
     sourceEditor.focus();
     sourceEditor.setSelectionRange(index, index + query.length);
+
     const before = sourceEditor.value.slice(0, index);
     const line = before.split("\n").length;
+
     statusElement.textContent = `Match on line ${line}.`;
     return true;
   }
@@ -97,11 +107,14 @@ function setupEditorSearch(form: HTMLFormElement): void {
   // Opens the editor search panel.
   function open(): void {
     searchPanel.hidden = false;
+
     const selected = sourceEditor.value.slice(
       sourceEditor.selectionStart ?? 0,
       sourceEditor.selectionEnd ?? 0,
     );
+
     if (selected && !selected.includes("\n")) findInput.value = selected;
+
     requestAnimationFrame(() => {
       findInput.focus();
       findInput.select();
@@ -131,9 +144,11 @@ function setupEditorSearch(form: HTMLFormElement): void {
         sourceEditor.selectionStart ?? 0,
         sourceEditor.selectionEnd ?? 0,
       );
+
       if (normalized(selected) !== normalized(findInput.value)) {
         if (!findMatch(1)) return;
       }
+
       sourceEditor.setRangeText(
         replaceInput.value,
         sourceEditor.selectionStart ?? 0,
@@ -152,10 +167,12 @@ function setupEditorSearch(form: HTMLFormElement): void {
         replaceInput.value,
         matchCaseInput.checked,
       );
+
       if (result.count) {
         sourceEditor.value = result.value;
         sourceEditor.dispatchEvent(new Event("input", { bubbles: true }));
       }
+
       statusElement.textContent = `Replaced ${result.count} match${result.count === 1 ? "" : "es"}.`;
     });
 
