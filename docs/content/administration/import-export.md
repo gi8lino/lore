@@ -2,7 +2,7 @@
 
 ## Imports
 
-The administrator import workspace accepts an explicitly selected source format. The current import limit is 100 MiB.
+The administrator import workspace accepts an explicitly selected source format. The import request limit is 100 MiB. Supported file contents also share a 100 MiB uncompressed budget across all files and ZIP archives in the request.
 
 **Markdown** accepts `.md`, `.markdown`, or ZIP archives containing those files. Each document requires a level-one heading (`# Title`), which becomes the page title; its archive/file path becomes the page path.
 

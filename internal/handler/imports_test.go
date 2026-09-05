@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"archive/zip"
+	"bytes"
 	"io"
 	"strings"
 	"testing"
@@ -66,5 +68,22 @@ func TestReadImportArchiveEntryEnforcesRemainingBudget(t *testing.T) {
 
 	_, err := readImportArchiveEntry(io.NopCloser(strings.NewReader("abc")), 2)
 
+	require.EqualError(t, err, "archive contents exceed 100 MiB")
+}
+
+func TestImportZIPBudgetSharedAcrossFiles(t *testing.T) {
+	var archive bytes.Buffer
+	writer := zip.NewWriter(&archive)
+	entry, err := writer.Create("page.md")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte("# Title"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	remaining := int64(10)
+	items, err := importZIP(archive.Bytes(), markdownImport, &remaining)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, int64(3), remaining)
+	_, err = importZIP(archive.Bytes(), markdownImport, &remaining)
 	require.EqualError(t, err, "archive contents exceed 100 MiB")
 }

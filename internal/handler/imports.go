@@ -78,9 +78,10 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 		}
 
 		var candidates []importCandidate
+		remaining := int64(maxImportBytes)
 
 		for _, header := range r.MultipartForm.File["files"] {
-			items, err := importCandidatesFromFile(header, format)
+			items, err := importCandidatesFromFile(header, format, &remaining)
 			if err != nil {
 				httpresponse.Problem(w, http.StatusBadRequest, "Import "+header.Filename+": "+err.Error())
 				return
@@ -116,7 +117,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 }
 
 // importCandidatesFromFile extracts import candidates from one uploaded file.
-func importCandidatesFromFile(header *multipart.FileHeader, format importFormat) ([]importCandidate, error) {
+func importCandidatesFromFile(header *multipart.FileHeader, format importFormat, remaining *int64) ([]importCandidate, error) {
 	file, err := header.Open()
 	if err != nil {
 		return nil, err
@@ -137,11 +138,18 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 	name := strings.TrimPrefix(strings.ReplaceAll(header.Filename, "\\", "/"), "./")
 	ext := strings.ToLower(path.Ext(name))
 
+	if ext != ".zip" {
+		if int64(len(data)) > *remaining {
+			return nil, fmt.Errorf("import contents exceed 100 MiB")
+		}
+		*remaining -= int64(len(data))
+	}
+
 	switch format {
 	case markdownImport:
 		if ext != ".md" && ext != ".markdown" {
 			if ext == ".zip" {
-				return importZIP(data, format)
+				return importZIP(data, format, remaining)
 			}
 			return nil, fmt.Errorf("markdown imports require .md, .markdown, or .zip files")
 		}
@@ -156,7 +164,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 		return []importCandidate{{Slug: slug, Title: title, Markdown: string(data), Source: "Markdown"}}, nil
 	case wikiJSImport:
 		if ext == ".zip" {
-			return importZIP(data, format)
+			return importZIP(data, format, remaining)
 		}
 		if ext != ".json" {
 			return nil, fmt.Errorf("imports from Wiki.js require .json or .zip files")
@@ -165,7 +173,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 		return importWikiJSON(data)
 	case confluenceImport:
 		if ext == ".zip" {
-			return importZIP(data, format)
+			return importZIP(data, format, remaining)
 		}
 		if ext != ".html" && ext != ".htm" {
 			return nil, fmt.Errorf("imports from Confluence require .html, .htm, or .zip files")
@@ -192,14 +200,13 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat)
 }
 
 // importZIP extracts supported import candidates from a ZIP archive.
-func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
+func importZIP(data []byte, format importFormat, remaining *int64) ([]importCandidate, error) {
 	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return nil, err
 	}
 
 	var result []importCandidate
-	remaining := int64(maxImportBytes)
 
 	for _, entry := range reader.File {
 		if entry.FileInfo().IsDir() {
@@ -211,7 +218,7 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 		if !supportedImportExtension(format, ext) {
 			continue
 		}
-		if entry.UncompressedSize64 > uint64(remaining) {
+		if entry.UncompressedSize64 > uint64(*remaining) {
 			return nil, fmt.Errorf("archive contents exceed 100 MiB")
 		}
 
@@ -220,12 +227,12 @@ func importZIP(data []byte, format importFormat) ([]importCandidate, error) {
 			return nil, err
 		}
 
-		content, err := readImportArchiveEntry(file, remaining)
+		content, err := readImportArchiveEntry(file, *remaining)
 		if err != nil {
 			return nil, err
 		}
 
-		remaining -= int64(len(content))
+		*remaining -= int64(len(content))
 
 		switch format {
 		case markdownImport:
