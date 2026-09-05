@@ -55,9 +55,20 @@ func (s *Store) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
 // migrate applies unapplied embedded SQL migrations in version order.
 func (s *Store) migrate(ctx context.Context, logger *slog.Logger) error {
+	// Serialize schema initialization and migration discovery across app instances.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(734627198236)`); err != nil {
+		return err
+	}
+	var applied []fs.DirEntry
+
 	// Keep migration history in the same database so startup can safely skip
 	// schema changes that have already been committed.
-	if _, err := s.pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`); err != nil {
 		return err
 	}
@@ -88,7 +99,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, appli
 		}
 
 		var exists bool
-		if err := s.pool.QueryRow(ctx, `
+		if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)`, v).Scan(&exists); err != nil {
 			return err
 		}
@@ -103,11 +114,6 @@ SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)`, v).Scan(&exist
 
 		// Apply the schema change and record its version atomically. A failed
 		// statement therefore remains eligible for retry on the next startup.
-		tx, err := s.pool.Begin(ctx)
-		if err != nil {
-			return err
-		}
-
 		if _, err = tx.Exec(ctx, string(sql)); err == nil {
 			_, err = tx.Exec(ctx, `
 INSERT INTO schema_migrations(version)
@@ -115,13 +121,15 @@ VALUES($1)`, v)
 		}
 
 		if err != nil {
-			_ = tx.Rollback(ctx)
 			return fmt.Errorf("migration %d: %w", v, err)
 		}
-		if err := tx.Commit(ctx); err != nil {
-			return err
-		}
-
+		applied = append(applied, e)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	for _, e := range applied {
+		v, _ := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
 		logger.Info(
 			"applied database migration",
 			"event", "database_migration_applied",

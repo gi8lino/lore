@@ -30,3 +30,9 @@ CSS remains framework-free and is split by responsibility under `web/src/css`. `
 Go code is formatted with `gofmt`; tests use the standard testing package plus Testify where appropriate. PostgreSQL queries and migrations live in `internal/store`.
 
 Read [Architecture](architecture.md) for dependency rules.
+
+### PostgreSQL integration tests
+
+Set `LORE_TEST_DATABASE_URL` to a disposable PostgreSQL database URL, then run `go test -race ./internal/store`. These tests create and remove isolated schemas and require schema creation privileges. Without the variable they are skipped. Coverage includes simultaneous application startup and OIDC identity persistence across database reconnections.
+
+Startup migrations run together in one transaction under a database advisory lock. Concurrent instances wait for that transaction before checking migration history; a failed migration rolls back the pending batch so a later startup can retry.
