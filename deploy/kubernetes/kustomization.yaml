@@ -4,9 +4,11 @@ kind: Kustomization
 namespace: lore
 resources:
   - namespace.yaml
-  - secret.yaml
-  - postgres-service.yaml
-  - postgres-statefulset.yaml
-  - deployment.yaml
-  - service.yaml
-  - pdf.yaml
+  - postgres/secret.yaml
+  - postgres/service.yaml
+  - postgres/statefulset.yaml
+  - html2pdf/deployment.yaml
+  - html2pdf/service.yaml
+  - lore/secret.yaml
+  - lore/deployment.yaml
+  - lore/service.yaml

@@ -2,29 +2,38 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lore-pdf
+  name: html2pdf
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: lore-pdf
+      app.kubernetes.io/name: html2pdf
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: lore-pdf
+        app.kubernetes.io/name: html2pdf
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
+        fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: pdf
+        - name: html2pdf
           image: ghcr.io/gi8lino/html2pdf:latest
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080
+              protocol: TCP
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: 100m
@@ -32,15 +41,31 @@ spec:
             limits:
               cpu: "2"
               memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /healthz
               port: http
+            periodSeconds: 10
             timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
           volumeMounts:
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: tmp
           emptyDir:
+            medium: Memory
             sizeLimit: 128Mi

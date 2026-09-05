@@ -2,11 +2,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: lore-pdf
+  name: html2pdf
 spec:
   selector:
-    app.kubernetes.io/name: lore-pdf
+    app.kubernetes.io/name: html2pdf
   ports:
     - name: http
       port: 8080
       targetPort: http
+      protocol: TCP

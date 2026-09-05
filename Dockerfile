@@ -37,6 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy the Go source and templates.
 COPY cmd/ cmd/
 COPY internal/ internal/
+COPY scripts/generate-icons/ scripts/generate-icons/
 COPY web/ web/
 COPY themes/ themes/
 COPY --from=frontend /src/web/dist web/dist
@@ -46,7 +47,8 @@ COPY --from=frontend /src/web/dist web/dist
 # but can be set by buildx for cross-platform builds.
 RUN --mount=type=cache,target=/go/pkg/mod \
   --mount=type=cache,target=/root/.cache/go-build \
-  GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-$(go env GOARCH)} \
+  go generate ./internal/icons \
+  && GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-$(go env GOARCH)} \
   go build \
   -ldflags="$LDFLAGS" \
   -a \
@@ -75,5 +77,4 @@ WORKDIR /app
 USER 65532:0
 
 ENTRYPOINT ["/lore"]
-
-
+CMD ["serve"]
