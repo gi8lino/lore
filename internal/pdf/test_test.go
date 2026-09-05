@@ -23,7 +23,7 @@ func TestTestBodyExercisesPDFRenderingFeatures(t *testing.T) {
 	assert.Contains(t, body, "日本語")
 	assert.Contains(t, body, "<table>")
 	assert.Contains(t, body, "class=\"callout warning\"")
-	assert.Contains(t, body, "break-before:page")
+	assert.Contains(t, body, "break-before: page")
 }
 
 func TestPDFPageCount(t *testing.T) {

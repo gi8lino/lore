@@ -81,8 +81,8 @@ endobj
 
 		require.NoError(t, err)
 		assert.Contains(t, string(body), "Lore PDF service test")
-		assert.Contains(t, string(body), "data:image/svg+xml;base64,")
-		assert.Contains(t, string(body), "break-before:page")
+		assert.Contains(t, string(body), "data:image/png;base64,")
+		assert.Contains(t, string(body), "break-before: page")
 		assert.Contains(t, string(body), "日本語")
 		w.Header().Set("Content-Type", "application/pdf")
 
