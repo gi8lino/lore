@@ -9,3 +9,4 @@ resources:
   - postgres-statefulset.yaml
   - deployment.yaml
   - service.yaml
+  - pdf.yaml

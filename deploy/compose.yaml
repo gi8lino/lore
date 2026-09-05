@@ -6,12 +6,27 @@ services:
       LORE__DATABASE_URL: postgres://lore:lore@postgres:5432/lore?sslmode=disable
       LORE__LISTEN_ADDRESS: 0.0.0.0:8080
       LORE__PUBLIC_URL: http://localhost:8080
+      LORE__PDF_URL: http://pdf:8080/render
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  pdf:
+    image: ghcr.io/gi8lino/html2pdf:latest
+    container_name: pdf
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 2
 
   postgres:
     image: postgres:18-alpine

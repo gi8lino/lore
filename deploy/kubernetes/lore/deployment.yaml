@@ -29,6 +29,8 @@ spec:
               value: 0.0.0.0:8080
             - name: LORE__PUBLIC_URL
               value: https://lore.example.test
+            - name: LORE__PDF_URL
+              value: http://lore-pdf:8080/render
             - name: LORE__LOG_FORMAT
               value: json
             - name: LORE__ACCESS_LOG
