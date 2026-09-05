@@ -3,8 +3,18 @@
 // Offline asset caching and user-scoped private page caching.
 
 const assetCacheName = "lore-assets-v1";
-const pageCachePrefix = "lore-pages-v1-";
+const pageCachePrefix = "lore-pages-v2-";
 let pageCacheName = "";
+const clientCaches = new Map<string, string>();
+let generation = 0;
+let privateOperations: Promise<unknown> = Promise.resolve();
+
+// Serialize writes and deletion so logout cannot be undone by an in-flight put.
+function privateOperation(work: () => Promise<unknown>): Promise<void> {
+  const result = privateOperations.then(work).then(() => undefined);
+  privateOperations = result.catch(() => undefined);
+  return result;
+}
 
 const serviceWorker = self as unknown as ServiceWorkerGlobalScope;
 
@@ -27,6 +37,8 @@ serviceWorker.addEventListener("activate", (event: ExtendableEvent) => {
             .filter(
               (name) =>
                 name.startsWith("lore-offline-") ||
+                (name.startsWith("lore-pages-") &&
+                  !name.startsWith(pageCachePrefix)) ||
                 (name.startsWith("lore-assets-") && name !== assetCacheName),
             )
             .map((name) => caches.delete(name)),
@@ -40,27 +52,30 @@ serviceWorker.addEventListener("message", (event: ExtendableMessageEvent) => {
   const data = event.data as ConfigureUserMessage | null;
   if (data?.type !== "configure-user") return;
 
-  const userID = String(data.userID || "").replace(/[^0-9A-Za-z_-]/g, "");
-  if (!userID) {
-    pageCacheName = "";
-    return;
+  const source = event.source;
+  if (!source || !("id" in source)) return;
+  const userID = String(data.userID || "");
+  const nextCache = /^[1-9][0-9]*$/.test(userID)
+    ? `${pageCachePrefix}${userID}`
+    : "";
+  if (nextCache !== pageCacheName || !nextCache) {
+    generation++;
+    clientCaches.clear();
+    pageCacheName = nextCache;
   }
-
-  pageCacheName = `${pageCachePrefix}${userID}`;
+  if (nextCache) clientCaches.set(source.id, nextCache);
   event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names
-            .filter(
-              (name) =>
-                name.startsWith(pageCachePrefix) && name !== pageCacheName,
-            )
-            .map((name) => caches.delete(name)),
-        ),
-      )
-      .then(() => undefined),
+    privateOperation(async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter(
+            (name) =>
+              name.startsWith(pageCachePrefix) && name !== pageCacheName,
+          )
+          .map((name) => caches.delete(name)),
+      );
+    }),
   );
 });
 
@@ -96,23 +111,39 @@ serviceWorker.addEventListener("fetch", (event: FetchEvent) => {
     return;
   }
 
-  if (!pageCacheName || !cacheablePage(url)) return;
+  const requestCache = clientCaches.get(event.clientId);
+  if (!requestCache || !cacheablePage(url)) return;
+  const requestGeneration = generation;
+  const stillCurrent = () =>
+    requestGeneration === generation && requestCache === pageCacheName;
 
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          void caches
-            .open(pageCacheName)
-            .then((cache) => cache.put(request, response.clone()));
+    fetch(request).then(
+      async (response) => {
+        // Redirected login pages and responses for a different signed-in user
+        // must never enter the requesting tab's private cache.
+        const responseCache = `${pageCachePrefix}${response.headers.get("X-Lore-User-ID") || ""}`;
+        if (
+          response.ok &&
+          !response.redirected &&
+          responseCache === requestCache &&
+          stillCurrent()
+        ) {
+          const copy = response.clone();
+          await privateOperation(async () => {
+            if (!stillCurrent()) return;
+            const cache = await caches.open(requestCache);
+            await cache.put(request, copy);
+          }).catch(() => undefined);
         }
         return response;
-      })
-      .catch(() =>
-        caches
-          .open(pageCacheName)
-          .then((cache) => cache.match(request))
-          .then((cached) => cached || Response.error()),
-      ),
+      },
+      async () => {
+        if (!stillCurrent()) return Response.error();
+        const cache = await caches.open(requestCache);
+        const cached = await cache.match(request);
+        return stillCurrent() ? cached || Response.error() : Response.error();
+      },
+    ),
   );
 });

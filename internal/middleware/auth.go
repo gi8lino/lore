@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/auth"
@@ -48,6 +49,7 @@ func authenticate(
 					// The first authenticator that resolves an identity wins.
 					// Downstream middleware and handlers can retrieve the user
 					// from the request context via auth.User.
+					w.Header().Set("X-Lore-User-ID", strconv.FormatInt(user.ID, 10))
 					next.ServeHTTP(w, auth.WithUser(r, user))
 					return
 				}

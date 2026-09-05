@@ -1,6 +1,6 @@
 // Service worker setup and private-cache protection.
 
-const pageCachePrefix = "lore-pages-v1-";
+const pageCachePrefix = "lore-pages-";
 
 // Clears private page caches.
 async function clearPrivatePageCaches(): Promise<void> {
@@ -37,6 +37,10 @@ function protectLogout(): void {
     event.preventDefault();
 
     try {
+      navigator.serviceWorker?.controller?.postMessage({
+        type: "configure-user",
+        userID: "",
+      });
       await clearPrivatePageCaches();
     } catch {
       /* best effort */
