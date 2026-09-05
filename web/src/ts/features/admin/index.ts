@@ -107,6 +107,17 @@ export function initAdmin(): void {
   }
 }
 
+// Formats one PDF byte size for the administrator test result.
+function formatPDFSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const kibibytes = bytes / 1024;
+  if (kibibytes < 1024)
+    return `${kibibytes.toFixed(kibibytes < 10 ? 1 : 0)} KiB`;
+
+  return `${(kibibytes / 1024).toFixed(1)} MiB`;
+}
+
 // Wires the PDF integration test to the endpoint currently entered in the form.
 function setupPDFSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-pdf-settings]");
@@ -115,7 +126,33 @@ function setupPDFSettings(): void {
   const endpoint = form.elements.namedItem("pdf_url");
   const button = form.querySelector<HTMLButtonElement>("[data-pdf-test]");
   const status = form.querySelector<HTMLElement>("[data-pdf-test-status]");
-  if (!(endpoint instanceof HTMLInputElement) || !button || !status) return;
+  const dialog = document.querySelector<HTMLDialogElement>(
+    "[data-pdf-test-dialog]",
+  );
+  if (!(endpoint instanceof HTMLInputElement) || !button || !status || !dialog)
+    return;
+
+  const preview = dialog.querySelector<HTMLIFrameElement>(
+    "[data-pdf-test-preview]",
+  );
+  const openPDF = dialog.querySelector<HTMLAnchorElement>(
+    "[data-pdf-test-open]",
+  );
+  const pages = dialog.querySelector<HTMLElement>("[data-pdf-test-pages]");
+  const pagesCheck = dialog.querySelector<HTMLElement>(
+    "[data-pdf-test-pages-check]",
+  );
+  const pagesMark = pagesCheck?.querySelector<HTMLElement>(
+    ".pdf-test-check-mark",
+  );
+  const size = dialog.querySelector<HTMLElement>("[data-pdf-test-size]");
+  const closeButtons = [
+    ...dialog.querySelectorAll<HTMLButtonElement>("[data-pdf-test-close]"),
+  ];
+  if (!preview || !openPDF || !pages || !pagesCheck || !pagesMark || !size)
+    return;
+
+  let previewURL = "";
 
   const setStatus = (
     state: "" | "testing" | "success" | "error",
@@ -125,7 +162,49 @@ function setupPDFSettings(): void {
     status.textContent = message;
   };
 
+  const clearPreview = (): void => {
+    preview.removeAttribute("src");
+    openPDF.removeAttribute("href");
+
+    if (previewURL) URL.revokeObjectURL(previewURL);
+    previewURL = "";
+  };
+
+  const showResult = (
+    blob: Blob,
+    pageCount: number,
+    byteSize: number,
+  ): void => {
+    clearPreview();
+
+    previewURL = URL.createObjectURL(blob);
+    preview.src = previewURL;
+    openPDF.href = previewURL;
+    size.textContent = formatPDFSize(byteSize);
+
+    if (pageCount === 2) {
+      pagesCheck.dataset.state = "success";
+      pagesMark.textContent = "✓";
+      pages.textContent = "2 pages";
+    } else if (pageCount > 0) {
+      pagesCheck.dataset.state = "warning";
+      pagesMark.textContent = "!";
+      pages.textContent = `${pageCount} page${pageCount === 1 ? "" : "s"} returned; expected 2`;
+    } else {
+      pagesCheck.dataset.state = "warning";
+      pagesMark.textContent = "!";
+      pages.textContent = "Page count unavailable";
+    }
+
+    dialog.showModal();
+  };
+
   endpoint.addEventListener("input", () => setStatus("", ""));
+  closeButtons.forEach((close) =>
+    close.addEventListener("click", () => dialog.close()),
+  );
+  dialog.addEventListener("close", clearPreview);
+
   button.addEventListener("click", async () => {
     const pdfURL = endpoint.value.trim();
     if (!pdfURL) {
@@ -135,7 +214,7 @@ function setupPDFSettings(): void {
     }
 
     button.disabled = true;
-    setStatus("testing", "Rendering a small test document…");
+    setStatus("testing", "Rendering the two-page PDF test document…");
 
     try {
       const body = new URLSearchParams({ pdf_url: pdfURL });
@@ -143,13 +222,26 @@ function setupPDFSettings(): void {
         method: "POST",
         body,
         credentials: "same-origin",
-        headers: { Accept: "application/json" },
+        headers: { Accept: "application/pdf" },
       });
       if (!response.ok) throw await responseProblem(response);
 
-      const payload = (await response.json()) as { message?: string };
+      const blob = await response.blob();
+      const pageCount = Number.parseInt(
+        response.headers.get("X-Lore-PDF-Pages") ?? "0",
+        10,
+      );
+      const reportedSize = Number.parseInt(
+        response.headers.get("X-Lore-PDF-Size") ?? "0",
+        10,
+      );
+      const byteSize = reportedSize > 0 ? reportedSize : blob.size;
 
-      setStatus("success", payload.message || "PDF service is reachable.");
+      showResult(blob, Number.isFinite(pageCount) ? pageCount : 0, byteSize);
+      setStatus(
+        "success",
+        "PDF service is working. Review the generated test document.",
+      );
     } catch (error: unknown) {
       setStatus("error", errorMessage(error));
     } finally {

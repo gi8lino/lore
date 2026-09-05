@@ -43,14 +43,6 @@ func ValidateURL(value string) error {
 	return nil
 }
 
-// Check verifies that endpoint can render a minimal HTML document.
-func Check(ctx context.Context, endpoint string) error {
-	_, cleanup, err := Render(ctx, endpoint, "PDF service test", "en", "<p>PDF service test.</p>")
-
-	cleanup()
-	return err
-}
-
 // Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.
 // The caller must call cleanup after serving the file.
 func Render(ctx context.Context, endpoint, title, language, rendered string) (*os.File, func(), error) {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -60,6 +61,18 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 func TestTestAdminPDFService(t *testing.T) {
 	t.Parallel()
 
+	payload := `%PDF-1.7
+1 0 obj
+<</Type /Pages/Kids [2 0 R 3 0 R]/Count 2>>
+endobj
+2 0 obj
+<</Type /Page/Parent 1 0 R>>
+endobj
+3 0 obj
+<</Type /Page/Parent 1 0 R>>
+endobj
+%%EOF
+`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/render", r.URL.Path)
@@ -67,10 +80,13 @@ func TestTestAdminPDFService(t *testing.T) {
 		body, err := io.ReadAll(r.Body)
 
 		require.NoError(t, err)
-		assert.Contains(t, string(body), "PDF service test")
+		assert.Contains(t, string(body), "Lore PDF service test")
+		assert.Contains(t, string(body), "data:image/svg+xml;base64,")
+		assert.Contains(t, string(body), "break-before:page")
+		assert.Contains(t, string(body), "日本語")
 		w.Header().Set("Content-Type", "application/pdf")
 
-		_, _ = io.WriteString(w, "%PDF-1.7\nfixture\n")
+		_, _ = io.WriteString(w, payload)
 	}))
 	defer server.Close()
 
@@ -84,5 +100,9 @@ func TestTestAdminPDFService(t *testing.T) {
 	TestAdminPDFService(slog.Default())(response, request)
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	assert.JSONEq(t, `{"message":"PDF service rendered a test document successfully."}`, response.Body.String())
+	assert.Equal(t, "application/pdf", response.Header().Get("Content-Type"))
+	assert.Equal(t, `inline; filename="lore-pdf-service-test.pdf"`, response.Header().Get("Content-Disposition"))
+	assert.Equal(t, "2", response.Header().Get("X-Lore-PDF-Pages"))
+	assert.Equal(t, strconv.Itoa(len(payload)), response.Header().Get("X-Lore-PDF-Size"))
+	assert.Equal(t, payload, response.Body.String())
 }

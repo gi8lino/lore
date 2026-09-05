@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/pdf"
@@ -37,7 +40,7 @@ func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger)
 	}
 }
 
-// TestAdminPDFService verifies that a candidate endpoint can render a small PDF document.
+// TestAdminPDFService renders and returns Lore's fixed two-page PDF diagnostic document.
 func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -64,7 +67,9 @@ func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 			)
 			return
 		}
-		if err := pdf.Check(r.Context(), pdfURL); err != nil {
+
+		result, cleanup, err := pdf.RenderTest(r.Context(), pdfURL)
+		if err != nil {
 			logger.Warn("PDF service test failed", "event", "pdf_service_test_failed", "error", err)
 			httpresponse.Problem(
 				w,
@@ -74,10 +79,15 @@ func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 			)
 			return
 		}
+		defer cleanup()
 
-		httpresponse.Respond(w, http.StatusOK, map[string]string{
-			"message": "PDF service rendered a test document successfully.",
-		})
+		const filename = "lore-pdf-service-test.pdf"
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename=%q`, filename))
+		w.Header().Set("X-Lore-PDF-Pages", strconv.Itoa(result.PageCount))
+		w.Header().Set("X-Lore-PDF-Size", strconv.FormatInt(result.Size, 10))
+		http.ServeContent(w, r, filename, time.Now(), result.File)
 	}
 }
 
@@ -86,5 +96,6 @@ func effectivePDFURL(runtimeOverride, persisted string) string {
 	if runtimeOverride = strings.TrimSpace(runtimeOverride); runtimeOverride != "" {
 		return runtimeOverride
 	}
+
 	return strings.TrimSpace(persisted)
 }

@@ -17,6 +17,7 @@ func SecurityHeaders() Middleware {
 		"img-src 'self' data: https:",
 		"font-src 'self' https://cdn.jsdelivr.net",
 		"connect-src 'self'",
+		"frame-src 'self' blob:",
 	}
 	cspValue := strings.Join(cspDirectives, "; ")
 

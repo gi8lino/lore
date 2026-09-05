@@ -10,6 +10,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSecurityHeaders(t *testing.T) {
+	t.Parallel()
+
+	handler := SecurityHeaders()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	assert.Equal(t, "nosniff", response.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "DENY", response.Header().Get("X-Frame-Options"))
+	assert.Equal(t, "same-origin", response.Header().Get("Referrer-Policy"))
+	assert.Contains(t, response.Header().Get("Content-Security-Policy"), "frame-src 'self' blob:")
+}
+
 func TestRejectCrossSiteWrites(t *testing.T) {
 	t.Parallel()
 

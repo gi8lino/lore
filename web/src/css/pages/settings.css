@@ -494,6 +494,87 @@
 .pdf-test-status[data-state="error"] {
   color: var(--danger);
 }
+.pdf-test-dialog {
+  width: min(1040px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+}
+.pdf-test-dialog-body {
+  display: grid;
+  gap: 16px;
+  overflow: auto;
+}
+.pdf-test-summary {
+  display: grid;
+  gap: 4px;
+}
+.pdf-test-summary strong {
+  color: var(--text);
+  font-size: 14px;
+}
+.pdf-test-summary span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.pdf-test-checks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.pdf-test-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+}
+.pdf-test-check-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 800;
+}
+.pdf-test-check > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.pdf-test-check strong {
+  color: var(--text);
+  font-size: 11px;
+}
+.pdf-test-check small {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.pdf-test-check[data-state="warning"] .pdf-test-check-mark {
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--warning);
+}
+.pdf-test-preview-shell {
+  overflow: hidden;
+  min-height: 560px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-elevated);
+}
+.pdf-test-preview-shell iframe {
+  display: block;
+  width: 100%;
+  height: min(68dvh, 760px);
+  min-height: 560px;
+  border: 0;
+  background: white;
+}
 .configuration-override-note {
   display: grid;
   gap: 4px;
@@ -522,6 +603,19 @@
   .configuration-runtime,
   .configuration-authentication {
     grid-column: auto;
+  }
+  .pdf-test-checks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .pdf-test-checks {
+    grid-template-columns: 1fr;
+  }
+  .pdf-test-preview-shell,
+  .pdf-test-preview-shell iframe {
+    min-height: 460px;
   }
 }
 

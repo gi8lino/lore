@@ -123,6 +123,53 @@
           </div>
           <p class="pdf-test-status" data-pdf-test-status aria-live="polite"></p>
         </form>
+
+        <dialog class="app-dialog pdf-test-dialog" data-pdf-test-dialog aria-labelledby="pdf-test-dialog-title">
+          <div class="app-dialog-header">
+            <div>
+              <p class="eyebrow">PDF rendering</p>
+              <h2 id="pdf-test-dialog-title">PDF service test</h2>
+            </div>
+            <button class="icon-button app-dialog-close" type="button" data-pdf-test-close aria-label="Close">
+              {{ icon "x" 18 }}
+            </button>
+          </div>
+
+          <div class="app-dialog-body pdf-test-dialog-body">
+            <div class="pdf-test-summary">
+              <strong>PDF service is working.</strong>
+              <span>Review the generated document below to confirm that fonts, colors, images, tables, code, and page breaks look acceptable.</span>
+            </div>
+
+            <div class="pdf-test-checks" aria-label="PDF service checks">
+              <div class="pdf-test-check" data-state="success">
+                <span class="pdf-test-check-mark" aria-hidden="true">✓</span>
+                <span><strong>Endpoint</strong><small>Reachable</small></span>
+              </div>
+              <div class="pdf-test-check" data-state="success">
+                <span class="pdf-test-check-mark" aria-hidden="true">✓</span>
+                <span><strong>PDF</strong><small>Valid response</small></span>
+              </div>
+              <div class="pdf-test-check" data-pdf-test-pages-check>
+                <span class="pdf-test-check-mark" aria-hidden="true">✓</span>
+                <span><strong>Pages</strong><small data-pdf-test-pages>2 pages</small></span>
+              </div>
+              <div class="pdf-test-check" data-state="success">
+                <span class="pdf-test-check-mark" aria-hidden="true">✓</span>
+                <span><strong>Size</strong><small data-pdf-test-size>—</small></span>
+              </div>
+            </div>
+
+            <div class="pdf-test-preview-shell">
+              <iframe data-pdf-test-preview title="Generated PDF service test document"></iframe>
+            </div>
+          </div>
+
+          <div class="app-dialog-actions">
+            <a class="button" data-pdf-test-open target="_blank" rel="noopener">Open PDF</a>
+            <button class="button primary" type="button" data-pdf-test-close>Close</button>
+          </div>
+        </dialog>
       </section>
 
       <section class="panel settings-panel settings-wide configuration-authentication">
@@ -429,3 +476,5 @@
     </div>
   </section>
 {{ end }}
+
+
