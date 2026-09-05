@@ -1,6 +1,6 @@
 # OIDC
 
-OIDC mode uses authorization-code login with provider discovery. Lore binds an account to the verified `(issuer, subject)` pair; usernames, email addresses, and display names are profile attributes rather than account ownership keys.
+OIDC mode uses authorization-code login with provider discovery, S256 PKCE, and an ID-token nonce check. Lore binds an account to the verified `(issuer, subject)` pair; usernames, email addresses, and display names are profile attributes rather than account ownership keys.
 
 ## Required deployment secrets
 
@@ -13,7 +13,7 @@ LORE__SESSION_SECRET
 
 `LORE__SESSION_SECRET` must contain at least 32 characters. The client secret and session secret are not stored in PostgreSQL.
 
-OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__SESSION_SECRET` and the PostgreSQL database are preserved. Explicit session revocation and account disabling still invalidate existing sessions.
+OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__SESSION_SECRET` and the PostgreSQL database are preserved. Sessions last 12 hours. Explicit session revocation and account disabling still invalidate existing sessions. Changing the session secret invalidates all OIDC sessions and pending logins; keep the same secret on every replica. Login attempts expire after 10 minutes and can complete after a restart with the same configuration. Upgrading from a version without PKCE requires restarting any pending login, but does not invalidate established sessions.
 
 The issuer, client ID, optional group claim, administrator group, and group mappings are managed as non-secret application settings.
 
@@ -44,3 +44,7 @@ Automatically created OIDC accounts do not receive a local password. An administ
 Disabling an account in **Administration → Users** revokes its local and OIDC browser sessions and blocks local login, OIDC login, trusted-proxy authentication, and personal API tokens. Re-enabling it does not restore old sessions; the user must authenticate again.
 
 
+
+## Provider and restart requirements
+
+Register the exact callback URL `<LORE__PUBLIC_URL>/auth/callback` with the provider. The client must support authorization-code login with S256 PKCE and return `preferred_username` in the ID token. Lore requires provider discovery to succeed at startup when OIDC is active, so an unavailable provider can prevent startup even when existing session cookies are valid. Preserve the issuer URL, database, client configuration, and deployment secrets when restarting. Lore sessions do not require an in-memory provider token or a refresh token.

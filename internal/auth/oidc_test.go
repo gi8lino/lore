@@ -256,3 +256,20 @@ func TestOIDCGroupValues(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestOIDCCallbackRejectsInvalidState(t *testing.T) {
+	authenticator := &OIDC{secret: []byte("0123456789abcdef0123456789abcdef")}
+	for _, saved := range []loginState{
+		{Expires: time.Now().Add(time.Minute).Unix()},
+		{State: "state", Expires: time.Now().Add(time.Minute).Unix()},
+		{State: "state", Verifier: "verifier", Expires: time.Now().Unix()},
+	} {
+		response := httptest.NewRecorder()
+		authenticator.setCookie(response, "lore_state", saved, 600)
+		request := httptest.NewRequest("GET", "/auth/callback?state="+saved.State, nil)
+		request.AddCookie(response.Result().Cookies()[0])
+		result := httptest.NewRecorder()
+		authenticator.Callback().ServeHTTP(result, request)
+		assert.Equal(t, http.StatusBadRequest, result.Code)
+	}
+}

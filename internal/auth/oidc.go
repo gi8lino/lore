@@ -71,6 +71,10 @@ type session struct {
 type loginState struct {
 	// State is the saved OIDC state value.
 	State string `json:"s"`
+	// Verifier binds the authorization code to this browser login.
+	Verifier string `json:"p"`
+	// Next is the local destination bound to this login attempt.
+	Next string `json:"n,omitempty"`
 	// Expires is the Unix expiration timestamp for the saved state.
 	Expires int64 `json:"x"`
 }
@@ -123,7 +127,7 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	if err := o.decodeCookie(r, "lore_session", &current); err != nil {
 		return model.User{}, ErrUnauthenticated
 	}
-	if current.Expires < time.Now().Unix() || current.Issuer != o.issuer || current.Subject == "" {
+	if current.Expires <= time.Now().Unix() || current.Issuer != o.issuer || current.Subject == "" {
 		return model.User{}, ErrUnauthenticated
 	}
 
@@ -152,17 +156,20 @@ func (o *OIDC) Login() http.HandlerFunc {
 		}
 
 		state := base64.RawURLEncoding.EncodeToString(stateBytes)
-
-		o.setCookie(w, "lore_state", loginState{
-			State:   state,
-			Expires: time.Now().Add(10 * time.Minute).Unix(),
-		}, 600)
-
-		if next := r.URL.Query().Get("next"); isLocalPath(next) {
-			o.setCookie(w, "lore_next", nextLocation{Path: next}, 600)
+		verifier := oauth2.GenerateVerifier()
+		next := r.URL.Query().Get("next")
+		if !isLocalPath(next) {
+			next = "/"
 		}
 
-		http.Redirect(w, r, o.oauth.AuthCodeURL(state), http.StatusFound)
+		o.setCookie(w, "lore_state", loginState{
+			State:    state,
+			Verifier: verifier,
+			Next:     next,
+			Expires:  time.Now().Add(10 * time.Minute).Unix(),
+		}, 600)
+
+		http.Redirect(w, r, o.oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(state)), http.StatusFound)
 	}
 }
 
@@ -170,13 +177,17 @@ func (o *OIDC) Login() http.HandlerFunc {
 func (o *OIDC) Callback() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var saved loginState
-		if o.decodeCookie(r, "lore_state", &saved) != nil || saved.State != r.URL.Query().Get("state") ||
-			saved.Expires < time.Now().Unix() {
+		if o.decodeCookie(r, "lore_state", &saved) != nil || saved.State == "" || saved.Verifier == "" ||
+			saved.State != r.URL.Query().Get("state") || saved.Expires <= time.Now().Unix() {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid login state.")
 			return
 		}
 
-		token, err := o.oauth.Exchange(r.Context(), r.URL.Query().Get("code"))
+		// Consume transient browser state on both successful and failed callbacks.
+		o.setCookie(w, "lore_state", loginState{}, -1)
+		o.setCookie(w, "lore_next", nextLocation{}, -1)
+
+		token, err := o.oauth.Exchange(r.Context(), r.URL.Query().Get("code"), oauth2.VerifierOption(saved.Verifier))
 		if err != nil {
 			httpresponse.Problem(w, http.StatusUnauthorized, "Login failed.")
 			return
@@ -191,7 +202,7 @@ func (o *OIDC) Callback() http.HandlerFunc {
 
 		issuer := strings.TrimSpace(idToken.Issuer)
 		subject := strings.TrimSpace(idToken.Subject)
-		if issuer == "" || issuer != o.issuer || subject == "" {
+		if issuer == "" || issuer != o.issuer || subject == "" || idToken.Nonce != saved.State {
 			httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
 			return
 		}
@@ -275,10 +286,8 @@ func (o *OIDC) Callback() http.HandlerFunc {
 		}, 43200)
 
 		next := "/"
-		var savedNext nextLocation
-
-		if o.decodeCookie(r, "lore_next", &savedNext) == nil && isLocalPath(savedNext.Path) {
-			next = savedNext.Path
+		if isLocalPath(saved.Next) {
+			next = saved.Next
 		}
 
 		http.Redirect(w, r, next, http.StatusFound)
