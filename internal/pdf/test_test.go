@@ -15,7 +15,9 @@ func TestTestBodyExercisesPDFRenderingFeatures(t *testing.T) {
 
 	body := testBody()
 
-	assert.Contains(t, body, "data:image/svg+xml;base64,")
+	assert.Contains(t, body, "data:image/png;base64,")
+	assert.NotContains(t, body, "{{TEST_IMAGE_BASE64}}")
+	assert.True(t, bytes.HasPrefix(testImage, []byte("\x89PNG\r\n\x1a\n")))
 	assert.Contains(t, body, "$(VAR_NAME)")
 	assert.Contains(t, body, "ä ö ü ß é")
 	assert.Contains(t, body, "日本語")
