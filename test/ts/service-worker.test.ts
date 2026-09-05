@@ -47,10 +47,10 @@ function worker() {
       });
       await finished;
     },
-    request: (clientID = "tab-1") => {
+    request: (clientID = "tab-1", path = "/pages/start") => {
       let response: Promise<Response> | undefined;
       listeners.get("fetch")!({
-        request: new Request("https://wiki.example/pages/start"),
+        request: new Request("https://wiki.example" + path),
         clientId: clientID,
         respondWith: (value: Promise<Response>) => {
           response = value;
@@ -106,4 +106,22 @@ test("login responses and mismatched identities are never cached", async () => {
     await w.request();
   }
   assert.equal(w.stored.size, 0);
+});
+
+test("stable asset URLs refresh online and fall back only when offline", async () => {
+  const w = worker();
+  w.runtime.fetch = async () => new Response("release-one");
+  await w.request("tab-1", "/assets/app.js");
+  w.runtime.fetch = async () => new Response("release-two");
+  assert.equal(
+    await (await w.request("tab-1", "/assets/app.js"))?.text(),
+    "release-two",
+  );
+  w.runtime.fetch = async () => {
+    throw new Error("offline");
+  };
+  assert.equal(
+    await (await w.request("tab-1", "/assets/app.js"))?.text(),
+    "release-two",
+  );
 });

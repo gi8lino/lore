@@ -95,17 +95,22 @@ serviceWorker.addEventListener("fetch", (event: FetchEvent) => {
 
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
-            if (response.ok) {
-              void caches
-                .open(assetCacheName)
-                .then((cache) => cache.put(request, response.clone()));
-            }
-            return response;
-          }),
+      // Use HTTP cache policy online so unversioned assets revalidate between releases.
+      fetch(request).then(
+        async (response) => {
+          if (response.ok && !response.redirected) {
+            const copy = response.clone();
+            await caches
+              .open(assetCacheName)
+              .then((cache) => cache.put(request, copy))
+              .catch(() => undefined);
+          }
+          return response;
+        },
+        async () => {
+          const cache = await caches.open(assetCacheName);
+          return (await cache.match(request)) || Response.error();
+        },
       ),
     );
     return;
