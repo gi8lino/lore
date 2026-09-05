@@ -29,7 +29,7 @@ PRETTIER_VERSION ?= 3.9.6
 BINARY ?= lore
 COMMAND ?= ./cmd
 RUN_ARGS ?=
-SITE_CONFIG ?= lore-site.toml
+SITE_CONFIG ?= docs/lore-site.toml
 BUILD_VERSION ?= dev
 BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
@@ -135,7 +135,7 @@ site-serve: generate web ## Build and serve the documentation site locally.
 		--config "$(SITE_CONFIG)" \
 		--site-url "http://127.0.0.1:$(SITE_PORT)/"
 	@echo "Serving Lore documentation at http://127.0.0.1:$(SITE_PORT)"
-	python3 -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory site
+	python3 -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory docs/site
 
 .PHONY: vet
 vet: generate web ## Run Go static analysis.
