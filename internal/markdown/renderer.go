@@ -230,7 +230,7 @@ func Links(source string) []string {
 
 // Render converts Markdown into sanitized HTML using default rendering options.
 func (r *Renderer) Render(source string) (string, error) {
-	return r.RenderResolvedWithOptions(source, func(target string) string { return Slug(target) }, DefaultOptions())
+	return r.RenderResolvedWithOptions(source, Slug, DefaultOptions())
 }
 
 // RenderResolved converts Markdown into sanitized HTML using default rendering options and a custom wiki-link resolver.
