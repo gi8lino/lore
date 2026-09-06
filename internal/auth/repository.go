@@ -28,7 +28,7 @@ type localRepository interface {
 	CreateInitialLocalAdministrator(context.Context, string, string, string, string) (model.User, error)
 	CreateLocalSession(context.Context, int64, string, time.Time) error
 	DeleteLocalSession(context.Context, string) error
-	LocalCredential(context.Context, string) (model.User, string, error)
+	LocalCredential(context.Context, string) (user model.User, passwordHash string, err error)
 	LocalUserBySession(context.Context, string) (model.User, error)
 	SetLocalCredential(context.Context, int64, string) error
 }

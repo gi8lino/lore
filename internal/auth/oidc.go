@@ -146,152 +146,227 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	return user, err
 }
 
-// Login starts the OIDC authorization-code flow.
+// Login returns the handler that starts the OIDC authorization-code flow.
 func (o *OIDC) Login() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		stateBytes := make([]byte, 24)
-		if _, err := rand.Read(stateBytes); err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-			return
-		}
-
-		state := base64.RawURLEncoding.EncodeToString(stateBytes)
-		verifier := oauth2.GenerateVerifier()
-		next := r.URL.Query().Get("next")
-		if !isLocalPath(next) {
-			next = "/"
-		}
-
-		o.setCookie(w, "lore_state", loginState{
-			State:    state,
-			Verifier: verifier,
-			Next:     next,
-			Expires:  time.Now().Add(10 * time.Minute).Unix(),
-		}, 600)
-
-		http.Redirect(w, r, o.oauth.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(state)), http.StatusFound)
-	}
+	return o.login
 }
 
-// Callback completes the OIDC flow and establishes the browser session.
-func (o *OIDC) Callback() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var saved loginState
-		if o.decodeCookie(r, "lore_state", &saved) != nil || saved.State == "" || saved.Verifier == "" ||
-			saved.State != r.URL.Query().Get("state") || saved.Expires <= time.Now().Unix() {
-			httpresponse.Problem(w, http.StatusBadRequest, "Invalid login state.")
-			return
-		}
-
-		// Consume transient browser state on both successful and failed callbacks.
-		o.setCookie(w, "lore_state", loginState{}, -1)
-		o.setCookie(w, "lore_next", nextLocation{}, -1)
-
-		token, err := o.oauth.Exchange(r.Context(), r.URL.Query().Get("code"), oauth2.VerifierOption(saved.Verifier))
-		if err != nil {
-			httpresponse.Problem(w, http.StatusUnauthorized, "Login failed.")
-			return
-		}
-
-		raw, _ := token.Extra("id_token").(string)
-		idToken, err := o.verifier.Verify(r.Context(), raw)
-		if err != nil {
-			httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
-			return
-		}
-
-		issuer := strings.TrimSpace(idToken.Issuer)
-		subject := strings.TrimSpace(idToken.Subject)
-		if issuer == "" || issuer != o.issuer || subject == "" || idToken.Nonce != saved.State {
-			httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
-			return
-		}
-
-		var identity claims
-		if err := idToken.Claims(&identity); err != nil {
-			httpresponse.Problem(w, http.StatusUnauthorized, "Invalid claims.")
-			return
-		}
-
-		username := strings.TrimSpace(identity.PreferredUsername)
-		if username == "" {
-			httpresponse.Problem(w, http.StatusUnauthorized, "The preferred_username claim is required.")
-			return
-		}
-
-		var groups []string
-
-		if o.groupSync || o.adminGroup != "" {
-			groups, err = oidcGroups(idToken, o.groupClaim)
-			if err != nil {
-				httpresponse.Problem(w, http.StatusUnauthorized, "Invalid group claim.")
-				return
-			}
-		}
-
-		user, err := o.repository.LoginOIDCUser(
-			r.Context(),
-			issuer,
-			subject,
-			username,
-			identity.Email,
-			identity.Name,
-		)
-		if err != nil {
-			switch {
-			case errors.Is(err, model.ErrIdentityApprovalRequired):
-				httpresponse.Problem(w, http.StatusForbidden, "Registration is closed. Your verified identity is awaiting administrator approval.")
-			case errors.Is(err, model.ErrIdentityRejected):
-				httpresponse.Problem(w, http.StatusForbidden, "This identity has been rejected by an administrator.")
-			case errors.Is(err, model.ErrRegistrationDisabled):
-				httpresponse.Problem(w, http.StatusForbidden, "User registration is disabled.")
-			case errors.Is(err, model.ErrAlreadyExists):
-				httpresponse.Problem(w, http.StatusConflict, "The preferred username is already used by another account.")
-			default:
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-			}
-			return
-		}
-		if !user.Enabled {
-			httpresponse.Problem(w, http.StatusForbidden, "This account is disabled.")
-			return
-		}
-
-		if o.groupSync {
-			if err := o.repository.SyncOIDCGroups(
-				r.Context(),
-				user.ID,
-				groups,
-				o.groupMappings,
-				o.groupsAuthoritative,
-			); err != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-				return
-			}
-		}
-
-		if o.adminGroup != "" {
-			externalAdmin := containsGroup(groups, o.adminGroup)
-			if err := o.repository.SetExternalAdminStatus(r.Context(), user.ID, "oidc", externalAdmin); err != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-				return
-			}
-		}
-
-		o.setCookie(w, "lore_session", session{
-			Issuer:  issuer,
-			Subject: subject,
-			Expires: time.Now().Add(12 * time.Hour).Unix(),
-			Version: user.SessionVersion,
-		}, 43200)
-
-		next := "/"
-		if isLocalPath(saved.Next) {
-			next = saved.Next
-		}
-
-		http.Redirect(w, r, next, http.StatusFound)
+// login starts the OIDC authorization-code flow.
+func (o *OIDC) login(w http.ResponseWriter, r *http.Request) {
+	stateBytes := make([]byte, 24)
+	if _, err := rand.Read(stateBytes); err != nil {
+		httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+		return
 	}
+
+	state := base64.RawURLEncoding.EncodeToString(stateBytes)
+	verifier := oauth2.GenerateVerifier()
+	next := r.URL.Query().Get("next")
+	if !isLocalPath(next) {
+		next = "/"
+	}
+
+	o.setCookie(w, "lore_state", loginState{
+		State:    state,
+		Verifier: verifier,
+		Next:     next,
+		Expires:  time.Now().Add(10 * time.Minute).Unix(),
+	}, 600)
+
+	http.Redirect(
+		w,
+		r,
+		o.oauth.AuthCodeURL(
+			state,
+			oauth2.S256ChallengeOption(verifier),
+			oidc.Nonce(state),
+		),
+		http.StatusFound,
+	)
+}
+
+// Callback returns the handler that completes the OIDC flow.
+func (o *OIDC) Callback() http.HandlerFunc {
+	return o.callback
+}
+
+// callback completes the OIDC flow and establishes the browser session.
+func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
+	saved, ok := o.callbackLoginState(r)
+	if !ok {
+		httpresponse.Problem(w, http.StatusBadRequest, "Invalid login state.")
+		return
+	}
+
+	// Consume transient browser state on both successful and failed callbacks.
+	o.setCookie(w, "lore_state", loginState{}, -1)
+	o.setCookie(w, "lore_next", nextLocation{}, -1)
+
+	token, err := o.oauth.Exchange(
+		r.Context(),
+		r.URL.Query().Get("code"),
+		oauth2.VerifierOption(saved.Verifier),
+	)
+	if err != nil {
+		httpresponse.Problem(w, http.StatusUnauthorized, "Login failed.")
+		return
+	}
+
+	raw, _ := token.Extra("id_token").(string)
+
+	idToken, err := o.verifier.Verify(r.Context(), raw)
+	if err != nil {
+		httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
+		return
+	}
+
+	issuer := strings.TrimSpace(idToken.Issuer)
+	subject := strings.TrimSpace(idToken.Subject)
+	if issuer == "" || issuer != o.issuer || subject == "" || idToken.Nonce != saved.State {
+		httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
+		return
+	}
+
+	var identity claims
+	if err := idToken.Claims(&identity); err != nil {
+		httpresponse.Problem(w, http.StatusUnauthorized, "Invalid claims.")
+		return
+	}
+
+	username := strings.TrimSpace(identity.PreferredUsername)
+	if username == "" {
+		httpresponse.Problem(w, http.StatusUnauthorized, "The preferred_username claim is required.")
+		return
+	}
+
+	var groups []string
+	if o.groupSync || o.adminGroup != "" {
+		groups, err = oidcGroups(idToken, o.groupClaim)
+		if err != nil {
+			httpresponse.Problem(w, http.StatusUnauthorized, "Invalid group claim.")
+			return
+		}
+	}
+
+	user, err := o.repository.LoginOIDCUser(
+		r.Context(),
+		issuer,
+		subject,
+		username,
+		identity.Email,
+		identity.Name,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrIdentityApprovalRequired):
+			httpresponse.Problem(
+				w,
+				http.StatusForbidden,
+				"Registration is closed. Your verified identity is awaiting administrator approval.",
+			)
+		case errors.Is(err, model.ErrIdentityRejected):
+			httpresponse.Problem(
+				w,
+				http.StatusForbidden,
+				"This identity has been rejected by an administrator.",
+			)
+		case errors.Is(err, model.ErrRegistrationDisabled):
+			httpresponse.Problem(
+				w,
+				http.StatusForbidden,
+				"User registration is disabled.",
+			)
+		case errors.Is(err, model.ErrAlreadyExists):
+			httpresponse.Problem(
+				w,
+				http.StatusConflict,
+				"The preferred username is already used by another account.",
+			)
+		default:
+			httpresponse.Problem(
+				w,
+				http.StatusInternalServerError,
+				"The request could not be processed.",
+			)
+		}
+
+		return
+	}
+
+	if !user.Enabled {
+		httpresponse.Problem(w, http.StatusForbidden, "This account is disabled.")
+		return
+	}
+
+	if o.groupSync {
+		if err := o.repository.SyncOIDCGroups(
+			r.Context(),
+			user.ID,
+			groups,
+			o.groupMappings,
+			o.groupsAuthoritative,
+		); err != nil {
+			httpresponse.Problem(
+				w,
+				http.StatusInternalServerError,
+				"The request could not be processed.",
+			)
+			return
+		}
+	}
+
+	if o.adminGroup != "" {
+		externalAdmin := containsGroup(groups, o.adminGroup)
+
+		if err := o.repository.SetExternalAdminStatus(
+			r.Context(),
+			user.ID,
+			"oidc",
+			externalAdmin,
+		); err != nil {
+			httpresponse.Problem(
+				w,
+				http.StatusInternalServerError,
+				"The request could not be processed.",
+			)
+			return
+		}
+	}
+
+	o.setCookie(w, "lore_session", session{
+		Issuer:  issuer,
+		Subject: subject,
+		Expires: time.Now().Add(12 * time.Hour).Unix(),
+		Version: user.SessionVersion,
+	}, 43200)
+
+	next := "/"
+	if isLocalPath(saved.Next) {
+		next = saved.Next
+	}
+
+	http.Redirect(w, r, next, http.StatusFound)
+}
+
+// callbackLoginState reads and validates the OIDC login state bound to a callback.
+func (o *OIDC) callbackLoginState(r *http.Request) (state loginState, valid bool) {
+	if err := o.decodeCookie(r, "lore_state", &state); err != nil {
+		return loginState{}, false
+	}
+
+	if state.State == "" || state.Verifier == "" {
+		return loginState{}, false
+	}
+
+	if state.State != r.URL.Query().Get("state") {
+		return loginState{}, false
+	}
+
+	if state.Expires <= time.Now().Unix() {
+		return loginState{}, false
+	}
+
+	return state, true
 }
 
 // containsGroup reports whether the normalized external values contain the configured administrator group.
@@ -332,7 +407,6 @@ func oidcGroupValues(raw json.RawMessage) ([]string, error) {
 	}
 
 	var groups []string
-
 	if err := json.Unmarshal(raw, &groups); err != nil {
 		var group string
 		if stringErr := json.Unmarshal(raw, &group); stringErr != nil {
@@ -373,6 +447,7 @@ func Logout(local *Local) http.HandlerFunc {
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		})
+
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
 }
@@ -388,8 +463,10 @@ func LoginUnavailable() http.HandlerFunc {
 func (o *OIDC) setCookie(w http.ResponseWriter, name string, value any, maxAge int) {
 	data, _ := json.Marshal(value)
 	payload := base64.RawURLEncoding.EncodeToString(data)
+
 	mac := hmac.New(sha256.New, o.secret)
 	_, _ = mac.Write([]byte(payload))
+
 	signed := payload + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 
 	http.SetCookie(w, &http.Cookie{
@@ -426,6 +503,7 @@ func (o *OIDC) decodeCookie(r *http.Request, name string, out any) error {
 
 	mac := hmac.New(sha256.New, o.secret)
 	_, _ = mac.Write([]byte(payload))
+
 	if !hmac.Equal(got, mac.Sum(nil)) {
 		return errors.New("invalid signature")
 	}
@@ -434,6 +512,7 @@ func (o *OIDC) decodeCookie(r *http.Request, name string, out any) error {
 	if err != nil {
 		return err
 	}
+
 	if err := json.Unmarshal(data, out); err != nil {
 		return fmt.Errorf("decode cookie: %w", err)
 	}

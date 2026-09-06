@@ -123,16 +123,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Value()
 	flags.StringVar(&cfg.SessionSecret, "session-secret", "", "Secret used to sign OIDC login sessions").
 		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
-		Validate(func(value string) error {
-			if value == "" {
-				return nil
-			}
-			if len(value) < 32 {
-				return fmt.Errorf("session secret must be at least 32 characters")
-			}
-
-			return nil
-		}).
+		Validate(validateSessionSecret).
 		Value()
 
 	// Logging
@@ -160,4 +151,16 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 
 		return resolved
 	}
+}
+
+// validateSessionSecret accepts an unset secret and enforces the OIDC signing minimum otherwise.
+func validateSessionSecret(value string) error {
+	if value == "" {
+		return nil
+	}
+	if len(value) < 32 {
+		return fmt.Errorf("session secret must be at least 32 characters")
+	}
+
+	return nil
 }

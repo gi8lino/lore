@@ -40,13 +40,13 @@ func (a *Bearer) Authenticate(r *http.Request) (model.User, error) {
 }
 
 // parseBearerValue validates an explicit Authorization header and returns its bearer token.
-func parseBearerValue(value string) (string, bool) {
+func parseBearerValue(value string) (token string, ok bool) {
 	fields := strings.Fields(value)
 	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") {
 		return "", false
 	}
 
-	token := strings.TrimSpace(fields[1])
+	token = strings.TrimSpace(fields[1])
 
 	return token, token != ""
 }

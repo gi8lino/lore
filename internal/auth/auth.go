@@ -27,8 +27,8 @@ type Authenticator interface {
 type contextKey struct{}
 
 // User returns the authenticated user stored in the request context.
-func User(r *http.Request) (model.User, bool) {
-	user, ok := r.Context().Value(contextKey{}).(model.User)
+func User(r *http.Request) (user model.User, ok bool) {
+	user, ok = r.Context().Value(contextKey{}).(model.User)
 	return user, ok
 }
 

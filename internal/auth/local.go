@@ -29,7 +29,10 @@ type Local struct {
 
 // NewLocal creates the local-login authenticator used by setup and recovery login.
 func NewLocal(repository localRepository, publicURL string) *Local {
-	return &Local{repository: repository, publicURL: strings.TrimSpace(publicURL)}
+	return &Local{
+		repository: repository,
+		publicURL:  strings.TrimSpace(publicURL),
+	}
 }
 
 // Authenticate resolves a valid local session cookie.
@@ -39,7 +42,10 @@ func (l *Local) Authenticate(r *http.Request) (model.User, error) {
 		return model.User{}, ErrUnauthenticated
 	}
 
-	user, err := l.repository.LocalUserBySession(r.Context(), localSessionHash(cookie.Value))
+	user, err := l.repository.LocalUserBySession(
+		r.Context(),
+		localSessionHash(cookie.Value),
+	)
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, ErrUnauthenticated
 	}
@@ -48,23 +54,39 @@ func (l *Local) Authenticate(r *http.Request) (model.User, error) {
 }
 
 // SignIn verifies local credentials and creates a new browser session.
-func (l *Local) SignIn(ctx context.Context, username, password string) (model.User, string, error) {
-	user, passwordHash, err := l.repository.LocalCredential(ctx, strings.TrimSpace(username))
+func (l *Local) SignIn(
+	ctx context.Context,
+	username, password string,
+) (user model.User, token string, err error) {
+	user, passwordHash, err := l.repository.LocalCredential(
+		ctx,
+		strings.TrimSpace(username),
+	)
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, "", ErrInvalidCredentials
 	}
 	if err != nil {
 		return model.User{}, "", err
 	}
-	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)) != nil {
+
+	if bcrypt.CompareHashAndPassword(
+		[]byte(passwordHash),
+		[]byte(password),
+	) != nil {
 		return model.User{}, "", ErrInvalidCredentials
 	}
 
-	token, err := newLocalSessionToken()
+	token, err = newLocalSessionToken()
 	if err != nil {
 		return model.User{}, "", err
 	}
-	if err := l.repository.CreateLocalSession(ctx, user.ID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
+
+	if err := l.repository.CreateLocalSession(
+		ctx,
+		user.ID,
+		localSessionHash(token),
+		time.Now().Add(localSessionTTL),
+	); err != nil {
 		return model.User{}, "", err
 	}
 
@@ -76,15 +98,25 @@ func (l *Local) ChangePassword(
 	ctx context.Context,
 	userID int64,
 	username, currentPassword, newPassword string,
-) (string, error) {
-	user, passwordHash, err := l.repository.LocalCredential(ctx, strings.TrimSpace(username))
-	if errors.Is(err, model.ErrNotFound) || (err == nil && user.ID != userID) {
+) (token string, err error) {
+	user, passwordHash, err := l.repository.LocalCredential(
+		ctx,
+		strings.TrimSpace(username),
+	)
+	if errors.Is(err, model.ErrNotFound) {
 		return "", ErrInvalidCredentials
 	}
 	if err != nil {
 		return "", err
 	}
-	if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(currentPassword)) != nil {
+	if user.ID != userID {
+		return "", ErrInvalidCredentials
+	}
+
+	if bcrypt.CompareHashAndPassword(
+		[]byte(passwordHash),
+		[]byte(currentPassword),
+	) != nil {
 		return "", ErrInvalidCredentials
 	}
 
@@ -92,15 +124,22 @@ func (l *Local) ChangePassword(
 	if err != nil {
 		return "", err
 	}
+
 	if err := l.repository.SetLocalCredential(ctx, userID, newHash); err != nil {
 		return "", err
 	}
 
-	token, err := newLocalSessionToken()
+	token, err = newLocalSessionToken()
 	if err != nil {
 		return "", err
 	}
-	if err := l.repository.CreateLocalSession(ctx, userID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
+
+	if err := l.repository.CreateLocalSession(
+		ctx,
+		userID,
+		localSessionHash(token),
+		time.Now().Add(localSessionTTL),
+	); err != nil {
 		return "", err
 	}
 
@@ -111,22 +150,34 @@ func (l *Local) ChangePassword(
 func (l *Local) Setup(
 	ctx context.Context,
 	username, email, displayName, password string,
-) (model.User, string, error) {
+) (user model.User, token string, err error) {
 	passwordHash, err := localPasswordHash(password)
 	if err != nil {
 		return model.User{}, "", err
 	}
 
-	user, err := l.repository.CreateInitialLocalAdministrator(ctx, username, email, displayName, passwordHash)
+	user, err = l.repository.CreateInitialLocalAdministrator(
+		ctx,
+		username,
+		email,
+		displayName,
+		passwordHash,
+	)
 	if err != nil {
 		return model.User{}, "", err
 	}
 
-	token, err := newLocalSessionToken()
+	token, err = newLocalSessionToken()
 	if err != nil {
 		return model.User{}, "", err
 	}
-	if err := l.repository.CreateLocalSession(ctx, user.ID, localSessionHash(token), time.Now().Add(localSessionTTL)); err != nil {
+
+	if err := l.repository.CreateLocalSession(
+		ctx,
+		user.ID,
+		localSessionHash(token),
+		time.Now().Add(localSessionTTL),
+	); err != nil {
 		return model.User{}, "", err
 	}
 
@@ -159,8 +210,12 @@ func (l *Local) WriteSessionCookie(w http.ResponseWriter, token string) {
 // ClearSession revokes the current local session and removes its cookie.
 func (l *Local) ClearSession(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(localSessionCookie); err == nil && cookie.Value != "" {
-		_ = l.repository.DeleteLocalSession(r.Context(), localSessionHash(cookie.Value))
+		_ = l.repository.DeleteLocalSession(
+			r.Context(),
+			localSessionHash(cookie.Value),
+		)
 	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     localSessionCookie,
 		Value:    "",
@@ -183,7 +238,10 @@ func localPasswordHash(password string) (string, error) {
 		return "", errors.New("local password must be at least 12 characters")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost,
+	)
 
 	return string(hash), err
 }
@@ -201,5 +259,6 @@ func newLocalSessionToken() (string, error) {
 // localSessionHash returns the at-rest representation of a local session token.
 func localSessionHash(token string) string {
 	hash := sha256.Sum256([]byte(token))
+
 	return hex.EncodeToString(hash[:])
 }
