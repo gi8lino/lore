@@ -6,6 +6,7 @@ import {
   isAbortError,
 } from "../../core/async.ts";
 import { showNotice } from "../../core/dialogs.ts";
+import { requiredElement } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
 
@@ -22,8 +23,7 @@ function isGroupMember(value: unknown): value is GroupMember {
     typeof value.id === "number" &&
     typeof value.username === "string" &&
     (value.email === undefined || typeof value.email === "string") &&
-    (value.display_name === undefined ||
-      typeof value.display_name === "string")
+    (value.display_name === undefined || typeof value.display_name === "string")
   );
 }
 
@@ -33,27 +33,25 @@ function groupMembers(value: unknown): GroupMember[] {
 
 // Wires group member picker behavior.
 export function setupGroupMemberPicker(card: HTMLElement): void {
-  const input = card.querySelector<HTMLInputElement>(
-    "[data-group-person-input]",
-  );
-  const results = card.querySelector<HTMLElement>(
-    "[data-group-person-results]",
-  );
-  const memberList = card.querySelector<HTMLElement>(
-    "[data-group-member-list]",
-  );
-  const count = card.querySelector<HTMLElement>("[data-group-member-count]");
-  const groupID = card.dataset.groupId;
   const membersURL = card.dataset.membersUrl;
   const usersURL = card.dataset.usersUrl;
-  if (!input || !results || !memberList || !groupID || !membersURL || !usersURL)
-    return;
+  if (!membersURL || !usersURL) return;
 
+  const personInput = requiredElement<HTMLInputElement>(
+    card,
+    "[data-group-person-input]",
+  );
+  const resultList = requiredElement<HTMLElement>(
+    card,
+    "[data-group-person-results]",
+  );
+  const renderedMembers = requiredElement<HTMLElement>(
+    card,
+    "[data-group-member-list]",
+  );
+  const count = requiredElement<HTMLElement>(card, "[data-group-member-count]");
   const groupMembersURL = membersURL;
   const userSearchURL = usersURL;
-  const personInput = input;
-  const resultList = results;
-  const renderedMembers = memberList;
   let members: GroupMember[] = [];
   const searchRequests = createLatestRequest();
   const searchDebouncer = createDebouncer(() => void searchPeople(), 140);
@@ -118,7 +116,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
       chip.append(label, remove);
       renderedMembers.append(chip);
     }
-    if (count) count.textContent = String(members.length);
+    count.textContent = String(members.length);
   }
 
   // Loads members.

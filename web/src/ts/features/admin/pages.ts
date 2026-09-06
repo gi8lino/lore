@@ -1,6 +1,7 @@
 // Administrator bulk page operations.
 
 import { requestConfirmation } from "../../core/dialogs.ts";
+import { requiredElement } from "../../core/dom.ts";
 
 // Wires bulk page selection and destructive-action confirmation.
 export function initAdminPages(): void {
@@ -10,40 +11,39 @@ export function initAdminPages(): void {
   const pages = [
     ...bulk.querySelectorAll<HTMLInputElement>("[data-bulk-page]"),
   ];
-  const selectAll = bulk.querySelector<HTMLInputElement>(
+  const selectAll = requiredElement<HTMLInputElement>(
+    bulk,
     "[data-bulk-select-all]",
   );
-  const count = bulk.querySelector<HTMLElement>("[data-bulk-count]");
-  const action = bulk.querySelector<HTMLSelectElement>("[data-bulk-action]");
-  const submit = bulk.querySelector<HTMLButtonElement>("[data-bulk-submit]");
+  const count = requiredElement<HTMLElement>(bulk, "[data-bulk-count]");
+  const action = requiredElement<HTMLSelectElement>(bulk, "[data-bulk-action]");
+  const submit = requiredElement<HTMLButtonElement>(bulk, "[data-bulk-submit]");
   const fields = [...bulk.querySelectorAll<HTMLElement>("[data-bulk-field]")];
 
   // Refreshes the active administration page state.
   const refresh = (): void => {
     const selected = pages.filter((input) => input.checked).length;
 
-    if (count) count.textContent = `${selected} selected`;
-    if (selectAll) {
-      selectAll.checked = selected > 0 && selected === pages.length;
-      selectAll.indeterminate = selected > 0 && selected < pages.length;
-    }
-    if (submit) submit.disabled = !selected || !action?.value;
+    count.textContent = `${selected} selected`;
+    selectAll.checked = selected > 0 && selected === pages.length;
+    selectAll.indeterminate = selected > 0 && selected < pages.length;
+    submit.disabled = !selected || !action.value;
 
     fields.forEach((field) => {
-      field.hidden = field.dataset.bulkField !== action?.value;
+      field.hidden = field.dataset.bulkField !== action.value;
     });
   };
 
   pages.forEach((input) => input.addEventListener("change", refresh));
-  selectAll?.addEventListener("change", () => {
+  selectAll.addEventListener("change", () => {
     pages.forEach((input) => {
       input.checked = selectAll.checked;
     });
     refresh();
   });
-  action?.addEventListener("change", refresh);
+  action.addEventListener("change", refresh);
   bulk.addEventListener("submit", async (event: SubmitEvent) => {
-    if (bulk.dataset.confirming === "true" || action?.value !== "delete") {
+    if (bulk.dataset.confirming === "true" || action.value !== "delete") {
       return;
     }
 

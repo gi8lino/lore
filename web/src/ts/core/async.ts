@@ -32,7 +32,10 @@ export interface Debouncer {
 }
 
 // Creates a cancellable trailing-edge debounce around one callback.
-export function createDebouncer(callback: () => void, delay: number): Debouncer {
+export function createDebouncer(
+  callback: () => void,
+  delay: number,
+): Debouncer {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   return {

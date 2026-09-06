@@ -1,10 +1,7 @@
 // Reusable Lucide icon picker behavior.
 
-import {
-  createDebouncer,
-  createLatestRequest,
-  isAbortError,
-} from "./async.ts";
+import { createDebouncer, createLatestRequest, isAbortError } from "./async.ts";
+import { requiredElement } from "./dom.ts";
 import { isRecord } from "./guards.ts";
 import { requestJSON } from "./http.ts";
 
@@ -38,19 +35,22 @@ function isIconPage(value: unknown): value is IconPage {
 }
 
 export function setupIconPicker(dialog: HTMLDialogElement): void {
-  const search = dialog.querySelector<HTMLInputElement>(
+  const searchInput = requiredElement<HTMLInputElement>(
+    dialog,
     "[data-icon-picker-search]",
   );
-  const grid = dialog.querySelector<HTMLElement>("[data-icon-picker-grid]");
-  const close = dialog.querySelector<HTMLButtonElement>(
+  const iconGrid = requiredElement<HTMLElement>(
+    dialog,
+    "[data-icon-picker-grid]",
+  );
+  const close = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-icon-picker-close]",
   );
-  const empty = dialog.querySelector<HTMLElement>("[data-icon-picker-empty]");
-  if (!search || !grid || !close || !empty) return;
-
-  const searchInput = search;
-  const iconGrid = grid;
-  const emptyState = empty;
+  const emptyState = requiredElement<HTMLElement>(
+    dialog,
+    "[data-icon-picker-empty]",
+  );
 
   const iconsURL = dialog.dataset.iconsUrl || "/api/icons";
   const optionRequests = createLatestRequest();

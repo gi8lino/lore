@@ -1,5 +1,6 @@
 // Administrator authentication, rendering, and PDF configuration behavior.
 
+import { requiredElement } from "../../core/dom.ts";
 import { errorMessage, responseProblem } from "../../core/http.ts";
 import { renderMermaid } from "../markdown.ts";
 
@@ -136,35 +137,37 @@ function setupPDFSettings(): void {
   if (!form) return;
 
   const endpoint = form.elements.namedItem("pdf_url");
-  const button = form.querySelector<HTMLButtonElement>("[data-pdf-test]");
-  const status = form.querySelector<HTMLElement>("[data-pdf-test-status]");
-  const dialog = document.querySelector<HTMLDialogElement>(
-    "[data-pdf-test-dialog]",
-  );
-  if (!(endpoint instanceof HTMLInputElement) || !button || !status || !dialog) {
-    return;
+  if (!(endpoint instanceof HTMLInputElement)) {
+    throw new Error('Missing required form control: [name="pdf_url"]');
   }
 
-  const preview = dialog.querySelector<HTMLIFrameElement>(
+  const button = requiredElement<HTMLButtonElement>(form, "[data-pdf-test]");
+  const status = requiredElement<HTMLElement>(form, "[data-pdf-test-status]");
+  const dialog = requiredElement<HTMLDialogElement>(
+    document,
+    "[data-pdf-test-dialog]",
+  );
+  const preview = requiredElement<HTMLIFrameElement>(
+    dialog,
     "[data-pdf-test-preview]",
   );
-  const openPDF = dialog.querySelector<HTMLAnchorElement>(
+  const openPDF = requiredElement<HTMLAnchorElement>(
+    dialog,
     "[data-pdf-test-open]",
   );
-  const pages = dialog.querySelector<HTMLElement>("[data-pdf-test-pages]");
-  const pagesCheck = dialog.querySelector<HTMLElement>(
+  const pages = requiredElement<HTMLElement>(dialog, "[data-pdf-test-pages]");
+  const pagesCheck = requiredElement<HTMLElement>(
+    dialog,
     "[data-pdf-test-pages-check]",
   );
-  const pagesMark = pagesCheck?.querySelector<HTMLElement>(
+  const pagesMark = requiredElement<HTMLElement>(
+    pagesCheck,
     ".pdf-test-check-mark",
   );
-  const size = dialog.querySelector<HTMLElement>("[data-pdf-test-size]");
+  const size = requiredElement<HTMLElement>(dialog, "[data-pdf-test-size]");
   const closeButtons = [
     ...dialog.querySelectorAll<HTMLButtonElement>("[data-pdf-test-close]"),
   ];
-  if (!preview || !openPDF || !pages || !pagesCheck || !pagesMark || !size) {
-    return;
-  }
 
   const controls: PDFTestControls = {
     endpoint,
@@ -193,11 +196,10 @@ function setupAuthenticationSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-auth-settings]");
   if (!form) return;
 
-  const mode = form.querySelector<HTMLSelectElement>("[data-auth-mode]");
+  const mode = requiredElement<HTMLSelectElement>(form, "[data-auth-mode]");
   const sections = [
     ...form.querySelectorAll<HTMLElement>("[data-auth-fields]"),
   ];
-  if (!mode) return;
 
   const refresh = (): void => {
     sections.forEach((section) => {
@@ -237,9 +239,7 @@ function setupAuthenticationSettings(): void {
 
   addMapping?.addEventListener("click", () => {
     const row = mappingTemplate?.content.firstElementChild?.cloneNode(true) as
-      | HTMLElement
-      | null
-      | undefined;
+      HTMLElement | null | undefined;
     if (!row || !mappingList) return;
 
     mappingList.append(row);
