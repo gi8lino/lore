@@ -22,10 +22,7 @@ import (
 	"github.com/gi8lino/lore/internal/service"
 )
 
-var (
-	mediaReference         = regexp.MustCompile(`/media/([0-9]+)/([^\s)"']+)`)
-	renderedMediaReference = regexp.MustCompile(`/media/([0-9]+)/[^"'\s>]+`)
-)
+var renderedMediaReference = regexp.MustCompile(`/media/([0-9]+)/[^"'\s>]+`)
 
 // ExportPageMarkdown exports one page as Markdown or as a ZIP when referenced images must be included.
 func ExportPageMarkdown(
@@ -397,72 +394,116 @@ func exportedMarkdown(
 ) (string, []int64, error) {
 	seen := map[int64]bool{}
 	var ids []int64
-	var exportErr error
-
-	result := mediaReference.ReplaceAllStringFunc(source, func(reference string) string {
-		if exportErr != nil {
-			return reference
-		}
-
-		match := mediaReference.FindStringSubmatch(reference)
-		if len(match) != 3 {
-			return reference
-		}
-
-		id, err := strconv.ParseInt(match[1], 10, 64)
-		if err != nil {
-			return reference
-		}
-
-		image, ok := imageCache[id]
-
+	var result strings.Builder
+	for {
+		reference, ok := nextMediaReference(source)
 		if !ok {
-			image, err = mediaUseCases.ImageContent(ctx, id)
-			if err != nil {
-				exportErr = err
-				return reference
-			}
-
-			imageCache[id] = image
+			result.WriteString(source)
+			break
 		}
-		if !seen[id] {
-			seen[id] = true
-			ids = append(ids, id)
-		}
-
-		target := filepath.FromSlash(path.Join("media", strconv.FormatInt(id, 10), path.Base(image.Filename)))
-		from := filepath.FromSlash(path.Dir(markdownPath))
-		relative, err := filepath.Rel(from, target)
+		result.WriteString(source[:reference.start])
+		replacement, err := exportedImagePath(ctx, mediaUseCases, markdownPath, reference.id, imageCache)
 		if err != nil {
-			exportErr = err
-			return reference
+			return "", nil, err
 		}
-
-		return filepath.ToSlash(relative)
-	})
-	if exportErr != nil {
-		return "", nil, exportErr
+		result.WriteString(replacement)
+		if !seen[reference.id] {
+			seen[reference.id] = true
+			ids = append(ids, reference.id)
+		}
+		source = source[reference.end:]
 	}
+	return result.String(), ids, nil
+}
 
-	return result, ids, nil
+// exportedImagePath resolves and caches an image and returns its archive-relative path.
+func exportedImagePath(ctx context.Context, mediaUseCases imageContentService, markdownPath string, id int64, cache map[int64]service.ImageData) (string, error) {
+	image, ok := cache[id]
+	if !ok {
+		var err error
+		image, err = mediaUseCases.ImageContent(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		cache[id] = image
+	}
+	target := filepath.FromSlash(path.Join("media", strconv.FormatInt(id, 10), path.Base(image.Filename)))
+	from := filepath.FromSlash(path.Dir(markdownPath))
+	relative, err := filepath.Rel(from, target)
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(relative), nil
+}
+
+// mediaReference identifies a stored image reference within Markdown source.
+type mediaReference struct {
+	start, end int
+	id         int64
+}
+
+// nextMediaReference scans the same bare /media/ID/filename syntax used by exports.
+func nextMediaReference(source string) (mediaReference, bool) {
+	for offset := 0; offset < len(source); {
+		index := strings.Index(source[offset:], "/media/")
+		if index < 0 {
+			break
+		}
+		start := offset + index
+		offset = start + len("/media/")
+		end := offset
+		for end < len(source) && source[end] >= '0' && source[end] <= '9' {
+			end++
+		}
+		if end == offset || end >= len(source) || source[end] != '/' {
+			continue
+		}
+		end++
+		for end < len(source) && !strings.ContainsRune(" \t\n\r\f)\"'", rune(source[end])) {
+			end++
+		}
+		id, ok := mediaImageID(source[start:end])
+		if !ok {
+			continue
+		}
+		return mediaReference{start: start, end: end, id: id}, true
+	}
+	return mediaReference{}, false
+}
+
+// mediaImageID validates a local stored-image path and extracts its numeric ID.
+func mediaImageID(value string) (int64, bool) {
+	if !strings.HasPrefix(value, "/media/") {
+		return 0, false
+	}
+	rawID, filename, ok := strings.Cut(strings.TrimPrefix(value, "/media/"), "/")
+	if !ok || rawID == "" || filename == "" {
+		return 0, false
+	}
+	for _, digit := range rawID {
+		if digit < '0' || digit > '9' {
+			return 0, false
+		}
+	}
+	id, err := strconv.ParseInt(rawID, 10, 64)
+	return id, err == nil
 }
 
 // referencedImageIDs returns unique image identifiers referenced from Markdown source.
 func referencedImageIDs(source string) []int64 {
 	seen := map[int64]bool{}
 	var ids []int64
-
-	for _, match := range mediaReference.FindAllStringSubmatch(source, -1) {
-		id, err := strconv.ParseInt(match[1], 10, 64)
-		if err != nil || seen[id] {
-			continue
+	for {
+		reference, ok := nextMediaReference(source)
+		if !ok {
+			return ids
 		}
-
-		seen[id] = true
-		ids = append(ids, id)
+		if !seen[reference.id] {
+			seen[reference.id] = true
+			ids = append(ids, reference.id)
+		}
+		source = source[reference.end:]
 	}
-
-	return ids
 }
 
 // inlineRenderedMedia replaces authenticated media URLs with data URLs for standalone PDF rendering.
