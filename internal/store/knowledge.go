@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -290,23 +289,9 @@ WHERE id=$1 AND user_id=$2`, id, userID)
 	return err
 }
 
-var mentionPattern = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])@([A-Za-z0-9_.-]+)`)
-
 // NotifyMentions creates notifications for @username references in text.
 func (s *Store) NotifyMentions(ctx context.Context, actorID int64, text, title, url string) error {
-	seen := map[string]bool{}
-
-	for _, match := range mentionPattern.FindAllStringSubmatch(text, -1) {
-		if len(match) != 2 {
-			continue
-		}
-
-		username := strings.ToLower(match[1])
-		if seen[username] {
-			continue
-		}
-
-		seen[username] = true
+	for _, username := range mentionedUsernames(text) {
 		var userID int64
 		err := s.pool.QueryRow(ctx, `
 SELECT id
