@@ -35,6 +35,7 @@ var staticBrowserAssets = []string{
 	"lore-mark.svg",
 	"lore.svg",
 	"js/static.js",
+	"js/theme-init.js",
 	"js/core/clipboard.js",
 	"js/core/theme.js",
 	"js/features/markdown.js",
