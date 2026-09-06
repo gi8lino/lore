@@ -19,7 +19,6 @@ import (
 type emptyContractServices struct {
 	navigationService
 	knowledgeSnippetReader
-	pageAliasService
 	groupReader
 	userDirectoryService
 	imageService
