@@ -3,7 +3,8 @@ package store
 import (
 	"context"
 	"errors"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,13 +48,7 @@ WHERE page_id=$1`, pageID); err != nil {
 		return err
 	}
 
-	keys := make([]string, 0, len(properties))
-
-	for key := range properties {
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(properties))
 
 	for _, key := range keys {
 		key = strings.TrimSpace(key)

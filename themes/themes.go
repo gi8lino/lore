@@ -1,12 +1,13 @@
 package themes
 
 import (
+	"cmp"
 	"embed"
 	"fmt"
 	"io/fs"
 	"os"
 	"path"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -171,9 +172,7 @@ func merge(base, overlays []Theme) []Theme {
 
 // sortThemes sorts themes case-insensitively by their filename-derived title.
 func sortThemes(available []Theme) {
-	sort.Slice(available, func(i, j int) bool {
-		return strings.ToLower(available[i].Title) < strings.ToLower(available[j].Title)
-	})
+	slices.SortFunc(available, compareThemes)
 }
 
 // validate ensures a theme provides every required semantic color.
@@ -212,4 +211,9 @@ func validate(theme Theme) error {
 	}
 
 	return nil
+}
+
+// compareThemes compares filename-derived titles case-insensitively.
+func compareThemes(left, right Theme) int {
+	return cmp.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
 }

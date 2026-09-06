@@ -2,6 +2,7 @@ package site
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"embed"
 	"encoding/json"
@@ -14,7 +15,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -281,9 +281,7 @@ func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
 		})
 	}
 
-	sort.Slice(searchIndex, func(i, j int) bool {
-		return strings.ToLower(searchIndex[i].Title) < strings.ToLower(searchIndex[j].Title)
-	})
+	slices.SortFunc(searchIndex, compareSearchEntries)
 	if err := writeJSON(filepath.Join(config.OutputDir, "search-index.json"), searchIndex); err != nil {
 		return Result{}, err
 	}
@@ -933,4 +931,9 @@ func writeSitemap(config Config, pages []sourcePage) error {
 
 	output.WriteString("</urlset>\n")
 	return os.WriteFile(filepath.Join(config.OutputDir, "sitemap.xml"), []byte(output.String()), 0o644)
+}
+
+// compareSearchEntries orders search results by case-insensitive page title.
+func compareSearchEntries(left, right searchEntry) int {
+	return cmp.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
 }

@@ -1,7 +1,8 @@
 package navigation
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 )
 
@@ -178,14 +179,19 @@ func nodes(parent *branch, depth int, activeSlug string, expanded map[string]boo
 		})
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		leftFolder := len(result[i].Children) > 0
-		rightFolder := len(result[j].Children) > 0
-		if leftFolder != rightFolder {
-			return leftFolder
-		}
-
-		return strings.ToLower(result[i].Title) < strings.ToLower(result[j].Title)
-	})
+	slices.SortFunc(result, compareNodes)
 	return result
+}
+
+// compareNodes orders folders before leaves, then compares titles case-insensitively.
+func compareNodes(left, right Node) int {
+	leftFolder, rightFolder := len(left.Children) > 0, len(right.Children) > 0
+	switch {
+	case leftFolder && !rightFolder:
+		return -1
+	case !leftFolder && rightFolder:
+		return 1
+	default:
+		return cmp.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
+	}
 }

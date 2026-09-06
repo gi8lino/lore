@@ -1,11 +1,12 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"path"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -472,11 +473,9 @@ func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, act
 		return newValidationError("target", "A target path is required.")
 	}
 
-	orderedSlugs := append([]string(nil), slugs...)
+	orderedSlugs := slices.Clone(slugs)
 
-	sort.Slice(orderedSlugs, func(i, j int) bool {
-		return len(orderedSlugs[i]) > len(orderedSlugs[j])
-	})
+	slices.SortFunc(orderedSlugs, compareMoveSlugs)
 
 	for _, slug := range orderedSlugs {
 		destination := strings.Trim(target, "/") + "/" + path.Base(slug)
@@ -507,4 +506,9 @@ func validContentLanguage(value string) bool {
 	default:
 		return false
 	}
+}
+
+// compareMoveSlugs puts longer paths first so descendants move before ancestors.
+func compareMoveSlugs(left, right string) int {
+	return cmp.Compare(len(right), len(left))
 }
