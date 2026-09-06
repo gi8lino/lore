@@ -95,10 +95,8 @@ WHERE singleton=true`); err != nil {
 }
 
 // LocalCredential returns one local-login account and its password hash.
-func (s *Store) LocalCredential(ctx context.Context, username string) (User, string, error) {
-	var user User
-	var passwordHash string
-	err := s.pool.QueryRow(ctx, `
+func (s *Store) LocalCredential(ctx context.Context, username string) (user User, passwordHash string, err error) {
+	err = s.pool.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version,c.password_hash
 FROM local_credentials c
 JOIN users u ON u.id=c.user_id

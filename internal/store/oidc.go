@@ -554,9 +554,8 @@ WHERE id=$1`, pendingID, status)
 }
 
 // oidcUserForUpdate finds and locks an account bound to one OIDC identity.
-func oidcUserForUpdate(ctx context.Context, tx pgx.Tx, issuer, subject string) (User, bool, error) {
-	var user User
-	err := tx.QueryRow(ctx, `
+func oidcUserForUpdate(ctx context.Context, tx pgx.Tx, issuer, subject string) (user User, found bool, err error) {
+	err = tx.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version
 FROM oidc_identities oi
 JOIN users u ON u.id=oi.user_id
@@ -565,8 +564,11 @@ FOR UPDATE OF u`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil
 	}
+	if err != nil {
+		return User{}, false, err
+	}
 
-	return user, err == nil, err
+	return user, true, nil
 }
 
 // pendingOIDCIdentityForUpdate returns and locks one administrator-managed identity request.

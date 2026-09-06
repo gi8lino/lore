@@ -24,55 +24,51 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 		}
 	}
 
-	args := []any{}
+	args := queryArgs{}
 	where := []string{"p.deleted_at IS NULL"}
-	add := func(value any) string {
-		args = append(args, value)
-		return fmt.Sprintf("$%d", len(args))
-	}
 
 	text := strings.Join(textTerms, " ")
 	rank := "0::real"
 
 	if text != "" {
-		p := add(text)
+		p := args.add(text)
 		where = append(where, "p.search_vector @@ websearch_to_tsquery('english', "+p+")")
 		rank = "ts_rank(p.search_vector, websearch_to_tsquery('english', " + p + "))"
 	}
 
 	for _, v := range filters["tag"] {
-		p := add(strings.ToLower(v))
+		p := args.add(strings.ToLower(v))
 		where = append(
 			where,
 			"EXISTS (SELECT 1 FROM page_tags x JOIN tags xt ON xt.id=x.tag_id WHERE x.page_id=p.id AND xt.name="+p+")",
 		)
 	}
 	for _, v := range filters["group"] {
-		p := add(strings.ToLower(v))
+		p := args.add(strings.ToLower(v))
 		where = append(
 			where,
 			"EXISTS (SELECT 1 FROM page_groups pg JOIN wiki_groups g ON g.id=pg.group_id WHERE pg.page_id=p.id AND lower(g.name)="+p+")",
 		)
 	}
 	for _, v := range filters["title"] {
-		p := add("%" + v + "%")
+		p := args.add("%" + v + "%")
 		where = append(where, "p.title ILIKE "+p)
 	}
 	for _, v := range filters["namespace"] {
-		p := add(v + "/%")
+		p := args.add(v + "/%")
 		where = append(where, "p.slug ILIKE "+p)
 	}
 	for _, v := range filters["author"] {
-		p := add("%" + v + "%")
+		p := args.add("%" + v + "%")
 		where = append(where, "(u.username ILIKE "+p+" OR u.display_name ILIKE "+p+")")
 	}
 
 	for _, v := range filters["status"] {
-		p := add(strings.ToLower(v))
+		p := args.add(strings.ToLower(v))
 		where = append(where, "lower(p.status)="+p)
 	}
 	for _, v := range filters["owner"] {
-		p := add(strings.ToLower(v))
+		p := args.add(strings.ToLower(v))
 		where = append(where, "EXISTS (SELECT 1 FROM wiki_groups og WHERE og.id=p.owner_group_id AND lower(og.name)="+p+")")
 	}
 	for _, v := range filters["property"] {
@@ -81,13 +77,12 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 			continue
 		}
 
-		keyParam := add(strings.ToLower(strings.TrimSpace(key)))
-		valueParam := add("%" + strings.TrimSpace(value) + "%")
+		keyParam := args.add(strings.ToLower(strings.TrimSpace(key)))
+		valueParam := args.add("%" + strings.TrimSpace(value) + "%")
 		where = append(where, "EXISTS (SELECT 1 FROM page_properties pp WHERE pp.page_id=p.id AND lower(pp.key)="+keyParam+" AND pp.value ILIKE "+valueParam+")")
 	}
 
-	args = append(args, limit)
-	limitParam := fmt.Sprintf("$%d", len(args))
+	limitParam := args.add(limit)
 	sql := `
 SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),coalesce(u.display_name,u.username,''),p.created_at,p.updated_at,p.view_count,coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL),'{}'),` + rank + `
 FROM pages p
@@ -169,16 +164,6 @@ func searchTokens(query string) []string {
 	var quote rune
 	escaped := false
 
-	flush := func() {
-		if current.Len() == 0 {
-			return
-		}
-
-		tokens = append(tokens, current.String())
-
-		current.Reset()
-	}
-
 	for _, r := range query {
 		if escaped {
 			current.WriteRune(r)
@@ -203,7 +188,7 @@ func searchTokens(query string) []string {
 			continue
 		}
 		if unicode.IsSpace(r) {
-			flush()
+			tokens = flushSearchToken(tokens, &current)
 			continue
 		}
 
@@ -213,6 +198,28 @@ func searchTokens(query string) []string {
 		current.WriteRune('\\')
 	}
 
-	flush()
+	tokens = flushSearchToken(tokens, &current)
+
+	return tokens
+}
+
+// queryArgs owns SQL parameters and returns their positional placeholder.
+type queryArgs []any
+
+func (a *queryArgs) add(value any) string {
+	*a = append(*a, value)
+
+	return fmt.Sprintf("$%d", len(*a))
+}
+
+// flushSearchToken appends the current token and resets its builder.
+func flushSearchToken(tokens []string, current *strings.Builder) []string {
+	if current.Len() == 0 {
+		return tokens
+	}
+
+	tokens = append(tokens, current.String())
+	current.Reset()
+
 	return tokens
 }

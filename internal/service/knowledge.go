@@ -16,7 +16,7 @@ type knowledgeRepository interface {
 	SavedSearches(context.Context, int64) ([]SavedSearch, error)
 	SaveSavedSearch(context.Context, int64, int64, string, string, bool) error
 	DeleteSavedSearch(context.Context, int64, int64) error
-	Notifications(context.Context, int64, int) ([]Notification, int, error)
+	Notifications(context.Context, int64, int) (notifications []Notification, unread int, err error)
 	MarkNotificationRead(context.Context, int64, int64) error
 }
 
@@ -98,7 +98,7 @@ func (s *Knowledge) Notifications(
 	ctx context.Context,
 	userID int64,
 	limit int,
-) ([]Notification, int, error) {
+) (notifications []Notification, unread int, err error) {
 	return s.repository.Notifications(ctx, userID, limit)
 }
 

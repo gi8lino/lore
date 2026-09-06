@@ -21,7 +21,7 @@ type catalogRepository interface {
 	Backlinks(context.Context, string) ([]Page, error)
 	PageLinks(context.Context, string) ([]PageLink, error)
 	ResolvePageAlias(context.Context, string) (string, error)
-	LatestRevision(context.Context, string) (revision.Revision, int, error)
+	LatestRevision(context.Context, string) (record revision.Revision, count int, err error)
 	Revisions(context.Context, string) ([]revision.Revision, error)
 	Tags(context.Context) ([]string, error)
 	PageAliases(context.Context) (map[string]string, error)
@@ -102,7 +102,7 @@ func (s *Catalog) ResolvePageAlias(ctx context.Context, alias string) (string, e
 }
 
 // LatestRevision returns a page's newest revision and total revision count.
-func (s *Catalog) LatestRevision(ctx context.Context, slug string) (revision.Revision, int, error) {
+func (s *Catalog) LatestRevision(ctx context.Context, slug string) (record revision.Revision, count int, err error) {
 	return s.repository.LatestRevision(ctx, slug)
 }
 

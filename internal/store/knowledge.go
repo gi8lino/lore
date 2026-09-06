@@ -228,8 +228,11 @@ WHERE id=$1 AND user_id=$2`, id, userID)
 }
 
 // Notifications returns a user's newest notifications and unread count.
-func (s *Store) Notifications(ctx context.Context, userID int64, limit int) ([]Notification, int, error) {
-	var unread int
+func (s *Store) Notifications(
+	ctx context.Context,
+	userID int64,
+	limit int,
+) (notifications []Notification, unread int, err error) {
 	if err := s.pool.QueryRow(ctx, `
 SELECT count(*)
 FROM notifications
@@ -249,18 +252,16 @@ LIMIT $2`, userID, limit)
 
 	defer rows.Close()
 
-	var items []Notification
-
 	for rows.Next() {
 		var item Notification
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Title, &item.Body, &item.URL, &item.ReadAt, &item.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 
-		items = append(items, item)
+		notifications = append(notifications, item)
 	}
 
-	return items, unread, rows.Err()
+	return notifications, unread, rows.Err()
 }
 
 // AddNotification creates a notification for one user.

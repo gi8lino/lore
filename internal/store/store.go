@@ -1,6 +1,7 @@
 package store
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"embed"
@@ -9,7 +10,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -80,12 +81,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, appli
 		return err
 	}
 
-	sort.Slice(entries, func(i, j int) bool {
-		left, _ := strconv.Atoi(strings.SplitN(entries[i].Name(), "_", 2)[0])
-		right, _ := strconv.Atoi(strings.SplitN(entries[j].Name(), "_", 2)[0])
-
-		return left < right
-	})
+	slices.SortFunc(entries, compareMigrationEntries)
 
 	for _, e := range entries {
 		if !isSQLFile(e) {
@@ -93,7 +89,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, appli
 		}
 
 		// Extract the migration version number from the filename.
-		v, err := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
+		v, err := migrationVersion(e.Name())
 		if err != nil {
 			return fmt.Errorf("invalid migration %s", e.Name())
 		}
@@ -129,7 +125,7 @@ VALUES($1)`, v)
 		return err
 	}
 	for _, e := range applied {
-		v, _ := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
+		v, _ := migrationVersion(e.Name())
 		logger.Info(
 			"applied database migration",
 			"event", "database_migration_applied",
@@ -139,6 +135,19 @@ VALUES($1)`, v)
 	}
 
 	return nil
+}
+
+// migrationVersion parses the numeric prefix of an embedded migration filename.
+func migrationVersion(name string) (version int, err error) {
+	return strconv.Atoi(strings.SplitN(name, "_", 2)[0])
+}
+
+// compareMigrationEntries orders migrations by their numeric filename prefix.
+func compareMigrationEntries(left, right fs.DirEntry) int {
+	leftVersion, _ := migrationVersion(left.Name())
+	rightVersion, _ := migrationVersion(right.Name())
+
+	return cmp.Compare(leftVersion, rightVersion)
 }
 
 // isSQLFile reports whether e is a regular SQL migration file.
@@ -791,7 +800,7 @@ WHERE a.alias=$1`, alias).Scan(&slug)
 }
 
 // LatestRevision returns the newest revision and total count, or a zero count when none exist.
-func (s *Store) LatestRevision(ctx context.Context, slug string) (revision.Revision, int, error) {
+func (s *Store) LatestRevision(ctx context.Context, slug string) (record revision.Revision, count int, err error) {
 	const query = `
 SELECT
   r.id,
@@ -809,10 +818,8 @@ WHERE p.slug=$1 AND p.deleted_at IS NULL
 ORDER BY r.revision_number DESC
 LIMIT 1`
 
-	var record revision.Revision
 	var markdown, previous string
-	var count int
-	err := s.pool.QueryRow(ctx, query, slug).Scan(
+	err = s.pool.QueryRow(ctx, query, slug).Scan(
 		&record.ID,
 		&record.Number,
 		&record.Author,
