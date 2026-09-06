@@ -29,7 +29,7 @@ func GetPageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.Ha
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, draft)
+		httpresponse.Respond(w, http.StatusOK, draftResponse(draft))
 	}
 }
 
@@ -61,7 +61,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, draft)
+		httpresponse.Respond(w, http.StatusOK, draftResponse(draft))
 	}
 }
 
@@ -91,4 +91,19 @@ func writeDraftProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	default:
 		writeUnexpectedProblem(logger, w, err)
 	}
+}
+
+// pageDraftResponse always exposes form values as an object of string arrays.
+// Domain summaries may omit Values; the editor API must not omit empty state.
+type pageDraftResponse struct {
+	domain.PageDraft
+	Values map[string][]string `json:"values"`
+}
+
+func draftResponse(draft domain.PageDraft) pageDraftResponse {
+	values := make(map[string][]string, len(draft.Values))
+	for name, entries := range draft.Values {
+		values[name] = jsonSlice(entries)
+	}
+	return pageDraftResponse{PageDraft: draft, Values: values}
 }

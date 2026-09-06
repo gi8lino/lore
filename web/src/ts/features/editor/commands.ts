@@ -1,6 +1,7 @@
 // Editor slash-command matching and menu behavior.
 
 import { requestJSON } from "../../core/http.ts";
+import { parseEditorCatalog } from "./catalog.ts";
 
 interface SlashCommand {
   id: string;
@@ -13,12 +14,6 @@ interface SlashCommand {
 interface SlashCommandTrigger {
   start: number;
   query: string;
-}
-
-interface CatalogSnippet {
-  kind: string;
-  name: string;
-  description?: string;
 }
 
 const commands: SlashCommand[] = [
@@ -91,21 +86,6 @@ const commands: SlashCommand[] = [
   },
 ];
 
-function catalogSnippets(value: unknown): CatalogSnippet[] {
-  if (typeof value !== "object" || value === null) return [];
-
-  const snippets = (value as { snippets?: unknown }).snippets;
-  if (!Array.isArray(snippets)) return [];
-
-  return snippets.filter((item): item is CatalogSnippet => {
-    if (typeof item !== "object" || item === null) return false;
-
-    const snippet = item as Partial<CatalogSnippet>;
-
-    return typeof snippet.kind === "string" && typeof snippet.name === "string";
-  });
-}
-
 // Finds an active slash-command trigger at the caret.
 export function slashCommandTrigger(
   value: string,
@@ -150,7 +130,7 @@ function setupSlashCommands(form: HTMLFormElement): void {
   async function loadReusableCommands(): Promise<void> {
     try {
       const catalog = await requestJSON("/api/editor/catalog");
-      const snippets = catalogSnippets(catalog);
+      const { snippets } = parseEditorCatalog(catalog);
       if (!snippets.length) return;
 
       const reusable: SlashCommand[] = snippets.map((item) => ({

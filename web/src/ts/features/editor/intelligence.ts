@@ -1,6 +1,7 @@
 // Editor diagnostics, outline, and metadata assistance.
 
 import { requestJSON } from "../../core/http.ts";
+import { parseEditorCatalog, type EditorCatalog } from "./catalog.ts";
 import type { DraftValues } from "./events.ts";
 
 const catalogURL = "/api/editor/catalog";
@@ -8,13 +9,6 @@ const catalogURL = "/api/editor/catalog";
 type MarkdownHeading = { level: number; title: string; offset: number };
 type SourceRange = { start: number; end: number };
 type WikiLinkRange = SourceRange & { target: string; raw: string };
-type CatalogPage = { slug: string; title: string };
-type CatalogSnippet = { kind: string; name: string };
-type EditorCatalog = {
-  pages: CatalogPage[];
-  aliases: Record<string, string>;
-  snippets: CatalogSnippet[];
-};
 type DiagnosticKind = "error" | "warning" | "suggestion";
 type Diagnostic = SourceRange & {
   kind: DiagnosticKind;
@@ -23,19 +17,6 @@ type Diagnostic = SourceRange & {
   detail?: string;
   replacement?: string;
 };
-
-function isCatalog(value: unknown): value is EditorCatalog {
-  if (typeof value !== "object" || value === null) return false;
-
-  const candidate = value as Partial<EditorCatalog>;
-
-  return (
-    Array.isArray(candidate.pages) &&
-    Array.isArray(candidate.snippets) &&
-    typeof candidate.aliases === "object" &&
-    candidate.aliases !== null
-  );
-}
 
 // Normalizes a page reference for editor comparisons.
 export function editorSlug(value: unknown): string {
@@ -125,21 +106,6 @@ function protectedRanges(source: string): SourceRange[] {
   return ranges;
 }
 
-function normalizedCatalog(value: unknown): EditorCatalog {
-  if (!isCatalog(value)) return { pages: [], aliases: {}, snippets: [] };
-
-  const pages = value.pages.filter(
-    (page): page is CatalogPage =>
-      typeof page?.slug === "string" && typeof page?.title === "string",
-  );
-  const snippets = value.snippets.filter(
-    (item): item is CatalogSnippet =>
-      typeof item?.kind === "string" && typeof item?.name === "string",
-  );
-
-  return { pages, aliases: value.aliases, snippets };
-}
-
 // Builds editor diagnostics from Markdown and catalog data.
 export function editorDiagnostics(
   source: string,
@@ -147,7 +113,7 @@ export function editorDiagnostics(
   currentSlug = "",
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const catalog = normalizedCatalog(catalogValue);
+  const catalog = parseEditorCatalog(catalogValue);
   const { pages, aliases, snippets } = catalog;
   const pageBySlug = new Map(
     pages.map((page) => [editorSlug(page.slug), page]),
@@ -156,7 +122,7 @@ export function editorDiagnostics(
 
   for (const link of links) {
     const slug = editorSlug(link.target);
-    if (!pageBySlug.has(slug) && !aliases[slug]) {
+    if (!pageBySlug.has(slug) && !Object.hasOwn(aliases, slug)) {
       diagnostics.push({
         kind: "error",
         code: "broken-link",
@@ -199,7 +165,8 @@ export function editorDiagnostics(
     const name = match[2].trim();
     const valid =
       kind === "include"
-        ? pageBySlug.has(editorSlug(name)) || Boolean(aliases[editorSlug(name)])
+        ? pageBySlug.has(editorSlug(name)) ||
+          Object.hasOwn(aliases, editorSlug(name))
         : snippetKeys.has(`${kind}:${name.toLocaleLowerCase()}`);
 
     if (!valid) {
@@ -571,7 +538,7 @@ function setupIntelligence(form: HTMLFormElement): void {
 
   async function loadCatalog(url: string): Promise<void> {
     try {
-      catalog = normalizedCatalog(await requestJSON(url));
+      catalog = parseEditorCatalog(await requestJSON(url));
     } catch {
       // The editor remains useful without the optional catalog.
     }

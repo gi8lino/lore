@@ -2,6 +2,7 @@
 
 import { requestConfirmation, showNotice } from "../../core/dialogs.ts";
 import { requiredAttribute } from "../../core/dom.ts";
+import { isRecord } from "../../core/guards.ts";
 import { dispatchEditorEvent, type DraftValues } from "./events.ts";
 import type { EditorMode } from "./preview.ts";
 
@@ -23,15 +24,6 @@ type DraftCandidate = DraftValue & {
   stale?: boolean;
   source: DraftSource;
   storageKey?: string;
-};
-
-type ServerDraftPayload = {
-  page_id?: unknown;
-  title?: unknown;
-  slug?: unknown;
-  values?: unknown;
-  updated_at?: unknown;
-  stale?: unknown;
 };
 
 type NavigationOptions = { discardDraft?: boolean; keepDraft?: boolean };
@@ -192,23 +184,27 @@ function parseStoredDraft(form: HTMLFormElement): DraftCandidate | null {
   return null;
 }
 
-function normalizeServerDraft(value: unknown): DraftCandidate | null {
-  if (typeof value !== "object" || value === null) return null;
+// Reject malformed server state rather than coercing identifiers or field values.
+export function normalizeServerDraft(value: unknown): DraftCandidate | null {
+  if (!isRecord(value) || !isDraftValues(value.values)) return null;
+  if (typeof value.title !== "string" || typeof value.slug !== "string")
+    return null;
+  if (typeof value.updated_at !== "string" || typeof value.stale !== "boolean")
+    return null;
 
-  const draft = value as ServerDraftPayload;
-  if (!isDraftValues(draft.values)) return null;
-
-  const savedAt = Date.parse(
-    typeof draft.updated_at === "string" ? draft.updated_at : "",
-  );
+  const pageID = value.page_id ?? 0;
+  if (typeof pageID !== "number" || !Number.isSafeInteger(pageID) || pageID < 0)
+    return null;
+  const savedAt = Date.parse(value.updated_at);
+  if (!Number.isFinite(savedAt)) return null;
 
   return {
-    pageID: Number(draft.page_id || 0),
-    title: String(draft.title || ""),
-    slug: String(draft.slug || ""),
-    values: draft.values,
-    savedAt: Number.isFinite(savedAt) ? savedAt : 0,
-    stale: draft.stale === true,
+    pageID,
+    title: value.title,
+    slug: value.slug,
+    values: value.values,
+    savedAt,
+    stale: value.stale,
     source: "server",
   };
 }
@@ -309,7 +305,10 @@ async function saveServerDraft(
   });
   if (!response.ok) throw new Error("server draft save failed");
 
-  return response.json();
+  const payload: unknown = await response.json();
+  if (!normalizeServerDraft(payload))
+    throw new Error("Invalid server draft response.");
+  return payload;
 }
 
 async function deleteServerDraft(url: string): Promise<void> {
