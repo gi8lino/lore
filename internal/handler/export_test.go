@@ -38,3 +38,29 @@ func TestExportedMarkdownReturnsLookupError(t *testing.T) {
 	require.ErrorIs(t, err, failure)
 	assert.Equal(t, []int64{1}, media.calls)
 }
+
+func TestInlineRenderedMediaUsesHTMLAttributes(t *testing.T) {
+	media := &exportMediaStub{}
+	source := `<p>/media/1/plain.png</p><!-- /media/1/comment.png --><img alt="/media/1/alt.png" src='/media/1/image.png'><a href="/media/1/image.png">image</a><img src="https://other.example/media/2/image.png"><img src="//other.example/media/2/image.png"><span title='A &amp; B'>text</span>`
+	got, err := inlineRenderedMedia(context.Background(), media, source)
+	require.NoError(t, err)
+	assert.Equal(t, `<p>/media/1/plain.png</p><!-- /media/1/comment.png --><img alt="/media/1/alt.png" src="data:image/png;base64,aW1hZ2U="><a href="data:image/png;base64,aW1hZ2U=">image</a><img src="https://other.example/media/2/image.png"><img src="//other.example/media/2/image.png"><span title='A &amp; B'>text</span>`, got)
+	assert.Equal(t, []int64{1}, media.calls)
+}
+
+func TestInlineRenderedMediaHandlesEscapedAndUnquotedURLs(t *testing.T) {
+	media := &exportMediaStub{}
+	got, err := inlineRenderedMedia(context.Background(), media, `<img src=/media/1/a.png><img src="/media/2/a%20b.png?x=1&amp;y=2"/><img src="/media/no/a"><img src="/media/3/">`)
+	require.NoError(t, err)
+	assert.Contains(t, got, `src="data:image/png;base64,aW1hZ2U="`)
+	assert.Contains(t, got, `<img src="/media/no/a"><img src="/media/3/">`)
+	assert.Equal(t, []int64{1, 2}, media.calls)
+}
+
+func TestInlineRenderedMediaReturnsLookupError(t *testing.T) {
+	failure := errors.New("lookup failed")
+	media := &exportMediaStub{err: failure}
+	_, err := inlineRenderedMedia(context.Background(), media, `<img src="/media/1/a"><img src="/media/2/b">`)
+	require.ErrorIs(t, err, failure)
+	assert.Equal(t, []int64{1}, media.calls)
+}

@@ -8,10 +8,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,9 +20,8 @@ import (
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/pdf"
 	"github.com/gi8lino/lore/internal/service"
+	xhtml "golang.org/x/net/html"
 )
-
-var renderedMediaReference = regexp.MustCompile(`/media/([0-9]+)/[^"'\s>]+`)
 
 // ExportPageMarkdown exports one page as Markdown or as a ZIP when referenced images must be included.
 func ExportPageMarkdown(
@@ -509,36 +508,52 @@ func referencedImageIDs(source string) []int64 {
 // inlineRenderedMedia replaces authenticated media URLs with data URLs for standalone PDF rendering.
 func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService, rendered string) (string, error) {
 	cache := map[int64]string{}
-	var inlineErr error
-	result := renderedMediaReference.ReplaceAllStringFunc(rendered, func(reference string) string {
-		if inlineErr != nil {
-			return reference
+	var result strings.Builder
+	tokens := xhtml.NewTokenizer(strings.NewReader(rendered))
+	for {
+		kind := tokens.Next()
+		if kind == xhtml.ErrorToken {
+			if err := tokens.Err(); err != io.EOF {
+				return "", err
+			}
+			return result.String(), nil
 		}
-
-		match := renderedMediaReference.FindStringSubmatch(reference)
-		if len(match) != 2 {
-			return reference
+		raw := string(tokens.Raw())
+		if kind != xhtml.StartTagToken && kind != xhtml.SelfClosingTagToken {
+			result.WriteString(raw)
+			continue
 		}
-
-		id, err := strconv.ParseInt(match[1], 10, 64)
-		if err != nil {
-			return reference
+		token := tokens.Token()
+		changed := false
+		for index := range token.Attr {
+			attribute := &token.Attr[index]
+			if (token.Data != "img" || attribute.Key != "src") && (token.Data != "a" || attribute.Key != "href") {
+				continue
+			}
+			location, err := url.Parse(attribute.Val)
+			if err != nil || location.IsAbs() || location.Host != "" {
+				continue
+			}
+			id, ok := mediaImageID(location.Path)
+			if !ok {
+				continue
+			}
+			dataURL, ok := cache[id]
+			if !ok {
+				image, err := mediaUseCases.ImageContent(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				dataURL = "data:" + image.ContentType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
+				cache[id] = dataURL
+			}
+			attribute.Val = dataURL
+			changed = true
 		}
-		if dataURL, ok := cache[id]; ok {
-			return dataURL
+		if changed {
+			result.WriteString(token.String())
+		} else {
+			result.WriteString(raw)
 		}
-
-		image, err := mediaUseCases.ImageContent(ctx, id)
-		if err != nil {
-			inlineErr = err
-			return reference
-		}
-
-		dataURL := "data:" + image.ContentType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
-		cache[id] = dataURL
-
-		return dataURL
-	})
-
-	return result, inlineErr
+	}
 }
