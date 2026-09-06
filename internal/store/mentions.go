@@ -41,5 +41,10 @@ func mentionedUsernames(text string) []string {
 
 // mentionWordByte defines the ASCII word characters used at mention boundaries.
 func mentionWordByte(value byte) bool {
-	return value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9' || value == '_'
+	switch {
+	case value >= 'a' && value <= 'z', value >= 'A' && value <= 'Z', value >= '0' && value <= '9', value == '_':
+		return true
+	default:
+		return false
+	}
 }

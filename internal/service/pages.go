@@ -118,9 +118,10 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (domain.Page, err
 
 	action := "page.updated"
 
-	if input.PreviousSlug == "" {
+	switch {
+	case input.PreviousSlug == "":
 		action = "page.created"
-	} else if strings.TrimSpace(input.PreviousSlug) != page.Slug {
+	case strings.TrimSpace(input.PreviousSlug) != page.Slug:
 		action = "page.renamed"
 	}
 

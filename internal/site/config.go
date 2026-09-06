@@ -57,19 +57,16 @@ func LoadConfig(path string, required bool) (Config, error) {
 }
 
 func (c Config) validate() error {
-	if strings.TrimSpace(c.SiteName) == "" {
+	switch {
+	case strings.TrimSpace(c.SiteName) == "":
 		return errors.New("site_name is required")
-	}
-	if strings.TrimSpace(c.SourceDir) == "" {
+	case strings.TrimSpace(c.SourceDir) == "":
 		return errors.New("source_dir is required")
-	}
-	if strings.TrimSpace(c.OutputDir) == "" {
+	case strings.TrimSpace(c.OutputDir) == "":
 		return errors.New("output_dir is required")
-	}
-	if strings.TrimSpace(c.Theme) == "" {
+	case strings.TrimSpace(c.Theme) == "":
 		return errors.New("theme is required")
-	}
-	if strings.TrimSpace(c.Language) == "" {
+	case strings.TrimSpace(c.Language) == "":
 		return errors.New("language is required")
 	}
 

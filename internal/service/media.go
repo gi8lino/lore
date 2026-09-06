@@ -199,12 +199,12 @@ func sanitizeFilename(filename, fallback string) string {
 	var safe strings.Builder
 	invalidRun := false
 	for _, character := range name {
-		allowed := character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' ||
-			character >= '0' && character <= '9' || character == '.' || character == '_' || character == '-'
-		if allowed {
+		switch {
+		case character >= 'a' && character <= 'z', character >= 'A' && character <= 'Z',
+			character >= '0' && character <= '9', character == '.', character == '_', character == '-':
 			safe.WriteRune(character)
 			invalidRun = false
-		} else if !invalidRun {
+		case !invalidRun:
 			safe.WriteByte('-')
 			invalidRun = true
 		}
