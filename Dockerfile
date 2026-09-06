@@ -12,27 +12,27 @@ COPY web/src ./web/src
 
 RUN ./scripts/web/build.sh
 
+
 # Build the manager binary.
 FROM golang:1.27 AS prep
-
-ARG TARGETOS
-ARG TARGETARCH
-ARG VERSION=dev
-ARG COMMIT=none
-ARG LDFLAGS="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}"
 
 ENV CGO_ENABLED=0
 
 WORKDIR /workspace
 
 # Copy the Go module manifests first so dependency downloads can be cached.
-COPY go.mod go.mod
-COPY go.sum go.sum
+COPY go.mod go.sum ./
 
-# Download modules before copying source files so source changes do not
-# invalidate the dependency cache layer.
+# Download modules before introducing build-specific arguments or source files.
+# This keeps the dependency layer stable across normal source and version changes.
 RUN --mount=type=cache,target=/go/pkg/mod \
   go mod download
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION=dev
+ARG COMMIT=none
+ARG LDFLAGS="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}"
 
 # Copy the Go source and templates.
 COPY cmd/ cmd/
@@ -60,6 +60,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # OpenShift's arbitrary UID model while still running as a non-root user.
 RUN install -d -o 0 -g 0 -m 2775 /outfs/app /outfs/tmp
 
+
 # Use distroless as minimal base image to package the manager binary.
 # Refer to https://github.com/GoogleContainerTools/distroless for more details.
 FROM gcr.io/distroless/static:nonroot
@@ -69,6 +70,7 @@ COPY --from=prep /outfs/app /app
 COPY --from=prep /outfs/tmp /tmp
 
 ENV HOME=/tmp
+
 WORKDIR /app
 
 # Run as a non-root user by default.
