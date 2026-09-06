@@ -1,6 +1,7 @@
 package store
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -63,11 +64,7 @@ RETURNING id,name,user_id,coalesce(created_by,0),created_at`, name, hashString, 
 	token.ExpiresAt = expiresAt
 
 	token.Username = user.Username
-	token.Creator = creator.DisplayName
-
-	if token.Creator == "" {
-		token.Creator = creator.Username
-	}
+	token.Creator = cmp.Or(creator.DisplayName, creator.Username)
 
 	return domain.IssuedToken{Token: token, Secret: secret}, nil
 }

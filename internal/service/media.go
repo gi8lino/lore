@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -210,11 +211,7 @@ func sanitizeFilename(filename, fallback string) string {
 	}
 	name = safe.String()
 	name = strings.Trim(name, "-._")
-	if name == "" {
-		return fallback
-	}
-
-	return name
+	return cmp.Or(name, fallback)
 }
 
 // isSafeFilenameRune reports whether character can be preserved in a sanitized upload name.

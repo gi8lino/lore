@@ -2,6 +2,7 @@ package handler
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -147,11 +148,7 @@ func ExportPagePDF(
 			return
 		}
 
-		language := settings.ContentLanguage
-
-		if pageData.Language != "" {
-			language = pageData.Language
-		}
+		language := cmp.Or(pageData.Language, settings.ContentLanguage)
 
 		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered)
 		if err != nil {

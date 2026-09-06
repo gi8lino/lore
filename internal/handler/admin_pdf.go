@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cmp"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -93,9 +94,5 @@ func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 
 // effectivePDFURL returns the deployment override when configured, otherwise the persisted endpoint.
 func effectivePDFURL(runtimeOverride, persisted string) string {
-	if runtimeOverride = strings.TrimSpace(runtimeOverride); runtimeOverride != "" {
-		return runtimeOverride
-	}
-
-	return strings.TrimSpace(persisted)
+	return cmp.Or(strings.TrimSpace(runtimeOverride), strings.TrimSpace(persisted))
 }

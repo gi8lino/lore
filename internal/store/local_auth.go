@@ -1,6 +1,7 @@
 package store
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"strings"
@@ -31,9 +32,7 @@ func (s *Store) CreateInitialLocalAdministrator(
 		return domain.User{}, errors.New("username and password hash are required")
 	}
 
-	if displayName == "" {
-		displayName = username
-	}
+	displayName = cmp.Or(displayName, username)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

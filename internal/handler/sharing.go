@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cmp"
 	"errors"
 	"html/template"
 	"log/slog"
@@ -134,11 +135,7 @@ func renderSharedPage(
 	data.HTML = template.HTML(standaloneHTML)
 	data.ApplicationSettings.Rendering = settings
 	data.RenderMermaid = settings.Mermaid
-	data.PageContentLanguage = settings.ContentLanguage
-
-	if page.Language != "" {
-		data.PageContentLanguage = page.Language
-	}
+	data.PageContentLanguage = cmp.Or(page.Language, settings.ContentLanguage)
 
 	renderTemplate(views, w, "shared_page", "shared-layout", data)
 }

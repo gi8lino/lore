@@ -158,9 +158,7 @@ func isSQLFile(e fs.DirEntry) bool {
 
 // EnsureAdministrator creates or refreshes the administrator used by no-auth mode.
 func (s *Store) EnsureAdministrator(ctx context.Context, username, email, displayName string) (domain.User, error) {
-	if displayName == "" {
-		displayName = username
-	}
+	displayName = cmp.Or(displayName, username)
 
 	var user domain.User
 	err := s.pool.QueryRow(ctx, `
@@ -187,9 +185,7 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 
 // TrustedProxyUser refreshes a trusted-proxy user by username or creates one when registration is enabled.
 func (s *Store) TrustedProxyUser(ctx context.Context, username, email, displayName string) (domain.User, error) {
-	if displayName == "" {
-		displayName = username
-	}
+	displayName = cmp.Or(displayName, username)
 
 	var user domain.User
 	err := s.pool.QueryRow(ctx, `

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cmp"
 	"errors"
 	"html/template"
 	"net/http"
@@ -161,9 +162,7 @@ func ViewPage(
 				return
 			}
 		}
-		if page.Language != "" {
-			data.PageContentLanguage = page.Language
-		}
+		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
 		data.Subpages = navigation.Children(data.Navigation, slug)
 		subpages, err := renderTemplateHTML(views, "page", "subpage-toc", data)
@@ -297,9 +296,7 @@ func EditPage(
 
 			data.Title, data.Page = "Edit "+page.Title, &page
 
-			if page.Language != "" {
-				data.PageContentLanguage = page.Language
-			}
+			data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 		}
 
 		render(views, w, "edit", data)
