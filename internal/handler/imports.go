@@ -348,121 +348,141 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 }
 
 // markdownTitle returns the first level-one heading in a Markdown document.
-func markdownTitle(markdown string) (string, error) {
+func markdownTitle(markdown string) (title string, err error) {
 	for _, line := range strings.Split(markdown, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "# ") {
-			title := strings.TrimSpace(strings.TrimPrefix(line, "# "))
-			if title != "" {
-				return title, nil
+			heading := strings.TrimSpace(strings.TrimPrefix(line, "# "))
+			if heading != "" {
+				return heading, nil
 			}
 		}
 	}
 	return "", fmt.Errorf("document requires a level-one Markdown heading for its title")
 }
 
+// htmlMarkdownWriter converts the supported Confluence HTML subset into Markdown.
+type htmlMarkdownWriter struct {
+	output strings.Builder
+}
+
 // htmlToMarkdown converts the supported Confluence HTML subset to Markdown.
-func htmlToMarkdown(data []byte) (string, error) {
+func htmlToMarkdown(data []byte) (markdown string, err error) {
 	root, err := xhtml.Parse(bytes.NewReader(data))
 	if err != nil {
 		return "", err
 	}
 
-	var output strings.Builder
-	var walk func(*xhtml.Node, int)
-	walk = func(node *xhtml.Node, listDepth int) {
-		if node.Type == xhtml.TextNode {
-			text := strings.Join(strings.Fields(node.Data), " ")
-			if text == "" {
-				return
-			}
+	writer := htmlMarkdownWriter{}
+	writer.writeNode(root, 0)
 
-			leadingSpace := strings.TrimLeft(node.Data, " \t\r\n") != node.Data
-			trailingSpace := strings.TrimRight(node.Data, " \t\r\n") != node.Data
+	return normalizeImportedMarkdown(writer.output.String()), nil
+}
 
-			if leadingSpace && output.Len() > 0 {
-				current := output.String()
-				last := current[len(current)-1]
+// writeNode appends one supported HTML node and recursively processes its children.
+func (w *htmlMarkdownWriter) writeNode(node *xhtml.Node, listDepth int) {
+	if node.Type == xhtml.TextNode {
+		w.writeText(node)
+		return
+	}
+	if node.Type != xhtml.ElementNode && node.Type != xhtml.DocumentNode {
+		return
+	}
 
-				if last != ' ' && last != '\n' {
-					output.WriteByte(' ')
-				}
-			}
+	tag := strings.ToLower(node.Data)
 
-			output.WriteString(text)
-
-			if trailingSpace {
-				output.WriteByte(' ')
-			}
-
-			return
+	switch tag {
+	case "script", "style", "nav":
+		return
+	case "h1", "h2", "h3", "h4", "h5", "h6":
+		level := int(tag[1] - '0')
+		w.output.WriteString("\n\n" + strings.Repeat("#", level) + " ")
+	case "p", "div", "section", "article":
+		w.output.WriteString("\n\n")
+	case "br":
+		w.output.WriteByte('\n')
+	case "strong", "b":
+		w.output.WriteString("**")
+	case "em", "i":
+		w.output.WriteString("*")
+	case "code":
+		if node.Parent == nil || strings.ToLower(node.Parent.Data) != "pre" {
+			w.output.WriteString("`")
 		}
-		if node.Type != xhtml.ElementNode && node.Type != xhtml.DocumentNode {
-			return
+	case "pre":
+		w.output.WriteString("\n\n```\n")
+	case "li":
+		w.output.WriteString("\n" + strings.Repeat("  ", listDepth) + "- ")
+	case "ul", "ol":
+		listDepth++
+	case "a":
+		w.output.WriteString("[")
+	}
+
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		w.writeNode(child, listDepth)
+	}
+
+	switch tag {
+	case "strong", "b":
+		w.output.WriteString("**")
+	case "em", "i":
+		w.output.WriteString("*")
+	case "code":
+		if node.Parent == nil || strings.ToLower(node.Parent.Data) != "pre" {
+			w.output.WriteString("`")
 		}
+	case "pre":
+		w.output.WriteString("\n```\n")
+	case "a":
+		w.writeAnchorTarget(node)
+	case "p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6":
+		w.output.WriteString("\n")
+	}
+}
 
-		tag := strings.ToLower(node.Data)
+// writeText normalizes HTML text-node whitespace while preserving word boundaries.
+func (w *htmlMarkdownWriter) writeText(node *xhtml.Node) {
+	text := strings.Join(strings.Fields(node.Data), " ")
+	if text == "" {
+		return
+	}
 
-		switch tag {
-		case "script", "style", "nav":
-			return
-		case "h1", "h2", "h3", "h4", "h5", "h6":
-			level := int(tag[1] - '0')
-			output.WriteString("\n\n" + strings.Repeat("#", level) + " ")
-		case "p", "div", "section", "article":
-			output.WriteString("\n\n")
-		case "br":
-			output.WriteByte('\n')
-		case "strong", "b":
-			output.WriteString("**")
-		case "em", "i":
-			output.WriteString("*")
-		case "code":
-			if node.Parent == nil || strings.ToLower(node.Parent.Data) != "pre" {
-				output.WriteString("`")
-			}
-		case "pre":
-			output.WriteString("\n\n```\n")
-		case "li":
-			output.WriteString("\n" + strings.Repeat("  ", listDepth) + "- ")
-		case "ul", "ol":
-			listDepth++
-		case "a":
-			output.WriteString("[")
-		}
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child, listDepth)
-		}
-		switch tag {
-		case "strong", "b":
-			output.WriteString("**")
-		case "em", "i":
-			output.WriteString("*")
-		case "code":
-			if node.Parent == nil || strings.ToLower(node.Parent.Data) != "pre" {
-				output.WriteString("`")
-			}
-		case "pre":
-			output.WriteString("\n```\n")
-		case "a":
-			href := ""
+	leadingSpace := strings.TrimLeft(node.Data, " \t\r\n") != node.Data
+	trailingSpace := strings.TrimRight(node.Data, " \t\r\n") != node.Data
 
-			for _, attr := range node.Attr {
-				if attr.Key == "href" {
-					href = attr.Val
-					break
-				}
-			}
-
-			output.WriteString("](" + href + ")")
-		case "p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6":
-			output.WriteString("\n")
+	if leadingSpace && w.output.Len() > 0 {
+		current := w.output.String()
+		last := current[len(current)-1]
+		if last != ' ' && last != '\n' {
+			w.output.WriteByte(' ')
 		}
 	}
 
-	walk(root, 0)
+	w.output.WriteString(text)
 
-	lines := strings.Split(output.String(), "\n")
+	if trailingSpace {
+		w.output.WriteByte(' ')
+	}
+}
+
+// writeAnchorTarget closes a Markdown link using the HTML anchor's href attribute.
+func (w *htmlMarkdownWriter) writeAnchorTarget(node *xhtml.Node) {
+	href := ""
+
+	for _, attr := range node.Attr {
+		if attr.Key == "href" {
+			href = attr.Val
+			break
+		}
+	}
+
+	w.output.WriteString("](" + href + ")")
+}
+
+// normalizeImportedMarkdown collapses repeated blank lines and trims trailing whitespace.
+func normalizeImportedMarkdown(source string) string {
+	lines := strings.Split(source, "\n")
 	cleaned := make([]string, 0, len(lines))
 	blank := false
 
@@ -482,5 +502,5 @@ func htmlToMarkdown(data []byte) (string, error) {
 		cleaned = append(cleaned, line)
 	}
 
-	return strings.TrimSpace(strings.Join(cleaned, "\n")) + "\n", nil
+	return strings.TrimSpace(strings.Join(cleaned, "\n")) + "\n"
 }

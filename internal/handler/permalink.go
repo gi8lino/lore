@@ -36,7 +36,7 @@ func PagePermalink(catalogUseCases pagePermalinkService, logger *slog.Logger) ht
 }
 
 // permalinkPageID validates the stable numeric page identifier used in permalink routes.
-func permalinkPageID(value string) (int64, error) {
+func permalinkPageID(value string) (pageID int64, err error) {
 	id, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || id <= 0 {
 		return 0, strconv.ErrSyntax

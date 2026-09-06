@@ -247,14 +247,14 @@ func createExportArchive(
 	catalogUseCases pageContentService,
 	mediaUseCases imageContentService,
 	slugs []string,
-) (*os.File, time.Time, func(), error) {
+) (archiveFile *os.File, modTime time.Time, cleanup func(), err error) {
 	file, err := os.CreateTemp("", "lore-export-*.zip")
 	if err != nil {
 		return nil, time.Time{}, nil, err
 	}
 
 	name := file.Name()
-	cleanup := func() {
+	cleanup = func() {
 		_ = file.Close()
 		_ = os.Remove(name)
 	}
@@ -390,7 +390,7 @@ func exportedMarkdown(
 	mediaUseCases imageContentService,
 	markdownPath, source string,
 	imageCache map[int64]service.ImageData,
-) (string, []int64, error) {
+) (content string, imageIDs []int64, err error) {
 	seen := map[int64]bool{}
 	var ids []int64
 	var result strings.Builder
@@ -416,7 +416,13 @@ func exportedMarkdown(
 }
 
 // exportedImagePath resolves and caches an image and returns its archive-relative path.
-func exportedImagePath(ctx context.Context, mediaUseCases imageContentService, markdownPath string, id int64, cache map[int64]service.ImageData) (string, error) {
+func exportedImagePath(
+	ctx context.Context,
+	mediaUseCases imageContentService,
+	markdownPath string,
+	id int64,
+	cache map[int64]service.ImageData,
+) (relativePath string, err error) {
 	image, ok := cache[id]
 	if !ok {
 		var err error
@@ -442,7 +448,7 @@ type mediaReference struct {
 }
 
 // nextMediaReference scans the same bare /media/ID/filename syntax used by exports.
-func nextMediaReference(source string) (mediaReference, bool) {
+func nextMediaReference(source string) (reference mediaReference, found bool) {
 	for offset := 0; offset < len(source); {
 		index := strings.Index(source[offset:], "/media/")
 		if index < 0 {
@@ -471,7 +477,7 @@ func nextMediaReference(source string) (mediaReference, bool) {
 }
 
 // mediaImageID validates a local stored-image path and extracts its numeric ID.
-func mediaImageID(value string) (int64, bool) {
+func mediaImageID(value string) (imageID int64, ok bool) {
 	if !strings.HasPrefix(value, "/media/") {
 		return 0, false
 	}
@@ -506,7 +512,7 @@ func referencedImageIDs(source string) []int64 {
 }
 
 // inlineRenderedMedia replaces authenticated media URLs with data URLs for standalone PDF rendering.
-func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService, rendered string) (string, error) {
+func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService, rendered string) (html string, err error) {
 	cache := map[int64]string{}
 	var result strings.Builder
 	tokens := xhtml.NewTokenizer(strings.NewReader(rendered))

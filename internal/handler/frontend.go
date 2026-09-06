@@ -28,7 +28,7 @@ func Assets(appFS fs.FS) http.Handler {
 }
 
 // assetPath removes the optional content-version prefix from an asset request path.
-func assetPath(requestPath string) (string, bool) {
+func assetPath(requestPath string) (path string, versioned bool) {
 	requestPath = strings.TrimPrefix(requestPath, "/assets/")
 	version, remainder, ok := strings.Cut(requestPath, "/")
 	if ok && strings.HasPrefix(version, "v-") && len(version) > 2 {

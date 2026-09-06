@@ -146,12 +146,12 @@ func (e *tokenFormError) Error() string {
 }
 
 // parseTokenForm validates the shared token name and optional expiration date fields.
-func parseTokenForm(r *http.Request) (string, *time.Time, error) {
+func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err error) {
 	if err := r.ParseForm(); err != nil {
 		return "", nil, err
 	}
 
-	name := strings.TrimSpace(r.FormValue("name"))
+	name = strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
 		return "", nil, &tokenFormError{field: "name", message: "Token name is required."}
 	}

@@ -102,7 +102,7 @@ type knowledgeMacro struct {
 
 // parseKnowledgeMacro finds the next {{kind:name}} without consuming malformed
 // or unknown syntax. Names must contain at least one character and no braces.
-func parseKnowledgeMacro(line string) (knowledgeMacro, bool) {
+func parseKnowledgeMacro(line string) (macro knowledgeMacro, found bool) {
 	for offset := 0; offset < len(line); {
 		opening := strings.Index(line[offset:], "{{")
 		if opening < 0 {

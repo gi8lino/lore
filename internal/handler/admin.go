@@ -1055,7 +1055,7 @@ func pendingOIDCIdentityStatusHandler(
 }
 
 // pendingOIDCIdentityID parses the pending identity identifier from the route.
-func pendingOIDCIdentityID(r *http.Request) (int64, error) {
+func pendingOIDCIdentityID(r *http.Request) (pendingID int64, err error) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {
 		return 0, errors.New("invalid pending OIDC identity")

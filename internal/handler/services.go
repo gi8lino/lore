@@ -74,7 +74,7 @@ type pageViewCatalogService interface {
 	IsFavorite(context.Context, string, int64) (bool, error)
 	Backlinks(context.Context, string) ([]service.Page, error)
 	PageLinks(context.Context, string) ([]service.PageLink, error)
-	LatestRevision(context.Context, string) (revision.Revision, int, error)
+	LatestRevision(context.Context, string) (record revision.Revision, count int, err error)
 	PageComments(context.Context, string) ([]service.PageComment, error)
 }
 
@@ -123,7 +123,7 @@ type knowledgeContentService interface {
 
 type knowledgeSidebarService interface {
 	SavedSearches(context.Context, int64) ([]service.SavedSearch, error)
-	Notifications(context.Context, int64, int) ([]service.Notification, int, error)
+	Notifications(context.Context, int64, int) (notifications []service.Notification, unread int, err error)
 }
 
 type knowledgeGraphService interface {
@@ -147,7 +147,7 @@ type savedSearchService interface {
 }
 
 type notificationService interface {
-	Notifications(context.Context, int64, int) ([]service.Notification, int, error)
+	Notifications(context.Context, int64, int) (notifications []service.Notification, unread int, err error)
 	MarkNotificationRead(context.Context, int64, int64) error
 }
 

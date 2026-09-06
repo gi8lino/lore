@@ -8,7 +8,10 @@ import (
 )
 
 // renderingOptions resolves administrator-controlled Markdown rendering behavior.
-func renderingOptions(ctx context.Context, settingsUseCases settingsService) (md.Options, service.RenderingSettings, error) {
+func renderingOptions(
+	ctx context.Context,
+	settingsUseCases settingsService,
+) (options md.Options, rendering service.RenderingSettings, err error) {
 	settings, err := settingsUseCases.ApplicationSettings(ctx)
 	if err != nil {
 		return md.Options{}, service.RenderingSettings{}, err
