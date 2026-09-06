@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 )
 
@@ -77,7 +77,7 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 			return
 		}
 
-		items := mediaItems([]model.Image{image})
+		items := mediaItems([]domain.Image{image})
 
 		httpresponse.Respond(w, http.StatusCreated, items[0])
 	}
@@ -94,7 +94,7 @@ func ServeImage(mediaUseCases imageService) http.HandlerFunc {
 
 		image, err := mediaUseCases.ImageContent(r.Context(), id)
 		if err != nil {
-			if err == model.ErrNotFound {
+			if err == domain.ErrNotFound {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
@@ -132,7 +132,7 @@ func DeleteImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 }
 
 // mediaItems converts store image metadata into browser-facing media items.
-func mediaItems(images []model.Image) []MediaItem {
+func mediaItems(images []domain.Image) []MediaItem {
 	items := make([]MediaItem, 0, len(images))
 
 	for _, image := range images {

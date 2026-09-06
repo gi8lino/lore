@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 )
 
 type createPageShareLinkResponse struct {
@@ -152,7 +152,7 @@ func publicShareHeaders(w http.ResponseWriter) {
 
 // writePublicShareError hides whether an invalid, revoked, or deleted share link ever existed.
 func writePublicShareError(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if errors.Is(err, model.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) {
 		httpresponse.Problem(w, http.StatusNotFound, "Share link not found or no longer available.")
 		return
 	}

@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // PageProperties returns structured properties for one page.
-func (s *Store) PageProperties(ctx context.Context, pageID int64) ([]model.PageProperty, error) {
+func (s *Store) PageProperties(ctx context.Context, pageID int64) ([]domain.PageProperty, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT key,value
 FROM page_properties
@@ -25,10 +25,10 @@ ORDER BY lower(key),key`, pageID)
 
 	defer rows.Close()
 
-	var properties []model.PageProperty
+	var properties []domain.PageProperty
 
 	for rows.Next() {
-		var item model.PageProperty
+		var item domain.PageProperty
 		if err := rows.Scan(&item.Key, &item.Value); err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ VALUES($1,$2,$3)`, pageID, key, value); err != nil {
 }
 
 // KnowledgeSnippets returns all configured variables and snippets.
-func (s *Store) KnowledgeSnippets(ctx context.Context) ([]model.KnowledgeSnippet, error) {
+func (s *Store) KnowledgeSnippets(ctx context.Context) ([]domain.KnowledgeSnippet, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT id,kind,name,description,content,updated_at
 FROM knowledge_snippets
@@ -83,10 +83,10 @@ ORDER BY kind,lower(name),id`)
 
 	defer rows.Close()
 
-	var items []model.KnowledgeSnippet
+	var items []domain.KnowledgeSnippet
 
 	for rows.Next() {
-		var item model.KnowledgeSnippet
+		var item domain.KnowledgeSnippet
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Name, &item.Description, &item.Content, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -98,15 +98,15 @@ ORDER BY kind,lower(name),id`)
 }
 
 // KnowledgeSnippetByName returns one reusable value by kind and name.
-func (s *Store) KnowledgeSnippetByName(ctx context.Context, kind, name string) (model.KnowledgeSnippet, error) {
-	var item model.KnowledgeSnippet
+func (s *Store) KnowledgeSnippetByName(ctx context.Context, kind, name string) (domain.KnowledgeSnippet, error) {
+	var item domain.KnowledgeSnippet
 	err := s.pool.QueryRow(ctx, `
 SELECT id,kind,name,description,content,updated_at
 FROM knowledge_snippets
 WHERE kind=$1 AND lower(name)=lower($2)`, kind, strings.TrimSpace(name)).
 		Scan(&item.ID, &item.Kind, &item.Name, &item.Description, &item.Content, &item.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.KnowledgeSnippet{}, model.ErrNotFound
+		return domain.KnowledgeSnippet{}, domain.ErrNotFound
 	}
 
 	return item, err
@@ -118,14 +118,14 @@ func validKnowledgeSnippetKind(kind string) bool {
 }
 
 // SaveKnowledgeSnippet creates or updates one reusable value.
-func (s *Store) SaveKnowledgeSnippet(ctx context.Context, id, userID int64, kind, name, description, content string) (model.KnowledgeSnippet, error) {
+func (s *Store) SaveKnowledgeSnippet(ctx context.Context, id, userID int64, kind, name, description, content string) (domain.KnowledgeSnippet, error) {
 	kind = strings.TrimSpace(kind)
 	name = strings.TrimSpace(name)
 	if name == "" || !validKnowledgeSnippetKind(kind) {
-		return model.KnowledgeSnippet{}, errors.New("invalid snippet")
+		return domain.KnowledgeSnippet{}, errors.New("invalid snippet")
 	}
 
-	var item model.KnowledgeSnippet
+	var item domain.KnowledgeSnippet
 	var err error
 
 	if id == 0 {
@@ -144,10 +144,10 @@ RETURNING id,kind,name,description,content,updated_at`, id, kind, name, strings.
 	}
 
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return model.KnowledgeSnippet{}, model.ErrAlreadyExists
+		return domain.KnowledgeSnippet{}, domain.ErrAlreadyExists
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.KnowledgeSnippet{}, model.ErrNotFound
+		return domain.KnowledgeSnippet{}, domain.ErrNotFound
 	}
 
 	return item, err
@@ -159,14 +159,14 @@ func (s *Store) DeleteKnowledgeSnippet(ctx context.Context, id int64) error {
 DELETE FROM knowledge_snippets
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
 }
 
 // SavedSearches returns a user's named searches.
-func (s *Store) SavedSearches(ctx context.Context, userID int64) ([]model.SavedSearch, error) {
+func (s *Store) SavedSearches(ctx context.Context, userID int64) ([]domain.SavedSearch, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT id,name,query,pinned
 FROM saved_searches
@@ -178,10 +178,10 @@ ORDER BY pinned DESC,lower(name),id`, userID)
 
 	defer rows.Close()
 
-	var items []model.SavedSearch
+	var items []domain.SavedSearch
 
 	for rows.Next() {
-		var item model.SavedSearch
+		var item domain.SavedSearch
 		if err := rows.Scan(&item.ID, &item.Name, &item.Query, &item.Pinned); err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func (s *Store) SaveSavedSearch(ctx context.Context, userID, id int64, name, que
 INSERT INTO saved_searches(user_id,name,query,pinned)
 VALUES($1,$2,$3,$4)`, userID, name, query, pinned)
 		if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-			return model.ErrAlreadyExists
+			return domain.ErrAlreadyExists
 		}
 
 		return err
@@ -215,7 +215,7 @@ UPDATE saved_searches
 SET name=$3,query=$4,pinned=$5
 WHERE id=$1 AND user_id=$2`, id, userID, name, query, pinned)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
@@ -227,7 +227,7 @@ func (s *Store) DeleteSavedSearch(ctx context.Context, userID, id int64) error {
 DELETE FROM saved_searches
 WHERE id=$1 AND user_id=$2`, id, userID)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
@@ -238,7 +238,7 @@ func (s *Store) Notifications(
 	ctx context.Context,
 	userID int64,
 	limit int,
-) (notifications []model.Notification, unread int, err error) {
+) (notifications []domain.Notification, unread int, err error) {
 	if err := s.pool.QueryRow(ctx, `
 SELECT count(*)
 FROM notifications
@@ -259,7 +259,7 @@ LIMIT $2`, userID, limit)
 	defer rows.Close()
 
 	for rows.Next() {
-		var item model.Notification
+		var item domain.Notification
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Title, &item.Body, &item.URL, &item.ReadAt, &item.CreatedAt); err != nil {
 			return nil, 0, err
 		}
@@ -319,7 +319,7 @@ WHERE lower(username)=lower($1) AND id<>$2`, username, actorID).Scan(&userID)
 }
 
 // PageComments returns comments for a page, unresolved first.
-func (s *Store) PageComments(ctx context.Context, slug string) ([]model.PageComment, error) {
+func (s *Store) PageComments(ctx context.Context, slug string) ([]domain.PageComment, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT c.id,c.page_id,coalesce(u.display_name,u.username,'Deleted user'),c.anchor,c.body,c.resolved_at,c.created_at
 FROM page_comments c
@@ -333,10 +333,10 @@ ORDER BY (c.resolved_at IS NOT NULL),c.created_at`, slug)
 
 	defer rows.Close()
 
-	var items []model.PageComment
+	var items []domain.PageComment
 
 	for rows.Next() {
-		var item model.PageComment
+		var item domain.PageComment
 		if err := rows.Scan(&item.ID, &item.PageID, &item.Author, &item.Anchor, &item.Body, &item.Resolved, &item.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -348,13 +348,13 @@ ORDER BY (c.resolved_at IS NOT NULL),c.created_at`, slug)
 }
 
 // AddPageComment adds a comment to a page.
-func (s *Store) AddPageComment(ctx context.Context, slug string, userID int64, anchor, body string) (model.PageComment, error) {
+func (s *Store) AddPageComment(ctx context.Context, slug string, userID int64, anchor, body string) (domain.PageComment, error) {
 	body = strings.TrimSpace(body)
 	if body == "" {
-		return model.PageComment{}, errors.New("comment is required")
+		return domain.PageComment{}, errors.New("comment is required")
 	}
 
-	var item model.PageComment
+	var item domain.PageComment
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO page_comments(page_id,user_id,anchor,body)
 SELECT id,$2,$3,$4 FROM pages
@@ -362,7 +362,7 @@ WHERE slug=$1 AND deleted_at IS NULL
 RETURNING id,page_id,$5,anchor,body,resolved_at,created_at`, slug, userID, strings.TrimSpace(anchor), body, "").
 		Scan(&item.ID, &item.PageID, &item.Author, &item.Anchor, &item.Body, &item.Resolved, &item.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.PageComment{}, model.ErrNotFound
+		return domain.PageComment{}, domain.ErrNotFound
 	}
 
 	return item, err
@@ -381,19 +381,19 @@ UPDATE page_comments
 SET resolved_at=$2,updated_at=now()
 WHERE id=$1`, id, value)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
 }
 
 // KnowledgeGraph returns pages and current wiki-link relationships.
-func (s *Store) KnowledgeGraph(ctx context.Context, limit int) (model.KnowledgeGraph, error) {
+func (s *Store) KnowledgeGraph(ctx context.Context, limit int) (domain.KnowledgeGraph, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 250
 	}
 
-	graph := model.KnowledgeGraph{}
+	graph := domain.KnowledgeGraph{}
 	rows, err := s.pool.Query(ctx, `
 SELECT slug,title,status
 FROM pages
@@ -407,7 +407,7 @@ LIMIT $1`, limit)
 	allowed := map[string]bool{}
 
 	for rows.Next() {
-		var node model.GraphNode
+		var node domain.GraphNode
 		if err := rows.Scan(&node.Slug, &node.Title, &node.Status); err != nil {
 			rows.Close()
 			return graph, err
@@ -439,7 +439,7 @@ WHERE target.id IS NOT NULL OR alias_target.id IS NOT NULL`)
 	defer rows.Close()
 
 	for rows.Next() {
-		var edge model.GraphEdge
+		var edge domain.GraphEdge
 		if err := rows.Scan(&edge.Source, &edge.Target); err != nil {
 			return graph, err
 		}
@@ -453,7 +453,7 @@ WHERE target.id IS NOT NULL OR alias_target.id IS NOT NULL`)
 }
 
 // RecentEdited returns pages most recently revised by one user.
-func (s *Store) RecentEdited(ctx context.Context, userID int64, limit int) ([]model.RecentEdit, error) {
+func (s *Store) RecentEdited(ctx context.Context, userID int64, limit int) ([]domain.RecentEdit, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT p.id,p.slug,p.title,coalesce(i.icon,''),p.updated_at,coalesce(r.message,'')
 FROM pages p
@@ -468,10 +468,10 @@ LIMIT $2`, userID, limit)
 
 	defer rows.Close()
 
-	var items []model.RecentEdit
+	var items []domain.RecentEdit
 
 	for rows.Next() {
-		var item model.RecentEdit
+		var item domain.RecentEdit
 		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Icon, &item.UpdatedAt, &item.RevisionMessage); err != nil {
 			return nil, err
 		}
@@ -483,7 +483,7 @@ LIMIT $2`, userID, limit)
 }
 
 // DueReviewPages returns pages whose configured review interval has elapsed.
-func (s *Store) DueReviewPages(ctx context.Context, limit int) ([]model.Page, error) {
+func (s *Store) DueReviewPages(ctx context.Context, limit int) ([]domain.Page, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT slug,title,status,review_interval_days,last_reviewed_at
 FROM pages
@@ -496,10 +496,10 @@ LIMIT $1`, limit)
 
 	defer rows.Close()
 
-	var pages []model.Page
+	var pages []domain.Page
 
 	for rows.Next() {
-		var page model.Page
+		var page domain.Page
 		if err := rows.Scan(&page.Slug, &page.Title, &page.Status, &page.ReviewIntervalDays, &page.LastReviewedAt); err != nil {
 			return nil, err
 		}
@@ -517,14 +517,14 @@ UPDATE pages
 SET last_reviewed_at=now()
 WHERE slug=$1 AND deleted_at IS NULL`, slug)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
 }
 
 // MovePage moves one page, optionally including descendants, and can refactor direct wiki-link targets.
-func (s *Store) MovePage(ctx context.Context, oldSlug, newSlug string, options model.MovePageOptions, user model.User) error {
+func (s *Store) MovePage(ctx context.Context, oldSlug, newSlug string, options domain.MovePageOptions, user domain.User) error {
 	oldSlug = strings.Trim(strings.TrimSpace(oldSlug), "/")
 	newSlug = strings.Trim(strings.TrimSpace(newSlug), "/")
 	if oldSlug == "" || newSlug == "" || oldSlug == newSlug {
@@ -585,7 +585,7 @@ ORDER BY length(slug),slug`
 
 	rows.Close()
 	if len(moved) == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	movingIDs := make([]int64, 0, len(moved))
@@ -600,7 +600,7 @@ SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>ALL($2::bigint[])) OR EX
 			return err
 		}
 		if conflict {
-			return model.ErrAlreadyExists
+			return domain.ErrAlreadyExists
 		}
 	}
 
@@ -715,7 +715,7 @@ func rewriteDirectWikiTarget(source, oldSlug, newSlug string) string {
 }
 
 // PageInventory returns pages with lifecycle metadata for administration.
-func (s *Store) PageInventory(ctx context.Context) ([]model.Page, error) {
+func (s *Store) PageInventory(ctx context.Context) ([]domain.Page, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT p.id,p.slug,p.title,p.status,coalesce(p.owner_group_id,0),coalesce(g.name,''),p.last_reviewed_at,p.review_interval_days,p.updated_at
 FROM pages p
@@ -728,10 +728,10 @@ ORDER BY p.slug`)
 
 	defer rows.Close()
 
-	var pages []model.Page
+	var pages []domain.Page
 
 	for rows.Next() {
-		var page model.Page
+		var page domain.Page
 		if err := rows.Scan(&page.ID, &page.Slug, &page.Title, &page.Status, &page.OwnerGroupID, &page.OwnerGroup, &page.LastReviewedAt, &page.ReviewIntervalDays, &page.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -744,7 +744,7 @@ ORDER BY p.slug`)
 
 // BulkSetPageStatus updates lifecycle status for selected pages.
 func (s *Store) BulkSetPageStatus(ctx context.Context, slugs []string, status string) error {
-	if !model.ValidPageStatus(status) {
+	if !domain.ValidPageStatus(status) {
 		return errors.New("invalid page status")
 	}
 

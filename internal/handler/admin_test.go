@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/auth"
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/store"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
@@ -99,7 +99,7 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 	assert.True(t, settings.OIDCGroupSync)
 	assert.True(t, settings.OIDCGroupsAuthoritative)
 	assert.Equal(t, "/lore-admins", settings.OIDCAdminGroup)
-	assert.Equal(t, []model.OIDCGroupMapping{
+	assert.Equal(t, []domain.OIDCGroupMapping{
 		{OIDCGroup: "/admins", GroupID: 7},
 		{OIDCGroup: "/family", GroupID: 9},
 	}, settings.OIDCGroupMappings)
@@ -113,13 +113,13 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T) {
 	t.Parallel()
 
-	settings := model.AuthenticationSettings{
+	settings := domain.AuthenticationSettings{
 		Mode:                    "oidc",
 		OIDCIssuer:              "https://identity.example.com",
 		OIDCClientID:            "lore",
 		OIDCGroupSync:           true,
 		OIDCGroupsAuthoritative: true,
-		OIDCGroupMappings: []model.OIDCGroupMapping{
+		OIDCGroupMappings: []domain.OIDCGroupMapping{
 			{OIDCGroup: "/admins", GroupID: 1},
 			{OIDCGroup: "/admins", GroupID: 2},
 		},
@@ -137,7 +137,7 @@ func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T)
 func TestAuthenticationSettingsProblems(t *testing.T) {
 	t.Parallel()
 
-	settings := model.AuthenticationSettings{
+	settings := domain.AuthenticationSettings{
 		Mode:         "oidc",
 		OIDCIssuer:   "https://identity.example.com",
 		OIDCClientID: "lore",
@@ -194,7 +194,7 @@ func TestReopenPendingOIDCIdentity(t *testing.T) {
 
 	mux.Handle("POST /admin/oidc/pending/{id}/reopen", ReopenPendingOIDCIdentity(users, slog.Default()))
 
-	request := auth.WithUser(httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), model.User{ID: 7, Role: "admin"})
+	request := auth.WithUser(httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), domain.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
 
 	mux.ServeHTTP(response, request)
@@ -229,7 +229,7 @@ func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.SetPathValue("id", "7")
 
-	request = auth.WithUser(request, model.User{ID: 7, Role: "admin"})
+	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
 
 	UpdateAdminUser(&passwordUserStub{}, nil, auth.NewLocal(repository, "http://localhost"), &Views{}, slog.Default())(response, request)

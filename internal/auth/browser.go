@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 )
 
 // browserAuthenticator resolves the database-managed browser authentication mode per request.
@@ -65,19 +65,19 @@ func ConfigureBrowserAuth(
 }
 
 // Authenticate resolves a user with the currently configured browser authentication mode.
-func (b *browserAuthenticator) Authenticate(r *http.Request) (model.User, error) {
+func (b *browserAuthenticator) Authenticate(r *http.Request) (domain.User, error) {
 	settings, err := b.currentSettings(r.Context())
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	if b.modeOverride == "" && AuthMode(settings.Mode) == AuthModeNone {
 		setupRequired, err := b.repository.SetupRequired(r.Context())
 		if err != nil {
-			return model.User{}, err
+			return domain.User{}, err
 		}
 		if setupRequired {
-			return model.User{}, ErrUnauthenticated
+			return domain.User{}, ErrUnauthenticated
 		}
 	}
 	if b.localLoginEnabled && AuthMode(settings.Mode) != AuthModeLocal {
@@ -86,13 +86,13 @@ func (b *browserAuthenticator) Authenticate(r *http.Request) (model.User, error)
 			return user, nil
 		}
 		if !errors.Is(err, ErrUnauthenticated) {
-			return model.User{}, err
+			return domain.User{}, err
 		}
 	}
 
 	authenticator, err := b.authenticatorForSettings(r.Context(), settings)
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	return authenticator.Authenticate(r)
@@ -168,7 +168,7 @@ func (b *browserAuthenticator) callback(w http.ResponseWriter, r *http.Request) 
 }
 
 // validate checks persisted authentication settings before administrators activate them.
-func (b *browserAuthenticator) validate(ctx context.Context, settings model.AuthenticationSettings) error {
+func (b *browserAuthenticator) validate(ctx context.Context, settings domain.AuthenticationSettings) error {
 	if b.modeOverride == "" {
 		setupRequired, err := b.repository.SetupRequired(ctx)
 		if err != nil {
@@ -202,22 +202,22 @@ func (b *browserAuthenticator) validate(ctx context.Context, settings model.Auth
 }
 
 // currentSettings reads database-managed settings and applies the emergency mode override.
-func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.AuthenticationSettings, error) {
+func (b *browserAuthenticator) currentSettings(ctx context.Context) (domain.AuthenticationSettings, error) {
 	// Recovery overrides are self-contained and do not depend on stored auth configuration.
 	switch b.modeOverride {
 	case AuthModeNone:
-		return model.AuthenticationSettings{Mode: string(AuthModeNone)}, nil
+		return domain.AuthenticationSettings{Mode: string(AuthModeNone)}, nil
 	case AuthModeLocal:
-		return model.AuthenticationSettings{Mode: string(AuthModeLocal)}, nil
+		return domain.AuthenticationSettings{Mode: string(AuthModeLocal)}, nil
 	case AuthModeTrustedProxy:
-		return model.AuthenticationSettings{
+		return domain.AuthenticationSettings{
 			Mode:                      string(AuthModeTrustedProxy),
 			TrustedUsernameHeaders:    b.trustedProxy.Username,
 			TrustedEmailHeaders:       b.trustedProxy.Email,
 			TrustedDisplayNameHeaders: b.trustedProxy.DisplayName,
 		}, nil
 	case AuthModeOIDC:
-		return model.AuthenticationSettings{
+		return domain.AuthenticationSettings{
 			Mode:         string(AuthModeOIDC),
 			OIDCIssuer:   b.oidcConfig.Issuer,
 			OIDCClientID: b.oidcConfig.ClientID,
@@ -226,7 +226,7 @@ func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.Authe
 
 	settings, err := b.repository.ApplicationSettings(ctx)
 	if err != nil {
-		return model.AuthenticationSettings{}, err
+		return domain.AuthenticationSettings{}, err
 	}
 
 	authentication := settings.Authentication
@@ -234,7 +234,7 @@ func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.Authe
 	if authentication.OIDCGroupSync {
 		authentication.OIDCGroupMappings, err = b.repository.OIDCGroupMappings(ctx)
 		if err != nil {
-			return model.AuthenticationSettings{}, err
+			return domain.AuthenticationSettings{}, err
 		}
 	}
 
@@ -244,7 +244,7 @@ func (b *browserAuthenticator) currentSettings(ctx context.Context) (model.Authe
 // authenticatorForSettings creates the authenticator for one resolved configuration.
 func (b *browserAuthenticator) authenticatorForSettings(
 	ctx context.Context,
-	settings model.AuthenticationSettings,
+	settings domain.AuthenticationSettings,
 ) (Authenticator, error) {
 	if err := b.validateSettings(settings); err != nil {
 		return nil, err
@@ -271,7 +271,7 @@ func (b *browserAuthenticator) authenticatorForSettings(
 }
 
 // validateSettings checks configuration that does not require contacting an OIDC provider.
-func (b *browserAuthenticator) validateSettings(settings model.AuthenticationSettings) error {
+func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSettings) error {
 	switch AuthMode(settings.Mode) {
 	case AuthModeNone:
 		return nil
@@ -315,7 +315,7 @@ func (b *browserAuthenticator) localLoginAllowed(ctx context.Context) (bool, err
 }
 
 // oidcFor returns a cached OIDC integration for the supplied public settings.
-func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.AuthenticationSettings) (*OIDC, error) {
+func (b *browserAuthenticator) oidcFor(ctx context.Context, settings domain.AuthenticationSettings) (*OIDC, error) {
 	key := oidcSettingsKey(settings)
 
 	b.mu.Lock()
@@ -354,7 +354,7 @@ func (b *browserAuthenticator) oidcFor(ctx context.Context, settings model.Authe
 }
 
 // oidcSettingsKey fingerprints public OIDC settings that affect the cached integration.
-func oidcSettingsKey(settings model.AuthenticationSettings) string {
+func oidcSettingsKey(settings domain.AuthenticationSettings) string {
 	var key strings.Builder
 	_, _ = fmt.Fprintf(
 		&key,

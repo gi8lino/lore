@@ -3,16 +3,16 @@ package service
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // groupRepository contains collaboration group operations.
 type groupRepository interface {
-	Groups(context.Context) ([]model.Group, error)
-	AssignableGroups(context.Context, model.User) ([]model.Group, error)
-	CreateGroup(context.Context, string) (model.Group, error)
+	Groups(context.Context) ([]domain.Group, error)
+	AssignableGroups(context.Context, domain.User) ([]domain.Group, error)
+	CreateGroup(context.Context, string) (domain.Group, error)
 	DeleteGroup(context.Context, int64) error
-	GroupMembers(context.Context, int64) ([]model.User, error)
+	GroupMembers(context.Context, int64) ([]domain.User, error)
 	AddGroupMember(context.Context, int64, int64) error
 	RemoveGroupMember(context.Context, int64, int64) error
 }
@@ -24,17 +24,17 @@ type Groups struct{ repository groupRepository }
 func NewGroups(repository groupRepository) *Groups { return &Groups{repository: repository} }
 
 // Groups returns all collaboration groups.
-func (s *Groups) Groups(ctx context.Context) ([]model.Group, error) {
+func (s *Groups) Groups(ctx context.Context) ([]domain.Group, error) {
 	return s.repository.Groups(ctx)
 }
 
 // AssignableGroups returns the groups an actor may assign to pages.
-func (s *Groups) AssignableGroups(ctx context.Context, user model.User) ([]model.Group, error) {
+func (s *Groups) AssignableGroups(ctx context.Context, user domain.User) ([]domain.Group, error) {
 	return s.repository.AssignableGroups(ctx, user)
 }
 
 // CreateGroup creates a collaboration group.
-func (s *Groups) CreateGroup(ctx context.Context, name string) (model.Group, error) {
+func (s *Groups) CreateGroup(ctx context.Context, name string) (domain.Group, error) {
 	return s.repository.CreateGroup(ctx, name)
 }
 
@@ -44,7 +44,7 @@ func (s *Groups) DeleteGroup(ctx context.Context, id int64) error {
 }
 
 // GroupMembers returns the users assigned to a group.
-func (s *Groups) GroupMembers(ctx context.Context, groupID int64) ([]model.User, error) {
+func (s *Groups) GroupMembers(ctx context.Context, groupID int64) ([]domain.User, error) {
 	return s.repository.GroupMembers(ctx, groupID)
 }
 

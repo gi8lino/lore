@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -30,7 +30,7 @@ FROM page_drafts d
 LEFT JOIN pages p ON p.id=d.page_id`
 
 // PageDraft returns one private draft owned by a user.
-func (s *Store) PageDraft(ctx context.Context, userID int64, key string) (model.PageDraft, error) {
+func (s *Store) PageDraft(ctx context.Context, userID int64, key string) (domain.PageDraft, error) {
 	return scanPageDraft(s.pool.QueryRow(
 		ctx,
 		pageDraftSelect+`
@@ -41,7 +41,7 @@ WHERE d.user_id=$1 AND d.draft_key=$2 AND (d.page_id IS NULL OR p.deleted_at IS 
 }
 
 // PageDrafts returns one user's private drafts newest first without loading their full form payloads.
-func (s *Store) PageDrafts(ctx context.Context, userID int64, limit int) ([]model.PageDraft, error) {
+func (s *Store) PageDrafts(ctx context.Context, userID int64, limit int) ([]domain.PageDraft, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   d.id,
@@ -66,7 +66,7 @@ LIMIT $2`, userID, limit)
 
 	defer rows.Close()
 
-	result := make([]model.PageDraft, 0)
+	result := make([]domain.PageDraft, 0)
 
 	for rows.Next() {
 		draft, err := scanPageDraft(rows)
@@ -89,10 +89,10 @@ func (s *Store) SavePageDraft(
 	title string,
 	slug string,
 	values map[string][]string,
-) (model.PageDraft, error) {
+) (domain.PageDraft, error) {
 	payload, err := json.Marshal(values)
 	if err != nil {
-		return model.PageDraft{}, err
+		return domain.PageDraft{}, err
 	}
 
 	baseRevision := 0
@@ -105,10 +105,10 @@ LEFT JOIN page_revisions r ON r.page_id=p.id
 WHERE p.id=$1 AND p.deleted_at IS NULL
 GROUP BY p.id`, pageID).Scan(&baseRevision)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return model.PageDraft{}, model.ErrNotFound
+			return domain.PageDraft{}, domain.ErrNotFound
 		}
 		if err != nil {
-			return model.PageDraft{}, err
+			return domain.PageDraft{}, err
 		}
 	}
 
@@ -122,7 +122,7 @@ ON CONFLICT(user_id,draft_key) DO UPDATE SET
   form_values=EXCLUDED.form_values,
   updated_at=now()`, userID, key, pageID, baseRevision, title, slug, string(payload))
 	if err != nil {
-		return model.PageDraft{}, err
+		return domain.PageDraft{}, err
 	}
 
 	return s.PageDraft(ctx, userID, key)
@@ -137,8 +137,8 @@ WHERE user_id=$1 AND draft_key=$2`, userID, key)
 }
 
 // scanPageDraft scans a private draft and decodes its generic form payload.
-func scanPageDraft(row pageDraftScanner) (model.PageDraft, error) {
-	var draft model.PageDraft
+func scanPageDraft(row pageDraftScanner) (domain.PageDraft, error) {
+	var draft domain.PageDraft
 	var payload []byte
 	err := row.Scan(
 		&draft.ID,
@@ -154,15 +154,15 @@ func scanPageDraft(row pageDraftScanner) (model.PageDraft, error) {
 		&draft.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.PageDraft{}, model.ErrNotFound
+		return domain.PageDraft{}, domain.ErrNotFound
 	}
 	if err != nil {
-		return model.PageDraft{}, err
+		return domain.PageDraft{}, err
 	}
 
 	if len(payload) > 0 {
 		if err := json.Unmarshal(payload, &draft.Values); err != nil {
-			return model.PageDraft{}, err
+			return domain.PageDraft{}, err
 		}
 	}
 

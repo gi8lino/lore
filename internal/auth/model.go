@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // AuthMode identifies a supported browser authentication mode.
@@ -43,7 +43,7 @@ type OIDCConfig struct {
 	GroupClaim          string
 	GroupSync           bool
 	GroupsAuthoritative bool
-	GroupMappings       []model.OIDCGroupMapping
+	GroupMappings       []domain.OIDCGroupMapping
 	AdminGroup          string
 }
 
@@ -52,7 +52,7 @@ type BrowserAuth struct {
 	Authenticator     Authenticator
 	Login             http.Handler
 	Callback          http.Handler
-	Validate          func(context.Context, model.AuthenticationSettings) error
+	Validate          func(context.Context, domain.AuthenticationSettings) error
 	Local             *Local
 	LocalLoginAllowed func(context.Context) (bool, error)
 }

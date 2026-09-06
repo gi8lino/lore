@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -16,7 +16,7 @@ SELECT slug
 FROM pages
 WHERE id=$1 AND deleted_at IS NULL`, id).Scan(&slug)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", model.ErrNotFound
+		return "", domain.ErrNotFound
 	}
 
 	return slug, err

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,12 +23,12 @@ SELECT NOT EXISTS(SELECT 1 FROM users)`).Scan(&required)
 func (s *Store) CreateInitialLocalAdministrator(
 	ctx context.Context,
 	username, email, displayName, passwordHash string,
-) (model.User, error) {
+) (domain.User, error) {
 	username = strings.TrimSpace(username)
 	email = strings.TrimSpace(email)
 	displayName = strings.TrimSpace(displayName)
 	if username == "" || passwordHash == "" {
-		return model.User{}, errors.New("username and password hash are required")
+		return domain.User{}, errors.New("username and password hash are required")
 	}
 
 	if displayName == "" {
@@ -37,7 +37,7 @@ func (s *Store) CreateInitialLocalAdministrator(
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -50,19 +50,19 @@ func (s *Store) CreateInitialLocalAdministrator(
 SELECT singleton
 FROM application_settings
 WHERE singleton=true FOR UPDATE`).Scan(&singleton); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	var exists bool
 	if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM users)`).Scan(&exists); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if exists {
-		return model.User{}, model.ErrAlreadyExists
+		return domain.User{}, domain.ErrAlreadyExists
 	}
 
-	var user model.User
+	var user domain.User
 	if err := tx.QueryRow(ctx, `
 INSERT INTO users(username,email,display_name,role,last_login)
 VALUES($1,$2,$3,'admin',now())
@@ -75,28 +75,28 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 		&user.Enabled,
 		&user.SessionVersion,
 	); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 INSERT INTO local_credentials(user_id,password_hash)
 VALUES($1,$2)`, user.ID, passwordHash); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 UPDATE application_settings
 SET auth_mode='local',allow_user_registration=false,updated_at=now()
 WHERE singleton=true`); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	return user, nil
 }
 
 // LocalCredential returns one local-login account and its password hash.
-func (s *Store) LocalCredential(ctx context.Context, username string) (user model.User, passwordHash string, err error) {
+func (s *Store) LocalCredential(ctx context.Context, username string) (user domain.User, passwordHash string, err error) {
 	err = s.pool.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version,c.password_hash
 FROM local_credentials c
@@ -112,7 +112,7 @@ WHERE u.username=$1 AND u.enabled AND c.enabled`, strings.TrimSpace(username)).S
 		&passwordHash,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.User{}, "", model.ErrNotFound
+		return domain.User{}, "", domain.ErrNotFound
 	}
 
 	return user, passwordHash, err
@@ -163,7 +163,7 @@ SET password_hash=EXCLUDED.password_hash,enabled=true,updated_at=now()`, userID,
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
@@ -202,15 +202,15 @@ WHERE id=$1`, userID)
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return tx.Commit(ctx)
 }
 
 // LocalUserBySession resolves a non-expired local-login session.
-func (s *Store) LocalUserBySession(ctx context.Context, tokenHash string) (model.User, error) {
-	var user model.User
+func (s *Store) LocalUserBySession(ctx context.Context, tokenHash string) (domain.User, error) {
+	var user domain.User
 	err := s.pool.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version
 FROM local_sessions s
@@ -218,7 +218,7 @@ JOIN users u ON u.id=s.user_id
 JOIN local_credentials c ON c.user_id=u.id
 WHERE s.token_hash=$1 AND s.expires_at>now() AND u.enabled AND c.enabled`, tokenHash).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.User{}, model.ErrNotFound
+		return domain.User{}, domain.ErrNotFound
 	}
 
 	return user, err

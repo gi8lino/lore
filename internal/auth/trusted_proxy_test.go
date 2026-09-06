@@ -5,18 +5,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type trustedProxyRepositoryStub struct {
-	user   model.User
+	user   domain.User
 	method string
 	admin  bool
 }
 
-func (r *trustedProxyRepositoryStub) TrustedProxyUser(context.Context, string, string, string) (model.User, error) {
+func (r *trustedProxyRepositoryStub) TrustedProxyUser(context.Context, string, string, string) (domain.User, error) {
 	return r.user, nil
 }
 
@@ -30,7 +30,7 @@ func (r *trustedProxyRepositoryStub) SetExternalAdminStatus(_ context.Context, _
 func TestTrustedProxyExternalAdministrator(t *testing.T) {
 	t.Parallel()
 
-	repository := &trustedProxyRepositoryStub{user: model.User{ID: 7, Role: "viewer", Enabled: true}}
+	repository := &trustedProxyRepositoryStub{user: domain.User{ID: 7, Role: "viewer", Enabled: true}}
 	authenticator := NewTrustedProxy(repository, TrustedProxyHeaders{
 		Username:   []string{"X-User"},
 		Groups:     []string{"X-Groups"},
@@ -54,7 +54,7 @@ func TestTrustedProxyDisabledAccount(t *testing.T) {
 	t.Parallel()
 
 	authenticator := NewTrustedProxy(
-		&trustedProxyRepositoryStub{user: model.User{ID: 7, Enabled: false}},
+		&trustedProxyRepositoryStub{user: domain.User{ID: 7, Enabled: false}},
 		TrustedProxyHeaders{Username: []string{"X-User"}},
 	)
 	request := httptest.NewRequest("GET", "/", nil)

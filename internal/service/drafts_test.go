@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,11 +19,11 @@ type draftRepositoryStub struct {
 	deletedKey  string
 }
 
-func (r *draftRepositoryStub) PageDraft(context.Context, int64, string) (model.PageDraft, error) {
-	return model.PageDraft{}, model.ErrNotFound
+func (r *draftRepositoryStub) PageDraft(context.Context, int64, string) (domain.PageDraft, error) {
+	return domain.PageDraft{}, domain.ErrNotFound
 }
 
-func (r *draftRepositoryStub) PageDrafts(context.Context, int64, int) ([]model.PageDraft, error) {
+func (r *draftRepositoryStub) PageDrafts(context.Context, int64, int) ([]domain.PageDraft, error) {
 	return nil, nil
 }
 
@@ -35,7 +35,7 @@ func (r *draftRepositoryStub) SavePageDraft(
 	title string,
 	slug string,
 	values map[string][]string,
-) (model.PageDraft, error) {
+) (domain.PageDraft, error) {
 	r.savedUserID = userID
 	r.savedKey = key
 	r.savedPageID = pageID
@@ -43,7 +43,7 @@ func (r *draftRepositoryStub) SavePageDraft(
 	r.savedSlug = slug
 	r.savedValues = values
 
-	return model.PageDraft{Key: key, PageID: pageID, Title: title, Slug: slug, Values: values}, nil
+	return domain.PageDraft{Key: key, PageID: pageID, Title: title, Slug: slug, Values: values}, nil
 }
 
 func (r *draftRepositoryStub) DeletePageDraft(_ context.Context, _ int64, key string) error {
@@ -64,7 +64,7 @@ func TestDraftsSaveValidatesStableKey(t *testing.T) {
 	_, err := NewDrafts(nil).Save(context.Background(), PageDraftSaveInput{
 		Key:    "page:41",
 		PageID: 42,
-		Actor:  model.User{ID: 7},
+		Actor:  domain.User{ID: 7},
 	})
 
 	validation, ok := err.(*ValidationError)
@@ -86,7 +86,7 @@ func TestDraftsSavePersistsPrivateFormState(t *testing.T) {
 		Title:  " Draft title ",
 		Slug:   " guide/new-path ",
 		Values: values,
-		Actor:  model.User{ID: 7},
+		Actor:  domain.User{ID: 7},
 	})
 
 	require.NoError(t, err)

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // isSearchFilter reports whether a token prefix is a supported field filter.
@@ -20,7 +20,7 @@ func isSearchFilter(key string) bool {
 }
 
 // Search supports free text and field filters for taxonomy, ownership, lifecycle, and structured properties.
-func (s *Store) Search(ctx context.Context, query string, limit int) ([]model.Page, error) {
+func (s *Store) Search(ctx context.Context, query string, limit int) ([]domain.Page, error) {
 	var textTerms []string
 	filters := map[string][]string{}
 
@@ -112,10 +112,10 @@ LIMIT ` + limitParam
 
 	defer rows.Close()
 
-	var out []model.Page
+	var out []domain.Page
 
 	for rows.Next() {
-		var p model.Page
+		var p domain.Page
 		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Icon, &p.Markdown, &p.CreatedBy, &p.UpdatedBy, &p.Author, &p.CreatedAt, &p.UpdatedAt, &p.ViewCount, &p.Tags, &p.Rank); err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ LIMIT ` + limitParam
 }
 
 // RecentViewed returns a user's recently viewed pages.
-func (s *Store) RecentViewed(ctx context.Context, userID int64, limit int) ([]model.Page, error) {
+func (s *Store) RecentViewed(ctx context.Context, userID int64, limit int) ([]domain.Page, error) {
 	rows, err := s.pool.Query(
 		ctx,
 		pageSelect+`
@@ -149,7 +149,7 @@ LIMIT $2`,
 }
 
 // Popular returns the most-viewed pages.
-func (s *Store) Popular(ctx context.Context, limit int) ([]model.Page, error) {
+func (s *Store) Popular(ctx context.Context, limit int) ([]domain.Page, error) {
 	rows, err := s.pool.Query(
 		ctx,
 		pageSelect+`

@@ -4,20 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type knowledgeContentStub struct {
-	pages    map[string]model.Page
-	snippets map[string]model.KnowledgeSnippet
+	pages    map[string]domain.Page
+	snippets map[string]domain.KnowledgeSnippet
 }
 
-func (s knowledgeContentStub) GetPage(_ context.Context, slug string) (model.Page, error) {
+func (s knowledgeContentStub) GetPage(_ context.Context, slug string) (domain.Page, error) {
 	page, ok := s.pages[slug]
 	if !ok {
-		return model.Page{}, model.ErrNotFound
+		return domain.Page{}, domain.ErrNotFound
 	}
 
 	return page, nil
@@ -27,10 +27,10 @@ func (s knowledgeContentStub) KnowledgeSnippetByName(
 	_ context.Context,
 	kind string,
 	name string,
-) (model.KnowledgeSnippet, error) {
+) (domain.KnowledgeSnippet, error) {
 	item, ok := s.snippets[kind+":"+name]
 	if !ok {
-		return model.KnowledgeSnippet{}, model.ErrNotFound
+		return domain.KnowledgeSnippet{}, domain.ErrNotFound
 	}
 
 	return item, nil
@@ -48,13 +48,13 @@ func TestExpandKnowledgeMarkdownReportsMissingContent(t *testing.T) {
 	)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, model.ErrNotFound)
+	assert.ErrorIs(t, err, domain.ErrNotFound)
 }
 
 func TestExpandKnowledgeMarkdownReportsRecursiveIncludes(t *testing.T) {
 	t.Parallel()
 
-	content := knowledgeContentStub{pages: map[string]model.Page{
+	content := knowledgeContentStub{pages: map[string]domain.Page{
 		"recursive": {Slug: "recursive", Markdown: "{{include:recursive}}"},
 	}}
 	_, err := expandKnowledgeMarkdown(
@@ -87,14 +87,14 @@ func TestExpandKnowledgeMarkdownReportsDepthOverflow(t *testing.T) {
 func TestExpandKnowledgeMarkdownSyntax(t *testing.T) {
 	t.Parallel()
 	content := knowledgeContentStub{
-		snippets: map[string]model.KnowledgeSnippet{
+		snippets: map[string]domain.KnowledgeSnippet{
 			"variable:site":    {Content: "Lore"},
 			"snippet:greeting": {Content: "Hello"},
 			"snippet:literal":  {Content: "{{var:site}}"},
 			"snippet:a:b":      {Content: "colon"},
 			"snippet:":         {Content: "empty name"},
 		},
-		pages: map[string]model.Page{
+		pages: map[string]domain.Page{
 			"guide": {Markdown: "# {{var:site}}\n{{snippet:greeting}}"},
 		},
 	}

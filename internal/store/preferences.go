@@ -5,13 +5,13 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 // Preferences returns a user's stored preferences or defaults when none exist yet.
-func (s *Store) Preferences(ctx context.Context, userID int64) (model.UserPreferences, error) {
-	preferences := model.DefaultUserPreferences()
+func (s *Store) Preferences(ctx context.Context, userID int64) (domain.UserPreferences, error) {
+	preferences := domain.DefaultUserPreferences()
 	err := s.pool.QueryRow(ctx, `
 SELECT
   theme,
@@ -45,7 +45,7 @@ WHERE user_id=$1`, userID).Scan(
 }
 
 // SavePreferences creates or updates all presentation preferences for a user.
-func (s *Store) SavePreferences(ctx context.Context, userID int64, preferences model.UserPreferences) error {
+func (s *Store) SavePreferences(ctx context.Context, userID int64, preferences domain.UserPreferences) error {
 	_, err := s.pool.Exec(ctx, `
 INSERT INTO user_preferences(
   user_id,

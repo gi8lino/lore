@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 )
 
 // PagePermalink redirects an authenticated stable page identifier to its current path.
@@ -21,7 +21,7 @@ func PagePermalink(catalogUseCases pagePermalinkService, logger *slog.Logger) ht
 
 		slug, err := catalogUseCases.PageSlugByID(r.Context(), id)
 		if err != nil {
-			if errors.Is(err, model.ErrNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}

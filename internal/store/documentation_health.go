@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // DocumentationHealth returns actionable documentation-quality findings.
-func (s *Store) DocumentationHealth(ctx context.Context, staleBefore time.Time) (model.DocumentationHealth, error) {
-	var health model.DocumentationHealth
+func (s *Store) DocumentationHealth(ctx context.Context, staleBefore time.Time) (domain.DocumentationHealth, error) {
+	var health domain.DocumentationHealth
 
 	rows, err := s.pool.Query(ctx, `
 SELECT source.slug,source.title,links.target_slug
@@ -25,7 +25,7 @@ ORDER BY source.slug,links.target_slug`)
 	}
 
 	for rows.Next() {
-		var item model.BrokenWikiLink
+		var item domain.BrokenWikiLink
 		if err := rows.Scan(&item.SourceSlug, &item.SourceTitle, &item.TargetSlug); err != nil {
 			rows.Close()
 			return health, err
@@ -42,7 +42,7 @@ ORDER BY source.slug,links.target_slug`)
 	rows.Close()
 
 	queries := []struct {
-		target *[]model.Page
+		target *[]domain.Page
 		query  string
 		args   []any
 	}{
@@ -91,7 +91,7 @@ ORDER BY p.slug`, nil},
 		}
 
 		for rows.Next() {
-			var page model.Page
+			var page domain.Page
 			if err := rows.Scan(&page.Slug, &page.Title); err != nil {
 				rows.Close()
 				return health, err

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // TrustedProxy authenticates requests using identity headers from a trusted proxy.
@@ -31,10 +31,10 @@ func NewTrustedProxy(repository trustedProxyRepository, headers TrustedProxyHead
 }
 
 // Authenticate resolves the first populated trusted identity header.
-func (a *TrustedProxy) Authenticate(r *http.Request) (model.User, error) {
+func (a *TrustedProxy) Authenticate(r *http.Request) (domain.User, error) {
 	username := firstHeader(r, a.headers.Username)
 	if username == "" {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	user, err := a.repository.TrustedProxyUser(
@@ -43,21 +43,21 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (model.User, error) {
 		firstHeader(r, a.headers.Email),
 		firstHeader(r, a.headers.DisplayName),
 	)
-	if errors.Is(err, model.ErrRegistrationDisabled) {
-		return model.User{}, ErrRegistrationDisabled
+	if errors.Is(err, domain.ErrRegistrationDisabled) {
+		return domain.User{}, ErrRegistrationDisabled
 	}
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if !user.Enabled {
-		return model.User{}, ErrInvalidCredentials
+		return domain.User{}, ErrInvalidCredentials
 	}
 
 	if a.headers.AdminGroup != "" {
 		groups := splitHeaderValues(firstHeader(r, a.headers.Groups))
 		externalAdmin := containsGroup(groups, a.headers.AdminGroup)
 		if err := a.repository.SetExternalAdminStatus(r.Context(), user.ID, "trusted-proxy", externalAdmin); err != nil {
-			return model.User{}, err
+			return domain.User{}, err
 		}
 
 		if externalAdmin {

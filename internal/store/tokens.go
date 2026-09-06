@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -20,32 +20,32 @@ func (s *Store) CreateToken(
 	name string,
 	userID, createdBy int64,
 	expiresAt *time.Time,
-) (model.IssuedToken, error) {
+) (domain.IssuedToken, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return model.IssuedToken{}, errors.New("token name is required")
+		return domain.IssuedToken{}, errors.New("token name is required")
 	}
 
 	user, err := s.User(ctx, userID)
 	if err != nil {
-		return model.IssuedToken{}, err
+		return domain.IssuedToken{}, err
 	}
 
 	creator, err := s.User(ctx, createdBy)
 	if err != nil {
-		return model.IssuedToken{}, err
+		return domain.IssuedToken{}, err
 	}
 
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
-		return model.IssuedToken{}, err
+		return domain.IssuedToken{}, err
 	}
 
 	secret := "lore_pat_" + base64.RawURLEncoding.EncodeToString(secretBytes)
 	hash := sha256.Sum256([]byte(secret))
 	hashString := hex.EncodeToString(hash[:])
 
-	var token model.APIToken
+	var token domain.APIToken
 	err = s.pool.QueryRow(ctx, `
 INSERT INTO api_tokens(name,token_hash,user_id,created_by,expires_at)
 VALUES($1,$2,$3,$4,$5)
@@ -57,7 +57,7 @@ RETURNING id,name,user_id,coalesce(created_by,0),created_at`, name, hashString, 
 		&token.CreatedAt,
 	)
 	if err != nil {
-		return model.IssuedToken{}, err
+		return domain.IssuedToken{}, err
 	}
 
 	token.ExpiresAt = expiresAt
@@ -69,21 +69,21 @@ RETURNING id,name,user_id,coalesce(created_by,0),created_at`, name, hashString, 
 		token.Creator = creator.Username
 	}
 
-	return model.IssuedToken{Token: token, Secret: secret}, nil
+	return domain.IssuedToken{Token: token, Secret: secret}, nil
 }
 
 // UserTokens returns token metadata for one authenticated account.
-func (s *Store) UserTokens(ctx context.Context, userID int64) ([]model.APIToken, error) {
+func (s *Store) UserTokens(ctx context.Context, userID int64) ([]domain.APIToken, error) {
 	return s.tokens(ctx, `WHERE coalesce(t.user_id,t.created_by)=$1`, userID)
 }
 
 // Tokens returns all token metadata for administrators.
-func (s *Store) Tokens(ctx context.Context) ([]model.APIToken, error) {
+func (s *Store) Tokens(ctx context.Context) ([]domain.APIToken, error) {
 	return s.tokens(ctx, "")
 }
 
 // tokens queries token metadata with an optional WHERE clause and arguments.
-func (s *Store) tokens(ctx context.Context, where string, args ...any) ([]model.APIToken, error) {
+func (s *Store) tokens(ctx context.Context, where string, args ...any) ([]domain.APIToken, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   t.id,
@@ -106,10 +106,10 @@ ORDER BY t.created_at DESC,t.id DESC`, args...)
 
 	defer rows.Close()
 
-	var tokens []model.APIToken
+	var tokens []domain.APIToken
 
 	for rows.Next() {
-		var token model.APIToken
+		var token domain.APIToken
 		var lastUsed pgtype.Timestamptz
 		var expiresAt pgtype.Timestamptz
 		if err := rows.Scan(
@@ -147,7 +147,7 @@ func (s *Store) DeleteUserToken(ctx context.Context, id, userID int64) error {
 DELETE FROM api_tokens
 WHERE id=$1 AND coalesce(user_id,created_by)=$2`, id, userID)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
@@ -159,7 +159,7 @@ func (s *Store) DeleteToken(ctx context.Context, id int64) error {
 DELETE FROM api_tokens
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err

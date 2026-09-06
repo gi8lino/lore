@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/revision"
 )
 
@@ -55,7 +55,7 @@ type PageSaveInput struct {
 	MarkReviewed       bool
 	DeprecatedTarget   string
 	Properties         map[string]string
-	Actor              model.User
+	Actor              domain.User
 }
 
 // ImportedPage contains one transport-independent page discovered by an importer.
@@ -74,28 +74,28 @@ type BulkPageInput struct {
 	Tag     string
 	GroupID int64
 	Target  string
-	Actor   model.User
+	Actor   domain.User
 }
 
 // pageRepository is the persistence contract required by page use cases.
 // Keeping it here makes the application service independently testable and
 // prevents unrelated store capabilities from becoming implicit dependencies.
 type pageRepository interface {
-	AddPageComment(context.Context, string, int64, string, string) (model.PageComment, error)
-	ApplicationSettings(context.Context) (model.ApplicationSettings, error)
+	AddPageComment(context.Context, string, int64, string, string) (domain.PageComment, error)
+	ApplicationSettings(context.Context) (domain.ApplicationSettings, error)
 	BulkAddPageTag(context.Context, []string, string) error
 	BulkAssignPageGroup(context.Context, []string, int64) error
 	BulkDeletePages(context.Context, []string, int64) error
 	BulkSetPageStatus(context.Context, []string, string) error
 	DeletePage(context.Context, string, int64) error
-	GetPage(context.Context, string) (model.Page, error)
+	GetPage(context.Context, string) (domain.Page, error)
 	LogAudit(context.Context, int64, string, string, string, string) error
 	MarkPageReviewed(context.Context, string) error
-	MovePage(context.Context, string, string, model.MovePageOptions, model.User) error
+	MovePage(context.Context, string, string, domain.MovePageOptions, domain.User) error
 	NotifyMentions(context.Context, int64, string, string, string) error
 	ResolvePageComment(context.Context, int64, bool) error
 	Revision(context.Context, string, int) (revision.Revision, error)
-	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, model.PageMetadata, map[string]string, model.User) (model.Page, error)
+	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
 }
 
 // Pages coordinates page mutations and their application-level side effects.
@@ -109,10 +109,10 @@ func NewPages(repository pageRepository) *Pages {
 }
 
 // Save validates and persists a page, then records audit and mention side effects.
-func (s *Pages) Save(ctx context.Context, input PageSaveInput) (model.Page, error) {
+func (s *Pages) Save(ctx context.Context, input PageSaveInput) (domain.Page, error) {
 	page, err := s.save(ctx, input)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	action := "page.updated"
@@ -137,7 +137,7 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (model.Page, erro
 
 // validPageWorkflowSettings reports whether page lifecycle and review metadata are internally valid.
 func validPageWorkflowSettings(input PageSaveInput) bool {
-	if !model.ValidPageStatus(input.Status) {
+	if !domain.ValidPageStatus(input.Status) {
 		return false
 	}
 	if !ValidReviewIntervalDays(input.ReviewIntervalDays) {
@@ -148,7 +148,7 @@ func validPageWorkflowSettings(input PageSaveInput) bool {
 }
 
 // save validates and persists a page without emitting side effects.
-func (s *Pages) save(ctx context.Context, input PageSaveInput) (model.Page, error) {
+func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, error) {
 	input.PreviousSlug = strings.TrimSpace(input.PreviousSlug)
 	input.Slug = md.Slug(input.Slug)
 	input.Title = strings.TrimSpace(input.Title)
@@ -183,7 +183,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (model.Page, erro
 	}
 
 	if len(validation.Fields) > 0 {
-		return model.Page{}, validation
+		return domain.Page{}, validation
 	}
 
 	return s.repository.SavePage(
@@ -198,7 +198,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (model.Page, erro
 		input.Tags,
 		md.Links(input.Markdown),
 		input.GroupIDs,
-		model.PageMetadata{
+		domain.PageMetadata{
 			Status:             input.Status,
 			OwnerGroupID:       input.OwnerGroupID,
 			ReviewIntervalDays: input.ReviewIntervalDays,
@@ -211,7 +211,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (model.Page, erro
 }
 
 // Delete moves a page to the recycle bin and records the action.
-func (s *Pages) Delete(ctx context.Context, slug string, actor model.User) error {
+func (s *Pages) Delete(ctx context.Context, slug string, actor domain.User) error {
 	slug = strings.TrimSpace(slug)
 	if err := s.repository.DeletePage(ctx, slug, actor.ID); err != nil {
 		return err
@@ -226,8 +226,8 @@ func (s *Pages) Delete(ctx context.Context, slug string, actor model.User) error
 func (s *Pages) Move(
 	ctx context.Context,
 	oldSlug, newSlug string,
-	options model.MovePageOptions,
-	actor model.User,
+	options domain.MovePageOptions,
+	actor domain.User,
 ) error {
 	oldSlug = strings.TrimSpace(oldSlug)
 	newSlug = md.Slug(newSlug)
@@ -244,7 +244,7 @@ func (s *Pages) Move(
 }
 
 // Review records a completed documentation review and its audit event.
-func (s *Pages) Review(ctx context.Context, slug string, actor model.User) error {
+func (s *Pages) Review(ctx context.Context, slug string, actor domain.User) error {
 	slug = strings.TrimSpace(slug)
 	if err := s.repository.MarkPageReviewed(ctx, slug); err != nil {
 		return err
@@ -256,19 +256,19 @@ func (s *Pages) Review(ctx context.Context, slug string, actor model.User) error
 }
 
 // RestoreRevision creates a new page revision from a persisted historical revision.
-func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, actor model.User) (model.Page, error) {
+func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, actor domain.User) (domain.Page, error) {
 	if number <= 0 {
-		return model.Page{}, &ValidationError{Fields: []FieldError{{Field: "revision", Message: "Invalid revision."}}}
+		return domain.Page{}, &ValidationError{Fields: []FieldError{{Field: "revision", Message: "Invalid revision."}}}
 	}
 
 	page, err := s.repository.GetPage(ctx, slug)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	record, err := s.repository.Revision(ctx, slug, number)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	groupIDs := make([]int64, 0, len(page.Groups))
@@ -301,7 +301,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 		Actor:              actor,
 	})
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	_ = s.repository.LogAudit(
@@ -317,7 +317,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 }
 
 // AddComment adds a discussion comment and emits mention notifications.
-func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor model.User) error {
+func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor domain.User) error {
 	settings, err := s.repository.ApplicationSettings(ctx)
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func (s *Pages) ResolveComment(ctx context.Context, id int64, resolved bool) err
 }
 
 // Import persists imported pages while retaining workflow metadata on replacements.
-func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format string, actor model.User) (int, error) {
+func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format string, actor domain.User) (int, error) {
 	for _, candidate := range candidates {
 		if err := s.importPage(ctx, candidate, actor); err != nil {
 			return 0, err
@@ -375,7 +375,7 @@ func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format st
 }
 
 // importPage persists one import candidate while retaining existing metadata.
-func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor model.User) error {
+func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor domain.User) error {
 	slug := md.Slug(candidate.Slug)
 	if slug == "" {
 		return newValidationError("slug", fmt.Sprintf("Invalid imported page path %q.", candidate.Slug))
@@ -408,7 +408,7 @@ func (s *Pages) importPage(ctx context.Context, candidate ImportedPage, actor mo
 		for _, property := range current.Properties {
 			input.Properties[property.Key] = property.Value
 		}
-	} else if !errors.Is(err, model.ErrNotFound) {
+	} else if !errors.Is(err, domain.ErrNotFound) {
 		return err
 	}
 
@@ -427,7 +427,7 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 
 	switch input.Action {
 	case "status":
-		if !model.ValidPageStatus(input.Status) {
+		if !domain.ValidPageStatus(input.Status) {
 			return newValidationError("status", "Choose a valid page status.")
 		}
 		err = s.repository.BulkSetPageStatus(ctx, input.Slugs, input.Status)
@@ -466,7 +466,7 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 }
 
 // bulkMove relocates selected pages beneath a normalized target path.
-func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, actor model.User) error {
+func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, actor domain.User) error {
 	target = md.Slug(target)
 	if target == "" {
 		return newValidationError("target", "A target path is required.")
@@ -484,7 +484,7 @@ func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, act
 			ctx,
 			slug,
 			destination,
-			model.MovePageOptions{UpdateIncomingLinks: true, KeepAliases: true},
+			domain.MovePageOptions{UpdateIncomingLinks: true, KeepAliases: true},
 			actor,
 		); err != nil {
 			return err

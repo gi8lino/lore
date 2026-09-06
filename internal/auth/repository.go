@@ -4,40 +4,40 @@ import (
 	"context"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // bearerRepository resolves API tokens to users.
 type bearerRepository interface {
-	UserByToken(context.Context, string) (model.User, error)
+	UserByToken(context.Context, string) (domain.User, error)
 }
 
 // noneRepository provisions the fixed administrator used by no-auth mode.
 type noneRepository interface {
-	EnsureAdministrator(context.Context, string, string, string) (model.User, error)
+	EnsureAdministrator(context.Context, string, string, string) (domain.User, error)
 }
 
 // trustedProxyRepository resolves identities asserted by a trusted proxy.
 type trustedProxyRepository interface {
-	TrustedProxyUser(context.Context, string, string, string) (model.User, error)
+	TrustedProxyUser(context.Context, string, string, string) (domain.User, error)
 	SetExternalAdminStatus(context.Context, int64, string, bool) error
 }
 
 // localRepository persists local credentials and browser sessions.
 type localRepository interface {
-	CreateInitialLocalAdministrator(context.Context, string, string, string, string) (model.User, error)
+	CreateInitialLocalAdministrator(context.Context, string, string, string, string) (domain.User, error)
 	CreateLocalSession(context.Context, int64, string, time.Time) error
 	DeleteLocalSession(context.Context, string) error
-	LocalCredential(context.Context, string) (user model.User, passwordHash string, err error)
-	LocalUserBySession(context.Context, string) (model.User, error)
+	LocalCredential(context.Context, string) (user domain.User, passwordHash string, err error)
+	LocalUserBySession(context.Context, string) (domain.User, error)
 	SetLocalCredential(context.Context, int64, string) error
 }
 
 // oidcRepository persists OIDC identities and synchronized group memberships.
 type oidcRepository interface {
-	LoginOIDCUser(context.Context, string, string, string, string, string) (model.User, error)
-	OIDCUser(context.Context, string, string) (model.User, error)
-	SyncOIDCGroups(context.Context, int64, []string, []model.OIDCGroupMapping, bool) error
+	LoginOIDCUser(context.Context, string, string, string, string, string) (domain.User, error)
+	OIDCUser(context.Context, string, string) (domain.User, error)
+	SyncOIDCGroups(context.Context, int64, []string, []domain.OIDCGroupMapping, bool) error
 	SetExternalAdminStatus(context.Context, int64, string, bool) error
 }
 
@@ -47,8 +47,8 @@ type browserRepository interface {
 	noneRepository
 	oidcRepository
 	trustedProxyRepository
-	ApplicationSettings(context.Context) (model.ApplicationSettings, error)
+	ApplicationSettings(context.Context) (domain.ApplicationSettings, error)
 	HasLocalAdministratorCredential(context.Context) (bool, error)
-	OIDCGroupMappings(context.Context) ([]model.OIDCGroupMapping, error)
+	OIDCGroupMappings(context.Context) ([]domain.OIDCGroupMapping, error)
 	SetupRequired(context.Context) (bool, error)
 }

@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // preferenceRepository contains per-user preference operations.
 type preferenceRepository interface {
-	Preferences(context.Context, int64) (model.UserPreferences, error)
-	SavePreferences(context.Context, int64, model.UserPreferences) error
+	Preferences(context.Context, int64) (domain.UserPreferences, error)
+	SavePreferences(context.Context, int64, domain.UserPreferences) error
 	SetShowPageContents(context.Context, int64, bool) error
 	SetExpandedNavigation(context.Context, int64, []string) error
 	SetSidebarWidth(context.Context, int64, int) error
@@ -24,7 +24,7 @@ func NewPreferences(repository preferenceRepository) *Preferences {
 }
 
 // Preferences returns the saved preferences for a user.
-func (s *Preferences) Preferences(ctx context.Context, userID int64) (model.UserPreferences, error) {
+func (s *Preferences) Preferences(ctx context.Context, userID int64) (domain.UserPreferences, error) {
 	return s.repository.Preferences(ctx, userID)
 }
 
@@ -32,7 +32,7 @@ func (s *Preferences) Preferences(ctx context.Context, userID int64) (model.User
 func (s *Preferences) SavePreferences(
 	ctx context.Context,
 	userID int64,
-	preferences model.UserPreferences,
+	preferences domain.UserPreferences,
 ) error {
 	return s.repository.SavePreferences(ctx, userID, preferences)
 }

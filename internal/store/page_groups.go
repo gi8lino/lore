@@ -3,12 +3,12 @@ package store
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 // PageGroups returns the collaboration groups assigned to one page.
-func (s *Store) PageGroups(ctx context.Context, pageID int64) ([]model.Group, error) {
+func (s *Store) PageGroups(ctx context.Context, pageID int64) ([]domain.Group, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT g.id,g.name
 FROM wiki_groups g
@@ -21,10 +21,10 @@ ORDER BY lower(g.name),g.id`, pageID)
 
 	defer rows.Close()
 
-	var groups []model.Group
+	var groups []domain.Group
 
 	for rows.Next() {
-		var group model.Group
+		var group domain.Group
 		if err := rows.Scan(&group.ID, &group.Name); err != nil {
 			return nil, err
 		}
@@ -36,12 +36,12 @@ ORDER BY lower(g.name),g.id`, pageID)
 }
 
 // validateAssignableGroup verifies that a user may select one group for page metadata.
-func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user model.User) error {
+func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user domain.User) error {
 	if groupID == 0 {
 		return nil
 	}
 	if groupID < 0 {
-		return model.ErrForbidden
+		return domain.ErrForbidden
 	}
 
 	var allowed bool
@@ -59,19 +59,19 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 	}
 
 	if !allowed {
-		return model.ErrForbidden
+		return domain.ErrForbidden
 	}
 
 	return nil
 }
 
 // replacePageGroups validates and updates page collaboration groups in the active transaction.
-func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []int64, user model.User) error {
+func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []int64, user domain.User) error {
 	unique := make(map[int64]struct{}, len(groupIDs))
 
 	for _, groupID := range groupIDs {
 		if groupID <= 0 {
-			return model.ErrForbidden
+			return domain.ErrForbidden
 		}
 		if _, exists := unique[groupID]; exists {
 			continue
@@ -94,7 +94,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 		}
 
 		if !allowed {
-			return model.ErrForbidden
+			return domain.ErrForbidden
 		}
 	}
 

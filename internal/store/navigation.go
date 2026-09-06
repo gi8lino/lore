@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // NavigationItems returns every page and synthetic folder that can appear in navigation.
-func (s *Store) NavigationItems(ctx context.Context) ([]model.NavigationItem, error) {
+func (s *Store) NavigationItems(ctx context.Context) ([]domain.NavigationItem, error) {
 	rows, err := s.pool.Query(ctx, `
 WITH source AS (
   SELECT string_to_array(slug,'/') AS parts
@@ -34,10 +34,10 @@ ORDER BY paths.path`)
 
 	defer rows.Close()
 
-	var items []model.NavigationItem
+	var items []domain.NavigationItem
 
 	for rows.Next() {
-		var item model.NavigationItem
+		var item domain.NavigationItem
 		if err := rows.Scan(&item.Path, &item.Title, &item.Icon, &item.Page); err != nil {
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func (s *Store) SetNavigationIcon(ctx context.Context, path, icon string) error 
 	path = strings.Trim(strings.TrimSpace(path), "/")
 	icon = strings.TrimSpace(icon)
 	if path == "" {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 	if icon == "" {
 		_, err := s.pool.Exec(ctx, `

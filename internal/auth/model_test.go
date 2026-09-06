@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +35,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 	t.Run("no authentication", func(t *testing.T) {
 		authenticator, err := browser.authenticatorForSettings(
 			context.Background(),
-			model.AuthenticationSettings{Mode: string(AuthModeNone)},
+			domain.AuthenticationSettings{Mode: string(AuthModeNone)},
 		)
 
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 	t.Run("local", func(t *testing.T) {
 		authenticator, err := browser.authenticatorForSettings(
 			context.Background(),
-			model.AuthenticationSettings{Mode: string(AuthModeLocal)},
+			domain.AuthenticationSettings{Mode: string(AuthModeLocal)},
 		)
 
 		require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 	t.Run("trusted proxy", func(t *testing.T) {
 		authenticator, err := browser.authenticatorForSettings(
 			context.Background(),
-			model.AuthenticationSettings{
+			domain.AuthenticationSettings{
 				Mode:                   string(AuthModeTrustedProxy),
 				TrustedUsernameHeaders: []string{"X-User"},
 			},
@@ -68,7 +68,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 	t.Run("rejects unknown mode", func(t *testing.T) {
 		_, err := browser.authenticatorForSettings(
 			context.Background(),
-			model.AuthenticationSettings{Mode: "invalid"},
+			domain.AuthenticationSettings{Mode: "invalid"},
 		)
 		require.Error(t, err)
 	})
@@ -77,7 +77,7 @@ func TestBrowserAuthenticatorForSettings(t *testing.T) {
 func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 	t.Parallel()
 
-	settings := model.AuthenticationSettings{
+	settings := domain.AuthenticationSettings{
 		Mode:         string(AuthModeOIDC),
 		OIDCIssuer:   "https://identity.example.com",
 		OIDCClientID: "lore",

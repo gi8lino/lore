@@ -6,20 +6,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type setupBrowserRepository struct {
 	browserRepository
-	settings               model.ApplicationSettings
+	settings               domain.ApplicationSettings
 	setupRequired          bool
 	localAdminCredential   bool
 	localCredentialChecked bool
 }
 
-func (r *setupBrowserRepository) ApplicationSettings(context.Context) (model.ApplicationSettings, error) {
+func (r *setupBrowserRepository) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
 	return r.settings, nil
 }
 
@@ -36,8 +36,8 @@ func TestConfigureBrowserAuthAllowsSetupWithStaleLocalMode(t *testing.T) {
 	t.Parallel()
 
 	repository := &setupBrowserRepository{
-		settings: model.ApplicationSettings{
-			Authentication: model.AuthenticationSettings{Mode: string(AuthModeLocal)},
+		settings: domain.ApplicationSettings{
+			Authentication: domain.AuthenticationSettings{Mode: string(AuthModeLocal)},
 		},
 		setupRequired: true,
 	}
@@ -53,8 +53,8 @@ func TestBrowserLoginRedirectsSetupWithStaleLocalMode(t *testing.T) {
 	t.Parallel()
 
 	repository := &setupBrowserRepository{
-		settings: model.ApplicationSettings{
-			Authentication: model.AuthenticationSettings{Mode: string(AuthModeLocal)},
+		settings: domain.ApplicationSettings{
+			Authentication: domain.AuthenticationSettings{Mode: string(AuthModeLocal)},
 		},
 		setupRequired: true,
 	}
@@ -74,7 +74,7 @@ func TestBrowserValidationStillRequiresLocalAdministratorAfterSetup(t *testing.T
 	repository := &setupBrowserRepository{setupRequired: false}
 	browser := &browserAuthenticator{repository: repository}
 
-	err := browser.validate(context.Background(), model.AuthenticationSettings{Mode: string(AuthModeLocal)})
+	err := browser.validate(context.Background(), domain.AuthenticationSettings{Mode: string(AuthModeLocal)})
 
 	assert.EqualError(t, err, "local authentication requires an administrator with a local password")
 	assert.True(t, repository.localCredentialChecked)

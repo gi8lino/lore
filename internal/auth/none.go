@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // None authenticates every request as the local administrator.
@@ -18,6 +18,6 @@ func NewNone(repository noneRepository) *None {
 }
 
 // Authenticate resolves the local administrator account.
-func (a *None) Authenticate(r *http.Request) (model.User, error) {
+func (a *None) Authenticate(r *http.Request) (domain.User, error) {
 	return a.repository.EnsureAdministrator(r.Context(), "admin", "", "Administrator")
 }

@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/themes"
@@ -69,7 +69,7 @@ var pageTemplateNames = []string{
 
 // publicViewData builds shared data for unauthenticated setup and login pages.
 func publicViewData(views *Views, title string) (ViewData, error) {
-	preferences := model.DefaultUserPreferences()
+	preferences := domain.DefaultUserPreferences()
 	activeTheme := themes.DefaultTheme
 	preferences.Theme = activeTheme
 	themeData, err := json.Marshal(views.themes)
@@ -159,11 +159,11 @@ type ViewData struct {
 	// Title is the page title displayed in the browser chrome.
 	Title string
 	// User is the authenticated user rendering the page.
-	User model.User
+	User domain.User
 	// Preferences contains the current user's presentation preferences.
-	Preferences model.UserPreferences
+	Preferences domain.UserPreferences
 	// Page is the current wiki page when one is being viewed or edited.
-	Page *model.Page
+	Page *domain.Page
 	// PageFavorite reports whether the current user has pinned the current page.
 	PageFavorite bool
 	// HTML is the sanitized rendered Markdown for the current page.
@@ -173,37 +173,37 @@ type ViewData struct {
 	// Subpages contains the generated navigation subtree below the current page.
 	Subpages []navigation.Node
 	// Pages contains the primary page collection for the current view.
-	Pages []model.Page
+	Pages []domain.Page
 	// Favorites contains the current user's favorite pages.
-	Favorites []model.Page
+	Favorites []domain.Page
 	// SidebarPinned contains favorite pages shown above the navigation tree.
-	SidebarPinned []model.Page
+	SidebarPinned []domain.Page
 	// SidebarRecent contains recently viewed pages shown above the navigation tree.
-	SidebarRecent []model.Page
+	SidebarRecent []domain.Page
 	// Recent contains recently changed pages.
-	Recent []model.Page
+	Recent []domain.Page
 	// Popular contains the most viewed pages.
-	Popular []model.Page
+	Popular []domain.Page
 	// RecentEdits contains pages the current user recently changed.
-	RecentEdits []model.RecentEdit
+	RecentEdits []domain.RecentEdit
 	// Drafts contains the current user's private server-side page drafts.
-	Drafts []model.PageDraft
+	Drafts []domain.PageDraft
 	// SavedSearches contains named smart collections for the current user.
-	SavedSearches []model.SavedSearch
+	SavedSearches []domain.SavedSearch
 	// Notifications contains recent inbox items for the current user.
-	Notifications []model.Notification
+	Notifications []domain.Notification
 	// UnreadNotifications is the current unread inbox count.
 	UnreadNotifications int
 	// Backlinks contains pages linking to the current page.
-	Backlinks []model.Page
+	Backlinks []domain.Page
 	// OutgoingLinks contains wiki links from the current page.
-	OutgoingLinks []model.PageLink
+	OutgoingLinks []domain.PageLink
 	// BrokenLinks contains outgoing wiki links with no current target.
-	BrokenLinks []model.PageLink
+	BrokenLinks []domain.PageLink
 	// Comments contains anchored discussion items for the current page.
-	Comments []model.PageComment
+	Comments []domain.PageComment
 	// Related contains pages related to the current page by tag.
-	Related []model.Page
+	Related []domain.Page
 	// LatestRevision is the newest revision shown in the page summary.
 	LatestRevision *revision.Revision
 	// RevisionCount is the total number of revisions for the current page.
@@ -215,51 +215,51 @@ type ViewData struct {
 	// Images contains uploaded media shown in settings or administration.
 	Images []MediaItem
 	// UserTokens contains personal access tokens owned by the current user.
-	UserTokens []model.APIToken
+	UserTokens []domain.APIToken
 	// AdminSection identifies the active administration navigation section.
 	AdminSection string
 	// AdminStats contains high-level persisted object counts for administrators.
-	AdminStats model.AdminStats
+	AdminStats domain.AdminStats
 	// ApplicationSettings contains mutable application-wide settings for administrators.
-	ApplicationSettings model.ApplicationSettings
+	ApplicationSettings domain.ApplicationSettings
 	// RenderingPreviews contains sanitized examples for administrator rendering controls.
 	RenderingPreviews map[string]template.HTML
 	// DocumentationHealth contains actionable wiki quality findings.
-	DocumentationHealth model.DocumentationHealth
+	DocumentationHealth domain.DocumentationHealth
 	// RenderingLanguages lists content languages available to administrators.
 	RenderingLanguages []renderingLanguageOption
 	// PageContentLanguage is the effective language for the current page/editor.
 	PageContentLanguage string
 	// AdminUsers contains users and group memberships for administrators.
-	AdminUsers []model.AdminUser
+	AdminUsers []domain.AdminUser
 	// PendingOIDCIdentities contains verified OIDC identities awaiting an administrator decision.
-	PendingOIDCIdentities []model.PendingOIDCIdentity
+	PendingOIDCIdentities []domain.PendingOIDCIdentity
 	// OIDCIdentityCount is the number of active external OIDC bindings.
 	OIDCIdentityCount int
 	// Groups contains administratively managed user groups.
-	Groups []model.Group
+	Groups []domain.Group
 	// PageTemplates contains reusable templates available to page authors.
-	PageTemplates []model.PageTemplate
+	PageTemplates []domain.PageTemplate
 	// KnowledgeSnippets contains reusable variables and Markdown snippets.
-	KnowledgeSnippets []model.KnowledgeSnippet
+	KnowledgeSnippets []domain.KnowledgeSnippet
 	// PageStatuses contains lifecycle statuses available to page editors.
 	PageStatuses []string
 	// EditorTemplate is the selected template used to prefill a new page.
-	EditorTemplate *model.PageTemplate
+	EditorTemplate *domain.PageTemplate
 	// EditorInitialSlug pre-fills a requested path for a new page.
 	EditorInitialSlug string
 	// AdminTags contains tags and page usage counts for administrators.
-	AdminTags []model.TagInfo
+	AdminTags []domain.TagInfo
 	// AdminTokens contains all personal access tokens for administrators.
-	AdminTokens []model.APIToken
+	AdminTokens []domain.APIToken
 	// AuditEvents contains recent administrative audit events.
-	AuditEvents []model.AuditEvent
+	AuditEvents []domain.AuditEvent
 	// AdminPages contains all pages available for administrative export.
-	AdminPages []model.Page
+	AdminPages []domain.Page
 	// DeletedPages contains pages currently held in the recycle bin.
-	DeletedPages []model.DeletedPage
+	DeletedPages []domain.DeletedPage
 	// AdminNavigation contains top-level navigation sections and their persisted icons.
-	AdminNavigation []model.NavigationItem
+	AdminNavigation []domain.NavigationItem
 	// Tags contains tags exposed by the current view.
 	Tags []string
 	// Query is the active search query.
@@ -389,8 +389,8 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	}
 
 	var pageNavigation []navigation.Node
-	var sidebarPinned []model.Page
-	var sidebarRecent []model.Page
+	var sidebarPinned []domain.Page
+	var sidebarRecent []domain.Page
 
 	if !strings.HasPrefix(r.URL.Path, "/admin") {
 		pages, err := l.navigationUseCases.NavigationPages(r.Context())
@@ -480,7 +480,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		SavedSearches:       savedSearches,
 		Notifications:       notifications,
 		UnreadNotifications: unreadNotifications,
-		PageStatuses:        model.PageStatuses(),
+		PageStatuses:        domain.PageStatuses(),
 		Version:             views.version,
 		AssetVersion:        views.assetVersion,
 		Commit:              views.commit,
@@ -501,14 +501,14 @@ func viewData(r *http.Request, loader viewDataService, views *Views, title strin
 }
 
 // pagesWithout returns up to limit pages excluding any page present in excluded.
-func pagesWithout(pages, excluded []model.Page, limit int) []model.Page {
+func pagesWithout(pages, excluded []domain.Page, limit int) []domain.Page {
 	excludedIDs := make(map[int64]bool, len(excluded))
 
 	for _, page := range excluded {
 		excludedIDs[page.ID] = true
 	}
 
-	result := make([]model.Page, 0, min(limit, len(pages)))
+	result := make([]domain.Page, 0, min(limit, len(pages)))
 
 	for _, page := range pages {
 		if excludedIDs[page.ID] {

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 )
 
@@ -100,7 +100,7 @@ func writeMediaDeleteProblem(
 	inUse, isInUse := errors.AsType[*service.MediaInUseError](err)
 
 	switch {
-	case errors.Is(err, model.ErrNotFound):
+	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, text.noun+" not found.")
 	case errors.Is(err, service.ErrMediaForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, text.forbidden)
@@ -139,11 +139,11 @@ func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 		return
 	}
 	switch {
-	case errors.Is(err, model.ErrNotFound):
+	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Page not found.")
-	case errors.Is(err, model.ErrForbidden):
+	case errors.Is(err, domain.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, "The page operation is not permitted.")
-	case errors.Is(err, model.ErrPageInBin):
+	case errors.Is(err, domain.ErrPageInBin):
 		httpresponse.Problem(w,
 			http.StatusConflict,
 			"This page path is currently in the recycle bin.",
@@ -158,7 +158,7 @@ func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 
 // writePageSaveProblem translates errors specific to creating or updating a page.
 func writePageSaveProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if errors.Is(err, model.ErrForbidden) {
+	if errors.Is(err, domain.ErrForbidden) {
 		httpresponse.Problem(w,
 			http.StatusForbidden,
 			"You cannot assign this page to one or more selected groups.",

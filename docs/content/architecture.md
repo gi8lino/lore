@@ -7,7 +7,7 @@ The normal request path is:
 ```text
 HTTP -> routes/middleware -> handler -> service -> repository contract -> store -> PostgreSQL
                                       |                                |
-                                      +------------> model <------------+
+                                      +------------> domain <------------+
 ```
 
 ## Main layers
@@ -18,7 +18,7 @@ HTTP -> routes/middleware -> handler -> service -> repository contract -> store 
 - `internal/routes` registers routes and applies authentication/role policies to already-constructed dependencies.
 - `internal/handler`, `internal/middleware`, and `internal/auth` are inbound HTTP adapters.
 - `internal/service` owns application use cases and mutation policy.
-- `internal/model` owns persistence-agnostic domain records and shared errors.
+- `internal/domain` owns persistence-agnostic domain records and shared errors.
 - `internal/store` owns SQL, migrations, transactions, and PostgreSQL row mapping.
 - focused packages such as `internal/markdown`, `internal/navigation`, `internal/revision`, `internal/pdf`, `internal/icons`, and `internal/httpresponse` provide narrow capabilities.
 - `internal/site` is the filesystem/static publishing adapter. It uses the same Markdown/navigation/theme capabilities but does not construct the server, authentication, services, or store.

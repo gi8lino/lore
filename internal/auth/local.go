@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,18 +36,18 @@ func NewLocal(repository localRepository, publicURL string) *Local {
 }
 
 // Authenticate resolves a valid local session cookie.
-func (l *Local) Authenticate(r *http.Request) (model.User, error) {
+func (l *Local) Authenticate(r *http.Request) (domain.User, error) {
 	cookie, err := r.Cookie(localSessionCookie)
 	if err != nil || strings.TrimSpace(cookie.Value) == "" {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	user, err := l.repository.LocalUserBySession(
 		r.Context(),
 		localSessionHash(cookie.Value),
 	)
-	if errors.Is(err, model.ErrNotFound) {
-		return model.User{}, ErrUnauthenticated
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	return user, err
@@ -57,28 +57,28 @@ func (l *Local) Authenticate(r *http.Request) (model.User, error) {
 func (l *Local) SignIn(
 	ctx context.Context,
 	username, password string,
-) (user model.User, token string, err error) {
+) (user domain.User, token string, err error) {
 	user, passwordHash, err := l.repository.LocalCredential(
 		ctx,
 		strings.TrimSpace(username),
 	)
-	if errors.Is(err, model.ErrNotFound) {
-		return model.User{}, "", ErrInvalidCredentials
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, "", ErrInvalidCredentials
 	}
 	if err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	if bcrypt.CompareHashAndPassword(
 		[]byte(passwordHash),
 		[]byte(password),
 	) != nil {
-		return model.User{}, "", ErrInvalidCredentials
+		return domain.User{}, "", ErrInvalidCredentials
 	}
 
 	token, err = newLocalSessionToken()
 	if err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	if err := l.repository.CreateLocalSession(
@@ -87,7 +87,7 @@ func (l *Local) SignIn(
 		localSessionHash(token),
 		time.Now().Add(localSessionTTL),
 	); err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	return user, token, nil
@@ -103,7 +103,7 @@ func (l *Local) ChangePassword(
 		ctx,
 		strings.TrimSpace(username),
 	)
-	if errors.Is(err, model.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) {
 		return "", ErrInvalidCredentials
 	}
 	if err != nil {
@@ -150,10 +150,10 @@ func (l *Local) ChangePassword(
 func (l *Local) Setup(
 	ctx context.Context,
 	username, email, displayName, password string,
-) (user model.User, token string, err error) {
+) (user domain.User, token string, err error) {
 	passwordHash, err := localPasswordHash(password)
 	if err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	user, err = l.repository.CreateInitialLocalAdministrator(
@@ -164,12 +164,12 @@ func (l *Local) Setup(
 		passwordHash,
 	)
 	if err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	token, err = newLocalSessionToken()
 	if err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	if err := l.repository.CreateLocalSession(
@@ -178,7 +178,7 @@ func (l *Local) Setup(
 		localSessionHash(token),
 		time.Now().Add(localSessionTTL),
 	); err != nil {
-		return model.User{}, "", err
+		return domain.User{}, "", err
 	}
 
 	return user, token, nil

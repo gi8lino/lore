@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/internal/service"
@@ -55,7 +55,7 @@ func Home(
 			return
 		}
 
-		var drafts []model.PageDraft
+		var drafts []domain.PageDraft
 
 		if user.Role == "admin" || user.Role == "editor" {
 			drafts, err = draftUseCases.List(r.Context(), user.ID, 6)
@@ -92,7 +92,7 @@ func ViewPage(
 		slug := r.PathValue("slug")
 		page, err := catalogUseCases.GetPage(r.Context(), slug)
 
-		if errors.Is(err, model.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				http.Redirect(w, r, "/pages/"+target, http.StatusPermanentRedirect)
 				return
@@ -136,7 +136,7 @@ func ViewPage(
 			return
 		}
 
-		var related []model.Page
+		var related []domain.Page
 
 		if len(page.Tags) > 0 {
 			related, err = catalogUseCases.Search(r.Context(), "tag:"+page.Tags[0], 6)
@@ -152,7 +152,7 @@ func ViewPage(
 			return
 		}
 
-		var comments []model.PageComment
+		var comments []domain.PageComment
 
 		if data.ApplicationSettings.DiscussionsEnabled {
 			comments, err = catalogUseCases.PageComments(r.Context(), slug)
@@ -196,7 +196,7 @@ func ViewPage(
 		}
 
 		renderedHTML := rendered.HTML
-		var brokenLinks []model.PageLink
+		var brokenLinks []domain.PageLink
 
 		for _, link := range outgoingLinks {
 			if link.Exists {
@@ -255,7 +255,7 @@ func EditPage(
 
 		data.Groups = groups
 		data.RenderingLanguages = renderingLanguageOptions
-		data.PageStatuses = model.PageStatuses()
+		data.PageStatuses = domain.PageStatuses()
 		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
 		if err != nil {
 			writePageProblem(views.logger, w, err)
@@ -436,10 +436,10 @@ func parseGroupIDs(values []string) []int64 {
 }
 
 // pageMetadataFromForm parses page lifecycle and review metadata.
-func pageMetadataFromForm(r *http.Request) (model.PageMetadata, error) {
+func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	status := strings.TrimSpace(r.FormValue("status"))
-	if !model.ValidPageStatus(status) {
-		return model.PageMetadata{}, errors.New("invalid page status")
+	if !domain.ValidPageStatus(status) {
+		return domain.PageMetadata{}, errors.New("invalid page status")
 	}
 
 	var ownerGroupID int64
@@ -447,7 +447,7 @@ func pageMetadataFromForm(r *http.Request) (model.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("owner_group_id")); value != "" {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil || parsed <= 0 {
-			return model.PageMetadata{}, errors.New("invalid owner group")
+			return domain.PageMetadata{}, errors.New("invalid owner group")
 		}
 
 		ownerGroupID = parsed
@@ -458,16 +458,16 @@ func pageMetadataFromForm(r *http.Request) (model.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("review_interval_days")); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil {
-			return model.PageMetadata{}, errors.New("invalid review interval")
+			return domain.PageMetadata{}, errors.New("invalid review interval")
 		}
 		if !service.ValidReviewIntervalDays(parsed) {
-			return model.PageMetadata{}, errors.New("invalid review interval")
+			return domain.PageMetadata{}, errors.New("invalid review interval")
 		}
 
 		interval = parsed
 	}
 
-	return model.PageMetadata{
+	return domain.PageMetadata{
 		Status:             status,
 		OwnerGroupID:       ownerGroupID,
 		ReviewIntervalDays: interval,
@@ -499,7 +499,7 @@ func pagePropertiesFromForm(r *http.Request) map[string]string {
 }
 
 // withoutSlug returns pages excluding the supplied slug.
-func withoutSlug(pages []model.Page, slug string) []model.Page {
+func withoutSlug(pages []domain.Page, slug string) []domain.Page {
 	result := pages[:0]
 
 	for _, page := range pages {

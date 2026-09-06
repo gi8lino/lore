@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -157,12 +157,12 @@ func isSQLFile(e fs.DirEntry) bool {
 }
 
 // EnsureAdministrator creates or refreshes the administrator used by no-auth mode.
-func (s *Store) EnsureAdministrator(ctx context.Context, username, email, displayName string) (model.User, error) {
+func (s *Store) EnsureAdministrator(ctx context.Context, username, email, displayName string) (domain.User, error) {
 	if displayName == "" {
 		displayName = username
 	}
 
-	var user model.User
+	var user domain.User
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO users(username,email,display_name,role,last_login)
 VALUES($1,$2,$3,'admin',now())
@@ -186,12 +186,12 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 }
 
 // TrustedProxyUser refreshes a trusted-proxy user by username or creates one when registration is enabled.
-func (s *Store) TrustedProxyUser(ctx context.Context, username, email, displayName string) (model.User, error) {
+func (s *Store) TrustedProxyUser(ctx context.Context, username, email, displayName string) (domain.User, error) {
 	if displayName == "" {
 		displayName = username
 	}
 
-	var user model.User
+	var user domain.User
 	err := s.pool.QueryRow(ctx, `
 UPDATE users
 SET email=$2,
@@ -203,15 +203,15 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 		return user, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 
 	settings, err := s.ApplicationSettings(ctx)
 	if err != nil {
-		return model.User{}, err
+		return domain.User{}, err
 	}
 	if !settings.AllowUserRegistration {
-		return model.User{}, model.ErrRegistrationDisabled
+		return domain.User{}, domain.ErrRegistrationDisabled
 	}
 
 	err = s.pool.QueryRow(ctx, `
@@ -225,10 +225,10 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 }
 
 // UserByToken authenticates an API bearer token and updates its last-used timestamp.
-func (s *Store) UserByToken(ctx context.Context, token string) (model.User, error) {
+func (s *Store) UserByToken(ctx context.Context, token string) (domain.User, error) {
 	h := sha256.Sum256([]byte(token))
 	hash := hex.EncodeToString(h[:])
-	var u model.User
+	var u domain.User
 	err := s.pool.QueryRow(ctx, `
 UPDATE api_tokens t
 SET last_used=now() FROM users u
@@ -237,7 +237,7 @@ RETURNING u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_vers
 		Scan(&u.ID, &u.Username, &u.Email, &u.DisplayName, &u.Role, &u.Enabled, &u.SessionVersion)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = model.ErrNotFound
+		err = domain.ErrNotFound
 	}
 
 	return u, err
@@ -252,8 +252,8 @@ LEFT JOIN page_tags pt ON pt.page_id=p.id
 LEFT JOIN tags t ON t.id=pt.tag_id`
 
 // scanPage scans the common page projection and normalizes missing rows.
-func scanPage(row pgx.Row) (model.Page, error) {
-	var p model.Page
+func scanPage(row pgx.Row) (domain.Page, error) {
+	var p domain.Page
 	err := row.Scan(
 		&p.ID,
 		&p.Slug,
@@ -270,26 +270,26 @@ func scanPage(row pgx.Row) (model.Page, error) {
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = model.ErrNotFound
+		err = domain.ErrNotFound
 	}
 
 	return p, err
 }
 
 // GetPage returns a wiki page by slug.
-func (s *Store) GetPage(ctx context.Context, slug string) (model.Page, error) {
+func (s *Store) GetPage(ctx context.Context, slug string) (domain.Page, error) {
 	page, err := scanPage(
 		s.pool.QueryRow(ctx, pageSelect+`
 WHERE p.slug=$1 AND p.deleted_at IS NULL
 GROUP BY p.id,u.id`, slug),
 	)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	page.Groups, err = s.PageGroups(ctx, page.ID)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 	if err := s.pool.QueryRow(ctx, `
 SELECT p.content_language,p.status,coalesce(p.owner_group_id,0),coalesce(g.name,''),p.last_reviewed_at,p.review_interval_days,p.deprecated_target
@@ -304,19 +304,19 @@ WHERE p.id=$1`, page.ID).Scan(
 		&page.ReviewIntervalDays,
 		&page.DeprecatedTarget,
 	); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	page.Properties, err = s.PageProperties(ctx, page.ID)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	return page, nil
 }
 
 // ListPages returns recently updated wiki pages up to the requested limit.
-func (s *Store) ListPages(ctx context.Context, limit int) ([]model.Page, error) {
+func (s *Store) ListPages(ctx context.Context, limit int) ([]domain.Page, error) {
 	rows, err := s.pool.Query(
 		ctx,
 		pageSelect+`
@@ -336,7 +336,7 @@ LIMIT $1`,
 }
 
 // NavigationPages returns the minimal page data required to build navigation.
-func (s *Store) NavigationPages(ctx context.Context) ([]model.Page, error) {
+func (s *Store) NavigationPages(ctx context.Context) ([]domain.Page, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT p.slug,p.title,coalesce(i.icon,'')
 FROM pages p
@@ -349,10 +349,10 @@ ORDER BY p.slug`)
 
 	defer rows.Close()
 
-	var pages []model.Page
+	var pages []domain.Page
 
 	for rows.Next() {
-		var page model.Page
+		var page domain.Page
 		if err := rows.Scan(&page.Slug, &page.Title, &page.Icon); err != nil {
 			return nil, err
 		}
@@ -364,8 +364,8 @@ ORDER BY p.slug`)
 }
 
 // collectPages scans all rows from a common page query.
-func collectPages(rows pgx.Rows) ([]model.Page, error) {
-	var out []model.Page
+func collectPages(rows pgx.Rows) ([]domain.Page, error) {
+	var out []domain.Page
 
 	for rows.Next() {
 		p, e := scanPage(rows)
@@ -385,28 +385,28 @@ func (s *Store) SavePage(
 	previousSlug, slug, title, icon, language, markdown, message string,
 	tags, links []string,
 	groupIDs []int64,
-	metadata model.PageMetadata,
+	metadata domain.PageMetadata,
 	properties map[string]string,
-	user model.User,
-) (model.Page, error) {
-	if !model.ValidPageStatus(metadata.Status) {
-		return model.Page{}, errors.New("invalid page status")
+	user domain.User,
+) (domain.Page, error) {
+	if !domain.ValidPageStatus(metadata.Status) {
+		return domain.Page{}, errors.New("invalid page status")
 	}
 	if metadata.ReviewIntervalDays < 0 {
-		return model.Page{}, errors.New("invalid review interval")
+		return domain.Page{}, errors.New("invalid review interval")
 	}
 
 	metadata.DeprecatedTarget = strings.TrimSpace(metadata.DeprecatedTarget)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := validateAssignableGroup(ctx, tx, metadata.OwnerGroupID, user); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	lookupSlug := slug
@@ -427,10 +427,10 @@ WHERE slug=$1 FOR UPDATE`, lookupSlug).
 		var aliasExists bool
 		if aliasErr := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1)`, slug).Scan(&aliasExists); aliasErr != nil {
-			return model.Page{}, aliasErr
+			return domain.Page{}, aliasErr
 		}
 		if aliasExists {
-			return model.Page{}, model.ErrAlreadyExists
+			return domain.Page{}, domain.ErrAlreadyExists
 		}
 
 		err = tx.QueryRow(ctx, `
@@ -442,35 +442,35 @@ INSERT INTO pages(
 			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
 		).Scan(&id)
 	} else if err == nil && deleted {
-		return model.Page{}, model.ErrPageInBin
+		return domain.Page{}, domain.ErrPageInBin
 	} else if err == nil {
 		if lookupSlug != slug {
 			var conflict bool
 			if err = tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>$2) OR EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1 AND page_id<>$2)`, slug, id).Scan(&conflict); err != nil {
-				return model.Page{}, err
+				return domain.Page{}, err
 			}
 			if conflict {
-				return model.Page{}, model.ErrAlreadyExists
+				return domain.Page{}, domain.ErrAlreadyExists
 			}
 			if _, err = tx.Exec(ctx, `
 UPDATE pages
 SET slug=$2
 WHERE id=$1`, id, slug); err != nil {
-				return model.Page{}, err
+				return domain.Page{}, err
 			}
 			if _, err = tx.Exec(ctx, `
 UPDATE navigation_icons
 SET path=$2
 WHERE path=$1`, lookupSlug, slug); err != nil {
-				return model.Page{}, err
+				return domain.Page{}, err
 			}
 			if _, err = tx.Exec(ctx, `
 INSERT INTO page_aliases(alias,page_id)
 VALUES($1,$2)
 ON CONFLICT(alias) DO UPDATE
 SET page_id=EXCLUDED.page_id`, lookupSlug, id); err != nil {
-				return model.Page{}, err
+				return domain.Page{}, err
 			}
 		}
 		_, err = tx.Exec(ctx, `
@@ -485,7 +485,7 @@ WHERE id=$1`,
 	}
 
 	if err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	icon = strings.TrimSpace(icon)
@@ -494,13 +494,13 @@ WHERE id=$1`,
 		if _, err = tx.Exec(ctx, `
 DELETE FROM navigation_icons
 WHERE path=$1`, slug); err != nil {
-			return model.Page{}, err
+			return domain.Page{}, err
 		}
 	} else if _, err = tx.Exec(ctx, `
 INSERT INTO navigation_icons(path,icon)
 VALUES($1,$2)
 ON CONFLICT(path) DO UPDATE SET icon=EXCLUDED.icon`, slug, icon); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	var rev int
@@ -508,18 +508,18 @@ ON CONFLICT(path) DO UPDATE SET icon=EXCLUDED.icon`, slug, icon); err != nil {
 SELECT coalesce(max(revision_number),0)+1
 FROM page_revisions
 WHERE page_id=$1`, id).Scan(&rev); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 	if _, err = tx.Exec(ctx, `
 INSERT INTO page_revisions(page_id,revision_number,markdown_content,created_by,message)
 VALUES($1,$2,$3,$4,$5)`, id, rev, markdown, user.ID, message); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	if _, err = tx.Exec(ctx, `
 DELETE FROM page_tags
 WHERE page_id=$1`, id); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	for _, tag := range tags {
@@ -535,28 +535,28 @@ VALUES($1)
 ON CONFLICT(name) DO UPDATE
 SET name=EXCLUDED.name
 RETURNING id`, tag).Scan(&tagID); err != nil {
-			return model.Page{}, err
+			return domain.Page{}, err
 		}
 		if _, err = tx.Exec(ctx, `
 INSERT INTO page_tags(page_id,tag_id)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, id, tagID); err != nil {
-			return model.Page{}, err
+			return domain.Page{}, err
 		}
 	}
 
 	if err = replacePageGroups(ctx, tx, id, groupIDs, user); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	if err = replacePageProperties(ctx, tx, id, properties); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	if _, err = tx.Exec(ctx, `
 DELETE FROM page_links
 WHERE source_page_id=$1`, id); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	for _, link := range links {
@@ -564,12 +564,12 @@ WHERE source_page_id=$1`, id); err != nil {
 INSERT INTO page_links(source_page_id,target_slug)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, id, link); err != nil {
-			return model.Page{}, err
+			return domain.Page{}, err
 		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return model.Page{}, err
+		return domain.Page{}, err
 	}
 
 	return s.GetPage(ctx, slug)
@@ -587,14 +587,14 @@ WHERE slug=$1 AND deleted_at IS NULL`,
 		userID,
 	)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
 }
 
 // DeletedPages returns pages currently held in the recycle bin, newest deletion first.
-func (s *Store) DeletedPages(ctx context.Context) ([]model.DeletedPage, error) {
+func (s *Store) DeletedPages(ctx context.Context) ([]domain.DeletedPage, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),
        coalesce(editor.display_name,editor.username,''),p.created_at,p.updated_at,p.view_count,
@@ -615,10 +615,10 @@ ORDER BY p.deleted_at DESC,p.id DESC`)
 
 	defer rows.Close()
 
-	var pages []model.DeletedPage
+	var pages []domain.DeletedPage
 
 	for rows.Next() {
-		var item model.DeletedPage
+		var item domain.DeletedPage
 		if err := rows.Scan(&item.ID, &item.Slug, &item.Title, &item.Icon, &item.Markdown, &item.CreatedBy, &item.UpdatedBy, &item.Author, &item.CreatedAt, &item.UpdatedAt, &item.ViewCount, &item.Tags, &item.DeletedAt, &item.DeletedBy); err != nil {
 			return nil, err
 		}
@@ -640,7 +640,7 @@ WHERE slug=$1 AND deleted_at IS NOT NULL`,
 		slug,
 	)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err
@@ -663,7 +663,7 @@ WHERE slug=$1
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	if _, err := tx.Exec(ctx, `
@@ -739,7 +739,7 @@ SELECT EXISTS(
 }
 
 // Favorites returns a user's favorite pages in newest-first order.
-func (s *Store) Favorites(ctx context.Context, userID int64) ([]model.Page, error) {
+func (s *Store) Favorites(ctx context.Context, userID int64) ([]domain.Page, error) {
 	rows, err := s.pool.Query(
 		ctx,
 		pageSelect+`
@@ -759,7 +759,7 @@ ORDER BY f.created_at DESC`,
 }
 
 // Backlinks returns pages that reference the supplied page slug.
-func (s *Store) Backlinks(ctx context.Context, slug string) ([]model.Page, error) {
+func (s *Store) Backlinks(ctx context.Context, slug string) ([]domain.Page, error) {
 	base := slug
 
 	if index := strings.LastIndex(slug, "/"); index >= 0 {
@@ -794,7 +794,7 @@ FROM page_aliases a
 JOIN pages p ON p.id=a.page_id AND p.deleted_at IS NULL
 WHERE a.alias=$1`, alias).Scan(&slug)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", model.ErrNotFound
+		return "", domain.ErrNotFound
 	}
 
 	return slug, err
@@ -859,7 +859,7 @@ WHERE p.slug=$1 AND p.deleted_at IS NULL AND r.revision_number=$2`, slug, number
 		&record.Markdown,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return revision.Revision{}, model.ErrNotFound
+		return revision.Revision{}, domain.ErrNotFound
 	}
 
 	return record, err

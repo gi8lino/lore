@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 )
 
@@ -53,7 +53,7 @@ func MovePageForm(pageUseCases pageMoveService, logger *slog.Logger) http.Handle
 		}
 
 		newSlug := md.Slug(r.FormValue("slug"))
-		options := model.MovePageOptions{
+		options := domain.MovePageOptions{
 			MoveChildren:        r.FormValue("move_children") == "on",
 			UpdateIncomingLinks: r.FormValue("update_links") == "on",
 			KeepAliases:         r.FormValue("keep_aliases") == "on",

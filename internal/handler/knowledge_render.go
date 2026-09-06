@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 const maxKnowledgeExpansionDepth = 5
 
 type knowledgeContent interface {
-	GetPage(context.Context, string) (model.Page, error)
-	KnowledgeSnippetByName(context.Context, string, string) (model.KnowledgeSnippet, error)
+	GetPage(context.Context, string) (domain.Page, error)
+	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
 }
 
 type applicationKnowledgeContent struct {
@@ -27,7 +27,7 @@ func knowledgeContentFrom(catalog pageContentService, knowledge knowledgeContent
 }
 
 // GetPage returns page content for an include macro.
-func (c applicationKnowledgeContent) GetPage(ctx context.Context, slug string) (model.Page, error) {
+func (c applicationKnowledgeContent) GetPage(ctx context.Context, slug string) (domain.Page, error) {
 	return c.catalogUseCases.GetPage(ctx, slug)
 }
 
@@ -36,7 +36,7 @@ func (c applicationKnowledgeContent) KnowledgeSnippetByName(
 	ctx context.Context,
 	kind string,
 	name string,
-) (model.KnowledgeSnippet, error) {
+) (domain.KnowledgeSnippet, error) {
 	return c.knowledgeUseCases.KnowledgeSnippetByName(ctx, kind, name)
 }
 
@@ -147,7 +147,7 @@ func expandKnowledgeMacro(
 		}
 		item, err := content.KnowledgeSnippetByName(ctx, storedKind, name)
 		if err != nil {
-			if errors.Is(err, model.ErrNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				return "", fmt.Errorf("%s %q not found: %w", kind, name, err)
 			}
 			return "", err
@@ -163,7 +163,7 @@ func expandKnowledgeMacro(
 		}
 		page, err := content.GetPage(ctx, slug)
 		if err != nil {
-			if errors.Is(err, model.ErrNotFound) {
+			if errors.Is(err, domain.ErrNotFound) {
 				return "", fmt.Errorf("included page %q not found: %w", slug, err)
 			}
 			return "", err

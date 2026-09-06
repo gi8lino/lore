@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // Bearer authenticates API requests using bearer tokens.
@@ -20,20 +20,20 @@ func NewBearer(repository bearerRepository) *Bearer {
 }
 
 // Authenticate resolves the bearer token in the Authorization header.
-func (a *Bearer) Authenticate(r *http.Request) (model.User, error) {
+func (a *Bearer) Authenticate(r *http.Request) (domain.User, error) {
 	value, supplied := r.Header["Authorization"]
 	if !supplied {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	token, ok := parseBearerValue(strings.Join(value, ","))
 	if !ok {
-		return model.User{}, ErrInvalidCredentials
+		return domain.User{}, ErrInvalidCredentials
 	}
 
 	user, err := a.repository.UserByToken(r.Context(), token)
-	if errors.Is(err, model.ErrNotFound) {
-		return model.User{}, ErrInvalidCredentials
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, ErrInvalidCredentials
 	}
 
 	return user, err

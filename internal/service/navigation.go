@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // navigationRepository contains navigation tree and icon operations.
 type navigationRepository interface {
-	NavigationPages(context.Context) ([]model.Page, error)
-	NavigationItems(context.Context) ([]model.NavigationItem, error)
+	NavigationPages(context.Context) ([]domain.Page, error)
+	NavigationItems(context.Context) ([]domain.NavigationItem, error)
 	NavigationIcons(context.Context) (map[string]string, error)
 	SetNavigationIcon(context.Context, string, string) error
 }
@@ -23,12 +23,12 @@ func NewNavigation(repository navigationRepository) *Navigation {
 }
 
 // NavigationPages returns the page projection needed to build navigation.
-func (s *Navigation) NavigationPages(ctx context.Context) ([]model.Page, error) {
+func (s *Navigation) NavigationPages(ctx context.Context) ([]domain.Page, error) {
 	return s.repository.NavigationPages(ctx)
 }
 
 // NavigationItems returns configured navigation folders and metadata.
-func (s *Navigation) NavigationItems(ctx context.Context) ([]model.NavigationItem, error) {
+func (s *Navigation) NavigationItems(ctx context.Context) ([]domain.NavigationItem, error) {
 	return s.repository.NavigationItems(ctx)
 }
 

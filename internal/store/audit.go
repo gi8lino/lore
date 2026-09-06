@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // LogAudit records one user action for administrative traceability.
@@ -15,7 +15,7 @@ VALUES(NULLIF($1,0),$2,$3,$4,$5)`, userID, action, objectType, objectKey, detail
 }
 
 // AuditEvents returns recent audit events newest first.
-func (s *Store) AuditEvents(ctx context.Context, limit int) ([]model.AuditEvent, error) {
+func (s *Store) AuditEvents(ctx context.Context, limit int) ([]domain.AuditEvent, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT e.id,coalesce(u.display_name,u.username,'System'),e.action,e.object_type,e.object_key,e.detail,e.created_at
 FROM audit_events e
@@ -28,10 +28,10 @@ LIMIT $1`, limit)
 
 	defer rows.Close()
 
-	var events []model.AuditEvent
+	var events []domain.AuditEvent
 
 	for rows.Next() {
-		var event model.AuditEvent
+		var event domain.AuditEvent
 		if err := rows.Scan(&event.ID, &event.Actor, &event.Action, &event.ObjectType, &event.ObjectKey, &event.Detail, &event.CreatedAt); err != nil {
 			return nil, err
 		}

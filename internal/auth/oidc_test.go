@@ -7,22 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type oidcRepositoryStub struct{ user model.User }
+type oidcRepositoryStub struct{ user domain.User }
 
-func (r *oidcRepositoryStub) LoginOIDCUser(context.Context, string, string, string, string, string) (model.User, error) {
+func (r *oidcRepositoryStub) LoginOIDCUser(context.Context, string, string, string, string, string) (domain.User, error) {
 	return r.user, nil
 }
 
-func (r *oidcRepositoryStub) OIDCUser(context.Context, string, string) (model.User, error) {
+func (r *oidcRepositoryStub) OIDCUser(context.Context, string, string) (domain.User, error) {
 	return r.user, nil
 }
 
-func (*oidcRepositoryStub) SyncOIDCGroups(context.Context, int64, []string, []model.OIDCGroupMapping, bool) error {
+func (*oidcRepositoryStub) SyncOIDCGroups(context.Context, int64, []string, []domain.OIDCGroupMapping, bool) error {
 	return nil
 }
 
@@ -34,7 +34,7 @@ func TestOIDCAuthenticateExternalAdministrator(t *testing.T) {
 	t.Parallel()
 
 	const issuer = "https://identity.example.com/realms/lore"
-	repository := &oidcRepositoryStub{user: model.User{
+	repository := &oidcRepositoryStub{user: domain.User{
 		ID:             7,
 		Role:           "viewer",
 		Enabled:        true,
@@ -68,7 +68,7 @@ func TestOIDCAuthenticatePreservesPreVersionedSession(t *testing.T) {
 
 	const issuer = "https://identity.example.com/realms/lore"
 	authenticator := &OIDC{
-		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 1}},
+		repository: &oidcRepositoryStub{user: domain.User{Enabled: true, SessionVersion: 1}},
 		secret:     []byte("0123456789abcdef0123456789abcdef"),
 		issuer:     issuer,
 	}
@@ -92,7 +92,7 @@ func TestOIDCAuthenticateRejectsPreVersionedSessionAfterRevocation(t *testing.T)
 
 	const issuer = "https://identity.example.com/realms/lore"
 	authenticator := &OIDC{
-		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 2}},
+		repository: &oidcRepositoryStub{user: domain.User{Enabled: true, SessionVersion: 2}},
 		secret:     []byte("0123456789abcdef0123456789abcdef"),
 		issuer:     issuer,
 	}
@@ -116,7 +116,7 @@ func TestOIDCAuthenticateRejectsRevokedSession(t *testing.T) {
 
 	const issuer = "https://identity.example.com/realms/lore"
 	authenticator := &OIDC{
-		repository: &oidcRepositoryStub{user: model.User{Enabled: true, SessionVersion: 5}},
+		repository: &oidcRepositoryStub{user: domain.User{Enabled: true, SessionVersion: 5}},
 		secret:     []byte("0123456789abcdef0123456789abcdef"),
 		issuer:     issuer,
 	}

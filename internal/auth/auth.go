@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 var (
@@ -20,20 +20,20 @@ var (
 // Authenticator resolves an authenticated user from an HTTP request.
 type Authenticator interface {
 	// Authenticate resolves an authenticated user from the request.
-	Authenticate(*http.Request) (model.User, error)
+	Authenticate(*http.Request) (domain.User, error)
 }
 
 // contextKey is the private request-context key used for authenticated users.
 type contextKey struct{}
 
 // User returns the authenticated user stored in the request context.
-func User(r *http.Request) (user model.User, ok bool) {
-	user, ok = r.Context().Value(contextKey{}).(model.User)
+func User(r *http.Request) (user domain.User, ok bool) {
+	user, ok = r.Context().Value(contextKey{}).(domain.User)
 	return user, ok
 }
 
 // WithUser returns a request whose context contains the authenticated user.
-func WithUser(r *http.Request, user model.User) *http.Request {
+func WithUser(r *http.Request, user domain.User) *http.Request {
 	ctx := context.WithValue(r.Context(), contextKey{}, user)
 	return r.WithContext(ctx)
 }

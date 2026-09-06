@@ -8,14 +8,14 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 )
 
 // AttachmentItem is browser-facing attachment metadata with a stable URL.
 type AttachmentItem struct {
-	model.Attachment
+	domain.Attachment
 	URL string `json:"url"`
 }
 
@@ -81,7 +81,7 @@ func ServeAttachment(mediaUseCases attachmentService) http.HandlerFunc {
 
 		item, err := mediaUseCases.AttachmentContent(r.Context(), id)
 		if err != nil {
-			if err == model.ErrNotFound {
+			if err == domain.ErrNotFound {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}
@@ -118,8 +118,8 @@ func DeleteAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 	}
 }
 
-// attachmentItem adds a stable download URL to an attachment model.
-func attachmentItem(item model.Attachment) AttachmentItem {
+// attachmentItem adds a stable download URL to an attachment domain.
+func attachmentItem(item domain.Attachment) AttachmentItem {
 	return AttachmentItem{
 		Attachment: item,
 		URL: "/attachments/" + strconv.FormatInt(item.ID, 10) + "/" +

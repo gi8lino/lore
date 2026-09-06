@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // administrationRepository contains dashboard, tag, health, and audit operations.
 type administrationRepository interface {
-	Stats(context.Context) (model.AdminStats, error)
-	TagInfos(context.Context) ([]model.TagInfo, error)
+	Stats(context.Context) (domain.AdminStats, error)
+	TagInfos(context.Context) ([]domain.TagInfo, error)
 	DeleteTag(context.Context, int64) error
-	DocumentationHealth(context.Context, time.Time) (model.DocumentationHealth, error)
-	AuditEvents(context.Context, int) ([]model.AuditEvent, error)
+	DocumentationHealth(context.Context, time.Time) (domain.DocumentationHealth, error)
+	AuditEvents(context.Context, int) ([]domain.AuditEvent, error)
 }
 
 // Administration exposes dashboard, documentation-health, tag, and audit use cases.
@@ -25,12 +25,12 @@ func NewAdministration(repository administrationRepository) *Administration {
 }
 
 // Stats returns aggregate counts for the administration dashboard.
-func (s *Administration) Stats(ctx context.Context) (model.AdminStats, error) {
+func (s *Administration) Stats(ctx context.Context) (domain.AdminStats, error) {
 	return s.repository.Stats(ctx)
 }
 
 // TagInfos returns tags with administration usage metadata.
-func (s *Administration) TagInfos(ctx context.Context) ([]model.TagInfo, error) {
+func (s *Administration) TagInfos(ctx context.Context) ([]domain.TagInfo, error) {
 	return s.repository.TagInfos(ctx)
 }
 
@@ -43,11 +43,11 @@ func (s *Administration) DeleteTag(ctx context.Context, id int64) error {
 func (s *Administration) DocumentationHealth(
 	ctx context.Context,
 	staleBefore time.Time,
-) (model.DocumentationHealth, error) {
+) (domain.DocumentationHealth, error) {
 	return s.repository.DocumentationHealth(ctx, staleBefore)
 }
 
 // AuditEvents returns recent administrative audit events.
-func (s *Administration) AuditEvents(ctx context.Context, limit int) ([]model.AuditEvent, error) {
+func (s *Administration) AuditEvents(ctx context.Context, limit int) ([]domain.AuditEvent, error) {
 	return s.repository.AuditEvents(ctx, limit)
 }

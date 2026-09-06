@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 	"golang.org/x/net/http/httpguts"
 )
@@ -156,8 +156,8 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) h
 }
 
 // renderingSettingsFromForm parses mutable rendering settings from a form.
-func renderingSettingsFromForm(r *http.Request) model.RenderingSettings {
-	return model.RenderingSettings{
+func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
+	return domain.RenderingSettings{
 		WikiLinks:          r.FormValue("wiki_links") == "on",
 		Callouts:           r.FormValue("callouts") == "on",
 		Tabs:               r.FormValue("tabs") == "on",
@@ -271,7 +271,7 @@ func AdminUsers(
 			return
 		}
 
-		identitiesByUser := make(map[int64][]model.OIDCIdentity)
+		identitiesByUser := make(map[int64][]domain.OIDCIdentity)
 
 		for _, identity := range identities {
 			identitiesByUser[identity.UserID] = append(identitiesByUser[identity.UserID], identity)
@@ -663,8 +663,8 @@ func SaveAdminAuthentication(
 }
 
 // authenticationSettingsFromForm parses non-secret browser authentication settings.
-func authenticationSettingsFromForm(r *http.Request) model.AuthenticationSettings {
-	mappings := make([]model.OIDCGroupMapping, 0, len(r.Form["oidc_group_source"]))
+func authenticationSettingsFromForm(r *http.Request) domain.AuthenticationSettings {
+	mappings := make([]domain.OIDCGroupMapping, 0, len(r.Form["oidc_group_source"]))
 
 	for index, source := range r.Form["oidc_group_source"] {
 		source = strings.TrimSpace(source)
@@ -673,10 +673,10 @@ func authenticationSettingsFromForm(r *http.Request) model.AuthenticationSetting
 		}
 
 		groupID, _ := strconv.ParseInt(strings.TrimSpace(r.Form["oidc_group_id"][index]), 10, 64)
-		mappings = append(mappings, model.OIDCGroupMapping{OIDCGroup: source, GroupID: groupID})
+		mappings = append(mappings, domain.OIDCGroupMapping{OIDCGroup: source, GroupID: groupID})
 	}
 
-	return model.AuthenticationSettings{
+	return domain.AuthenticationSettings{
 		Mode:                      strings.TrimSpace(r.FormValue("auth_mode")),
 		OIDCIssuer:                strings.TrimSpace(r.FormValue("oidc_issuer")),
 		OIDCClientID:              strings.TrimSpace(r.FormValue("oidc_client_id")),
@@ -695,7 +695,7 @@ func authenticationSettingsFromForm(r *http.Request) model.AuthenticationSetting
 
 // authenticationSettingsProblems returns field-level validation errors for browser authentication settings.
 func authenticationSettingsProblems(
-	settings model.AuthenticationSettings,
+	settings domain.AuthenticationSettings,
 	runtime RuntimeInfo,
 ) []httpresponse.FieldProblem {
 	var problems []httpresponse.FieldProblem
@@ -820,8 +820,8 @@ func SaveAdminSettings(settingsUseCases settingsService, logger *slog.Logger) ht
 }
 
 // applicationSettingsFromForm parses mutable application-wide settings from a form.
-func applicationSettingsFromForm(r *http.Request) model.ApplicationSettings {
-	return model.ApplicationSettings{
+func applicationSettingsFromForm(r *http.Request) domain.ApplicationSettings {
+	return domain.ApplicationSettings{
 		AllowUserRegistration: r.FormValue("allow_user_registration") == "on",
 		DiscussionsEnabled:    r.FormValue("discussions_enabled") == "on",
 	}
@@ -1195,7 +1195,7 @@ func hasGroup(groups []string, name string) bool {
 }
 
 // hasGroupID reports whether a group identifier appears in a page group list.
-func hasGroupID(groups []model.Group, id int64) bool {
+func hasGroupID(groups []domain.Group, id int64) bool {
 	for _, group := range groups {
 		if group.ID == id {
 			return true
@@ -1207,11 +1207,11 @@ func hasGroupID(groups []model.Group, id int64) bool {
 // writeAdminProblem translates expected administration errors into HTTP problems.
 func writeAdminProblem(logger *slog.Logger, w http.ResponseWriter, err error, object string) {
 	switch {
-	case errors.Is(err, model.ErrNotFound):
+	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, object+" not found.")
-	case errors.Is(err, model.ErrAlreadyExists):
+	case errors.Is(err, domain.ErrAlreadyExists):
 		httpresponse.Problem(w, http.StatusConflict, object+" already exists.")
-	case errors.Is(err, model.ErrForbidden):
+	case errors.Is(err, domain.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, object+" cannot be changed in its current state.")
 	default:
 		writeUnexpectedProblem(logger, w, err)
@@ -1290,7 +1290,7 @@ func SearchAdminUsers(userUseCases userDirectoryService, logger *slog.Logger) ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if len([]rune(query)) < 2 {
-			httpresponse.Respond(w, http.StatusOK, []model.User{})
+			httpresponse.Respond(w, http.StatusOK, []domain.User{})
 			return
 		}
 

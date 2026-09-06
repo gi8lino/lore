@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // systemRepository contains startup and health persistence operations.
@@ -25,7 +25,7 @@ func (s *System) Ping(ctx context.Context) error {
 }
 
 // RecordSetupCompleted records creation of the initial administrator.
-func (s *System) RecordSetupCompleted(ctx context.Context, actor model.User) {
+func (s *System) RecordSetupCompleted(ctx context.Context, actor domain.User) {
 	_ = audit(s.repository,
 		ctx,
 		actor.ID,

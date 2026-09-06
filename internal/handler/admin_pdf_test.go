@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/auth"
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +47,7 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	request = auth.WithUser(request, model.User{ID: 7, Role: "admin"})
+	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
 
 	SaveAdminPDFSettings(settings, slog.Default())(response, request)

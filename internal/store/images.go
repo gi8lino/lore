@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 // SaveImage stores an immutable uploaded image and returns its metadata.
-func (s *Store) SaveImage(ctx context.Context, filename, contentType string, data []byte, userID int64) (model.Image, error) {
-	var image model.Image
+func (s *Store) SaveImage(ctx context.Context, filename, contentType string, data []byte, userID int64) (domain.Image, error) {
+	var image domain.Image
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO images(filename,content_type,data,size_bytes,uploaded_by)
 VALUES($1,$2,$3,$4,$5)
@@ -23,24 +23,24 @@ RETURNING id,filename,content_type,size_bytes,coalesce(uploaded_by,0),created_at
 		&image.CreatedAt,
 	)
 	if err != nil {
-		return model.Image{}, err
+		return domain.Image{}, err
 	}
 
 	return image, nil
 }
 
 // Images returns all uploaded image metadata with exact Markdown reference counts.
-func (s *Store) Images(ctx context.Context) ([]model.Image, error) {
+func (s *Store) Images(ctx context.Context) ([]domain.Image, error) {
 	return s.images(ctx, "")
 }
 
 // ImagesByUser returns image metadata uploaded by one user.
-func (s *Store) ImagesByUser(ctx context.Context, userID int64) ([]model.Image, error) {
+func (s *Store) ImagesByUser(ctx context.Context, userID int64) ([]domain.Image, error) {
 	return s.images(ctx, `WHERE i.uploaded_by=$1`, userID)
 }
 
 // images queries image metadata with an optional WHERE clause and arguments.
-func (s *Store) images(ctx context.Context, where string, args ...any) ([]model.Image, error) {
+func (s *Store) images(ctx context.Context, where string, args ...any) ([]domain.Image, error) {
 	rows, err := s.pool.Query(ctx, `
 WITH image_references AS (
   SELECT m.captures[1]::bigint AS image_id,count(*) AS usage_count
@@ -68,10 +68,10 @@ ORDER BY i.created_at DESC,i.id DESC`, args...)
 
 	defer rows.Close()
 
-	var images []model.Image
+	var images []domain.Image
 
 	for rows.Next() {
-		var image model.Image
+		var image domain.Image
 		if err := rows.Scan(
 			&image.ID,
 			&image.Filename,
@@ -92,8 +92,8 @@ ORDER BY i.created_at DESC,i.id DESC`, args...)
 }
 
 // ImageInfo returns image metadata with its exact current Markdown reference count.
-func (s *Store) ImageInfo(ctx context.Context, id int64) (model.Image, error) {
-	var image model.Image
+func (s *Store) ImageInfo(ctx context.Context, id int64) (domain.Image, error) {
+	var image domain.Image
 	err := s.pool.QueryRow(ctx, `
 SELECT
   i.id,
@@ -120,22 +120,22 @@ WHERE i.id=$1`, id).Scan(
 		&image.UsageCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Image{}, model.ErrNotFound
+		return domain.Image{}, domain.ErrNotFound
 	}
 
 	return image, err
 }
 
 // ImageContent returns the binary payload for one uploaded image.
-func (s *Store) ImageContent(ctx context.Context, id int64) (model.ImageData, error) {
-	var image model.ImageData
+func (s *Store) ImageContent(ctx context.Context, id int64) (domain.ImageData, error) {
+	var image domain.ImageData
 	err := s.pool.QueryRow(ctx, `
 SELECT filename,content_type,data
 FROM images
 WHERE id=$1`, id).
 		Scan(&image.Filename, &image.ContentType, &image.Data)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.ImageData{}, model.ErrNotFound
+		return domain.ImageData{}, domain.ErrNotFound
 	}
 
 	return image, err
@@ -147,7 +147,7 @@ func (s *Store) DeleteImage(ctx context.Context, id int64) error {
 DELETE FROM images
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return model.ErrNotFound
+		return domain.ErrNotFound
 	}
 
 	return err

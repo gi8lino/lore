@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/model"
 	"golang.org/x/oauth2"
 )
 
@@ -40,7 +40,7 @@ type OIDC struct {
 	// groupsAuthoritative removes mapped memberships absent from the current claim.
 	groupsAuthoritative bool
 	// groupMappings maps external claim values to Lore groups.
-	groupMappings []model.OIDCGroupMapping
+	groupMappings []domain.OIDCGroupMapping
 	// adminGroup is the external group value that elevates the current session.
 	adminGroup string
 }
@@ -105,7 +105,7 @@ func NewOIDC(
 		groupClaim:          strings.TrimSpace(config.GroupClaim),
 		groupSync:           config.GroupSync,
 		groupsAuthoritative: config.GroupsAuthoritative,
-		groupMappings:       append([]model.OIDCGroupMapping(nil), config.GroupMappings...),
+		groupMappings:       append([]domain.OIDCGroupMapping(nil), config.GroupMappings...),
 		adminGroup:          strings.TrimSpace(config.AdminGroup),
 		oauth: &oauth2.Config{
 			ClientID:     config.ClientID,
@@ -118,28 +118,28 @@ func NewOIDC(
 }
 
 // Authenticate resolves the authenticated OIDC browser session by issuer and subject.
-func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
+func (o *OIDC) Authenticate(r *http.Request) (domain.User, error) {
 	// Session version 1 is the initial persisted generation. Cookies issued
 	// before session revocation was introduced have no version field, so seed
 	// the decoded value with 1 to keep those sessions valid across the upgrade.
 	current := session{Version: 1}
 
 	if err := o.decodeCookie(r, "lore_session", &current); err != nil {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 	if !o.validSession(current) {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	user, err := o.repository.OIDCUser(r.Context(), current.Issuer, current.Subject)
-	if errors.Is(err, model.ErrNotFound) {
-		return model.User{}, ErrUnauthenticated
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, ErrUnauthenticated
 	}
 	if err != nil {
 		return user, err
 	}
 	if current.Version != user.SessionVersion {
-		return model.User{}, ErrUnauthenticated
+		return domain.User{}, ErrUnauthenticated
 	}
 
 	if o.adminGroup != "" && user.ExternalAdmin {
@@ -272,25 +272,25 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		switch {
-		case errors.Is(err, model.ErrIdentityApprovalRequired):
+		case errors.Is(err, domain.ErrIdentityApprovalRequired):
 			httpresponse.Problem(
 				w,
 				http.StatusForbidden,
 				"Registration is closed. Your verified identity is awaiting administrator approval.",
 			)
-		case errors.Is(err, model.ErrIdentityRejected):
+		case errors.Is(err, domain.ErrIdentityRejected):
 			httpresponse.Problem(
 				w,
 				http.StatusForbidden,
 				"This identity has been rejected by an administrator.",
 			)
-		case errors.Is(err, model.ErrRegistrationDisabled):
+		case errors.Is(err, domain.ErrRegistrationDisabled):
 			httpresponse.Problem(
 				w,
 				http.StatusForbidden,
 				"User registration is disabled.",
 			)
-		case errors.Is(err, model.ErrAlreadyExists):
+		case errors.Is(err, domain.ErrAlreadyExists):
 			httpresponse.Problem(
 				w,
 				http.StatusConflict,

@@ -5,26 +5,26 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type mediaRepositoryStub struct {
-	image          model.Image
+	image          domain.Image
 	imageErr       error
 	deletedImageID int64
 }
 
-func (s *mediaRepositoryStub) AttachmentInfo(context.Context, int64) (model.Attachment, error) {
-	return model.Attachment{}, nil
+func (s *mediaRepositoryStub) AttachmentInfo(context.Context, int64) (domain.Attachment, error) {
+	return domain.Attachment{}, nil
 }
 
-func (s *mediaRepositoryStub) AttachmentContent(context.Context, int64) (model.AttachmentData, error) {
-	return model.AttachmentData{}, nil
+func (s *mediaRepositoryStub) AttachmentContent(context.Context, int64) (domain.AttachmentData, error) {
+	return domain.AttachmentData{}, nil
 }
 
-func (s *mediaRepositoryStub) Attachments(context.Context) ([]model.Attachment, error) {
+func (s *mediaRepositoryStub) Attachments(context.Context) ([]domain.Attachment, error) {
 	return nil, nil
 }
 
@@ -37,19 +37,19 @@ func (s *mediaRepositoryStub) DeleteImage(_ context.Context, id int64) error {
 	return nil
 }
 
-func (s *mediaRepositoryStub) ImageInfo(context.Context, int64) (model.Image, error) {
+func (s *mediaRepositoryStub) ImageInfo(context.Context, int64) (domain.Image, error) {
 	return s.image, s.imageErr
 }
 
-func (s *mediaRepositoryStub) ImageContent(context.Context, int64) (model.ImageData, error) {
-	return model.ImageData{}, nil
+func (s *mediaRepositoryStub) ImageContent(context.Context, int64) (domain.ImageData, error) {
+	return domain.ImageData{}, nil
 }
 
-func (s *mediaRepositoryStub) Images(context.Context) ([]model.Image, error) {
+func (s *mediaRepositoryStub) Images(context.Context) ([]domain.Image, error) {
 	return nil, nil
 }
 
-func (s *mediaRepositoryStub) ImagesByUser(context.Context, int64) ([]model.Image, error) {
+func (s *mediaRepositoryStub) ImagesByUser(context.Context, int64) ([]domain.Image, error) {
 	return nil, nil
 }
 
@@ -59,8 +59,8 @@ func (s *mediaRepositoryStub) SaveAttachment(
 	string,
 	[]byte,
 	int64,
-) (model.Attachment, error) {
-	return model.Attachment{}, nil
+) (domain.Attachment, error) {
+	return domain.Attachment{}, nil
 }
 
 func (s *mediaRepositoryStub) SaveImage(
@@ -69,18 +69,18 @@ func (s *mediaRepositoryStub) SaveImage(
 	string,
 	[]byte,
 	int64,
-) (model.Image, error) {
-	return model.Image{}, nil
+) (domain.Image, error) {
+	return domain.Image{}, nil
 }
 
 func TestDeleteImageEnforcesOwnership(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: model.Image{ID: 7, UploadedBy: 2}}
+	repository := &mediaRepositoryStub{image: domain.Image{ID: 7, UploadedBy: 2}}
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		model.User{ID: 1, Role: "editor"},
+		domain.User{ID: 1, Role: "editor"},
 	)
 
 	require.ErrorIs(t, err, ErrMediaForbidden)
@@ -90,7 +90,7 @@ func TestDeleteImageEnforcesOwnership(t *testing.T) {
 func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: model.Image{
+	repository := &mediaRepositoryStub{image: domain.Image{
 		ID:         7,
 		UploadedBy: 1,
 		UsageCount: 3,
@@ -98,7 +98,7 @@ func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		model.User{ID: 1, Role: "editor"},
+		domain.User{ID: 1, Role: "editor"},
 	)
 
 	inUse, ok := errors.AsType[*MediaInUseError](err)
@@ -111,7 +111,7 @@ func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: model.Image{
+	repository := &mediaRepositoryStub{image: domain.Image{
 		ID:         7,
 		UploadedBy: 2,
 		UsageCount: 3,
@@ -119,7 +119,7 @@ func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		model.User{ID: 1, Role: "admin"},
+		domain.User{ID: 1, Role: "admin"},
 	)
 
 	require.NoError(t, err)

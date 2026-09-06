@@ -3,11 +3,11 @@ package store
 import (
 	"context"
 
-	"github.com/gi8lino/lore/internal/model"
+	"github.com/gi8lino/lore/internal/domain"
 )
 
 // PageLinks returns outgoing wiki links and whether their targets currently exist.
-func (s *Store) PageLinks(ctx context.Context, slug string) ([]model.PageLink, error) {
+func (s *Store) PageLinks(ctx context.Context, slug string) ([]domain.PageLink, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT l.target_slug,coalesce(target.title,alias_target.title,''),(target.id IS NOT NULL OR alias_target.id IS NOT NULL)
 FROM page_links l
@@ -23,10 +23,10 @@ ORDER BY l.target_slug`, slug)
 
 	defer rows.Close()
 
-	var links []model.PageLink
+	var links []domain.PageLink
 
 	for rows.Next() {
-		var link model.PageLink
+		var link domain.PageLink
 		if err := rows.Scan(&link.TargetSlug, &link.TargetTitle, &link.Exists); err != nil {
 			return nil, err
 		}
