@@ -187,18 +187,25 @@ function initSuggestions(form: HTMLFormElement): void {
   searchInput.addEventListener("focus", () => schedule(0));
   searchInput.addEventListener("input", () => schedule());
   searchInput.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      select(activeIndex + 1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      select(activeIndex <= 0 ? resultLinks.length - 1 : activeIndex - 1);
-    } else if (event.key === "Enter" && activeIndex >= 0) {
-      event.preventDefault();
-      resultLinks[activeIndex]?.click();
-    } else if (event.key === "Escape") {
-      close();
-      searchInput.blur();
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        select(activeIndex + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        select(activeIndex <= 0 ? resultLinks.length - 1 : activeIndex - 1);
+        break;
+      case "Enter":
+        if (activeIndex >= 0) {
+          event.preventDefault();
+          resultLinks[activeIndex]?.click();
+        }
+        break;
+      case "Escape":
+        close();
+        searchInput.blur();
+        break;
     }
   });
 

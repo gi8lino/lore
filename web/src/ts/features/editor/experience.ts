@@ -741,12 +741,17 @@ function setupEditorExperience(form: HTMLFormElement): void {
 
     const key = event.key.toLocaleLowerCase();
 
-    if (key === "s") {
-      event.preventDefault();
-      form.requestSubmit();
-    } else if (key === "p" && event.shiftKey) {
-      event.preventDefault();
-      form.dispatchEvent(new CustomEvent("editor:toggle-preview"));
+    switch (key) {
+      case "s":
+        event.preventDefault();
+        form.requestSubmit();
+        break;
+      case "p":
+        if (event.shiftKey) {
+          event.preventDefault();
+          form.dispatchEvent(new CustomEvent("editor:toggle-preview"));
+        }
+        break;
     }
   });
   renderDirty();

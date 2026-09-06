@@ -143,20 +143,25 @@ function setupTagEditor(editor: HTMLElement): void {
   });
   tagInput.addEventListener("input", renderSuggestions);
   tagInput.addEventListener("keydown", (event: KeyboardEvent) => {
-    if ((event.key === "Enter" || event.key === ",") && tagInput.value.trim()) {
-      event.preventDefault();
-      addTag(tagInput.value);
-    } else if (
-      event.key === "Backspace" &&
-      !tagInput.value &&
-      selectedTags.length
-    ) {
-      selectedTags.pop();
-      syncValue();
-      renderChips();
-      renderSuggestions();
-    } else if (event.key === "Escape") {
-      suggestionList.hidden = true;
+    switch (event.key) {
+      case "Enter":
+      case ",":
+        if (tagInput.value.trim()) {
+          event.preventDefault();
+          addTag(tagInput.value);
+        }
+        break;
+      case "Backspace":
+        if (!tagInput.value && selectedTags.length) {
+          selectedTags.pop();
+          syncValue();
+          renderChips();
+          renderSuggestions();
+        }
+        break;
+      case "Escape":
+        suggestionList.hidden = true;
+        break;
     }
   });
   tagInput.addEventListener("blur", () => {

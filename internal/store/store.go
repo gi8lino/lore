@@ -423,7 +423,8 @@ FROM pages
 WHERE slug=$1 FOR UPDATE`, lookupSlug).
 		Scan(&id, &deleted)
 
-	if errors.Is(err, pgx.ErrNoRows) {
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
 		var aliasExists bool
 		if aliasErr := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1)`, slug).Scan(&aliasExists); aliasErr != nil {
@@ -441,9 +442,11 @@ INSERT INTO pages(
 ) RETURNING id`,
 			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
 		).Scan(&id)
-	} else if err == nil && deleted {
+	case err != nil:
+		return domain.Page{}, err
+	case deleted:
 		return domain.Page{}, domain.ErrPageInBin
-	} else if err == nil {
+	default:
 		if lookupSlug != slug {
 			var conflict bool
 			if err = tx.QueryRow(ctx, `
@@ -473,6 +476,7 @@ SET page_id=EXCLUDED.page_id`, lookupSlug, id); err != nil {
 				return domain.Page{}, err
 			}
 		}
+
 		_, err = tx.Exec(ctx, `
 UPDATE pages
 SET title=$2,content_language=$3,markdown_content=$4,updated_by=$5,updated_at=now(),

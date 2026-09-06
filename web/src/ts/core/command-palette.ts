@@ -156,17 +156,22 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
     }
     if (!dialog.open) return;
 
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setActive(active + 1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActive(active - 1);
-    } else if (event.key === "Enter") {
-      const option = allOptions()[active];
-      if (option) {
+    switch (event.key) {
+      case "ArrowDown":
         event.preventDefault();
-        option.click();
+        setActive(active + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        setActive(active - 1);
+        break;
+      case "Enter": {
+        const option = allOptions()[active];
+        if (option) {
+          event.preventDefault();
+          option.click();
+        }
+        break;
       }
     }
   });

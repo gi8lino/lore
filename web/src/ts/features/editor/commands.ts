@@ -237,14 +237,19 @@ function setupSlashCommands(form: HTMLFormElement): void {
       editor.setRangeText(command.markdown, currentTrigger.start, end, "end");
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       editor.focus();
-    } else if (command.action === "table") {
-      editor.setRangeText("", currentTrigger.start, end, "end");
-      editor.dispatchEvent(new Event("input", { bubbles: true }));
-      form.querySelector<HTMLElement>("[data-table-format-open]")?.click();
-    } else if (command.action === "image") {
-      editor.setRangeText("", currentTrigger.start, end, "end");
-      editor.dispatchEvent(new Event("input", { bubbles: true }));
-      form.querySelector<HTMLElement>("[data-media-dialog-open]")?.click();
+    } else {
+      switch (command.action) {
+        case "table":
+          editor.setRangeText("", currentTrigger.start, end, "end");
+          editor.dispatchEvent(new Event("input", { bubbles: true }));
+          form.querySelector<HTMLElement>("[data-table-format-open]")?.click();
+          break;
+        case "image":
+          editor.setRangeText("", currentTrigger.start, end, "end");
+          editor.dispatchEvent(new Event("input", { bubbles: true }));
+          form.querySelector<HTMLElement>("[data-media-dialog-open]")?.click();
+          break;
+      }
     }
 
     close();
@@ -268,20 +273,31 @@ function setupSlashCommands(form: HTMLFormElement): void {
   editor.addEventListener("click", refresh);
   editor.addEventListener("keydown", (event: KeyboardEvent) => {
     if (menu.hidden) return;
-    if (event.key === "ArrowDown" && matches.length) {
-      event.preventDefault();
-      active = (active + 1) % matches.length;
-      render();
-    } else if (event.key === "ArrowUp" && matches.length) {
-      event.preventDefault();
-      active = (active - 1 + matches.length) % matches.length;
-      render();
-    } else if (event.key === "Enter" && matches.length) {
-      event.preventDefault();
-      choose(active);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      close();
+    switch (event.key) {
+      case "ArrowDown":
+        if (matches.length) {
+          event.preventDefault();
+          active = (active + 1) % matches.length;
+          render();
+        }
+        break;
+      case "ArrowUp":
+        if (matches.length) {
+          event.preventDefault();
+          active = (active - 1 + matches.length) % matches.length;
+          render();
+        }
+        break;
+      case "Enter":
+        if (matches.length) {
+          event.preventDefault();
+          choose(active);
+        }
+        break;
+      case "Escape":
+        event.preventDefault();
+        close();
+        break;
     }
   });
 

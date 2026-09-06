@@ -346,20 +346,32 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   source.addEventListener("scroll", position);
   source.addEventListener("keydown", (event: KeyboardEvent) => {
     if (menu.hidden) return;
-    if (event.key === "ArrowDown" && results.length) {
-      event.preventDefault();
-      active = (active + 1) % results.length;
-      render();
-    } else if (event.key === "ArrowUp" && results.length) {
-      event.preventDefault();
-      active = (active - 1 + results.length) % results.length;
-      render();
-    } else if ((event.key === "Enter" || event.key === "Tab") && active >= 0) {
-      event.preventDefault();
-      choose(active);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      close();
+    switch (event.key) {
+      case "ArrowDown":
+        if (results.length) {
+          event.preventDefault();
+          active = (active + 1) % results.length;
+          render();
+        }
+        break;
+      case "ArrowUp":
+        if (results.length) {
+          event.preventDefault();
+          active = (active - 1 + results.length) % results.length;
+          render();
+        }
+        break;
+      case "Enter":
+      case "Tab":
+        if (active >= 0) {
+          event.preventDefault();
+          choose(active);
+        }
+        break;
+      case "Escape":
+        event.preventDefault();
+        close();
+        break;
     }
   });
 

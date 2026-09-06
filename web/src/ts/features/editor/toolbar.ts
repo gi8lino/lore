@@ -253,15 +253,21 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
 
     const key = event.key.toLocaleLowerCase();
 
-    if (key === "b") {
-      event.preventDefault();
-      applyAction("bold");
-    } else if (key === "i") {
-      event.preventDefault();
-      applyAction("italic");
-    } else if (key === "k" && event.shiftKey) {
-      event.preventDefault();
-      applyAction("link");
+    switch (key) {
+      case "b":
+        event.preventDefault();
+        applyAction("bold");
+        break;
+      case "i":
+        event.preventDefault();
+        applyAction("italic");
+        break;
+      case "k":
+        if (event.shiftKey) {
+          event.preventDefault();
+          applyAction("link");
+        }
+        break;
     }
   });
 }

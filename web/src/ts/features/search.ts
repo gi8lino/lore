@@ -132,18 +132,27 @@ function setupLiveSearch(form: HTMLFormElement): void {
   searchInput.addEventListener("focus", () => scheduleSearch(0));
   searchInput.addEventListener("input", () => scheduleSearch());
   searchInput.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      selectResult(activeIndex + 1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      selectResult(activeIndex <= 0 ? resultLinks.length - 1 : activeIndex - 1);
-    } else if (event.key === "Enter" && activeIndex >= 0) {
-      event.preventDefault();
-      resultLinks[activeIndex]?.click();
-    } else if (event.key === "Escape") {
-      closeResults();
-      searchInput.blur();
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        selectResult(activeIndex + 1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        selectResult(
+          activeIndex <= 0 ? resultLinks.length - 1 : activeIndex - 1,
+        );
+        break;
+      case "Enter":
+        if (activeIndex >= 0) {
+          event.preventDefault();
+          resultLinks[activeIndex]?.click();
+        }
+        break;
+      case "Escape":
+        closeResults();
+        searchInput.blur();
+        break;
     }
   });
 

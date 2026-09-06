@@ -44,12 +44,22 @@ function setupMarkdownTabs(group: HTMLElement): void {
     tab.addEventListener("keydown", (event: KeyboardEvent) => {
       let next = index;
 
-      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
-      else if (event.key === "ArrowLeft")
-        next = (index - 1 + tabs.length) % tabs.length;
-      else if (event.key === "Home") next = 0;
-      else if (event.key === "End") next = tabs.length - 1;
-      else return;
+      switch (event.key) {
+        case "ArrowRight":
+          next = (index + 1) % tabs.length;
+          break;
+        case "ArrowLeft":
+          next = (index - 1 + tabs.length) % tabs.length;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = tabs.length - 1;
+          break;
+        default:
+          return;
+      }
 
       event.preventDefault();
       activate(next, true);
