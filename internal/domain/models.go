@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -588,12 +589,7 @@ func PageStatuses() []string {
 
 // ValidPageStatus reports whether a page status is supported.
 func ValidPageStatus(value string) bool {
-	for _, status := range PageStatuses() {
-		if value == status {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(PageStatuses(), value)
 }
 
 // DefaultUserPreferences returns the presentation defaults used before a user saves preferences.
