@@ -137,6 +137,70 @@ async function deleteServerDraft(key: string): Promise<void> {
   }
 }
 
+function removeLocalDraft(item: HTMLElement, key: string): void {
+  try {
+    localStorage.removeItem(`${draftPrefix}${key}`);
+    if (item.dataset.draftLegacyKey) {
+      localStorage.removeItem(`${draftPrefix}${item.dataset.draftLegacyKey}`);
+    }
+  } catch {
+    // Browser fallback cleanup is best effort.
+  }
+}
+
+function showEmptyDraftState(container: HTMLElement): void {
+  if (container.querySelector("[data-draft-item]")) return;
+
+  const empty = document.createElement("p");
+
+  empty.className = "muted";
+  empty.dataset.homeDraftsEmpty = "";
+  empty.textContent = "No private drafts.";
+  container.append(empty);
+}
+
+async function handleDraftDiscard(
+  container: HTMLElement,
+  event: MouseEvent,
+): Promise<void> {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const button = target.closest<HTMLButtonElement>("[data-draft-discard]");
+  if (!button) return;
+
+  const item = button.closest<HTMLElement>("[data-draft-item]");
+  const key = button.dataset.draftKey || item?.dataset.draftKey;
+  if (!item || !key) return;
+
+  const accepted = await requestConfirmation(
+    "Discard this private draft? The published page will not be changed.",
+    {
+      eyebrow: "Private draft",
+      title: "Discard draft?",
+      confirmLabel: "Discard draft",
+      cancelLabel: "Keep draft",
+      danger: true,
+    },
+  );
+  if (!accepted) return;
+
+  button.disabled = true;
+
+  try {
+    if (button.dataset.draftServer === "true") await deleteServerDraft(key);
+
+    removeLocalDraft(item, key);
+    item.remove();
+    showEmptyDraftState(container);
+  } catch (error) {
+    button.disabled = false;
+    await showNotice(errorMessage(error) || "Draft could not be discarded.", {
+      title: "Discard failed",
+    });
+  }
+}
+
 // Initializes dashboard draft rendering and discard actions.
 export function initDashboard(): void {
   const container = document.querySelector<HTMLElement>("[data-home-drafts]");
@@ -181,59 +245,7 @@ export function initDashboard(): void {
     container.querySelector("[data-home-drafts-empty]")?.remove();
   }
 
-  container.addEventListener("click", async (event: MouseEvent) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-
-    const button = target.closest<HTMLButtonElement>("[data-draft-discard]");
-    if (!button) return;
-
-    const item = button.closest<HTMLElement>("[data-draft-item]");
-    const key = button.dataset.draftKey || item?.dataset.draftKey;
-    if (!item || !key) return;
-
-    const accepted = await requestConfirmation(
-      "Discard this private draft? The published page will not be changed.",
-      {
-        eyebrow: "Private draft",
-        title: "Discard draft?",
-        confirmLabel: "Discard draft",
-        cancelLabel: "Keep draft",
-        danger: true,
-      },
-    );
-    if (!accepted) return;
-
-    button.disabled = true;
-
-    try {
-      if (button.dataset.draftServer === "true") await deleteServerDraft(key);
-      try {
-        localStorage.removeItem(`${draftPrefix}${key}`);
-        if (item.dataset.draftLegacyKey) {
-          localStorage.removeItem(
-            `${draftPrefix}${item.dataset.draftLegacyKey}`,
-          );
-        }
-      } catch {
-        // Browser fallback cleanup is best effort.
-      }
-
-      item.remove();
-
-      if (!container.querySelector("[data-draft-item]")) {
-        const empty = document.createElement("p");
-
-        empty.className = "muted";
-        empty.dataset.homeDraftsEmpty = "";
-        empty.textContent = "No private drafts.";
-        container.append(empty);
-      }
-    } catch (error) {
-      button.disabled = false;
-      await showNotice(errorMessage(error) || "Draft could not be discarded.", {
-        title: "Discard failed",
-      });
-    }
+  container.addEventListener("click", (event: MouseEvent) => {
+    void handleDraftDiscard(container, event);
   });
 }

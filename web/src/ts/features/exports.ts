@@ -68,6 +68,50 @@ function downloadFilename(response: Response, fallback: string): string {
   return plain?.[1] || fallback;
 }
 
+async function downloadPDF(
+  dialog: HTMLDialogElement,
+  button: HTMLButtonElement,
+  progress: HTMLElement,
+): Promise<void> {
+  const pdfURL = button.dataset.url;
+  if (!pdfURL) return;
+
+  button.disabled = true;
+
+  let progressVisible = false;
+  const progressTimer = setTimeout(() => {
+    progress.hidden = false;
+    progressVisible = true;
+  }, 350);
+
+  try {
+    const response = await fetch(pdfURL, {
+      headers: { Accept: "application/pdf" },
+    });
+    if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => ({}));
+      throw await responseProblem(response, payload);
+    }
+
+    const blob = await response.blob();
+
+    downloadBlob(blob, downloadFilename(response, "lore-page.pdf"));
+    dialog.close();
+  } catch (error) {
+    console.error("PDF export failed", error);
+    dialog.close();
+    await showNotice(errorMessage(error) || "PDF could not be generated.", {
+      title: "PDF export failed",
+    });
+  } finally {
+    clearTimeout(progressTimer);
+
+    if (progressVisible) progress.hidden = true;
+
+    button.disabled = false;
+  }
+}
+
 // Wires share dialog behavior.
 function setupShareDialog(dialog: HTMLDialogElement): void {
   const open = document.querySelector<HTMLButtonElement>(
@@ -137,45 +181,7 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   });
   markdown.addEventListener("click", () => dialog.close());
 
-  pdf.addEventListener("click", async () => {
-    const pdfURL = pdf.dataset.url;
-    if (!pdfURL) return;
-
-    pdf.disabled = true;
-
-    let progressVisible = false;
-    const progressTimer = setTimeout(() => {
-      progress.hidden = false;
-      progressVisible = true;
-    }, 350);
-
-    try {
-      const response = await fetch(pdfURL, {
-        headers: { Accept: "application/pdf" },
-      });
-      if (!response.ok) {
-        const payload: unknown = await response.json().catch(() => ({}));
-        throw await responseProblem(response, payload);
-      }
-
-      const blob = await response.blob();
-
-      downloadBlob(blob, downloadFilename(response, "lore-page.pdf"));
-      dialog.close();
-    } catch (error) {
-      console.error("PDF export failed", error);
-      dialog.close();
-      await showNotice(errorMessage(error) || "PDF could not be generated.", {
-        title: "PDF export failed",
-      });
-    } finally {
-      clearTimeout(progressTimer);
-
-      if (progressVisible) progress.hidden = true;
-
-      pdf.disabled = false;
-    }
-  });
+  pdf.addEventListener("click", () => void downloadPDF(dialog, pdf, progress));
 }
 
 // Initializes exports.

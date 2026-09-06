@@ -43,6 +43,11 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   ];
   if (!form || !name || !identity || !role) return;
 
+  const editorForm = form;
+  const editorName = name;
+  const editorIdentity = identity;
+  const editorRole = role;
+
   localPassword?.addEventListener("toggle", () => {
     for (const input of [localPasswordInput, localPasswordConfirm]) {
       if (!input) continue;
@@ -53,56 +58,56 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
     }
   });
 
+  function openUserEditor(button: HTMLButtonElement): void {
+    const userID = button.dataset.userId;
+    if (!userID) return;
+
+    const groups = selectedGroupIDs(button);
+
+    editorForm.reset();
+    editorForm.action = `/admin/users/${encodeURIComponent(userID)}`;
+    editorName.textContent =
+      button.dataset.userName || button.dataset.userUsername || "Edit user";
+
+    const username = button.dataset.userUsername || "";
+    const email = button.dataset.userEmail || "";
+
+    editorIdentity.textContent = email ? `${username} · ${email}` : username;
+    editorRole.value = button.dataset.userRole || "viewer";
+
+    if (accountEnabled) {
+      accountEnabled.checked = button.dataset.userEnabled === "true";
+    }
+    if (localLogin && localCredentialEnabled && localCredentialUpdate) {
+      const hasLocalCredential =
+        button.dataset.userHasLocalCredential === "true";
+      const canManageLocalCredential =
+        hasLocalCredential && dialog.dataset.externalAuthActive === "true";
+
+      localLogin.hidden = !canManageLocalCredential;
+      localCredentialEnabled.checked =
+        button.dataset.userLocalCredentialEnabled === "true";
+      localCredentialEnabled.disabled = !canManageLocalCredential;
+      localCredentialUpdate.disabled = !canManageLocalCredential;
+    }
+    if (localPassword && localPasswordInput && localPasswordConfirm) {
+      localPassword.open = false;
+      localPasswordInput.disabled = true;
+      localPasswordConfirm.disabled = true;
+      localPasswordInput.value = "";
+      localPasswordConfirm.value = "";
+    }
+
+    for (const input of groupInputs) input.checked = groups.has(input.value);
+
+    dialog.showModal();
+    requestAnimationFrame(() => editorRole.focus());
+  }
+
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-admin-user-edit]",
   )) {
-    button.addEventListener("click", () => {
-      const userID = button.dataset.userId;
-      if (!userID) return;
-
-      const groups = selectedGroupIDs(button);
-
-      form.reset();
-      form.action = `/admin/users/${encodeURIComponent(userID)}`;
-      name.textContent =
-        button.dataset.userName || button.dataset.userUsername || "Edit user";
-
-      const username = button.dataset.userUsername || "";
-      const email = button.dataset.userEmail || "";
-
-      identity.textContent = email ? `${username} · ${email}` : username;
-      role.value = button.dataset.userRole || "viewer";
-
-      if (accountEnabled) {
-        accountEnabled.checked = button.dataset.userEnabled === "true";
-      }
-      if (localLogin && localCredentialEnabled && localCredentialUpdate) {
-        const hasLocalCredential =
-          button.dataset.userHasLocalCredential === "true";
-        const canManageLocalCredential =
-          hasLocalCredential && dialog.dataset.externalAuthActive === "true";
-
-        localLogin.hidden = !canManageLocalCredential;
-        localCredentialEnabled.checked =
-          button.dataset.userLocalCredentialEnabled === "true";
-        localCredentialEnabled.disabled = !canManageLocalCredential;
-        localCredentialUpdate.disabled = !canManageLocalCredential;
-      }
-      if (localPassword && localPasswordInput && localPasswordConfirm) {
-        localPassword.open = false;
-        localPasswordInput.disabled = true;
-        localPasswordConfirm.disabled = true;
-        localPasswordInput.value = "";
-        localPasswordConfirm.value = "";
-      }
-
-      groupInputs.forEach((input) => {
-        input.checked = groups.has(input.value);
-      });
-
-      dialog.showModal();
-      requestAnimationFrame(() => role.focus());
-    });
+    button.addEventListener("click", () => openUserEditor(button));
   }
 
   for (const button of dialog.querySelectorAll<HTMLButtonElement>(
@@ -153,48 +158,60 @@ export function setupPendingOIDCEditor(dialog: HTMLDialogElement): void {
   )
     return;
 
+  const identityName = name;
+  const identityProfile = profile;
+  const identityIssuer = issuer;
+  const identitySubject = subject;
+  const identityUser = user;
+  const identityLinkForm = linkForm;
+  const identityApproveForm = approveForm;
+  const identityRejectForm = rejectForm;
+
+  function openPendingIdentityEditor(button: HTMLButtonElement): void {
+    const pendingID = button.dataset.pendingId;
+    if (!pendingID) return;
+
+    identityName.textContent =
+      button.dataset.pendingName || "Review OIDC identity";
+
+    const username = button.dataset.pendingUsername || "";
+    const email = button.dataset.pendingEmail || "";
+
+    identityProfile.textContent = email ? `${username} · ${email}` : username;
+    identityIssuer.textContent = button.dataset.pendingIssuer || "";
+    identitySubject.textContent = button.dataset.pendingSubject || "";
+
+    const base = `/admin/oidc/pending/${encodeURIComponent(pendingID)}`;
+
+    identityLinkForm.action = `${base}/link`;
+    identityApproveForm.action = `${base}/approve`;
+    identityRejectForm.action = `${base}/reject`;
+
+    const suggestedID = button.dataset.suggestedUserId || "";
+
+    identityUser.value = [...identityUser.options].some(
+      (option) => option.value === suggestedID,
+    )
+      ? suggestedID
+      : "";
+
+    if (match) {
+      const suggestedName = button.dataset.suggestedUserName || "";
+
+      match.hidden = !suggestedID;
+      match.textContent = suggestedName
+        ? `Possible match: ${suggestedName}`
+        : "Possible matching Lore account found.";
+    }
+
+    dialog.showModal();
+    requestAnimationFrame(() => identityUser.focus());
+  }
+
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-pending-oidc-review]",
   )) {
-    button.addEventListener("click", () => {
-      const pendingID = button.dataset.pendingId;
-      if (!pendingID) return;
-
-      name.textContent = button.dataset.pendingName || "Review OIDC identity";
-
-      const username = button.dataset.pendingUsername || "";
-      const email = button.dataset.pendingEmail || "";
-
-      profile.textContent = email ? `${username} · ${email}` : username;
-      issuer.textContent = button.dataset.pendingIssuer || "";
-      subject.textContent = button.dataset.pendingSubject || "";
-
-      const base = `/admin/oidc/pending/${encodeURIComponent(pendingID)}`;
-
-      linkForm.action = `${base}/link`;
-      approveForm.action = `${base}/approve`;
-      rejectForm.action = `${base}/reject`;
-
-      const suggestedID = button.dataset.suggestedUserId || "";
-
-      user.value = [...user.options].some(
-        (option) => option.value === suggestedID,
-      )
-        ? suggestedID
-        : "";
-
-      if (match) {
-        const suggestedName = button.dataset.suggestedUserName || "";
-
-        match.hidden = !suggestedID;
-        match.textContent = suggestedName
-          ? `Possible match: ${suggestedName}`
-          : "Possible matching Lore account found.";
-      }
-
-      dialog.showModal();
-      requestAnimationFrame(() => user.focus());
-    });
+    button.addEventListener("click", () => openPendingIdentityEditor(button));
   }
 
   for (const button of dialog.querySelectorAll<HTMLButtonElement>(

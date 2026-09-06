@@ -304,20 +304,24 @@ function setupGraph(root: HTMLElement): void {
   const graphURL = root.dataset.graphUrl;
   if (!graphURL) return;
 
-  fetch(graphURL, { headers: { Accept: "application/json" } })
-    .then((response) =>
-      response.ok
-        ? response.json()
-        : Promise.reject(new Error(`HTTP ${response.status}`)),
-    )
-    .then((value: unknown) => {
+  async function loadGraph(url: string): Promise<void> {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const value: unknown = await response.json();
+
       graph = normalizedGraph(value);
       render();
-    })
-    .catch(() => {
+    } catch {
       emptyState.textContent = "The knowledge graph could not be loaded.";
       emptyState.hidden = false;
-    });
+    }
+  }
+
+  void loadGraph(graphURL);
 }
 
 // Initializes graph.

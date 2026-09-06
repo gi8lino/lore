@@ -145,9 +145,14 @@ function setupSlashCommands(form: HTMLFormElement): void {
   const editor = source;
   let availableCommands: SlashCommand[] = [...commands];
 
-  fetch("/api/editor/catalog", { headers: { Accept: "application/json" } })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((catalog: unknown) => {
+  async function loadReusableCommands(): Promise<void> {
+    try {
+      const response = await fetch("/api/editor/catalog", {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+
+      const catalog: unknown = await response.json();
       const snippets = catalogSnippets(catalog);
       if (!snippets.length) return;
 
@@ -159,8 +164,12 @@ function setupSlashCommands(form: HTMLFormElement): void {
       }));
 
       availableCommands = [...commands, ...reusable];
-    })
-    .catch(() => {});
+    } catch {
+      // Reusable commands are optional; keep the built-in command catalog.
+    }
+  }
+
+  void loadReusableCommands();
 
   const menu = document.createElement("div");
 

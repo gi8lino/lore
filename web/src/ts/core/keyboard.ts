@@ -39,7 +39,7 @@ export function initKeyboardWorkflow(): void {
     if (event.target === shortcuts) closeShortcuts();
   });
 
-  document.addEventListener("keydown", (event: KeyboardEvent) => {
+  function handleKeydown(event: KeyboardEvent): void {
     if (
       event.defaultPrevented ||
       event.metaKey ||
@@ -87,5 +87,7 @@ export function initKeyboardWorkflow(): void {
       event.preventDefault();
       window.location.assign(`/edit/${document.body.dataset.currentPage}`);
     }
-  });
+  }
+
+  document.addEventListener("keydown", handleKeydown);
 }

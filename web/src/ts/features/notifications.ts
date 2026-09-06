@@ -8,54 +8,88 @@ async function markRead(id: string): Promise<void> {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 }
 
+function decrementNotificationBadge(menu: HTMLElement): void {
+  const badge = menu.querySelector<HTMLElement>(".notification-badge");
+  if (!badge) return;
+
+  const next = Math.max(0, Number(badge.textContent || 0) - 1);
+  if (next === 0) {
+    badge.remove();
+    return;
+  }
+
+  badge.textContent = String(next);
+}
+
+async function readNotification(
+  menu: HTMLElement,
+  item: HTMLElement,
+  id: string,
+): Promise<void> {
+  try {
+    await markRead(id);
+  } catch {
+    return;
+  }
+
+  item.classList.remove("unread");
+  decrementNotificationBadge(menu);
+}
+
+function handleNotificationClick(menu: HTMLElement, event: MouseEvent): void {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const item = target.closest<HTMLElement>("[data-notification-id]");
+  if (!item || !item.classList.contains("unread")) return;
+
+  const id = item.dataset.notificationId;
+  if (!id) return;
+
+  void readNotification(menu, item, id);
+}
+
+async function readAllNotifications(
+  menu: HTMLElement,
+  trigger: HTMLElement,
+): Promise<void> {
+  try {
+    await markRead("all");
+  } catch {
+    return;
+  }
+
+  for (const item of menu.querySelectorAll<HTMLElement>(
+    ".notification-item.unread",
+  )) {
+    item.classList.remove("unread");
+  }
+
+  menu.querySelector<HTMLElement>(".notification-badge")?.remove();
+  trigger.remove();
+}
+
+function handleReadAllClick(menu: HTMLElement, event: MouseEvent): void {
+  event.preventDefault();
+
+  const trigger = event.currentTarget;
+  if (!(trigger instanceof HTMLElement)) return;
+
+  void readAllNotifications(menu, trigger);
+}
+
 // Initializes notifications.
 export function initNotifications(): void {
   const menu = document.querySelector<HTMLElement>("[data-notification-menu]");
   if (!menu) return;
 
-  menu.addEventListener("click", (event: MouseEvent) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-
-    const item = target.closest<HTMLElement>("[data-notification-id]");
-    if (!item || !item.classList.contains("unread")) return;
-
-    const id = item.dataset.notificationId;
-    if (!id) return;
-
-    void markRead(id)
-      .then(() => {
-        item.classList.remove("unread");
-
-        const badge = menu.querySelector<HTMLElement>(".notification-badge");
-        if (!badge) return;
-
-        const next = Math.max(0, Number(badge.textContent || 0) - 1);
-
-        if (next === 0) badge.remove();
-        else badge.textContent = String(next);
-      })
-      .catch(() => {});
-  });
+  menu.addEventListener("click", (event: MouseEvent) =>
+    handleNotificationClick(menu, event),
+  );
 
   menu
     .querySelector<HTMLElement>("[data-notifications-read-all]")
-    ?.addEventListener("click", (event: MouseEvent) => {
-      event.preventDefault();
-
-      const trigger = event.currentTarget;
-      if (!(trigger instanceof HTMLElement)) return;
-
-      void markRead("all")
-        .then(() => {
-          for (const item of menu.querySelectorAll<HTMLElement>(
-            ".notification-item.unread",
-          ))
-            item.classList.remove("unread");
-
-          menu.querySelector<HTMLElement>(".notification-badge")?.remove();
-          trigger.remove();
-        })
-        .catch(() => {});
-    });
+    ?.addEventListener("click", (event: MouseEvent) =>
+      handleReadAllClick(menu, event),
+    );
 }

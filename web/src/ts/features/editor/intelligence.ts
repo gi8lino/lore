@@ -421,7 +421,7 @@ function setupIntelligence(form: HTMLFormElement): void {
       return;
     }
 
-    diagnostics.forEach((item) => {
+    for (const item of diagnostics) {
       const row = document.createElement("article");
 
       row.className = `editor-diagnostic ${item.kind}`;
@@ -461,7 +461,7 @@ function setupIntelligence(form: HTMLFormElement): void {
       }
 
       problemPanel.append(row);
-    });
+    }
   }
 
   function renderOutline(): void {
@@ -568,17 +568,23 @@ function setupIntelligence(form: HTMLFormElement): void {
       selectTab("problems");
     });
 
-  fetch(catalogURL, { headers: { Accept: "application/json" } })
-    .then((response) =>
-      response.ok
-        ? response.json()
-        : Promise.reject(new Error(`HTTP ${response.status}`)),
-    )
-    .then((value: unknown) => {
+  async function loadCatalog(url: string): Promise<void> {
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const value: unknown = await response.json();
       catalog = normalizedCatalog(value);
-      render();
-    })
-    .catch(() => render());
+    } catch {
+      // The editor remains useful without the optional catalog.
+    }
+
+    render();
+  }
+
+  void loadCatalog(catalogURL);
 
   selectTab(activeTab, false);
   render();

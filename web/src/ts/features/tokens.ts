@@ -129,88 +129,92 @@ function formBody(form: HTMLFormElement): URLSearchParams {
   return params;
 }
 
+async function createToken(form: HTMLFormElement): Promise<void> {
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const secret = form.parentElement?.querySelector<HTMLElement>(
+    "[data-token-secret]",
+  );
+  if (!secret || !submit) return;
+
+  submit.disabled = true;
+
+  try {
+    const response = await fetch(form.action, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      body: formBody(form),
+    });
+    const payload: unknown = await response.json();
+    if (!response.ok) throw await responseProblem(response, payload);
+    if (!isCreateTokenResponse(payload))
+      throw new Error("Invalid token response.");
+
+    renderTokenSecret(secret, payload.secret);
+    prependTokenRow(form, payload.token);
+    form.reset();
+  } catch (error) {
+    console.error("token creation failed", error);
+    await showNotice(errorMessage(error) || "Token could not be created.", {
+      title: "Token creation failed",
+    });
+  } finally {
+    submit.disabled = false;
+  }
+}
+
 // Wires token forms behavior.
 function setupTokenForms(): void {
   for (const form of document.querySelectorAll<HTMLFormElement>(
     "[data-token-form]",
   )) {
-    form.addEventListener("submit", async (event: SubmitEvent) => {
+    form.addEventListener("submit", (event: SubmitEvent) => {
       event.preventDefault();
-
-      const submit = form.querySelector<HTMLButtonElement>(
-        'button[type="submit"]',
-      );
-      const secret = form.parentElement?.querySelector<HTMLElement>(
-        "[data-token-secret]",
-      );
-      if (!secret || !submit) return;
-
-      submit.disabled = true;
-
-      try {
-        const response = await fetch(form.action, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-          },
-          body: formBody(form),
-        });
-        const payload: unknown = await response.json();
-        if (!response.ok) throw await responseProblem(response, payload);
-        if (!isCreateTokenResponse(payload))
-          throw new Error("Invalid token response.");
-
-        renderTokenSecret(secret, payload.secret);
-        prependTokenRow(form, payload.token);
-        form.reset();
-      } catch (error) {
-        console.error("token creation failed", error);
-        await showNotice(errorMessage(error) || "Token could not be created.", {
-          title: "Token creation failed",
-        });
-      } finally {
-        submit.disabled = false;
-      }
+      void createToken(form);
     });
+  }
+}
+
+// Revokes one token after confirmation.
+async function revokeToken(button: HTMLButtonElement): Promise<void> {
+  if (
+    !(await requestConfirmation(
+      "Revoke this token? Requests using it will stop working immediately.",
+      { title: "Revoke access token", confirmLabel: "Revoke token" },
+    ))
+  )
+    return;
+
+  const deleteURL = button.dataset.deleteUrl;
+  if (!deleteURL) return;
+
+  button.disabled = true;
+
+  try {
+    const response = await fetch(deleteURL, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => ({}));
+      throw await responseProblem(response, payload);
+    }
+
+    button.closest("[data-token-row]")?.remove();
+  } catch (error) {
+    console.error("token revocation failed", error);
+    await showNotice(errorMessage(error) || "Token could not be revoked.", {
+      title: "Token revocation failed",
+    });
+    button.disabled = false;
   }
 }
 
 // Wires token delete button behavior.
 function setupTokenDeleteButton(button: HTMLButtonElement): void {
-  button.addEventListener("click", async () => {
-    if (
-      !(await requestConfirmation(
-        "Revoke this token? Requests using it will stop working immediately.",
-        { title: "Revoke access token", confirmLabel: "Revoke token" },
-      ))
-    )
-      return;
-
-    const deleteURL = button.dataset.deleteUrl;
-    if (!deleteURL) return;
-
-    button.disabled = true;
-
-    try {
-      const response = await fetch(deleteURL, {
-        method: "DELETE",
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) {
-        const payload: unknown = await response.json().catch(() => ({}));
-        throw await responseProblem(response, payload);
-      }
-
-      button.closest("[data-token-row]")?.remove();
-    } catch (error) {
-      console.error("token revocation failed", error);
-      await showNotice(errorMessage(error) || "Token could not be revoked.", {
-        title: "Token revocation failed",
-      });
-      button.disabled = false;
-    }
-  });
+  button.addEventListener("click", () => void revokeToken(button));
 }
 
 // Initializes tokens.

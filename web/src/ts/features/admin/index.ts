@@ -118,6 +118,121 @@ function formatPDFSize(bytes: number): string {
   return `${(kibibytes / 1024).toFixed(1)} MiB`;
 }
 
+type PDFTestControls = {
+  endpoint: HTMLInputElement;
+  button: HTMLButtonElement;
+  status: HTMLElement;
+  dialog: HTMLDialogElement;
+  preview: HTMLIFrameElement;
+  openPDF: HTMLAnchorElement;
+  pages: HTMLElement;
+  pagesCheck: HTMLElement;
+  pagesMark: HTMLElement;
+  size: HTMLElement;
+  previewURL: string;
+};
+
+function setPDFTestStatus(
+  controls: PDFTestControls,
+  state: "" | "testing" | "success" | "error",
+  message: string,
+): void {
+  controls.status.dataset.state = state;
+  controls.status.textContent = message;
+}
+
+function clearPDFTestPreview(controls: PDFTestControls): void {
+  controls.preview.removeAttribute("src");
+  controls.openPDF.removeAttribute("href");
+
+  if (controls.previewURL) URL.revokeObjectURL(controls.previewURL);
+  controls.previewURL = "";
+}
+
+function showPDFTestResult(
+  controls: PDFTestControls,
+  blob: Blob,
+  pageCount: number,
+  byteSize: number,
+): void {
+  clearPDFTestPreview(controls);
+
+  controls.previewURL = URL.createObjectURL(blob);
+  controls.preview.src = controls.previewURL;
+  controls.openPDF.href = controls.previewURL;
+  controls.size.textContent = formatPDFSize(byteSize);
+
+  if (pageCount === 2) {
+    controls.pagesCheck.dataset.state = "success";
+    controls.pagesMark.textContent = "✓";
+    controls.pages.textContent = "2 pages";
+  } else if (pageCount > 0) {
+    controls.pagesCheck.dataset.state = "warning";
+    controls.pagesMark.textContent = "!";
+    controls.pages.textContent = `${pageCount} page${pageCount === 1 ? "" : "s"} returned; expected 2`;
+  } else {
+    controls.pagesCheck.dataset.state = "warning";
+    controls.pagesMark.textContent = "!";
+    controls.pages.textContent = "Page count unavailable";
+  }
+
+  controls.dialog.showModal();
+}
+
+async function testPDFEndpoint(controls: PDFTestControls): Promise<void> {
+  const pdfURL = controls.endpoint.value.trim();
+  if (!pdfURL) {
+    setPDFTestStatus(controls, "error", "Enter a PDF service URL to test.");
+    controls.endpoint.focus();
+    return;
+  }
+
+  controls.button.disabled = true;
+  setPDFTestStatus(
+    controls,
+    "testing",
+    "Rendering the two-page PDF test document…",
+  );
+
+  try {
+    const body = new URLSearchParams({ pdf_url: pdfURL });
+    const response = await fetch("/admin/pdf/test", {
+      method: "POST",
+      body,
+      credentials: "same-origin",
+      headers: { Accept: "application/pdf" },
+    });
+    if (!response.ok) throw await responseProblem(response);
+
+    const blob = await response.blob();
+    const pageCount = Number.parseInt(
+      response.headers.get("X-Lore-PDF-Pages") ?? "0",
+      10,
+    );
+    const reportedSize = Number.parseInt(
+      response.headers.get("X-Lore-PDF-Size") ?? "0",
+      10,
+    );
+    const byteSize = reportedSize > 0 ? reportedSize : blob.size;
+
+    showPDFTestResult(
+      controls,
+      blob,
+      Number.isFinite(pageCount) ? pageCount : 0,
+      byteSize,
+    );
+    setPDFTestStatus(
+      controls,
+      "success",
+      "PDF service is working. Review the generated test document.",
+    );
+  } catch (error: unknown) {
+    setPDFTestStatus(controls, "error", errorMessage(error));
+  } finally {
+    controls.button.disabled = false;
+  }
+}
+
 // Wires the PDF integration test to the endpoint currently entered in the form.
 function setupPDFSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-pdf-settings]");
@@ -152,102 +267,26 @@ function setupPDFSettings(): void {
   if (!preview || !openPDF || !pages || !pagesCheck || !pagesMark || !size)
     return;
 
-  let previewURL = "";
-
-  const setStatus = (
-    state: "" | "testing" | "success" | "error",
-    message: string,
-  ): void => {
-    status.dataset.state = state;
-    status.textContent = message;
+  const controls: PDFTestControls = {
+    endpoint,
+    button,
+    status,
+    dialog,
+    preview,
+    openPDF,
+    pages,
+    pagesCheck,
+    pagesMark,
+    size,
+    previewURL: "",
   };
 
-  const clearPreview = (): void => {
-    preview.removeAttribute("src");
-    openPDF.removeAttribute("href");
-
-    if (previewURL) URL.revokeObjectURL(previewURL);
-    previewURL = "";
-  };
-
-  const showResult = (
-    blob: Blob,
-    pageCount: number,
-    byteSize: number,
-  ): void => {
-    clearPreview();
-
-    previewURL = URL.createObjectURL(blob);
-    preview.src = previewURL;
-    openPDF.href = previewURL;
-    size.textContent = formatPDFSize(byteSize);
-
-    if (pageCount === 2) {
-      pagesCheck.dataset.state = "success";
-      pagesMark.textContent = "✓";
-      pages.textContent = "2 pages";
-    } else if (pageCount > 0) {
-      pagesCheck.dataset.state = "warning";
-      pagesMark.textContent = "!";
-      pages.textContent = `${pageCount} page${pageCount === 1 ? "" : "s"} returned; expected 2`;
-    } else {
-      pagesCheck.dataset.state = "warning";
-      pagesMark.textContent = "!";
-      pages.textContent = "Page count unavailable";
-    }
-
-    dialog.showModal();
-  };
-
-  endpoint.addEventListener("input", () => setStatus("", ""));
-  closeButtons.forEach((close) =>
-    close.addEventListener("click", () => dialog.close()),
-  );
-  dialog.addEventListener("close", clearPreview);
-
-  button.addEventListener("click", async () => {
-    const pdfURL = endpoint.value.trim();
-    if (!pdfURL) {
-      setStatus("error", "Enter a PDF service URL to test.");
-      endpoint.focus();
-      return;
-    }
-
-    button.disabled = true;
-    setStatus("testing", "Rendering the two-page PDF test document…");
-
-    try {
-      const body = new URLSearchParams({ pdf_url: pdfURL });
-      const response = await fetch("/admin/pdf/test", {
-        method: "POST",
-        body,
-        credentials: "same-origin",
-        headers: { Accept: "application/pdf" },
-      });
-      if (!response.ok) throw await responseProblem(response);
-
-      const blob = await response.blob();
-      const pageCount = Number.parseInt(
-        response.headers.get("X-Lore-PDF-Pages") ?? "0",
-        10,
-      );
-      const reportedSize = Number.parseInt(
-        response.headers.get("X-Lore-PDF-Size") ?? "0",
-        10,
-      );
-      const byteSize = reportedSize > 0 ? reportedSize : blob.size;
-
-      showResult(blob, Number.isFinite(pageCount) ? pageCount : 0, byteSize);
-      setStatus(
-        "success",
-        "PDF service is working. Review the generated test document.",
-      );
-    } catch (error: unknown) {
-      setStatus("error", errorMessage(error));
-    } finally {
-      button.disabled = false;
-    }
-  });
+  endpoint.addEventListener("input", () => setPDFTestStatus(controls, "", ""));
+  for (const close of closeButtons) {
+    close.addEventListener("click", () => dialog.close());
+  }
+  dialog.addEventListener("close", () => clearPDFTestPreview(controls));
+  button.addEventListener("click", () => void testPDFEndpoint(controls));
 }
 
 // Shows only the fields used by the selected browser authentication mode.

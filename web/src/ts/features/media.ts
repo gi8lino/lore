@@ -309,6 +309,61 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   }
 }
 
+async function deleteMediaImage(button: HTMLButtonElement): Promise<void> {
+  const item = button.closest<HTMLElement>("[data-media-settings-item]");
+  if (!item) return;
+
+  const usage = Number(button.dataset.mediaUsage || 0);
+  const message =
+    usage > 0
+      ? `Delete this image permanently? It is still referenced ${usage} time${usage === 1 ? "" : "s"} and those references will break.`
+      : "Delete this unused image permanently?";
+  if (
+    !(await requestConfirmation(message, {
+      title: "Delete image",
+      confirmLabel: "Delete image",
+    }))
+  )
+    return;
+
+  const deleteURL = button.dataset.deleteUrl;
+  if (!deleteURL) return;
+
+  button.disabled = true;
+
+  try {
+    const response = await fetch(deleteURL, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => ({}));
+      throw await responseProblem(response, payload);
+    }
+
+    item.remove();
+
+    const list = document.querySelector<HTMLElement>(
+      "[data-media-settings-list]",
+    );
+    if (list && !list.querySelector("[data-media-settings-item]")) {
+      const empty = document.createElement("p");
+
+      empty.className = "muted";
+      empty.dataset.mediaSettingsEmpty = "";
+      empty.textContent =
+        "No images uploaded yet. Upload one from the page editor.";
+      list.append(empty);
+    }
+  } catch (error) {
+    console.error("image deletion failed", error);
+    await showNotice(errorMessage(error) || "Image could not be deleted.", {
+      title: "Image deletion failed",
+    });
+    button.disabled = false;
+  }
+}
+
 // Initializes media.
 export function initMedia(): void {
   const mediaDialog = document.querySelector<HTMLDialogElement>(
@@ -320,60 +375,6 @@ export function initMedia(): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-media-delete]",
   )) {
-    button.addEventListener("click", async () => {
-      const item = button.closest<HTMLElement>("[data-media-settings-item]");
-      if (!item) return;
-
-      const usage = Number(button.dataset.mediaUsage || 0);
-      const message =
-        usage > 0
-          ? `Delete this image permanently? It is still referenced ${usage} time${usage === 1 ? "" : "s"} and those references will break.`
-          : "Delete this unused image permanently?";
-      if (
-        !(await requestConfirmation(message, {
-          title: "Delete image",
-          confirmLabel: "Delete image",
-        }))
-      )
-        return;
-
-      const deleteURL = button.dataset.deleteUrl;
-      if (!deleteURL) return;
-
-      button.disabled = true;
-
-      try {
-        const response = await fetch(deleteURL, {
-          method: "DELETE",
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) {
-          const payload: unknown = await response.json().catch(() => ({}));
-          throw await responseProblem(response, payload);
-        }
-
-        item.remove();
-
-        const list = document.querySelector<HTMLElement>(
-          "[data-media-settings-list]",
-        );
-
-        if (list && !list.querySelector("[data-media-settings-item]")) {
-          const empty = document.createElement("p");
-
-          empty.className = "muted";
-          empty.dataset.mediaSettingsEmpty = "";
-          empty.textContent =
-            "No images uploaded yet. Upload one from the page editor.";
-          list.append(empty);
-        }
-      } catch (error) {
-        console.error("image deletion failed", error);
-        await showNotice(errorMessage(error) || "Image could not be deleted.", {
-          title: "Image deletion failed",
-        });
-        button.disabled = false;
-      }
-    });
+    button.addEventListener("click", () => void deleteMediaImage(button));
   }
 }

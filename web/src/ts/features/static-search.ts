@@ -30,23 +30,24 @@ function searchIndexURL(): string {
 
 let indexPromise: Promise<StaticSearchEntry[]> | null = null;
 
-async function loadIndex(): Promise<StaticSearchEntry[]> {
-  if (indexPromise) return indexPromise;
-
-  indexPromise = fetch(searchIndexURL(), {
-    headers: { Accept: "application/json" },
-  })
-    .then(async (response) => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const payload: unknown = await response.json();
-
-      return Array.isArray(payload) ? payload.filter(isStaticSearchEntry) : [];
-    })
-    .catch((error: unknown) => {
-      console.error("static search index could not be loaded", error);
-      return [];
+async function fetchIndex(): Promise<StaticSearchEntry[]> {
+  try {
+    const response = await fetch(searchIndexURL(), {
+      headers: { Accept: "application/json" },
     });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload: unknown = await response.json();
+
+    return Array.isArray(payload) ? payload.filter(isStaticSearchEntry) : [];
+  } catch (error: unknown) {
+    console.error("static search index could not be loaded", error);
+    return [];
+  }
+}
+
+async function loadIndex(): Promise<StaticSearchEntry[]> {
+  indexPromise ??= fetchIndex();
   return indexPromise;
 }
 

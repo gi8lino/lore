@@ -131,6 +131,40 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
     }
   }
 
+  async function addMember(
+    user: GroupMember,
+    option: HTMLButtonElement,
+  ): Promise<void> {
+    option.disabled = true;
+
+    try {
+      const response = await fetch(groupMembersURL, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const payload: unknown = await response.json().catch(() => ({}));
+      if (!response.ok) throw await responseProblem(response, payload);
+      if (!isGroupMember(payload)) throw new Error("Invalid member response.");
+
+      if (!members.some((member) => member.id === payload.id))
+        members.push(payload);
+
+      renderMembers();
+      personInput.value = "";
+      resultList.hidden = true;
+    } catch (error) {
+      console.error("group member addition failed", error);
+      await showNotice(errorMessage(error) || "Person could not be added.", {
+        title: "Member update failed",
+      });
+      option.disabled = false;
+    }
+  }
+
   // Renders results.
   function renderResults(users: GroupMember[]): void {
     resultList.replaceChildren();
@@ -169,39 +203,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
       detail.textContent = user.email || `@${user.username}`;
       label.append(name, detail);
       option.append(avatar, label);
-      option.addEventListener("click", async () => {
-        option.disabled = true;
-        try {
-          const response = await fetch(groupMembersURL, {
-            method: "POST",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_id: user.id }),
-          });
-          const payload: unknown = await response.json().catch(() => ({}));
-          if (!response.ok) throw await responseProblem(response, payload);
-          if (!isGroupMember(payload))
-            throw new Error("Invalid member response.");
-
-          if (!members.some((member) => member.id === payload.id))
-            members.push(payload);
-
-          renderMembers();
-          personInput.value = "";
-          resultList.hidden = true;
-        } catch (error) {
-          console.error("group member addition failed", error);
-          await showNotice(
-            errorMessage(error) || "Person could not be added.",
-            {
-              title: "Member update failed",
-            },
-          );
-          option.disabled = false;
-        }
-      });
+      option.addEventListener("click", () => void addMember(user, option));
       resultList.append(option);
     }
 

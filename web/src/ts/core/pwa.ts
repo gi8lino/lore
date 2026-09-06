@@ -62,13 +62,14 @@ export function initPWA(): void {
   )
     return;
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/" })
-      .then(() => navigator.serviceWorker.ready)
-      .then(configureWorker)
-      .catch(() => {
-        // Offline support is best effort and must never interfere with normal navigation.
-      });
-  });
+  async function registerServiceWorker(): Promise<void> {
+    try {
+      await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await configureWorker(await navigator.serviceWorker.ready);
+    } catch {
+      // Offline support is best effort and must never interfere with normal navigation.
+    }
+  }
+
+  window.addEventListener("load", () => void registerServiceWorker());
 }

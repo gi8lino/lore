@@ -251,7 +251,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
         : "No users available.";
       menu.append(empty);
     } else {
-      results.forEach((user, index) => {
+      for (const [index, user] of results.entries()) {
         const option = document.createElement("button");
 
         option.type = "button";
@@ -288,7 +288,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
 
         option.append(avatar, text);
         menu.append(option);
-      });
+      }
     }
 
     menu.hidden = false;

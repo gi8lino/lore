@@ -110,14 +110,14 @@ function setupTableSorting(
   headers: HTMLTableCellElement[],
   body: HTMLTableSectionElement,
 ): void {
-  headers.forEach((header, column) => {
+  for (const [column, header] of headers.entries()) {
     const button = header.querySelector<HTMLButtonElement>(
       ":scope .table-sort-button",
     );
     const indicator = header.querySelector<HTMLElement>(
       ":scope .table-sort-indicator",
     );
-    if (!button || !indicator) return;
+    if (!button || !indicator) continue;
 
     button.addEventListener("click", () => {
       const direction: SortDirection =
@@ -146,7 +146,7 @@ function setupTableSorting(
 
       for (const row of rows) body.append(row);
     });
-  });
+  }
 }
 
 function setupTableFiltering(
@@ -360,7 +360,7 @@ function setupTableHeaders(
 
   const filterButtons: HTMLButtonElement[] = [];
 
-  headers.forEach((header, column) => {
+  for (const [column, header] of headers.entries()) {
     const columnLabel = header.textContent?.trim() || `Column ${column + 1}`;
 
     header.dataset.tableColumnLabel = columnLabel;
@@ -410,7 +410,7 @@ function setupTableHeaders(
     }
 
     header.append(headerCell);
-  });
+  }
 
   if (sortable) setupTableSorting(table, headers, body);
   if (filterable) setupTableFiltering(table, shell, headers, filterButtons);
