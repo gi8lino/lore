@@ -7,6 +7,16 @@ import (
 	"unicode"
 )
 
+// isSearchFilter reports whether a token prefix is a supported field filter.
+func isSearchFilter(key string) bool {
+	switch key {
+	case "tag", "group", "title", "namespace", "author", "status", "owner", "property":
+		return true
+	default:
+		return false
+	}
+}
+
 // Search supports free text and field filters for taxonomy, ownership, lifecycle, and structured properties.
 func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, error) {
 	var textTerms []string
@@ -16,8 +26,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]Page, er
 		key, value, found := strings.Cut(token, ":")
 		key = strings.ToLower(key)
 
-		if found && value != "" &&
-			(key == "tag" || key == "group" || key == "title" || key == "namespace" || key == "author" || key == "status" || key == "owner" || key == "property") {
+		if found && value != "" && isSearchFilter(key) {
 			filters[key] = append(filters[key], value)
 		} else {
 			textTerms = append(textTerms, token)

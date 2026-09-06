@@ -121,6 +121,18 @@ function privateCacheIsCurrent(
   return requestGeneration === generation && requestCache === pageCacheName;
 }
 
+function shouldCachePrivateResponse(
+  response: Response,
+  responseCache: string,
+  requestCache: string,
+  requestGeneration: number,
+): boolean {
+  if (!response.ok || response.redirected) return false;
+  if (responseCache !== requestCache) return false;
+
+  return privateCacheIsCurrent(requestCache, requestGeneration);
+}
+
 async function cachePrivateResponse(
   request: Request,
   response: Response,
@@ -164,10 +176,12 @@ async function fetchPrivatePage(
     // must never enter the requesting tab's private cache.
     const responseCache = `${pageCachePrefix}${response.headers.get("X-Lore-User-ID") || ""}`;
     if (
-      response.ok &&
-      !response.redirected &&
-      responseCache === requestCache &&
-      privateCacheIsCurrent(requestCache, requestGeneration)
+      shouldCachePrivateResponse(
+        response,
+        responseCache,
+        requestCache,
+        requestGeneration,
+      )
     ) {
       await cachePrivateResponse(
         request,

@@ -164,11 +164,20 @@ func SanitizeImageFilename(filename, contentType string) string {
 	if extension == "" {
 		return name + expected
 	}
-	if extension != expected && (contentType != "image/jpeg" || extension != ".jpeg") {
+	if !matchesImageExtension(extension, contentType, expected) {
 		return strings.TrimSuffix(name, filepath.Ext(name)) + expected
 	}
 
 	return name
+}
+
+// matchesImageExtension reports whether a filename extension matches the detected image type.
+func matchesImageExtension(extension, contentType, expected string) bool {
+	if extension == expected {
+		return true
+	}
+
+	return contentType == "image/jpeg" && extension == ".jpeg"
 }
 
 // sanitizeAttachmentFilename produces a safe attachment name with an extension.

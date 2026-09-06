@@ -133,7 +133,8 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) h
 			)
 			return
 		}
-		if !settings.Tables && (settings.TableStyles || settings.TableSorting || settings.TableFiltering) {
+		tableEnhancementsEnabled := settings.TableStyles || settings.TableSorting || settings.TableFiltering
+		if !settings.Tables && tableEnhancementsEnabled {
 			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"Rendering validation failed.",
@@ -730,7 +731,8 @@ func authenticationSettingsProblems(
 				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
 			))
 		}
-		if (settings.OIDCGroupSync || settings.OIDCAdminGroup != "") && settings.OIDCGroupClaim == "" {
+		usesOIDCGroups := settings.OIDCGroupSync || settings.OIDCAdminGroup != ""
+		if usesOIDCGroups && settings.OIDCGroupClaim == "" {
 			problems = append(problems, httpresponse.NewFieldProblem(
 				"oidc_group_claim",
 				"Configure the OIDC claim containing group memberships.",
@@ -824,6 +826,16 @@ func applicationSettingsFromForm(r *http.Request) service.ApplicationSettings {
 	}
 }
 
+// isExternalAuthenticationMode reports whether browser identity is asserted outside Lore.
+func isExternalAuthenticationMode(mode string) bool {
+	switch auth.AuthMode(mode) {
+	case auth.AuthModeOIDC, auth.AuthModeTrustedProxy:
+		return true
+	default:
+		return false
+	}
+}
+
 // UpdateAdminUser updates one user's role, group memberships, and optional recovery login state.
 func UpdateAdminUser(
 	userUseCases userManagementService,
@@ -849,7 +861,7 @@ func UpdateAdminUser(
 		}
 
 		role := r.FormValue("role")
-		if role != "admin" && role != "editor" && role != "viewer" {
+		if !service.ValidUserRole(role) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user role.")
 			return
 		}
@@ -916,7 +928,7 @@ func UpdateAdminUser(
 				effectiveMode = views.runtime.AuthModeOverride
 			}
 
-			if effectiveMode != string(auth.AuthModeOIDC) && effectiveMode != string(auth.AuthModeTrustedProxy) {
+			if !isExternalAuthenticationMode(effectiveMode) {
 				httpresponse.Problem(w,
 					http.StatusBadRequest,
 					"Local login state cannot be changed.",

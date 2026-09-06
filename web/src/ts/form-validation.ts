@@ -12,15 +12,17 @@ const errorClass = "field-validation-error";
 const invalidClass = "is-invalid";
 const shakeClass = "validation-shake";
 
-function controlFor(form: HTMLFormElement, name: string): FormControl | null {
-  const control = form.elements.namedItem(name);
-  if (
+function isFormControl(control: unknown): control is FormControl {
+  return (
     control instanceof HTMLInputElement ||
     control instanceof HTMLSelectElement ||
     control instanceof HTMLTextAreaElement
-  ) {
-    return control;
-  }
+  );
+}
+
+function controlFor(form: HTMLFormElement, name: string): FormControl | null {
+  const control = form.elements.namedItem(name);
+  if (isFormControl(control)) return control;
 
   return null;
 }
@@ -148,13 +150,7 @@ function revalidateDependents(form: HTMLFormElement, name: string): void {
 function clearForm(form: HTMLFormElement): void {
   clearFormMessage(form);
   for (const control of form.elements) {
-    if (
-      control instanceof HTMLInputElement ||
-      control instanceof HTMLSelectElement ||
-      control instanceof HTMLTextAreaElement
-    ) {
-      clearFieldError(control);
-    }
+    if (isFormControl(control)) clearFieldError(control);
   }
 }
 
@@ -162,13 +158,7 @@ function validateForm(form: HTMLFormElement): boolean {
   let firstInvalid: FormControl | null = null;
 
   for (const control of form.elements) {
-    if (
-      !(control instanceof HTMLInputElement) &&
-      !(control instanceof HTMLSelectElement) &&
-      !(control instanceof HTMLTextAreaElement)
-    ) {
-      continue;
-    }
+    if (!isFormControl(control)) continue;
     if (!validateControl(control)) firstInvalid ||= control;
   }
 
@@ -283,13 +273,7 @@ function initForm(form: HTMLFormElement, index: number): void {
   form.dataset.validationName ||= String(index + 1);
 
   for (const control of form.elements) {
-    if (
-      !(control instanceof HTMLInputElement) &&
-      !(control instanceof HTMLSelectElement) &&
-      !(control instanceof HTMLTextAreaElement)
-    ) {
-      continue;
-    }
+    if (!isFormControl(control)) continue;
 
     control.addEventListener("input", () => {
       if (control.classList.contains(invalidClass))

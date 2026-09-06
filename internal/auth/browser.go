@@ -283,7 +283,9 @@ func (b *browserAuthenticator) validateSettings(settings model.AuthenticationSet
 		}
 		return nil
 	case AuthModeOIDC:
-		if strings.TrimSpace(settings.OIDCIssuer) == "" || strings.TrimSpace(settings.OIDCClientID) == "" {
+		issuer := strings.TrimSpace(settings.OIDCIssuer)
+		clientID := strings.TrimSpace(settings.OIDCClientID)
+		if issuer == "" || clientID == "" {
 			return errors.New("OIDC authentication requires an issuer and client ID")
 		}
 		if settings.OIDCGroupSync && strings.TrimSpace(settings.OIDCGroupClaim) == "" {

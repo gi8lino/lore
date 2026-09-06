@@ -679,19 +679,32 @@ func processRenderedHTML(
 	return htmlOutput.String(), normalizeSearchText(textFromNodes(nodes)), nil
 }
 
+// isRewritableURLAttribute reports whether a static-page attribute contains a navigable local URL.
+func isRewritableURLAttribute(element, attribute string) bool {
+	switch element {
+	case "a":
+		return attribute == "href"
+	case "img":
+		return attribute == "src"
+	default:
+		return false
+	}
+}
+
 func rewriteHTMLURLs(node *xhtml.Node, sourcePath string, routesBySource map[string]string, basePath string) error {
 	if node.Type == xhtml.ElementNode {
 		for index := range node.Attr {
 			attribute := &node.Attr[index]
-			if (node.Data == "a" && attribute.Key == "href") ||
-				(node.Data == "img" && attribute.Key == "src") {
-				rewritten, err := rewriteLocalURL(attribute.Val, sourcePath, routesBySource, basePath)
-				if err != nil {
-					return err
-				}
-
-				attribute.Val = rewritten
+			if !isRewritableURLAttribute(node.Data, attribute.Key) {
+				continue
 			}
+
+			rewritten, err := rewriteLocalURL(attribute.Val, sourcePath, routesBySource, basePath)
+			if err != nil {
+				return err
+			}
+
+			attribute.Val = rewritten
 		}
 	}
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
@@ -701,6 +714,18 @@ func rewriteHTMLURLs(node *xhtml.Node, sourcePath string, routesBySource map[str
 	}
 
 	return nil
+}
+
+// isRewritableLocalURL reports whether a parsed URL refers to a non-empty path inside the generated site.
+func isRewritableLocalURL(value string, parsed *url.URL) bool {
+	if parsed.IsAbs() || parsed.Host != "" {
+		return false
+	}
+	if strings.HasPrefix(value, "//") {
+		return false
+	}
+
+	return parsed.Path != ""
 }
 
 func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string, basePath string) (string, error) {
@@ -713,7 +738,7 @@ func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string,
 	if err != nil {
 		return "", err
 	}
-	if parsed.IsAbs() || parsed.Host != "" || strings.HasPrefix(value, "//") || parsed.Path == "" {
+	if !isRewritableLocalURL(value, parsed) {
 		return value, nil
 	}
 

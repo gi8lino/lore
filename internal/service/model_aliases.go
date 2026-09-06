@@ -66,3 +66,15 @@ func DefaultUserPreferences() UserPreferences { return model.DefaultUserPreferen
 
 // ValidPageStatus reports whether value is a supported page lifecycle state.
 func ValidPageStatus(value string) bool { return model.ValidPageStatus(value) }
+
+// ValidUserRole reports whether value is a supported account role.
+func ValidUserRole(value string) bool { return model.ValidUserRole(value) }
+
+// ValidNavigationDensity reports whether value is a supported navigation density.
+func ValidNavigationDensity(value string) bool { return model.ValidNavigationDensity(value) }
+
+// ValidSidebarWidth reports whether width is inside the supported desktop range.
+func ValidSidebarWidth(width int) bool { return model.ValidSidebarWidth(width) }
+
+// ValidReviewIntervalDays reports whether days is a supported review interval.
+func ValidReviewIntervalDays(days int) bool { return model.ValidReviewIntervalDays(days) }

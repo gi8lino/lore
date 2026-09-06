@@ -111,7 +111,7 @@ func CreateSavedSearch(knowledgeUseCases savedSearchService, logger *slog.Logger
 
 		next := strings.TrimSpace(r.FormValue("next"))
 
-		if next == "" || !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") {
+		if !httpresponse.IsLocalPath(next) {
 			next = "/settings#saved-searches"
 		}
 

@@ -844,15 +844,15 @@ func parseTableDirective(line string) (style tableStyle, ok bool) {
 
 		switch kind {
 		case "row":
-			row, err := strconv.Atoi(target)
-			if err != nil || row < 1 {
+			row, ok := parsePositiveInt(target)
+			if !ok {
 				return tableStyle{}, false
 			}
 
 			directive.rows[row] = tone
 		case "col", "column":
-			column, err := strconv.Atoi(target)
-			if err != nil || column < 1 {
+			column, ok := parsePositiveInt(target)
+			if !ok {
 				return tableStyle{}, false
 			}
 
@@ -863,9 +863,13 @@ func parseTableDirective(line string) (style tableStyle, ok bool) {
 				return tableStyle{}, false
 			}
 
-			row, rowErr := strconv.Atoi(rowValue)
-			column, columnErr := strconv.Atoi(columnValue)
-			if rowErr != nil || columnErr != nil || row < 1 || column < 1 {
+			row, ok := parsePositiveInt(rowValue)
+			if !ok {
+				return tableStyle{}, false
+			}
+
+			column, ok := parsePositiveInt(columnValue)
+			if !ok {
 				return tableStyle{}, false
 			}
 
@@ -876,6 +880,16 @@ func parseTableDirective(line string) (style tableStyle, ok bool) {
 	}
 
 	return directive, true
+}
+
+// parsePositiveInt parses a one-based table row or column index.
+func parsePositiveInt(raw string) (value int, ok bool) {
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return 0, false
+	}
+
+	return value, true
 }
 
 // tableDirectiveActive reports whether a parsed directive contains any currently enabled behavior.
@@ -1115,6 +1129,23 @@ func setHTMLAttribute(node *xhtml.Node, key, value string) {
 	node.Attr = append(node.Attr, xhtml.Attribute{Key: key, Val: value})
 }
 
+// htmlHeadingLevel returns the numeric level of an h1-h6 element.
+func htmlHeadingLevel(node *xhtml.Node) (level int, ok bool) {
+	if node.Type != xhtml.ElementNode || len(node.Data) != 2 {
+		return 0, false
+	}
+	if node.Data[0] != 'h' {
+		return 0, false
+	}
+
+	digit := node.Data[1]
+	if digit < '1' || digit > '6' {
+		return 0, false
+	}
+
+	return int(digit - '0'), true
+}
+
 // extractHeadings extracts rendered heading IDs and labels for page navigation.
 func extractHeadings(rendered string) []Heading {
 	document, err := xhtml.Parse(strings.NewReader(rendered))
@@ -1125,12 +1156,11 @@ func extractHeadings(rendered string) []Heading {
 	var contents []Heading
 	var walk func(*xhtml.Node)
 	walk = func(node *xhtml.Node) {
-		if node.Type == xhtml.ElementNode && len(node.Data) == 2 && node.Data[0] == 'h' && node.Data[1] >= '1' &&
-			node.Data[1] <= '6' {
+		if level, ok := htmlHeadingLevel(node); ok {
 			id := htmlAttribute(node, "id")
 			if id != "" {
 				contents = append(contents, Heading{
-					Level: int(node.Data[1] - '0'),
+					Level: level,
 					ID:    id,
 					Title: strings.TrimSpace(htmlText(node)),
 				})

@@ -161,13 +161,8 @@ function formatTable(
   const header = splitTableCells(first.text);
   const separator = splitTableCells(second.text);
   const alignments = tableSeparator(separator);
-  if (
-    !header ||
-    !separator ||
-    !alignments ||
-    header.length !== separator.length
-  )
-    return null;
+  if (!header || !separator || !alignments) return null;
+  if (header.length !== separator.length) return null;
   if (first.protected || second.protected) return null;
 
   const rows = [header];

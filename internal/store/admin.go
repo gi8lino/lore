@@ -99,7 +99,7 @@ func (s *Store) UpdateUser(
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
-	if role != "admin" && role != "editor" && role != "viewer" {
+	if !ValidUserRole(role) {
 		return errors.New("invalid user role")
 	}
 

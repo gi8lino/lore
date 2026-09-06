@@ -134,6 +134,18 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (Page, error) {
 	return page, nil
 }
 
+// validPageWorkflowSettings reports whether page lifecycle and review metadata are internally valid.
+func validPageWorkflowSettings(input PageSaveInput) bool {
+	if !ValidPageStatus(input.Status) {
+		return false
+	}
+	if !ValidReviewIntervalDays(input.ReviewIntervalDays) {
+		return false
+	}
+
+	return input.OwnerGroupID >= 0
+}
+
 // save validates and persists a page without emitting side effects.
 func (s *Pages) save(ctx context.Context, input PageSaveInput) (Page, error) {
 	input.PreviousSlug = strings.TrimSpace(input.PreviousSlug)
@@ -162,10 +174,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (Page, error) {
 			Message: "Choose a supported content language.",
 		})
 	}
-	if !ValidPageStatus(input.Status) ||
-		input.ReviewIntervalDays < 0 ||
-		input.ReviewIntervalDays > 3650 ||
-		input.OwnerGroupID < 0 {
+	if !validPageWorkflowSettings(input) {
 		validation.Fields = append(validation.Fields, FieldError{
 			Field:   "status",
 			Message: "Choose valid page workflow settings.",

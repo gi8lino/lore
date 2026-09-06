@@ -65,6 +65,19 @@ function imageFiles(files: FileList | readonly File[]): File[] {
   return [...files].filter((file) => file.type.startsWith("image/"));
 }
 
+function hasDraggedImageItem(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false;
+
+  return [...dataTransfer.items].some((item) => item.type.startsWith("image/"));
+}
+
+function hasDraggedImage(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false;
+  if (imageFiles(dataTransfer.files).length > 0) return true;
+
+  return hasDraggedImageItem(dataTransfer);
+}
+
 // Wires media dialog behavior.
 function setupMediaDialog(dialog: HTMLDialogElement): void {
   const open = document.querySelector<HTMLElement>("[data-media-dialog-open]");
@@ -266,24 +279,13 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
 
   if (sourcePane) {
     sourcePane.addEventListener("dragenter", (event: DragEvent) => {
-      if (
-        !imageFiles(event.dataTransfer?.files || []).length &&
-        ![...(event.dataTransfer?.items || [])].some((item) =>
-          item.type.startsWith("image/"),
-        )
-      )
-        return;
+      if (!hasDraggedImage(event.dataTransfer)) return;
 
       event.preventDefault();
       sourcePane.classList.add("is-dragging-image");
     });
     sourcePane.addEventListener("dragover", (event: DragEvent) => {
-      if (
-        ![...(event.dataTransfer?.items || [])].some((item) =>
-          item.type.startsWith("image/"),
-        )
-      )
-        return;
+      if (!hasDraggedImageItem(event.dataTransfer)) return;
 
       event.preventDefault();
 

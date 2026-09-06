@@ -460,7 +460,10 @@ func nextMediaReference(source string) (reference mediaReference, found bool) {
 		for end < len(source) && source[end] >= '0' && source[end] <= '9' {
 			end++
 		}
-		if end == offset || end >= len(source) || source[end] != '/' {
+		if end == offset {
+			continue
+		}
+		if end >= len(source) || source[end] != '/' {
 			continue
 		}
 		end++
@@ -482,7 +485,10 @@ func mediaImageID(value string) (imageID int64, ok bool) {
 		return 0, false
 	}
 	rawID, filename, ok := strings.Cut(strings.TrimPrefix(value, "/media/"), "/")
-	if !ok || rawID == "" || filename == "" {
+	if !ok {
+		return 0, false
+	}
+	if rawID == "" || filename == "" {
 		return 0, false
 	}
 	for _, digit := range rawID {
@@ -511,6 +517,18 @@ func referencedImageIDs(source string) []int64 {
 	}
 }
 
+// isRenderedMediaAttribute reports whether an HTML attribute can reference stored Lore media.
+func isRenderedMediaAttribute(element, attribute string) bool {
+	switch element {
+	case "img":
+		return attribute == "src"
+	case "a":
+		return attribute == "href"
+	default:
+		return false
+	}
+}
+
 // inlineRenderedMedia replaces authenticated media URLs with data URLs for standalone PDF rendering.
 func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService, rendered string) (html string, err error) {
 	cache := map[int64]string{}
@@ -533,11 +551,15 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 		changed := false
 		for index := range token.Attr {
 			attribute := &token.Attr[index]
-			if (token.Data != "img" || attribute.Key != "src") && (token.Data != "a" || attribute.Key != "href") {
+			if !isRenderedMediaAttribute(token.Data, attribute.Key) {
 				continue
 			}
+
 			location, err := url.Parse(attribute.Val)
-			if err != nil || location.IsAbs() || location.Host != "" {
+			if err != nil {
+				continue
+			}
+			if location.IsAbs() || location.Host != "" {
 				continue
 			}
 			id, ok := mediaImageID(location.Path)

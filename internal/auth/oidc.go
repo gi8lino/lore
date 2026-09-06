@@ -127,7 +127,7 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	if err := o.decodeCookie(r, "lore_session", &current); err != nil {
 		return model.User{}, ErrUnauthenticated
 	}
-	if current.Expires <= time.Now().Unix() || current.Issuer != o.issuer || current.Subject == "" {
+	if !o.validSession(current) {
 		return model.User{}, ErrUnauthenticated
 	}
 
@@ -135,15 +135,30 @@ func (o *OIDC) Authenticate(r *http.Request) (model.User, error) {
 	if errors.Is(err, model.ErrNotFound) {
 		return model.User{}, ErrUnauthenticated
 	}
-	if err == nil && current.Version != user.SessionVersion {
+	if err != nil {
+		return user, err
+	}
+	if current.Version != user.SessionVersion {
 		return model.User{}, ErrUnauthenticated
 	}
 
-	if err == nil && o.adminGroup != "" && user.ExternalAdmin {
+	if o.adminGroup != "" && user.ExternalAdmin {
 		user.Role = "admin"
 	}
 
-	return user, err
+	return user, nil
+}
+
+// validSession reports whether a decoded browser session is current and bound to this provider.
+func (o *OIDC) validSession(current session) bool {
+	if current.Expires <= time.Now().Unix() {
+		return false
+	}
+	if current.Issuer != o.issuer {
+		return false
+	}
+
+	return current.Subject != ""
 }
 
 // Login returns the handler that starts the OIDC authorization-code flow.
@@ -220,9 +235,8 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issuer := strings.TrimSpace(idToken.Issuer)
-	subject := strings.TrimSpace(idToken.Subject)
-	if issuer == "" || issuer != o.issuer || subject == "" || idToken.Nonce != saved.State {
+	issuer, subject, ok := o.callbackIdentity(idToken, saved.State)
+	if !ok {
 		httpresponse.Problem(w, http.StatusUnauthorized, "Invalid identity.")
 		return
 	}
@@ -346,6 +360,24 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, next, http.StatusFound)
+}
+
+// callbackIdentity validates the issuer, subject, and nonce bound to an OIDC callback.
+func (o *OIDC) callbackIdentity(idToken *oidc.IDToken, expectedNonce string) (issuer, subject string, valid bool) {
+	issuer = strings.TrimSpace(idToken.Issuer)
+	subject = strings.TrimSpace(idToken.Subject)
+
+	if issuer == "" || subject == "" {
+		return "", "", false
+	}
+	if issuer != o.issuer {
+		return "", "", false
+	}
+	if idToken.Nonce != expectedNonce {
+		return "", "", false
+	}
+
+	return issuer, subject, true
 }
 
 // callbackLoginState reads and validates the OIDC login state bound to a callback.

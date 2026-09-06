@@ -171,6 +171,17 @@ function tableDirectiveLine(line: string): boolean {
   return trimmed.startsWith("{table ") && trimmed.endsWith("}");
 }
 
+function validCellCoordinates(
+  row: number,
+  column: number,
+  extra: string | undefined,
+): boolean {
+  if (extra !== undefined) return false;
+  if (!Number.isInteger(row) || !Number.isInteger(column)) return false;
+
+  return row >= 1 && column >= 1;
+}
+
 // Parses a table-format directive into structured state.
 export function parseTableDirective(line: string): TableDirective | null {
   const trimmed = line.trim();
@@ -220,14 +231,7 @@ export function parseTableDirective(line: string): TableDirective | null {
       const [rowValue = "", columnValue = "", extra] = key.slice(5).split(",");
       const row = Number.parseInt(rowValue, 10);
       const column = Number.parseInt(columnValue, 10);
-      if (
-        extra !== undefined ||
-        !Number.isInteger(row) ||
-        !Number.isInteger(column) ||
-        row < 1 ||
-        column < 1
-      )
-        return null;
+      if (!validCellCoordinates(row, column, extra)) return null;
 
       directive.cells[`${row},${column}`] = tone;
       continue;

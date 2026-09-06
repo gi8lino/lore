@@ -14,6 +14,19 @@ const SIDEBAR_HIDDEN_KEY = "lore:sidebar-hidden";
 
 type AccountMenu = HTMLElement;
 
+function shouldHandleNavigationClick(
+  event: MouseEvent,
+  link: HTMLAnchorElement | null,
+): link is HTMLAnchorElement {
+  if (!link || event.defaultPrevented || event.button !== 0) return false;
+  const modified =
+    event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+  if (modified) return false;
+  if (link.target === "_blank" || link.hasAttribute("download")) return false;
+
+  return true;
+}
+
 function clampSidebarWidth(width: number): number {
   return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
 }
@@ -138,18 +151,7 @@ function initNavigationTree(): void {
     if (!(target instanceof Element)) return;
 
     const link = target.closest<HTMLAnchorElement>("a[href]");
-    if (
-      !link ||
-      event.defaultPrevented ||
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      link.target === "_blank" ||
-      link.hasAttribute("download")
-    )
-      return;
+    if (!shouldHandleNavigationClick(event, link)) return;
 
     saveScrollPosition(link.href);
     event.preventDefault();

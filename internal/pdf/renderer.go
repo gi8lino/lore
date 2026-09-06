@@ -20,8 +20,11 @@ const (
 	maxPDFBytes  = 64 << 20
 )
 
-// ErrNotConfigured indicates PDF exports have no configured rendering endpoint.
-var ErrNotConfigured = errors.New("PDF service is not configured")
+var (
+	// ErrNotConfigured indicates PDF exports have no configured rendering endpoint.
+	ErrNotConfigured = errors.New("PDF service is not configured")
+	errInvalidURL    = errors.New("PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://html2pdf:8080/render)")
+)
 
 var renderClient = &http.Client{
 	Timeout: 60 * time.Second,
@@ -36,11 +39,29 @@ func ValidateURL(value string) error {
 	}
 
 	endpoint, err := url.Parse(value)
-	if err != nil || endpoint.Hostname() == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Path == "" || endpoint.User != nil || endpoint.Fragment != "" {
-		return errors.New("PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://html2pdf:8080/render)")
+	if err != nil {
+		return errInvalidURL
+	}
+	if !validRenderEndpoint(endpoint) {
+		return errInvalidURL
 	}
 
 	return nil
+}
+
+// validRenderEndpoint reports whether a parsed URL is safe and complete for PDF rendering.
+func validRenderEndpoint(endpoint *url.URL) bool {
+	if endpoint.Hostname() == "" || endpoint.Path == "" {
+		return false
+	}
+	if endpoint.Scheme != "http" && endpoint.Scheme != "https" {
+		return false
+	}
+	if endpoint.User != nil || endpoint.Fragment != "" {
+		return false
+	}
+
+	return true
 }
 
 // Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.

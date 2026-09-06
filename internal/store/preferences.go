@@ -100,7 +100,7 @@ SET expanded_navigation=EXCLUDED.expanded_navigation,
 
 // SetSidebarWidth stores a validated desktop sidebar width without changing other preferences.
 func (s *Store) SetSidebarWidth(ctx context.Context, userID int64, width int) error {
-	if width < MinSidebarWidth || width > MaxSidebarWidth {
+	if !ValidSidebarWidth(width) {
 		return errors.New("sidebar width out of range")
 	}
 

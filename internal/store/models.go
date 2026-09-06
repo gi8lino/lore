@@ -69,5 +69,11 @@ func PageStatuses() []string { return model.PageStatuses() }
 // ValidPageStatus reports whether a page status is supported.
 func ValidPageStatus(value string) bool { return model.ValidPageStatus(value) }
 
+// ValidUserRole reports whether value is a supported account role.
+func ValidUserRole(value string) bool { return model.ValidUserRole(value) }
+
+// ValidSidebarWidth reports whether width is inside the supported desktop range.
+func ValidSidebarWidth(width int) bool { return model.ValidSidebarWidth(width) }
+
 // DefaultUserPreferences returns presentation defaults for a new user.
 func DefaultUserPreferences() UserPreferences { return model.DefaultUserPreferences() }

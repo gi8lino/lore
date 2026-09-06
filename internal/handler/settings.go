@@ -147,13 +147,17 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 		}
 
 		density := r.FormValue("navigation_density")
-		if density != service.NavigationDensityComfortable && density != service.NavigationDensityCompact {
+		if !service.ValidNavigationDensity(density) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Unknown navigation density.")
 			return
 		}
 
 		sidebarWidth, err := strconv.Atoi(r.FormValue("sidebar_width"))
-		if err != nil || sidebarWidth < service.MinSidebarWidth || sidebarWidth > service.MaxSidebarWidth {
+		if err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
+			return
+		}
+		if !service.ValidSidebarWidth(sidebarWidth) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
 			return
 		}
@@ -276,7 +280,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 			)
 			return
 		}
-		if request.Width < service.MinSidebarWidth || request.Width > service.MaxSidebarWidth {
+		if !service.ValidSidebarWidth(request.Width) {
 			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"Sidebar width is out of range.",

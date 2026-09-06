@@ -51,16 +51,17 @@ function protectLogout(): void {
   });
 }
 
+function canRegisterServiceWorker(): boolean {
+  if (!("serviceWorker" in navigator)) return false;
+  if (location.protocol !== "http:") return true;
+
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+}
+
 // Initializes pwa.
 export function initPWA(): void {
   protectLogout();
-  if (
-    !("serviceWorker" in navigator) ||
-    (location.protocol === "http:" &&
-      location.hostname !== "localhost" &&
-      location.hostname !== "127.0.0.1")
-  )
-    return;
+  if (!canRegisterServiceWorker()) return;
 
   async function registerServiceWorker(): Promise<void> {
     try {

@@ -41,6 +41,18 @@ func Search(query string, limit int) []Option {
 	return options
 }
 
+// matchesNavigationOption reports whether an icon name or label contains the normalized query.
+func matchesNavigationOption(option Option, query string) bool {
+	if query == "" {
+		return true
+	}
+	if strings.Contains(option.Name, query) {
+		return true
+	}
+
+	return strings.Contains(strings.ToLower(option.Label), query)
+}
+
 // SearchPage returns one page of generated icons and whether another page is available.
 func SearchPage(query string, offset, limit int) (options []Option, hasMore bool) {
 	if limit <= 0 {
@@ -56,8 +68,7 @@ func SearchPage(query string, offset, limit int) (options []Option, hasMore bool
 	matched := 0
 
 	for _, option := range navigationOptions {
-		if query != "" && !strings.Contains(option.Name, query) &&
-			!strings.Contains(strings.ToLower(option.Label), query) {
+		if !matchesNavigationOption(option, query) {
 			continue
 		}
 		if matched < offset {

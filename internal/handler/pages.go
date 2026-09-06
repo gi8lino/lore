@@ -456,7 +456,10 @@ func pageMetadataFromForm(r *http.Request) (service.PageMetadata, error) {
 
 	if value := strings.TrimSpace(r.FormValue("review_interval_days")); value != "" {
 		parsed, err := strconv.Atoi(value)
-		if err != nil || parsed < 0 || parsed > 3650 {
+		if err != nil {
+			return service.PageMetadata{}, errors.New("invalid review interval")
+		}
+		if !service.ValidReviewIntervalDays(parsed) {
 			return service.PageMetadata{}, errors.New("invalid review interval")
 		}
 

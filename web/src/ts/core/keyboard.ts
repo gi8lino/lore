@@ -40,13 +40,8 @@ export function initKeyboardWorkflow(): void {
   });
 
   function handleKeydown(event: KeyboardEvent): void {
-    if (
-      event.defaultPrevented ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey
-    )
-      return;
+    const modified = event.metaKey || event.ctrlKey || event.altKey;
+    if (event.defaultPrevented || modified) return;
     if (event.key === "?" && !editableTarget(event.target)) {
       event.preventDefault();
       openShortcuts();

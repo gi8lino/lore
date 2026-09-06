@@ -28,13 +28,11 @@
       };
       const destination = `${window.location.pathname}${window.location.search}`;
 
-      if (
-        state.destination === destination &&
-        typeof state.scrollTop === "number" &&
-        Number.isFinite(state.scrollTop)
-      ) {
-        savedScrollTop = state.scrollTop;
-      }
+      const scrollTop = state.scrollTop;
+      const sameDestination = state.destination === destination;
+      const validScrollTop =
+        typeof scrollTop === "number" && Number.isFinite(scrollTop);
+      if (sameDestination && validScrollTop) savedScrollTop = scrollTop;
     }
   } catch {
     // Storage can be unavailable in privacy-restricted browser contexts.

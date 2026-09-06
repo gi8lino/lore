@@ -82,11 +82,23 @@ func (c Config) validate() error {
 	if err != nil {
 		return err
 	}
-	if source == output || directoryContains(source, output) || directoryContains(output, source) {
+	if directoriesOverlap(source, output) {
 		return errors.New("source_dir and output_dir must be separate directories")
 	}
 
 	return nil
+}
+
+// directoriesOverlap reports whether either directory is equal to or contains the other.
+func directoriesOverlap(left, right string) bool {
+	if left == right {
+		return true
+	}
+	if directoryContains(left, right) {
+		return true
+	}
+
+	return directoryContains(right, left)
 }
 
 func directoryContains(parent, child string) bool {

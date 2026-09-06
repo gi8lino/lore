@@ -556,6 +556,31 @@ type IssuedToken struct {
 	Secret string `json:"secret"`
 }
 
+// ValidUserRole reports whether value is a supported account role.
+func ValidUserRole(value string) bool {
+	switch value {
+	case "admin", "editor", "viewer":
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidNavigationDensity reports whether value is a supported navigation density.
+func ValidNavigationDensity(value string) bool {
+	return value == NavigationDensityComfortable || value == NavigationDensityCompact
+}
+
+// ValidSidebarWidth reports whether width is inside the supported desktop range.
+func ValidSidebarWidth(width int) bool {
+	return width >= MinSidebarWidth && width <= MaxSidebarWidth
+}
+
+// ValidReviewIntervalDays reports whether days is a supported review interval.
+func ValidReviewIntervalDays(days int) bool {
+	return days >= 0 && days <= 3650
+}
+
 // PageStatuses returns the supported page lifecycle statuses.
 func PageStatuses() []string {
 	return []string{"draft", "verified", "deprecated", "archived"}

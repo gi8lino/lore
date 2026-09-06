@@ -149,11 +149,7 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
   }
 
   document.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key.toLocaleLowerCase() === "k" &&
-      !event.shiftKey
-    ) {
+    if (isCommandPaletteShortcut(event)) {
       event.preventDefault();
       open();
       return;
@@ -180,6 +176,13 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) close();
   });
+}
+
+function isCommandPaletteShortcut(event: KeyboardEvent): boolean {
+  if (event.shiftKey) return false;
+  if (!event.ctrlKey && !event.metaKey) return false;
+
+  return event.key.toLocaleLowerCase() === "k";
 }
 
 // Initializes command palette.

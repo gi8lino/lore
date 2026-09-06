@@ -111,11 +111,16 @@ WHERE kind=$1 AND lower(name)=lower($2)`, kind, strings.TrimSpace(name)).
 	return item, err
 }
 
+// validKnowledgeSnippetKind reports whether kind is a supported reusable-content type.
+func validKnowledgeSnippetKind(kind string) bool {
+	return kind == "variable" || kind == "snippet"
+}
+
 // SaveKnowledgeSnippet creates or updates one reusable value.
 func (s *Store) SaveKnowledgeSnippet(ctx context.Context, id, userID int64, kind, name, description, content string) (KnowledgeSnippet, error) {
 	kind = strings.TrimSpace(kind)
 	name = strings.TrimSpace(name)
-	if (kind != "variable" && kind != "snippet") || name == "" {
+	if name == "" || !validKnowledgeSnippetKind(kind) {
 		return KnowledgeSnippet{}, errors.New("invalid snippet")
 	}
 

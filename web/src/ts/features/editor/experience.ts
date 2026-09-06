@@ -663,6 +663,16 @@ function setupEditorExperience(form: HTMLFormElement): void {
     renderDirty();
   }
 
+  function shouldConfirmNavigation(event: MouseEvent): boolean {
+    if (submitting || !dirty) return false;
+    if (event.defaultPrevented || event.button !== 0) return false;
+    const modified =
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+    if (modified) return false;
+
+    return true;
+  }
+
   const { clearDraft, flushDraft } = setupDrafts(
     form,
     updateDirty,
@@ -708,10 +718,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
   });
 
   document.addEventListener("click", async (event: MouseEvent) => {
-    if (submitting || !dirty || event.defaultPrevented || event.button !== 0)
-      return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-      return;
+    if (!shouldConfirmNavigation(event)) return;
 
     const targetNode = event.target;
     if (!(targetNode instanceof Element)) return;
