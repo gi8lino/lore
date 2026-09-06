@@ -127,21 +127,31 @@ func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 }
 
 func TestSanitizeFilenameCharacterRuns(t *testing.T) {
-	for _, tt := range []struct{ name, want string }{
-		{"my   diagram.png", "my-diagram.png"},
-		{"aé💡b.png", "a-b.png"},
-		{"a--b.png", "a--b.png"},
-		{"a - b.png", "a---b.png"},
-		{"  ../some/path/image.png  ", "image.png"},
-		{"._-hello_world-_.", "hello_world"},
-		{"💡...", "fallback"},
-		{"", "fallback"},
-		{"Mixed.Case_123.txt", "Mixed.Case_123.txt"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := sanitizeFilename(tt.name, "fallback"); got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
-			}
-		})
-	}
+	t.Run("collapses invalid runs", func(t *testing.T) {
+		assert.Equal(t, "my-diagram.png", sanitizeFilename("my   diagram.png", "fallback"))
+	})
+	t.Run("collapses Unicode runs", func(t *testing.T) {
+		assert.Equal(t, "a-b.png", sanitizeFilename("aé💡b.png", "fallback"))
+	})
+	t.Run("preserves hyphens", func(t *testing.T) {
+		assert.Equal(t, "a--b.png", sanitizeFilename("a--b.png", "fallback"))
+	})
+	t.Run("separates invalid runs around hyphens", func(t *testing.T) {
+		assert.Equal(t, "a---b.png", sanitizeFilename("a - b.png", "fallback"))
+	})
+	t.Run("uses basename", func(t *testing.T) {
+		assert.Equal(t, "image.png", sanitizeFilename("  ../some/path/image.png  ", "fallback"))
+	})
+	t.Run("trims surrounding punctuation", func(t *testing.T) {
+		assert.Equal(t, "hello_world", sanitizeFilename("._-hello_world-_.", "fallback"))
+	})
+	t.Run("uses fallback for invalid name", func(t *testing.T) {
+		assert.Equal(t, "fallback", sanitizeFilename("💡...", "fallback"))
+	})
+	t.Run("uses fallback for empty name", func(t *testing.T) {
+		assert.Equal(t, "fallback", sanitizeFilename("", "fallback"))
+	})
+	t.Run("preserves safe characters", func(t *testing.T) {
+		assert.Equal(t, "Mixed.Case_123.txt", sanitizeFilename("Mixed.Case_123.txt", "fallback"))
+	})
 }

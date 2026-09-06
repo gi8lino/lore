@@ -98,31 +98,91 @@ func TestExpandKnowledgeMarkdownSyntax(t *testing.T) {
 			"guide": {Markdown: "# {{var:site}}\n{{snippet:greeting}}"},
 		},
 	}
-	for _, tt := range []struct{ name, source, want string }{
-		{"adjacent macros", "{{snippet:greeting}}{{var:site}}!", "HelloLore!"},
-		{"name whitespace", "before {{var: \t site \t}} after", "before Lore after"},
-		{"colon in name", "{{snippet:a:b}}", "colon"},
-		{"empty macro stays literal", "{{snippet:}}", "{{snippet:}}"},
-		{"whitespace name retains lookup", "{{snippet: }}", "empty name"},
-		{"unknown and incomplete", "{{other:site}} {{var:site} {{var:site", "{{other:site}} {{var:site} {{var:site"},
-		{"exact kind syntax", "{{ var:site}} {{Var:site}} {{var :site}}", "{{ var:site}} {{Var:site}} {{var :site}}"},
-		{"nested valid macro", "{{unknown:{{var:site}}}}", "{{unknown:Lore}}"},
-		{"overlapping opening braces", "{{{var:site}}}", "{Lore}"},
-		{"braces in name", "{{var:si{te}} {{var:si}te}}", "{{var:si{te}} {{var:si}te}}"},
-		{"valid after malformed", "{{var:bad} {{var:site}}", "{{var:bad} Lore"},
-		{"macro cannot span lines", "{{var:\nsite}}", "{{var:\nsite}}"},
-		{"snippet results are not rescanned", "{{snippet:literal}}", "{{var:site}}"},
-		{"includes expand recursively and independently", "{{include:/guide/}}\n{{include:guide}}", "# Lore\nHello\n# Lore\nHello"},
-		{"backtick fences", "```md\n{{var:site}}\n```\n{{var:site}}", "```md\n{{var:site}}\n```\nLore"},
-		{"indented tilde fences", "  ~~~\n{{var:site}}\n  ~~~\n{{var:site}}", "  ~~~\n{{var:site}}\n  ~~~\nLore"},
-		{"inline code retains existing expansion", "`{{var:site}}`", "`Lore`"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := expandKnowledgeMarkdown(context.Background(), content, tt.source, nil, 0)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+	t.Run("adjacent macros", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{snippet:greeting}}{{var:site}}!", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "HelloLore!", got)
+	})
+	t.Run("name whitespace", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "before {{var: \t site \t}} after", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "before Lore after", got)
+	})
+	t.Run("colon in name", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{snippet:a:b}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "colon", got)
+	})
+	t.Run("empty macro stays literal", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{snippet:}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{snippet:}}", got)
+	})
+	t.Run("whitespace name retains lookup", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{snippet: }}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "empty name", got)
+	})
+	t.Run("unknown and incomplete", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{other:site}} {{var:site} {{var:site", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{other:site}} {{var:site} {{var:site", got)
+	})
+	t.Run("exact kind syntax", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{ var:site}} {{Var:site}} {{var :site}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{ var:site}} {{Var:site}} {{var :site}}", got)
+	})
+	t.Run("nested valid macro", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{unknown:{{var:site}}}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{unknown:Lore}}", got)
+	})
+	t.Run("overlapping opening braces", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{{var:site}}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{Lore}", got)
+	})
+	t.Run("braces in name", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{var:si{te}} {{var:si}te}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{var:si{te}} {{var:si}te}}", got)
+	})
+	t.Run("valid after malformed", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{var:bad} {{var:site}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{var:bad} Lore", got)
+	})
+	t.Run("macro cannot span lines", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{var:\nsite}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{var:\nsite}}", got)
+	})
+	t.Run("snippet results are not rescanned", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{snippet:literal}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "{{var:site}}", got)
+	})
+	t.Run("includes expand recursively and independently", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "{{include:/guide/}}\n{{include:guide}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "# Lore\nHello\n# Lore\nHello", got)
+	})
+	t.Run("backtick fences", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "```md\n{{var:site}}\n```\n{{var:site}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "```md\n{{var:site}}\n```\nLore", got)
+	})
+	t.Run("indented tilde fences", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "  ~~~\n{{var:site}}\n  ~~~\n{{var:site}}", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "  ~~~\n{{var:site}}\n  ~~~\nLore", got)
+	})
+	t.Run("inline code retains existing expansion", func(t *testing.T) {
+		got, err := expandKnowledgeMarkdown(context.Background(), content, "`{{var:site}}`", nil, 0)
+		require.NoError(t, err)
+		assert.Equal(t, "`Lore`", got)
+	})
 }
 
 func TestExpandKnowledgeMarkdownRejectsEmptyInclude(t *testing.T) {

@@ -92,16 +92,16 @@ func TestRequireRoleSnapshotsAllowedRoles(t *testing.T) {
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	for _, tt := range []struct {
-		role   string
-		status int
-	}{
-		{"admin", http.StatusNoContent},
-		{"viewer", http.StatusForbidden},
-	} {
+	t.Run("keeps original role", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/admin", nil), domain.User{ID: 1, Role: tt.role})
+		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/admin", nil), domain.User{ID: 1, Role: "admin"})
 		handler.ServeHTTP(response, request)
-		assert.Equal(t, tt.status, response.Code)
-	}
+		assert.Equal(t, http.StatusNoContent, response.Code)
+	})
+	t.Run("ignores caller mutation", func(t *testing.T) {
+		response := httptest.NewRecorder()
+		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/admin", nil), domain.User{ID: 1, Role: "viewer"})
+		handler.ServeHTTP(response, request)
+		assert.Equal(t, http.StatusForbidden, response.Code)
+	})
 }

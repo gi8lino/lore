@@ -509,7 +509,51 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
   }
 }
 
-let mermaidModule: MermaidModule | undefined;
+type MermaidWindow = Window & { mermaid?: MermaidModule };
+
+let mermaidPromise: Promise<MermaidModule> | undefined;
+
+// Loads the pinned, locally served Mermaid standalone bundle once.
+function loadMermaid(): Promise<MermaidModule> {
+  if (mermaidPromise) return mermaidPromise;
+
+  mermaidPromise = new Promise((resolve, reject) => {
+    const current = (window as MermaidWindow).mermaid;
+    if (current) {
+      resolve(current);
+      return;
+    }
+
+    const script = document.createElement("script");
+
+    script.src = new URL(
+      "../../vendor/mermaid/mermaid.min.js",
+      import.meta.url,
+    ).href;
+    script.async = true;
+    script.addEventListener(
+      "load",
+      () => {
+        const loaded = (window as MermaidWindow).mermaid;
+        if (loaded) {
+          resolve(loaded);
+          return;
+        }
+
+        reject(new Error("Mermaid module is unavailable."));
+      },
+      { once: true },
+    );
+    script.addEventListener(
+      "error",
+      () => reject(new Error("Mermaid module could not be loaded.")),
+      { once: true },
+    );
+    document.head.append(script);
+  });
+
+  return mermaidPromise;
+}
 
 // Renders mermaid.
 export async function renderMermaid(
@@ -523,13 +567,8 @@ export async function renderMermaid(
   ];
   if (!blocks.length) return;
 
-  if (!mermaidModule) {
-    const mermaidURL =
-      "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-    const imported = (await import(mermaidURL)) as { default: MermaidModule };
+  const mermaid = await loadMermaid();
 
-    mermaidModule = imported.default;
-  }
   for (const block of blocks) {
     const diagram = document.createElement("div");
 
@@ -538,7 +577,7 @@ export async function renderMermaid(
     block.parentElement?.replaceWith(diagram);
   }
 
-  mermaidModule.initialize({
+  mermaid.initialize({
     startOnLoad: false,
     theme:
       document.documentElement.style.colorScheme === "dark"
@@ -546,7 +585,7 @@ export async function renderMermaid(
         : "default",
     securityLevel: "strict",
   });
-  await mermaidModule.run({ nodes: root.querySelectorAll(".mermaid") });
+  await mermaid.run({ nodes: root.querySelectorAll(".mermaid") });
 }
 
 // Initializes markdown.
