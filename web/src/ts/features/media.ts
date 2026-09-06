@@ -2,7 +2,7 @@
 
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../core/dom.ts";
-import { isRecord } from "../core/guards.ts";
+import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { errorMessage, requestJSON } from "../core/http.ts";
 import { insertMarkdownAtSelection } from "./editor/toolbar.ts";
 
@@ -23,7 +23,11 @@ function isImageItem(value: unknown): value is ImageItem {
     isRecord(value) &&
     typeof value.id === "number" &&
     typeof value.filename === "string" &&
+    typeof value.content_type === "string" &&
     typeof value.size_bytes === "number" &&
+    typeof value.uploaded_by === "number" &&
+    typeof value.uploader === "string" &&
+    typeof value.created_at === "string" &&
     typeof value.usage_count === "number" &&
     typeof value.url === "string"
   );
@@ -76,10 +80,7 @@ function hasDraggedImage(dataTransfer: DataTransfer | null): boolean {
 
 // Wires media dialog behavior.
 function setupMediaDialog(dialog: HTMLDialogElement): void {
-  const open = requiredElement<HTMLElement>(
-    document,
-    "[data-media-dialog-open]",
-  );
+  const open = requiredElement<HTMLElement>(document, "[data-media-dialog-open]");
   const close = requiredElement<HTMLButtonElement>(
     dialog,
     "[data-media-dialog-close]",
@@ -177,7 +178,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
     try {
       const payload = await requestJSON(mediaListURL);
 
-      images = Array.isArray(payload) ? payload.filter(isImageItem) : [];
+      images = requireArrayOf(payload, isImageItem, "image list response");
       loaded = true;
       renderImages();
     } catch (error) {

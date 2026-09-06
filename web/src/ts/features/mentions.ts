@@ -1,5 +1,6 @@
 // User mention detection and autocomplete.
 
+import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
 
 const resultLimit = 50;
@@ -181,14 +182,18 @@ function caretOffset(source: HTMLTextAreaElement, caret: number): CaretOffset {
   return offset;
 }
 
-function mentionUsers(value: unknown): MentionUser[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (item): item is MentionUser =>
-      typeof item === "object" &&
-      item !== null &&
-      typeof (item as { username?: unknown }).username === "string",
+function isMentionUser(value: unknown): value is MentionUser {
+  return (
+    isRecord(value) &&
+    typeof value.username === "string" &&
+    (value.display_name === undefined || typeof value.display_name === "string") &&
+    (value.role === undefined || typeof value.role === "string") &&
+    (value.self === undefined || typeof value.self === "boolean")
   );
+}
+
+function mentionUsers(value: unknown): MentionUser[] {
+  return requireArrayOf(value, isMentionUser, "mention user response");
 }
 
 // Wires mention autocomplete behavior.
@@ -335,7 +340,8 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
       results = mentionUsers(payload).slice(0, resultLimit);
       active = results.length ? 0 : -1;
       render();
-    } catch {
+    } catch (error) {
+      console.error("mention search failed", error);
       if (currentRequest === request) close();
     }
   }

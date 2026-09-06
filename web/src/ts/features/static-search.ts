@@ -1,6 +1,6 @@
 // Client-side search for filesystem-backed static Lore sites.
 
-import { isRecord } from "../core/guards.ts";
+import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
 
 interface StaticSearchEntry {
@@ -34,7 +34,7 @@ async function fetchIndex(): Promise<StaticSearchEntry[]> {
   try {
     const payload = await requestJSON(searchIndexURL());
 
-    return Array.isArray(payload) ? payload.filter(isStaticSearchEntry) : [];
+    return requireArrayOf(payload, isStaticSearchEntry, "static search index");
   } catch (error: unknown) {
     console.error("static search index could not be loaded", error);
     return [];

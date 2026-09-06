@@ -7,7 +7,7 @@ import {
 } from "../../core/async.ts";
 import { showNotice } from "../../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../../core/dom.ts";
-import { isRecord } from "../../core/guards.ts";
+import { isRecord, requireArrayOf } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
 
 interface GroupMember {
@@ -23,12 +23,13 @@ function isGroupMember(value: unknown): value is GroupMember {
     typeof value.id === "number" &&
     typeof value.username === "string" &&
     (value.email === undefined || typeof value.email === "string") &&
-    (value.display_name === undefined || typeof value.display_name === "string")
+    (value.display_name === undefined ||
+      typeof value.display_name === "string")
   );
 }
 
 function groupMembers(value: unknown): GroupMember[] {
-  return Array.isArray(value) ? value.filter(isGroupMember) : [];
+  return requireArrayOf(value, isGroupMember, "group member response");
 }
 
 // Wires group member picker behavior.

@@ -1,6 +1,7 @@
 // Interactive knowledge graph rendering and inspection.
 
 import { requiredAttribute, requiredElement } from "../core/dom.ts";
+import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
 
 type SVGAttributes = Record<string, string | number>;
@@ -38,33 +39,30 @@ function svgElement<K extends keyof SVGElementTagNameMap>(
   return element;
 }
 
-function normalizedGraph(value: unknown): KnowledgeGraph {
-  if (typeof value !== "object" || value === null)
-    return { nodes: [], edges: [] };
+function isGraphNode(value: unknown): value is GraphNode {
+  return (
+    isRecord(value) &&
+    typeof value.slug === "string" &&
+    typeof value.title === "string" &&
+    (value.status === undefined || typeof value.status === "string")
+  );
+}
 
-  const candidate = value as { nodes?: unknown; edges?: unknown };
-  const nodes = Array.isArray(candidate.nodes)
-    ? candidate.nodes.filter((item): item is GraphNode => {
-        if (typeof item !== "object" || item === null) return false;
+function isGraphEdge(value: unknown): value is GraphEdge {
+  return (
+    isRecord(value) &&
+    typeof value.source === "string" &&
+    typeof value.target === "string"
+  );
+}
 
-        const node = item as Partial<GraphNode>;
+export function knowledgeGraph(value: unknown): KnowledgeGraph {
+  if (!isRecord(value)) throw new Error("Invalid knowledge graph response.");
 
-        return typeof node.slug === "string" && typeof node.title === "string";
-      })
-    : [];
-  const edges = Array.isArray(candidate.edges)
-    ? candidate.edges.filter((item): item is GraphEdge => {
-        if (typeof item !== "object" || item === null) return false;
-
-        const edge = item as Partial<GraphEdge>;
-
-        return (
-          typeof edge.source === "string" && typeof edge.target === "string"
-        );
-      })
-    : [];
-
-  return { nodes, edges };
+  return {
+    nodes: requireArrayOf(value.nodes, isGraphNode, "knowledge graph nodes"),
+    edges: requireArrayOf(value.edges, isGraphEdge, "knowledge graph edges"),
+  };
 }
 
 // Returns graph nodes connected within the requested depth.
@@ -316,9 +314,10 @@ function setupGraph(root: HTMLElement): void {
 
   async function loadGraph(url: string): Promise<void> {
     try {
-      graph = normalizedGraph(await requestJSON(url));
+      graph = knowledgeGraph(await requestJSON(url));
       render();
-    } catch {
+    } catch (error) {
+      console.error("knowledge graph failed", error);
       emptyState.textContent = "The knowledge graph could not be loaded.";
       emptyState.hidden = false;
     }

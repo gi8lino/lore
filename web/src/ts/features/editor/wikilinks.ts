@@ -1,6 +1,6 @@
 // Wiki-link autocomplete in the Markdown editor.
 
-import { isRecord } from "../../core/guards.ts";
+import { isRecord, requireArrayOf } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 
 const resultLimit = 8;
@@ -165,12 +165,15 @@ function setupWikiLinks(form: HTMLFormElement): void {
       );
       if (currentRequest !== request) return;
 
-      results = Array.isArray(payload)
-        ? payload.filter(isWikiLinkPage).slice(0, resultLimit)
-        : [];
+      results = requireArrayOf(
+        payload,
+        isWikiLinkPage,
+        "wiki-link search response",
+      ).slice(0, resultLimit);
       active = results.length ? 0 : -1;
       render();
-    } catch {
+    } catch (error) {
+      console.error("wiki-link search failed", error);
       close();
     }
   }

@@ -1,7 +1,7 @@
 // Live global search behavior.
 
 import { createLatestRequest, isAbortError } from "../core/async.ts";
-import { isRecord } from "../core/guards.ts";
+import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
 
 interface SearchPage {
@@ -109,7 +109,7 @@ function setupLiveSearch(form: HTMLFormElement): void {
         { signal },
       );
 
-      renderResults(Array.isArray(payload) ? payload.filter(isSearchPage) : []);
+      renderResults(requireArrayOf(payload, isSearchPage, "search response"));
     } catch (error) {
       if (isAbortError(error)) return;
 

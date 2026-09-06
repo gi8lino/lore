@@ -38,3 +38,22 @@ test("graphNeighborhood expands matching search results with their relationships
   assert.deepEqual(result.nodes.map((node) => node.slug).sort(), ["c", "d"]);
   assert.deepEqual(result.edges, [{ source: "d", target: "c" }]);
 });
+
+test("knowledgeGraph rejects malformed graph entries instead of filtering them", async () => {
+  const { knowledgeGraph } = await import(
+    "../../web/src/ts/features/graph.ts"
+  );
+  let caught: unknown;
+
+  try {
+    knowledgeGraph({
+      nodes: [{ slug: "a", title: "Alpha" }, { slug: 7, title: "Broken" }],
+      edges: [],
+    });
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught instanceof Error);
+  assert.equal(caught.message, "Invalid knowledge graph nodes.");
+});

@@ -2,15 +2,19 @@
 
 import { requestConfirmation } from "../../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../../core/dom.ts";
-import { isRecord } from "../../core/guards.ts";
+import { isRecord, requireArrayOf } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 import { insertMarkdownAtSelection } from "./toolbar.ts";
 
 export interface AttachmentItem {
   id: number;
   filename: string;
+  content_type: string;
   size_bytes: number;
-  usage_count?: number;
+  uploaded_by: number;
+  uploader: string;
+  created_at: string;
+  usage_count: number;
   url: string;
 }
 
@@ -19,7 +23,12 @@ function isAttachmentItem(value: unknown): value is AttachmentItem {
     isRecord(value) &&
     typeof value.id === "number" &&
     typeof value.filename === "string" &&
+    typeof value.content_type === "string" &&
     typeof value.size_bytes === "number" &&
+    typeof value.uploaded_by === "number" &&
+    typeof value.uploader === "string" &&
+    typeof value.created_at === "string" &&
+    typeof value.usage_count === "number" &&
     typeof value.url === "string"
   );
 }
@@ -57,10 +66,7 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
     dialog,
     "[data-attachment-upload]",
   );
-  const status = requiredElement<HTMLElement>(
-    dialog,
-    "[data-attachment-status]",
-  );
+  const status = requiredElement<HTMLElement>(dialog, "[data-attachment-status]");
   const attachmentDialog = dialog;
   const attachmentListURL = requiredAttribute(
     dialog,
@@ -132,20 +138,20 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
   async function load(): Promise<void> {
     attachmentBody.innerHTML = '<p class="muted">Loading files…</p>';
 
-    let payload: unknown;
+    let items: AttachmentItem[];
 
     try {
-      payload = await requestJSON(attachmentListURL);
+      items = requireArrayOf(
+        await requestJSON(attachmentListURL),
+        isAttachmentItem,
+        "attachment list response",
+      );
     } catch (error) {
       console.error("attachment library failed", error);
       attachmentBody.innerHTML =
         '<p class="muted">Files could not be loaded.</p>';
       return;
     }
-
-    const items = Array.isArray(payload)
-      ? payload.filter(isAttachmentItem)
-      : [];
 
     attachmentBody.replaceChildren();
     if (!items.length) {

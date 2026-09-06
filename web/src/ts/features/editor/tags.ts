@@ -1,6 +1,7 @@
 // Editor tag chips and autocomplete.
 
 import { requiredAttribute, requiredElement } from "../../core/dom.ts";
+import { requireArrayOf } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 
 interface RestoreDraftDetail {
@@ -10,14 +11,8 @@ interface RestoreDraftDetail {
 // Wires tag editor behavior.
 function setupTagEditor(editor: HTMLElement): void {
   const chipList = requiredElement<HTMLElement>(editor, "[data-tag-chips]");
-  const tagInput = requiredElement<HTMLInputElement>(
-    editor,
-    "[data-tag-input]",
-  );
-  const tagValue = requiredElement<HTMLInputElement>(
-    editor,
-    "[data-tag-value]",
-  );
+  const tagInput = requiredElement<HTMLInputElement>(editor, "[data-tag-input]");
+  const tagValue = requiredElement<HTMLInputElement>(editor, "[data-tag-value]");
   const suggestionList = requiredElement<HTMLElement>(
     editor,
     "[data-tag-suggestions]",
@@ -123,9 +118,11 @@ function setupTagEditor(editor: HTMLElement): void {
     try {
       const payload = await requestJSON(tagSource);
 
-      availableTags = Array.isArray(payload)
-        ? payload.filter((tag): tag is string => typeof tag === "string")
-        : [];
+      availableTags = requireArrayOf(
+        payload,
+        (tag): tag is string => typeof tag === "string",
+        "tag response",
+      );
       tagsLoaded = true;
       renderSuggestions();
     } catch (error) {

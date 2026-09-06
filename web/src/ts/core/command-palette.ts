@@ -1,7 +1,7 @@
 // Global command palette search and keyboard interaction.
 
 import { requiredElement } from "./dom.ts";
-import { isRecord } from "./guards.ts";
+import { isRecord, requireArrayOf } from "./guards.ts";
 import { requestJSON } from "./http.ts";
 
 const maxResults = 7;
@@ -116,11 +116,13 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
       );
       if (current !== requestID) return;
 
-      pages = Array.isArray(value)
-        ? value.filter(isCommandPage).slice(0, maxResults)
-        : [];
+      pages = requireArrayOf(value, isCommandPage, "search response").slice(
+        0,
+        maxResults,
+      );
       renderPages();
-    } catch {
+    } catch (error) {
+      console.error("command palette search failed", error);
       pages = [];
       renderPages();
     }
