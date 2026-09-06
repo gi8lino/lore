@@ -2,6 +2,7 @@
 package icons
 
 import (
+	"cmp"
 	"html/template"
 	"slices"
 	"strings"
@@ -97,7 +98,7 @@ func IsNavigationIcon(name string) bool {
 	}
 
 	_, found := slices.BinarySearchFunc(navigationOptions, name, func(option Option, candidate string) int {
-		return strings.Compare(option.Name, candidate)
+		return cmp.Compare(option.Name, candidate)
 	})
 
 	return found

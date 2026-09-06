@@ -414,7 +414,7 @@ func (d *pageDiscovery) visit(filename string, entry fs.DirEntry, walkErr error)
 }
 
 func compareSourcePages(left, right sourcePage) int {
-	return strings.Compare(left.SourcePath, right.SourcePath)
+	return cmp.Compare(left.SourcePath, right.SourcePath)
 }
 
 func hasHomePage(pages []sourcePage) bool {
