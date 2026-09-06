@@ -100,7 +100,7 @@ func (s *Store) UpdateUser(
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
-	if !ValidUserRole(role) {
+	if !domain.ValidUserRole(role) {
 		return errors.New("invalid user role")
 	}
 

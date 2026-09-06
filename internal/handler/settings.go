@@ -9,7 +9,6 @@ import (
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/themes"
 )
 
@@ -147,7 +146,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 		}
 
 		density := r.FormValue("navigation_density")
-		if !service.ValidNavigationDensity(density) {
+		if !domain.ValidNavigationDensity(density) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Unknown navigation density.")
 			return
 		}
@@ -157,7 +156,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
 			return
 		}
-		if !service.ValidSidebarWidth(sidebarWidth) {
+		if !domain.ValidSidebarWidth(sidebarWidth) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
 			return
 		}
@@ -280,7 +279,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 			)
 			return
 		}
-		if !service.ValidSidebarWidth(request.Width) {
+		if !domain.ValidSidebarWidth(request.Width) {
 			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"Sidebar width is out of range.",

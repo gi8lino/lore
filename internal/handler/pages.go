@@ -460,7 +460,7 @@ func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 		if err != nil {
 			return domain.PageMetadata{}, errors.New("invalid review interval")
 		}
-		if !service.ValidReviewIntervalDays(parsed) {
+		if !domain.ValidReviewIntervalDays(parsed) {
 			return domain.PageMetadata{}, errors.New("invalid review interval")
 		}
 

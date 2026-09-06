@@ -13,7 +13,6 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/service"
 	"golang.org/x/net/http/httpguts"
 )
 
@@ -862,7 +861,7 @@ func UpdateAdminUser(
 		}
 
 		role := r.FormValue("role")
-		if !service.ValidUserRole(role) {
+		if !domain.ValidUserRole(role) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user role.")
 			return
 		}

@@ -140,7 +140,7 @@ func validPageWorkflowSettings(input PageSaveInput) bool {
 	if !domain.ValidPageStatus(input.Status) {
 		return false
 	}
-	if !ValidReviewIntervalDays(input.ReviewIntervalDays) {
+	if !domain.ValidReviewIntervalDays(input.ReviewIntervalDays) {
 		return false
 	}
 
