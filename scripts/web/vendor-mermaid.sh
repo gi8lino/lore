@@ -3,7 +3,7 @@ set -eu
 
 # Mermaid's standalone UMD build is self-contained, so only the package archive
 # is needed at build time. Keep the version pinned for reproducible assets.
-MERMAID_VERSION="${MERMAID_VERSION:-11.16.1}"
+MERMAID_VERSION="${MERMAID_VERSION:-11.17.2}"
 MERMAID_OUTPUT_DIR="${MERMAID_OUTPUT_DIR:-web/dist/vendor/mermaid}"
 NPM="${NPM:-npm}"
 
