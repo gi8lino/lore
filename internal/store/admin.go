@@ -5,13 +5,14 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Stats returns high-level database counts for administrators.
-func (s *Store) Stats(ctx context.Context) (AdminStats, error) {
-	var stats AdminStats
+func (s *Store) Stats(ctx context.Context) (model.AdminStats, error) {
+	var stats model.AdminStats
 	err := s.pool.QueryRow(ctx, `
 SELECT
   (SELECT count(*) FROM users),
@@ -34,7 +35,7 @@ SELECT
 }
 
 // Users returns all wiki users with their group memberships.
-func (s *Store) Users(ctx context.Context) ([]AdminUser, error) {
+func (s *Store) Users(ctx context.Context) ([]model.AdminUser, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   u.id,
@@ -62,10 +63,10 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`)
 
 	defer rows.Close()
 
-	var users []AdminUser
+	var users []model.AdminUser
 
 	for rows.Next() {
-		var user AdminUser
+		var user model.AdminUser
 		if err := rows.Scan(
 			&user.User.ID,
 			&user.User.Username,
@@ -120,7 +121,7 @@ WHERE id=$1`, userID, role, enabled)
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	if !enabled {
@@ -181,7 +182,7 @@ WHERE id=$1`, userID)
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
@@ -193,7 +194,7 @@ WHERE user_id=$1`, userID); err != nil {
 }
 
 // Groups returns all groups and their current user counts.
-func (s *Store) Groups(ctx context.Context) ([]Group, error) {
+func (s *Store) Groups(ctx context.Context) ([]model.Group, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   g.id,
@@ -212,10 +213,10 @@ ORDER BY lower(g.name),g.id`)
 
 	defer rows.Close()
 
-	var groups []Group
+	var groups []model.Group
 
 	for rows.Next() {
-		var group Group
+		var group model.Group
 		if err := rows.Scan(&group.ID, &group.Name, &group.UserCount, &group.PageCount); err != nil {
 			return nil, err
 		}
@@ -227,20 +228,20 @@ ORDER BY lower(g.name),g.id`)
 }
 
 // CreateGroup creates a normalized group and returns its persisted record.
-func (s *Store) CreateGroup(ctx context.Context, name string) (Group, error) {
+func (s *Store) CreateGroup(ctx context.Context, name string) (model.Group, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return Group{}, errors.New("group name is required")
+		return model.Group{}, errors.New("group name is required")
 	}
 
-	var group Group
+	var group model.Group
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO wiki_groups(name)
 VALUES($1)
 RETURNING id,name`, name).
 		Scan(&group.ID, &group.Name)
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return Group{}, ErrAlreadyExists
+		return model.Group{}, model.ErrAlreadyExists
 	}
 
 	return group, err
@@ -252,14 +253,14 @@ func (s *Store) DeleteGroup(ctx context.Context, id int64) error {
 DELETE FROM wiki_groups
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err
 }
 
 // TagInfos returns all stored tags with page usage counts.
-func (s *Store) TagInfos(ctx context.Context) ([]TagInfo, error) {
+func (s *Store) TagInfos(ctx context.Context) ([]model.TagInfo, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT t.id,t.name,count(tp.id)
 FROM tags t
@@ -273,10 +274,10 @@ ORDER BY lower(t.name),t.id`)
 
 	defer rows.Close()
 
-	var tags []TagInfo
+	var tags []model.TagInfo
 
 	for rows.Next() {
-		var tag TagInfo
+		var tag model.TagInfo
 		if err := rows.Scan(&tag.ID, &tag.Name, &tag.PageCount); err != nil {
 			return nil, err
 		}
@@ -293,29 +294,29 @@ func (s *Store) DeleteTag(ctx context.Context, id int64) error {
 DELETE FROM tags
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err
 }
 
 // User returns a user by database identifier.
-func (s *Store) User(ctx context.Context, id int64) (User, error) {
-	var user User
+func (s *Store) User(ctx context.Context, id int64) (model.User, error) {
+	var user model.User
 	err := s.pool.QueryRow(ctx, `
 SELECT id,username,email,display_name,role,enabled,session_version
 FROM users
 WHERE id=$1`, id).
 		Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrNotFound
+		return model.User{}, model.ErrNotFound
 	}
 
 	return user, err
 }
 
 // UserGroups returns the collaboration groups assigned to one user.
-func (s *Store) UserGroups(ctx context.Context, userID int64) ([]Group, error) {
+func (s *Store) UserGroups(ctx context.Context, userID int64) ([]model.Group, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT g.id,g.name
 FROM wiki_groups g
@@ -328,10 +329,10 @@ ORDER BY lower(g.name),g.id`, userID)
 
 	defer rows.Close()
 
-	var groups []Group
+	var groups []model.Group
 
 	for rows.Next() {
-		var group Group
+		var group model.Group
 		if err := rows.Scan(&group.ID, &group.Name); err != nil {
 			return nil, err
 		}
@@ -343,7 +344,7 @@ ORDER BY lower(g.name),g.id`, userID)
 }
 
 // AssignableGroups returns all groups for admins and memberships for other users.
-func (s *Store) AssignableGroups(ctx context.Context, user User) ([]Group, error) {
+func (s *Store) AssignableGroups(ctx context.Context, user model.User) ([]model.Group, error) {
 	if user.Role == "admin" {
 		return s.Groups(ctx)
 	}
@@ -351,8 +352,8 @@ func (s *Store) AssignableGroups(ctx context.Context, user User) ([]Group, error
 }
 
 // ApplicationSettings returns the persisted application-wide settings.
-func (s *Store) ApplicationSettings(ctx context.Context) (ApplicationSettings, error) {
-	var settings ApplicationSettings
+func (s *Store) ApplicationSettings(ctx context.Context) (model.ApplicationSettings, error) {
+	var settings model.ApplicationSettings
 	err := s.pool.QueryRow(ctx, `
 SELECT
   allow_user_registration,
@@ -429,7 +430,7 @@ WHERE singleton=true`).Scan(
 }
 
 // SaveApplicationSettings updates mutable application-wide settings.
-func (s *Store) SaveApplicationSettings(ctx context.Context, settings ApplicationSettings) error {
+func (s *Store) SaveApplicationSettings(ctx context.Context, settings model.ApplicationSettings) error {
 	_, err := s.pool.Exec(ctx, `
 INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,updated_at)
 VALUES(true,$1,$2,now())
@@ -451,7 +452,7 @@ WHERE singleton=true`, pdfURL)
 }
 
 // SaveAuthenticationSettings updates non-secret browser authentication settings.
-func (s *Store) SaveAuthenticationSettings(ctx context.Context, settings AuthenticationSettings) error {
+func (s *Store) SaveAuthenticationSettings(ctx context.Context, settings model.AuthenticationSettings) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -525,7 +526,7 @@ DELETE FROM oidc_group_mappings`); err != nil {
 INSERT INTO oidc_group_mappings(oidc_group,group_id)
 VALUES($1,$2)`, strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID); err != nil {
 			if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23503" {
-				return ErrNotFound
+				return model.ErrNotFound
 			}
 			return err
 		}
@@ -535,7 +536,7 @@ VALUES($1,$2)`, strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID); err != n
 }
 
 // SaveRenderingSettings updates administrator-controlled Markdown rendering features.
-func (s *Store) SaveRenderingSettings(ctx context.Context, settings RenderingSettings) error {
+func (s *Store) SaveRenderingSettings(ctx context.Context, settings model.RenderingSettings) error {
 	_, err := s.pool.Exec(ctx, `
 UPDATE application_settings
 SET render_wiki_links=$1,
@@ -581,7 +582,7 @@ WHERE singleton=true`,
 }
 
 // SearchUsers returns accounts matching a username, display name, or email prefix/substring.
-func (s *Store) SearchUsers(ctx context.Context, query string, limit int) ([]User, error) {
+func (s *Store) SearchUsers(ctx context.Context, query string, limit int) ([]model.User, error) {
 	query = strings.TrimSpace(query)
 
 	if limit <= 0 || limit > 50 {
@@ -602,10 +603,10 @@ LIMIT $3`, "%"+query+"%", query+"%", limit)
 
 	defer rows.Close()
 
-	users := make([]User, 0)
+	users := make([]model.User, 0)
 
 	for rows.Next() {
-		var user User
+		var user model.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); err != nil {
 			return nil, err
 		}
@@ -617,7 +618,7 @@ LIMIT $3`, "%"+query+"%", query+"%", limit)
 }
 
 // GroupMembers returns accounts assigned to a group.
-func (s *Store) GroupMembers(ctx context.Context, groupID int64) ([]User, error) {
+func (s *Store) GroupMembers(ctx context.Context, groupID int64) ([]model.User, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role
 FROM users u
@@ -630,10 +631,10 @@ ORDER BY lower(u.display_name),lower(u.username),u.id`, groupID)
 
 	defer rows.Close()
 
-	users := make([]User, 0)
+	users := make([]model.User, 0)
 
 	for rows.Next() {
-		var user User
+		var user model.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); err != nil {
 			return nil, err
 		}
@@ -658,7 +659,7 @@ ON CONFLICT DO NOTHING`, groupID, userID)
 SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$2 AND group_id=$1)`, groupID, userID).
 			Scan(&exists)
 		if err == nil && !exists {
-			return ErrNotFound
+			return model.ErrNotFound
 		}
 	}
 
@@ -671,7 +672,7 @@ func (s *Store) RemoveGroupMember(ctx context.Context, groupID, userID int64) er
 DELETE FROM user_groups
 WHERE group_id=$1 AND user_id=$2`, groupID, userID)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err

@@ -18,8 +18,8 @@ import (
 
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/pdf"
-	"github.com/gi8lino/lore/internal/service"
 	xhtml "golang.org/x/net/html"
 )
 
@@ -232,7 +232,7 @@ func ExportPages(
 }
 
 // serveMarkdown writes one page as a plain Markdown attachment.
-func serveMarkdown(w http.ResponseWriter, pageData service.Page) {
+func serveMarkdown(w http.ResponseWriter, pageData model.Page) {
 	filename := path.Base(pageData.Slug) + ".md"
 
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
@@ -328,7 +328,7 @@ func writeExportArchive(
 	archive := zip.NewWriter(output)
 
 	exportedImages := map[int64]bool{}
-	imageCache := map[int64]service.ImageData{}
+	imageCache := map[int64]model.ImageData{}
 
 	for _, slug := range slugs {
 		pageData, err := catalogUseCases.GetPage(ctx, slug)
@@ -389,7 +389,7 @@ func exportedMarkdown(
 	ctx context.Context,
 	mediaUseCases imageContentService,
 	markdownPath, source string,
-	imageCache map[int64]service.ImageData,
+	imageCache map[int64]model.ImageData,
 ) (content string, imageIDs []int64, err error) {
 	seen := map[int64]bool{}
 	var ids []int64
@@ -421,7 +421,7 @@ func exportedImagePath(
 	mediaUseCases imageContentService,
 	markdownPath string,
 	id int64,
-	cache map[int64]service.ImageData,
+	cache map[int64]model.ImageData,
 ) (relativePath string, err error) {
 	image, ok := cache[id]
 	if !ok {

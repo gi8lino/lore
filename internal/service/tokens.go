@@ -3,13 +3,15 @@ package service
 import (
 	"context"
 	"time"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // tokenRepository contains personal access token operations.
 type tokenRepository interface {
-	Tokens(context.Context) ([]APIToken, error)
-	UserTokens(context.Context, int64) ([]APIToken, error)
-	CreateToken(context.Context, string, int64, int64, *time.Time) (IssuedToken, error)
+	Tokens(context.Context) ([]model.APIToken, error)
+	UserTokens(context.Context, int64) ([]model.APIToken, error)
+	CreateToken(context.Context, string, int64, int64, *time.Time) (model.IssuedToken, error)
 	DeleteUserToken(context.Context, int64, int64) error
 	DeleteToken(context.Context, int64) error
 }
@@ -21,12 +23,12 @@ type Tokens struct{ repository tokenRepository }
 func NewTokens(repository tokenRepository) *Tokens { return &Tokens{repository: repository} }
 
 // Tokens returns all personal access tokens for administration.
-func (s *Tokens) Tokens(ctx context.Context) ([]APIToken, error) {
+func (s *Tokens) Tokens(ctx context.Context) ([]model.APIToken, error) {
 	return s.repository.Tokens(ctx)
 }
 
 // UserTokens returns personal access tokens owned by a user.
-func (s *Tokens) UserTokens(ctx context.Context, userID int64) ([]APIToken, error) {
+func (s *Tokens) UserTokens(ctx context.Context, userID int64) ([]model.APIToken, error) {
 	return s.repository.UserTokens(ctx, userID)
 }
 
@@ -36,7 +38,7 @@ func (s *Tokens) CreateToken(
 	name string,
 	userID, createdBy int64,
 	expiresAt *time.Time,
-) (IssuedToken, error) {
+) (model.IssuedToken, error) {
 	return s.repository.CreateToken(ctx, name, userID, createdBy, expiresAt)
 }
 

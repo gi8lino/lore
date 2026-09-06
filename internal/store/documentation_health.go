@@ -3,11 +3,13 @@ package store
 import (
 	"context"
 	"time"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // DocumentationHealth returns actionable documentation-quality findings.
-func (s *Store) DocumentationHealth(ctx context.Context, staleBefore time.Time) (DocumentationHealth, error) {
-	var health DocumentationHealth
+func (s *Store) DocumentationHealth(ctx context.Context, staleBefore time.Time) (model.DocumentationHealth, error) {
+	var health model.DocumentationHealth
 
 	rows, err := s.pool.Query(ctx, `
 SELECT source.slug,source.title,links.target_slug
@@ -23,7 +25,7 @@ ORDER BY source.slug,links.target_slug`)
 	}
 
 	for rows.Next() {
-		var item BrokenWikiLink
+		var item model.BrokenWikiLink
 		if err := rows.Scan(&item.SourceSlug, &item.SourceTitle, &item.TargetSlug); err != nil {
 			rows.Close()
 			return health, err
@@ -40,7 +42,7 @@ ORDER BY source.slug,links.target_slug`)
 	rows.Close()
 
 	queries := []struct {
-		target *[]Page
+		target *[]model.Page
 		query  string
 		args   []any
 	}{
@@ -89,7 +91,7 @@ ORDER BY p.slug`, nil},
 		}
 
 		for rows.Next() {
-			var page Page
+			var page model.Page
 			if err := rows.Scan(&page.Slug, &page.Title); err != nil {
 				rows.Close()
 				return health, err

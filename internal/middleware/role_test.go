@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/auth"
-	"github.com/gi8lino/lore/internal/store"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func TestRequireRole(t *testing.T) {
 		}))
 		request := auth.WithUser(
 			httptest.NewRequest(http.MethodGet, "/edit/page", nil),
-			store.User{ID: 1, Role: "editor"},
+			model.User{ID: 1, Role: "editor"},
 		)
 		response := httptest.NewRecorder()
 
@@ -38,7 +38,7 @@ func TestRequireRole(t *testing.T) {
 		}))
 		request := auth.WithUser(
 			httptest.NewRequest(http.MethodGet, "/admin", nil),
-			store.User{ID: 1, Role: "viewer"},
+			model.User{ID: 1, Role: "viewer"},
 		)
 		response := httptest.NewRecorder()
 
@@ -56,7 +56,7 @@ func TestRequireRole(t *testing.T) {
 		}))
 		request := auth.WithUser(
 			httptest.NewRequest(http.MethodDelete, "/api/pages/example", nil),
-			store.User{ID: 1, Role: "editor"},
+			model.User{ID: 1, Role: "editor"},
 		)
 		response := httptest.NewRecorder()
 

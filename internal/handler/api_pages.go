@@ -10,6 +10,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/service"
 )
@@ -177,7 +178,7 @@ func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.Handle
 
 		page, err := catalogUseCases.GetPage(r.Context(), slug)
 
-		if errors.Is(err, service.ErrNotFound) {
+		if errors.Is(err, model.ErrNotFound) {
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				w.Header().Set("Content-Location", "/api/pages/"+target)
 				page, err = catalogUseCases.GetPage(r.Context(), target)
@@ -272,7 +273,7 @@ func PermanentlyDeletePage(recycleBinUseCases recycleBinService, logger *slog.Lo
 }
 
 // stripMarkdown removes Markdown bodies from page summaries.
-func stripMarkdown(pages []service.Page) {
+func stripMarkdown(pages []model.Page) {
 	for index := range pages {
 		pages[index].Markdown = ""
 	}

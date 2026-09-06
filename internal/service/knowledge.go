@@ -3,20 +3,22 @@ package service
 import (
 	"context"
 	"fmt"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // knowledgeRepository contains knowledge tools, saved searches, and notification operations.
 type knowledgeRepository interface {
 	auditRepository
-	KnowledgeGraph(context.Context, int) (KnowledgeGraph, error)
-	KnowledgeSnippets(context.Context) ([]KnowledgeSnippet, error)
-	KnowledgeSnippetByName(context.Context, string, string) (KnowledgeSnippet, error)
-	SaveKnowledgeSnippet(context.Context, int64, int64, string, string, string, string) (KnowledgeSnippet, error)
+	KnowledgeGraph(context.Context, int) (model.KnowledgeGraph, error)
+	KnowledgeSnippets(context.Context) ([]model.KnowledgeSnippet, error)
+	KnowledgeSnippetByName(context.Context, string, string) (model.KnowledgeSnippet, error)
+	SaveKnowledgeSnippet(context.Context, int64, int64, string, string, string, string) (model.KnowledgeSnippet, error)
 	DeleteKnowledgeSnippet(context.Context, int64) error
-	SavedSearches(context.Context, int64) ([]SavedSearch, error)
+	SavedSearches(context.Context, int64) ([]model.SavedSearch, error)
 	SaveSavedSearch(context.Context, int64, int64, string, string, bool) error
 	DeleteSavedSearch(context.Context, int64, int64) error
-	Notifications(context.Context, int64, int) (notifications []Notification, unread int, err error)
+	Notifications(context.Context, int64, int) (notifications []model.Notification, unread int, err error)
 	MarkNotificationRead(context.Context, int64, int64) error
 }
 
@@ -29,12 +31,12 @@ func NewKnowledge(repository knowledgeRepository) *Knowledge {
 }
 
 // KnowledgeGraph returns page nodes and links for graph rendering.
-func (s *Knowledge) KnowledgeGraph(ctx context.Context, limit int) (KnowledgeGraph, error) {
+func (s *Knowledge) KnowledgeGraph(ctx context.Context, limit int) (model.KnowledgeGraph, error) {
 	return s.repository.KnowledgeGraph(ctx, limit)
 }
 
 // KnowledgeSnippets returns reusable knowledge snippets.
-func (s *Knowledge) KnowledgeSnippets(ctx context.Context) ([]KnowledgeSnippet, error) {
+func (s *Knowledge) KnowledgeSnippets(ctx context.Context) ([]model.KnowledgeSnippet, error) {
 	return s.repository.KnowledgeSnippets(ctx)
 }
 
@@ -42,7 +44,7 @@ func (s *Knowledge) KnowledgeSnippets(ctx context.Context) ([]KnowledgeSnippet, 
 func (s *Knowledge) KnowledgeSnippetByName(
 	ctx context.Context,
 	kind, name string,
-) (KnowledgeSnippet, error) {
+) (model.KnowledgeSnippet, error) {
 	return s.repository.KnowledgeSnippetByName(ctx, kind, name)
 }
 
@@ -51,10 +53,10 @@ func (s *Knowledge) SaveKnowledgeSnippet(
 	ctx context.Context,
 	id, userID int64,
 	kind, name, description, content string,
-) (KnowledgeSnippet, error) {
+) (model.KnowledgeSnippet, error) {
 	item, err := s.repository.SaveKnowledgeSnippet(ctx, id, userID, kind, name, description, content)
 	if err != nil {
-		return KnowledgeSnippet{}, err
+		return model.KnowledgeSnippet{}, err
 	}
 
 	_ = audit(s.repository, ctx, userID, "snippet.saved", "snippet", item.Name, item.Kind)
@@ -74,7 +76,7 @@ func (s *Knowledge) DeleteKnowledgeSnippet(ctx context.Context, id, actorID int6
 }
 
 // SavedSearches returns the searches saved by a user.
-func (s *Knowledge) SavedSearches(ctx context.Context, userID int64) ([]SavedSearch, error) {
+func (s *Knowledge) SavedSearches(ctx context.Context, userID int64) ([]model.SavedSearch, error) {
 	return s.repository.SavedSearches(ctx, userID)
 }
 
@@ -98,7 +100,7 @@ func (s *Knowledge) Notifications(
 	ctx context.Context,
 	userID int64,
 	limit int,
-) (notifications []Notification, unread int, err error) {
+) (notifications []model.Notification, unread int, err error) {
 	return s.repository.Notifications(ctx, userID, limit)
 }
 

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // PageTemplates returns reusable templates in name order.
-func (s *Store) PageTemplates(ctx context.Context) ([]PageTemplate, error) {
+func (s *Store) PageTemplates(ctx context.Context) ([]model.PageTemplate, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT id,name,description,markdown_content
 FROM page_templates
@@ -21,10 +22,10 @@ ORDER BY lower(name),id`)
 
 	defer rows.Close()
 
-	var templates []PageTemplate
+	var templates []model.PageTemplate
 
 	for rows.Next() {
-		var item PageTemplate
+		var item model.PageTemplate
 		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.Markdown); err != nil {
 			return nil, err
 		}
@@ -36,35 +37,35 @@ ORDER BY lower(name),id`)
 }
 
 // PageTemplate returns one reusable page template.
-func (s *Store) PageTemplate(ctx context.Context, id int64) (PageTemplate, error) {
-	var item PageTemplate
+func (s *Store) PageTemplate(ctx context.Context, id int64) (model.PageTemplate, error) {
+	var item model.PageTemplate
 	err := s.pool.QueryRow(ctx, `
 SELECT id,name,description,markdown_content
 FROM page_templates
 WHERE id=$1`, id).
 		Scan(&item.ID, &item.Name, &item.Description, &item.Markdown)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return PageTemplate{}, ErrNotFound
+		return model.PageTemplate{}, model.ErrNotFound
 	}
 
 	return item, err
 }
 
 // CreatePageTemplate creates a reusable page template.
-func (s *Store) CreatePageTemplate(ctx context.Context, name, description, markdown string) (PageTemplate, error) {
+func (s *Store) CreatePageTemplate(ctx context.Context, name, description, markdown string) (model.PageTemplate, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return PageTemplate{}, errors.New("template name is required")
+		return model.PageTemplate{}, errors.New("template name is required")
 	}
 
-	var item PageTemplate
+	var item model.PageTemplate
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO page_templates(name,description,markdown_content)
 VALUES($1,$2,$3)
 RETURNING id,name,description,markdown_content`, name, strings.TrimSpace(description), markdown).
 		Scan(&item.ID, &item.Name, &item.Description, &item.Markdown)
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return PageTemplate{}, ErrAlreadyExists
+		return model.PageTemplate{}, model.ErrAlreadyExists
 	}
 
 	return item, err
@@ -82,10 +83,10 @@ UPDATE page_templates
 SET name=$2,description=$3,markdown_content=$4,updated_at=now()
 WHERE id=$1`, id, name, strings.TrimSpace(description), markdown)
 	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return ErrAlreadyExists
+		return model.ErrAlreadyExists
 	}
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err
@@ -97,7 +98,7 @@ func (s *Store) DeletePageTemplate(ctx context.Context, id int64) error {
 DELETE FROM page_templates
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err

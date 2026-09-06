@@ -10,7 +10,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // CreatePersonalToken issues a personal access token for the current user.
@@ -62,7 +62,7 @@ func DeletePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 			return
 		}
 		if err := tokenUseCases.DeleteUserToken(r.Context(), id, user.ID); err != nil {
-			if errors.Is(err, service.ErrNotFound) {
+			if errors.Is(err, model.ErrNotFound) {
 				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
 				return
 			}
@@ -99,7 +99,7 @@ func CreateAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 
 		issued, err := tokenUseCases.CreateToken(r.Context(), name, userID, admin.ID, expiresAt)
 		if err != nil {
-			if errors.Is(err, service.ErrNotFound) {
+			if errors.Is(err, model.ErrNotFound) {
 				httpresponse.Problem(w, http.StatusNotFound, "User not found.")
 				return
 			}
@@ -121,7 +121,7 @@ func DeleteAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 			return
 		}
 		if err := tokenUseCases.DeleteToken(r.Context(), id); err != nil {
-			if errors.Is(err, service.ErrNotFound) {
+			if errors.Is(err, model.ErrNotFound) {
 				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
 				return
 			}

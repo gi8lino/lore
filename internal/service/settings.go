@@ -2,16 +2,18 @@ package service
 
 import (
 	"context"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // settingsRepository contains persisted application configuration operations.
 type settingsRepository interface {
 	auditRepository
-	ApplicationSettings(context.Context) (ApplicationSettings, error)
-	SaveApplicationSettings(context.Context, ApplicationSettings) error
+	ApplicationSettings(context.Context) (model.ApplicationSettings, error)
+	SaveApplicationSettings(context.Context, model.ApplicationSettings) error
 	SavePDFSettings(context.Context, string) error
-	SaveAuthenticationSettings(context.Context, AuthenticationSettings) error
-	SaveRenderingSettings(context.Context, RenderingSettings) error
+	SaveAuthenticationSettings(context.Context, model.AuthenticationSettings) error
+	SaveRenderingSettings(context.Context, model.RenderingSettings) error
 }
 
 // Settings exposes persisted application configuration use cases.
@@ -21,14 +23,14 @@ type Settings struct{ repository settingsRepository }
 func NewSettings(repository settingsRepository) *Settings { return &Settings{repository: repository} }
 
 // ApplicationSettings returns the current application configuration.
-func (s *Settings) ApplicationSettings(ctx context.Context) (ApplicationSettings, error) {
+func (s *Settings) ApplicationSettings(ctx context.Context) (model.ApplicationSettings, error) {
 	return s.repository.ApplicationSettings(ctx)
 }
 
 // SaveApplicationSettings persists application settings and records the change.
 func (s *Settings) SaveApplicationSettings(
 	ctx context.Context,
-	settings ApplicationSettings,
+	settings model.ApplicationSettings,
 	actorID int64,
 ) error {
 	if err := s.repository.SaveApplicationSettings(ctx, settings); err != nil {
@@ -68,7 +70,7 @@ func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID i
 // SaveAuthenticationSettings persists authentication settings and records the change.
 func (s *Settings) SaveAuthenticationSettings(
 	ctx context.Context,
-	settings AuthenticationSettings,
+	settings model.AuthenticationSettings,
 	actorID int64,
 ) error {
 	if err := s.repository.SaveAuthenticationSettings(ctx, settings); err != nil {
@@ -90,7 +92,7 @@ func (s *Settings) SaveAuthenticationSettings(
 // SaveRenderingSettings persists rendering settings and records the change.
 func (s *Settings) SaveRenderingSettings(
 	ctx context.Context,
-	settings RenderingSettings,
+	settings model.RenderingSettings,
 	actorID int64,
 ) error {
 	if err := s.repository.SaveRenderingSettings(ctx, settings); err != nil {
@@ -110,7 +112,7 @@ func (s *Settings) SaveRenderingSettings(
 }
 
 // RecordLocalPasswordUpdated records a local recovery password change.
-func (s *Settings) RecordLocalPasswordUpdated(ctx context.Context, actor User) {
+func (s *Settings) RecordLocalPasswordUpdated(ctx context.Context, actor model.User) {
 	_ = audit(s.repository,
 		ctx,
 		actor.ID,

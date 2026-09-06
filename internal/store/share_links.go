@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -20,8 +21,8 @@ VALUES($1,$2,$3)`, pageID, tokenHash, createdBy)
 }
 
 // PageShareLink resolves an active public permalink token.
-func (s *Store) PageShareLink(ctx context.Context, tokenHash string) (PageShareLink, error) {
-	var link PageShareLink
+func (s *Store) PageShareLink(ctx context.Context, tokenHash string) (model.PageShareLink, error) {
+	var link model.PageShareLink
 	err := s.pool.QueryRow(ctx, `
 SELECT l.page_id,p.slug,p.title
 FROM page_share_links l
@@ -31,7 +32,7 @@ WHERE l.token_hash=$1
   AND p.deleted_at IS NULL`, tokenHash).Scan(&link.PageID, &link.Slug, &link.Title)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = ErrNotFound
+		err = model.ErrNotFound
 	}
 
 	return link, err

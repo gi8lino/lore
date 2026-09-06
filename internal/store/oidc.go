@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -28,35 +29,35 @@ func (s *Store) SetExternalAdminStatus(ctx context.Context, userID int64, method
 
 	tag, err := s.pool.Exec(ctx, query, userID, admin)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err
 }
 
 // OIDCUser resolves an existing Lore account by its verified OIDC issuer and subject.
-func (s *Store) OIDCUser(ctx context.Context, issuer, subject string) (User, error) {
+func (s *Store) OIDCUser(ctx context.Context, issuer, subject string) (model.User, error) {
 	issuer = strings.TrimSpace(issuer)
 	subject = strings.TrimSpace(subject)
 	if issuer == "" || subject == "" {
-		return User{}, ErrNotFound
+		return model.User{}, model.ErrNotFound
 	}
 
-	var user User
+	var user model.User
 	err := s.pool.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version,u.oidc_external_admin
 FROM oidc_identities oi
 JOIN users u ON u.id=oi.user_id
 WHERE oi.issuer=$1 AND oi.subject=$2 AND u.enabled`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion, &user.ExternalAdmin)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrNotFound
+		return model.User{}, model.ErrNotFound
 	}
 
 	return user, err
 }
 
 // OIDCIdentities returns all persisted OIDC bindings grouped by their Lore user identifier.
-func (s *Store) OIDCIdentities(ctx context.Context) ([]OIDCIdentity, error) {
+func (s *Store) OIDCIdentities(ctx context.Context) ([]model.OIDCIdentity, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT user_id,issuer,subject,created_at
 FROM oidc_identities
@@ -67,10 +68,10 @@ ORDER BY user_id,issuer,created_at`)
 
 	defer rows.Close()
 
-	identities := make([]OIDCIdentity, 0)
+	identities := make([]model.OIDCIdentity, 0)
 
 	for rows.Next() {
-		var identity OIDCIdentity
+		var identity model.OIDCIdentity
 		if err := rows.Scan(&identity.UserID, &identity.Issuer, &identity.Subject, &identity.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -82,7 +83,7 @@ ORDER BY user_id,issuer,created_at`)
 }
 
 // OIDCGroupMappings returns configured external-to-Lore group mappings.
-func (s *Store) OIDCGroupMappings(ctx context.Context) ([]OIDCGroupMapping, error) {
+func (s *Store) OIDCGroupMappings(ctx context.Context) ([]model.OIDCGroupMapping, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT m.oidc_group,g.id,g.name
 FROM oidc_group_mappings m
@@ -94,10 +95,10 @@ ORDER BY lower(m.oidc_group),m.oidc_group,g.id`)
 
 	defer rows.Close()
 
-	mappings := make([]OIDCGroupMapping, 0)
+	mappings := make([]model.OIDCGroupMapping, 0)
 
 	for rows.Next() {
-		var mapping OIDCGroupMapping
+		var mapping model.OIDCGroupMapping
 		if err := rows.Scan(&mapping.OIDCGroup, &mapping.GroupID, &mapping.GroupName); err != nil {
 			return nil, err
 		}
@@ -113,7 +114,7 @@ func (s *Store) SyncOIDCGroups(
 	ctx context.Context,
 	userID int64,
 	claimedGroups []string,
-	mappings []OIDCGroupMapping,
+	mappings []model.OIDCGroupMapping,
 	authoritative bool,
 ) error {
 	claimed := make(map[string]bool, len(claimedGroups))
@@ -171,7 +172,7 @@ ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
 }
 
 // PendingOIDCIdentities returns identities waiting for an administrator decision.
-func (s *Store) PendingOIDCIdentities(ctx context.Context) ([]PendingOIDCIdentity, error) {
+func (s *Store) PendingOIDCIdentities(ctx context.Context) ([]model.PendingOIDCIdentity, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   p.id,
@@ -208,10 +209,10 @@ ORDER BY
 
 	defer rows.Close()
 
-	identities := make([]PendingOIDCIdentity, 0)
+	identities := make([]model.PendingOIDCIdentity, 0)
 
 	for rows.Next() {
-		var identity PendingOIDCIdentity
+		var identity model.PendingOIDCIdentity
 		if err := rows.Scan(
 			&identity.ID,
 			&identity.Issuer,
@@ -239,39 +240,39 @@ ORDER BY
 func (s *Store) LoginOIDCUser(
 	ctx context.Context,
 	issuer, subject, username, email, displayName string,
-) (User, error) {
+) (model.User, error) {
 	issuer = strings.TrimSpace(issuer)
 	subject = strings.TrimSpace(subject)
 	username = strings.TrimSpace(username)
 	email = strings.TrimSpace(email)
 	displayName = strings.TrimSpace(displayName)
 	if issuer == "" || subject == "" || username == "" {
-		return User{}, errors.New("OIDC issuer, subject, and preferred username are required")
+		return model.User{}, errors.New("OIDC issuer, subject, and preferred username are required")
 	}
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	user, found, err := oidcUserForUpdate(ctx, tx, issuer, subject)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if found {
 		user, err = refreshOIDCUser(ctx, tx, user, username, email, displayName)
 		if err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if _, err := tx.Exec(ctx, `
 DELETE FROM pending_oidc_identities
 WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 
 		return user, nil
@@ -279,27 +280,27 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 
 	pendingStatus, err := pendingOIDCStatusForUpdate(ctx, tx, issuer, subject)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	// An administrator may have linked this identity while we waited for the
 	// pending-row lock. Recheck the binding before creating another account.
 	user, found, err = oidcUserForUpdate(ctx, tx, issuer, subject)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if found {
 		user, err = refreshOIDCUser(ctx, tx, user, username, email, displayName)
 		if err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if _, err := tx.Exec(ctx, `
 DELETE FROM pending_oidc_identities
 WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 
 		return user, nil
@@ -307,13 +308,13 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 
 	if pendingStatus == pendingOIDCStatusRejected {
 		if _, err := upsertPendingOIDCIdentity(ctx, tx, issuer, subject, username, email, displayName); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 
-		return User{}, ErrIdentityRejected
+		return model.User{}, model.ErrIdentityRejected
 	}
 
 	var registrationEnabled bool
@@ -321,56 +322,56 @@ WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
 SELECT allow_user_registration
 FROM application_settings
 WHERE singleton=true`).Scan(&registrationEnabled); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if !registrationEnabled {
 		if _, err := upsertPendingOIDCIdentity(ctx, tx, issuer, subject, username, email, displayName); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 
-		return User{}, ErrIdentityApprovalRequired
+		return model.User{}, model.ErrIdentityApprovalRequired
 	}
 
 	user, err = createOIDCUser(ctx, tx, issuer, subject, username, email, displayName)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM pending_oidc_identities
 WHERE issuer=$1 AND subject=$2`, issuer, subject); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	return user, nil
 }
 
 // ApprovePendingOIDCIdentity creates a new Lore user for an administrator-approved identity.
-func (s *Store) ApprovePendingOIDCIdentity(ctx context.Context, pendingID int64) (User, error) {
+func (s *Store) ApprovePendingOIDCIdentity(ctx context.Context, pendingID int64) (model.User, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	pending, err := pendingOIDCIdentityForUpdate(ctx, tx, pendingID)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if pending.Status != pendingOIDCStatusPending {
-		return User{}, ErrForbidden
+		return model.User{}, model.ErrForbidden
 	}
 
 	if _, found, err := oidcUserForUpdate(ctx, tx, pending.Issuer, pending.Subject); err != nil {
-		return User{}, err
+		return model.User{}, err
 	} else if found {
-		return User{}, ErrAlreadyExists
+		return model.User{}, model.ErrAlreadyExists
 	}
 
 	user, err := createOIDCUser(
@@ -383,53 +384,53 @@ func (s *Store) ApprovePendingOIDCIdentity(ctx context.Context, pendingID int64)
 		pending.DisplayName,
 	)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM pending_oidc_identities
 WHERE id=$1`, pendingID); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	return user, nil
 }
 
 // LinkPendingOIDCIdentity binds an approved identity to an existing Lore user.
-func (s *Store) LinkPendingOIDCIdentity(ctx context.Context, pendingID, userID int64) (User, error) {
+func (s *Store) LinkPendingOIDCIdentity(ctx context.Context, pendingID, userID int64) (model.User, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	pending, err := pendingOIDCIdentityForUpdate(ctx, tx, pendingID)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if pending.Status != pendingOIDCStatusPending {
-		return User{}, ErrForbidden
+		return model.User{}, model.ErrForbidden
 	}
 
 	if _, found, err := oidcUserForUpdate(ctx, tx, pending.Issuer, pending.Subject); err != nil {
-		return User{}, err
+		return model.User{}, err
 	} else if found {
-		return User{}, ErrAlreadyExists
+		return model.User{}, model.ErrAlreadyExists
 	}
 
-	var user User
+	var user model.User
 
 	if err := tx.QueryRow(ctx, `
 SELECT id,username,email,display_name,role
 FROM users
 WHERE id=$1
 FOR UPDATE`, userID).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrNotFound
+		return model.User{}, model.ErrNotFound
 	} else if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	// Replacing the binding invalidates sessions created with the previous
@@ -440,7 +441,7 @@ DELETE FROM oidc_identities
 WHERE user_id=$1 AND issuer=$2
 RETURNING subject`, userID, pending.Issuer).Scan(&previousSubject)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	if previousSubject != "" && previousSubject != pending.Subject {
@@ -453,22 +454,22 @@ RETURNING subject`, userID, pending.Issuer).Scan(&previousSubject)
 			user.Email,
 			user.DisplayName,
 		); err != nil {
-			return User{}, err
+			return model.User{}, err
 		}
 	}
 
 	if _, err := tx.Exec(ctx, `
 INSERT INTO oidc_identities(issuer,subject,user_id)
 VALUES($1,$2,$3)`, pending.Issuer, pending.Subject, userID); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 DELETE FROM pending_oidc_identities
 WHERE id=$1`, pendingID); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	return user, nil
@@ -492,7 +493,7 @@ SELECT username,email,display_name
 FROM users
 WHERE id=$1
 FOR UPDATE`, userID).Scan(&username, &email, &displayName); errors.Is(err, pgx.ErrNoRows) {
-		return ErrNotFound
+		return model.ErrNotFound
 	} else if err != nil {
 		return err
 	}
@@ -504,7 +505,7 @@ WHERE user_id=$1 AND issuer=$2 AND subject=$3`, userID, issuer, subject)
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 	if err := rejectOIDCIdentity(ctx, tx, issuer, subject, username, email, displayName); err != nil {
 		return err
@@ -547,14 +548,14 @@ WHERE id=$1`, pendingID, status)
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return nil
 }
 
 // oidcUserForUpdate finds and locks an account bound to one OIDC identity.
-func oidcUserForUpdate(ctx context.Context, tx pgx.Tx, issuer, subject string) (user User, found bool, err error) {
+func oidcUserForUpdate(ctx context.Context, tx pgx.Tx, issuer, subject string) (user model.User, found bool, err error) {
 	err = tx.QueryRow(ctx, `
 SELECT u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_version
 FROM oidc_identities oi
@@ -562,18 +563,18 @@ JOIN users u ON u.id=oi.user_id
 WHERE oi.issuer=$1 AND oi.subject=$2
 FOR UPDATE OF u`, issuer, subject).Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled, &user.SessionVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, false, nil
+		return model.User{}, false, nil
 	}
 	if err != nil {
-		return User{}, false, err
+		return model.User{}, false, err
 	}
 
 	return user, true, nil
 }
 
 // pendingOIDCIdentityForUpdate returns and locks one administrator-managed identity request.
-func pendingOIDCIdentityForUpdate(ctx context.Context, tx pgx.Tx, pendingID int64) (PendingOIDCIdentity, error) {
-	var pending PendingOIDCIdentity
+func pendingOIDCIdentityForUpdate(ctx context.Context, tx pgx.Tx, pendingID int64) (model.PendingOIDCIdentity, error) {
+	var pending model.PendingOIDCIdentity
 	err := tx.QueryRow(ctx, `
 SELECT id,issuer,subject,username,email,display_name,status,first_seen_at,last_seen_at
 FROM pending_oidc_identities
@@ -590,7 +591,7 @@ FOR UPDATE`, pendingID).Scan(
 		&pending.LastSeenAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return PendingOIDCIdentity{}, ErrNotFound
+		return model.PendingOIDCIdentity{}, model.ErrNotFound
 	}
 
 	return pending, err
@@ -635,13 +636,13 @@ RETURNING status`, issuer, subject, username, email, displayName).Scan(&status)
 func refreshOIDCUser(
 	ctx context.Context,
 	tx pgx.Tx,
-	user User,
+	user model.User,
 	username, email, displayName string,
-) (User, error) {
+) (model.User, error) {
 	if available, err := usernameAvailable(ctx, tx, username, user.ID); err != nil {
-		return User{}, err
+		return model.User{}, err
 	} else if !available {
-		return User{}, ErrAlreadyExists
+		return model.User{}, model.ErrAlreadyExists
 	}
 
 	user.Username = username
@@ -671,21 +672,21 @@ func createOIDCUser(
 	ctx context.Context,
 	tx pgx.Tx,
 	issuer, subject, username, email, displayName string,
-) (User, error) {
+) (model.User, error) {
 	username = strings.TrimSpace(username)
 	if username == "" {
-		return User{}, errors.New("OIDC preferred username is required")
+		return model.User{}, errors.New("OIDC preferred username is required")
 	}
 
 	available, err := usernameAvailable(ctx, tx, username, 0)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if !available {
-		return User{}, ErrAlreadyExists
+		return model.User{}, model.ErrAlreadyExists
 	}
 
-	var user User
+	var user model.User
 	if err := tx.QueryRow(ctx, `
 INSERT INTO users(username,email,display_name,last_login)
 VALUES($1,$2,$3,now())
@@ -698,12 +699,12 @@ RETURNING id,username,email,display_name,role,enabled,session_version`, username
 		&user.Enabled,
 		&user.SessionVersion,
 	); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 	if _, err := tx.Exec(ctx, `
 INSERT INTO oidc_identities(issuer,subject,user_id)
 VALUES($1,$2,$3)`, issuer, subject, user.ID); err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	return user, nil

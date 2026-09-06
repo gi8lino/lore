@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/auth"
-	"github.com/gi8lino/lore/internal/store"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ import (
 // authenticatorStub is a deterministic authenticator used to verify middleware fallback behavior.
 type authenticatorStub struct {
 	// user is returned when err is nil.
-	user store.User
+	user model.User
 	// err is the authentication result returned to the middleware.
 	err error
 	// calls counts Authenticate invocations.
@@ -27,7 +27,7 @@ type authenticatorStub struct {
 }
 
 // Authenticate returns the configured stub result.
-func (a authenticatorStub) Authenticate(*http.Request) (store.User, error) {
+func (a authenticatorStub) Authenticate(*http.Request) (model.User, error) {
 	if a.calls != nil {
 		*a.calls++
 	}
@@ -45,7 +45,7 @@ func TestAuthenticateAPIStopsOnInvalidCredentials(t *testing.T) {
 	handler := AuthenticateAPI(
 		logger,
 		authenticatorStub{err: auth.ErrInvalidCredentials, calls: &firstCalls},
-		authenticatorStub{user: store.User{ID: 1, Role: "admin"}, calls: &fallbackCalls},
+		authenticatorStub{user: model.User{ID: 1, Role: "admin"}, calls: &fallbackCalls},
 	)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -74,7 +74,7 @@ func TestAuthenticateAPIContinuesWhenCredentialsAreAbsent(t *testing.T) {
 	handler := AuthenticateAPI(
 		logger,
 		authenticatorStub{err: auth.ErrUnauthenticated},
-		authenticatorStub{user: store.User{ID: 1, Role: "admin"}, calls: &fallbackCalls},
+		authenticatorStub{user: model.User{ID: 1, Role: "admin"}, calls: &fallbackCalls},
 	)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.User(r)
 

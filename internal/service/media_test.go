@@ -5,25 +5,26 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type mediaRepositoryStub struct {
-	image          Image
+	image          model.Image
 	imageErr       error
 	deletedImageID int64
 }
 
-func (s *mediaRepositoryStub) AttachmentInfo(context.Context, int64) (Attachment, error) {
-	return Attachment{}, nil
+func (s *mediaRepositoryStub) AttachmentInfo(context.Context, int64) (model.Attachment, error) {
+	return model.Attachment{}, nil
 }
 
-func (s *mediaRepositoryStub) AttachmentContent(context.Context, int64) (AttachmentData, error) {
-	return AttachmentData{}, nil
+func (s *mediaRepositoryStub) AttachmentContent(context.Context, int64) (model.AttachmentData, error) {
+	return model.AttachmentData{}, nil
 }
 
-func (s *mediaRepositoryStub) Attachments(context.Context) ([]Attachment, error) {
+func (s *mediaRepositoryStub) Attachments(context.Context) ([]model.Attachment, error) {
 	return nil, nil
 }
 
@@ -36,19 +37,19 @@ func (s *mediaRepositoryStub) DeleteImage(_ context.Context, id int64) error {
 	return nil
 }
 
-func (s *mediaRepositoryStub) ImageInfo(context.Context, int64) (Image, error) {
+func (s *mediaRepositoryStub) ImageInfo(context.Context, int64) (model.Image, error) {
 	return s.image, s.imageErr
 }
 
-func (s *mediaRepositoryStub) ImageContent(context.Context, int64) (ImageData, error) {
-	return ImageData{}, nil
+func (s *mediaRepositoryStub) ImageContent(context.Context, int64) (model.ImageData, error) {
+	return model.ImageData{}, nil
 }
 
-func (s *mediaRepositoryStub) Images(context.Context) ([]Image, error) {
+func (s *mediaRepositoryStub) Images(context.Context) ([]model.Image, error) {
 	return nil, nil
 }
 
-func (s *mediaRepositoryStub) ImagesByUser(context.Context, int64) ([]Image, error) {
+func (s *mediaRepositoryStub) ImagesByUser(context.Context, int64) ([]model.Image, error) {
 	return nil, nil
 }
 
@@ -58,8 +59,8 @@ func (s *mediaRepositoryStub) SaveAttachment(
 	string,
 	[]byte,
 	int64,
-) (Attachment, error) {
-	return Attachment{}, nil
+) (model.Attachment, error) {
+	return model.Attachment{}, nil
 }
 
 func (s *mediaRepositoryStub) SaveImage(
@@ -68,18 +69,18 @@ func (s *mediaRepositoryStub) SaveImage(
 	string,
 	[]byte,
 	int64,
-) (Image, error) {
-	return Image{}, nil
+) (model.Image, error) {
+	return model.Image{}, nil
 }
 
 func TestDeleteImageEnforcesOwnership(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: Image{ID: 7, UploadedBy: 2}}
+	repository := &mediaRepositoryStub{image: model.Image{ID: 7, UploadedBy: 2}}
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		User{ID: 1, Role: "editor"},
+		model.User{ID: 1, Role: "editor"},
 	)
 
 	require.ErrorIs(t, err, ErrMediaForbidden)
@@ -89,7 +90,7 @@ func TestDeleteImageEnforcesOwnership(t *testing.T) {
 func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: Image{
+	repository := &mediaRepositoryStub{image: model.Image{
 		ID:         7,
 		UploadedBy: 1,
 		UsageCount: 3,
@@ -97,7 +98,7 @@ func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		User{ID: 1, Role: "editor"},
+		model.User{ID: 1, Role: "editor"},
 	)
 
 	inUse, ok := errors.AsType[*MediaInUseError](err)
@@ -110,7 +111,7 @@ func TestDeleteImageRejectsReferencedOwnedMedia(t *testing.T) {
 func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 	t.Parallel()
 
-	repository := &mediaRepositoryStub{image: Image{
+	repository := &mediaRepositoryStub{image: model.Image{
 		ID:         7,
 		UploadedBy: 2,
 		UsageCount: 3,
@@ -118,7 +119,7 @@ func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 	err := NewMedia(repository).DeleteImage(
 		context.Background(),
 		7,
-		User{ID: 1, Role: "admin"},
+		model.User{ID: 1, Role: "admin"},
 	)
 
 	require.NoError(t, err)

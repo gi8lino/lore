@@ -3,17 +3,18 @@ package store
 import (
 	"testing"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultUserPreferences(t *testing.T) {
 	t.Parallel()
 
-	preferences := DefaultUserPreferences()
+	preferences := model.DefaultUserPreferences()
 
 	assert.True(t, preferences.ShowPageContents)
-	assert.Equal(t, NavigationDensityComfortable, preferences.NavigationDensity)
-	assert.Equal(t, DefaultSidebarWidth, preferences.SidebarWidth)
+	assert.Equal(t, model.NavigationDensityComfortable, preferences.NavigationDensity)
+	assert.Equal(t, model.DefaultSidebarWidth, preferences.SidebarWidth)
 	assert.True(t, preferences.ShowNavigationGuides)
 	assert.True(t, preferences.RememberNavigationState)
 	assert.True(t, preferences.ShowPinnedPages)

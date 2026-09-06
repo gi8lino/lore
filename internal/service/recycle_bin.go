@@ -1,10 +1,14 @@
 package service
 
-import "context"
+import (
+	"context"
+
+	"github.com/gi8lino/lore/internal/model"
+)
 
 // recycleBinRepository contains deleted-page lifecycle operations.
 type recycleBinRepository interface {
-	DeletedPages(context.Context) ([]DeletedPage, error)
+	DeletedPages(context.Context) ([]model.DeletedPage, error)
 	RestorePage(context.Context, string) error
 	PermanentlyDeletePage(context.Context, string) error
 }
@@ -18,7 +22,7 @@ func NewRecycleBin(repository recycleBinRepository) *RecycleBin {
 }
 
 // DeletedPages returns pages currently held in the recycle bin.
-func (s *RecycleBin) DeletedPages(ctx context.Context) ([]DeletedPage, error) {
+func (s *RecycleBin) DeletedPages(ctx context.Context) ([]model.DeletedPage, error) {
 	return s.repository.DeletedPages(ctx)
 }
 

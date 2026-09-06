@@ -3,11 +3,12 @@ package store
 import (
 	"context"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 )
 
 // PageGroups returns the collaboration groups assigned to one page.
-func (s *Store) PageGroups(ctx context.Context, pageID int64) ([]Group, error) {
+func (s *Store) PageGroups(ctx context.Context, pageID int64) ([]model.Group, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT g.id,g.name
 FROM wiki_groups g
@@ -20,10 +21,10 @@ ORDER BY lower(g.name),g.id`, pageID)
 
 	defer rows.Close()
 
-	var groups []Group
+	var groups []model.Group
 
 	for rows.Next() {
-		var group Group
+		var group model.Group
 		if err := rows.Scan(&group.ID, &group.Name); err != nil {
 			return nil, err
 		}
@@ -35,12 +36,12 @@ ORDER BY lower(g.name),g.id`, pageID)
 }
 
 // validateAssignableGroup verifies that a user may select one group for page metadata.
-func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user User) error {
+func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user model.User) error {
 	if groupID == 0 {
 		return nil
 	}
 	if groupID < 0 {
-		return ErrForbidden
+		return model.ErrForbidden
 	}
 
 	var allowed bool
@@ -58,19 +59,19 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 	}
 
 	if !allowed {
-		return ErrForbidden
+		return model.ErrForbidden
 	}
 
 	return nil
 }
 
 // replacePageGroups validates and updates page collaboration groups in the active transaction.
-func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []int64, user User) error {
+func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []int64, user model.User) error {
 	unique := make(map[int64]struct{}, len(groupIDs))
 
 	for _, groupID := range groupIDs {
 		if groupID <= 0 {
-			return ErrForbidden
+			return model.ErrForbidden
 		}
 		if _, exists := unique[groupID]; exists {
 			continue
@@ -93,7 +94,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 		}
 
 		if !allowed {
-			return ErrForbidden
+			return model.ErrForbidden
 		}
 	}
 

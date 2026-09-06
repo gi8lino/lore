@@ -11,7 +11,6 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/model"
-	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/store"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
@@ -100,7 +99,7 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 	assert.True(t, settings.OIDCGroupSync)
 	assert.True(t, settings.OIDCGroupsAuthoritative)
 	assert.Equal(t, "/lore-admins", settings.OIDCAdminGroup)
-	assert.Equal(t, []service.OIDCGroupMapping{
+	assert.Equal(t, []model.OIDCGroupMapping{
 		{OIDCGroup: "/admins", GroupID: 7},
 		{OIDCGroup: "/family", GroupID: 9},
 	}, settings.OIDCGroupMappings)
@@ -114,13 +113,13 @@ func TestAuthenticationSettingsFromForm(t *testing.T) {
 func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T) {
 	t.Parallel()
 
-	settings := service.AuthenticationSettings{
+	settings := model.AuthenticationSettings{
 		Mode:                    "oidc",
 		OIDCIssuer:              "https://identity.example.com",
 		OIDCClientID:            "lore",
 		OIDCGroupSync:           true,
 		OIDCGroupsAuthoritative: true,
-		OIDCGroupMappings: []service.OIDCGroupMapping{
+		OIDCGroupMappings: []model.OIDCGroupMapping{
 			{OIDCGroup: "/admins", GroupID: 1},
 			{OIDCGroup: "/admins", GroupID: 2},
 		},
@@ -138,7 +137,7 @@ func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T)
 func TestAuthenticationSettingsProblems(t *testing.T) {
 	t.Parallel()
 
-	settings := service.AuthenticationSettings{
+	settings := model.AuthenticationSettings{
 		Mode:         "oidc",
 		OIDCIssuer:   "https://identity.example.com",
 		OIDCClientID: "lore",

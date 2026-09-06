@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 const pageShareTokenBytes = 32
@@ -20,9 +22,9 @@ type IssuedPageShareLink struct {
 // sharingRepository contains public page sharing operations.
 type sharingRepository interface {
 	auditRepository
-	GetPage(context.Context, string) (Page, error)
+	GetPage(context.Context, string) (model.Page, error)
 	CreatePageShareLink(context.Context, int64, int64, string) error
-	PageShareLink(context.Context, string) (PageShareLink, error)
+	PageShareLink(context.Context, string) (model.PageShareLink, error)
 }
 
 // Sharing coordinates public page permalink use cases.
@@ -39,7 +41,7 @@ func NewSharing(repository sharingRepository) *Sharing {
 func (s *Sharing) CreatePageShareLink(
 	ctx context.Context,
 	slug string,
-	actor User,
+	actor model.User,
 ) (IssuedPageShareLink, error) {
 	page, err := s.repository.GetPage(ctx, strings.TrimSpace(slug))
 	if err != nil {
@@ -72,9 +74,9 @@ func (s *Sharing) CreatePageShareLink(
 }
 
 // PageShareLink resolves an active public permalink.
-func (s *Sharing) PageShareLink(ctx context.Context, token string) (PageShareLink, error) {
+func (s *Sharing) PageShareLink(ctx context.Context, token string) (model.PageShareLink, error) {
 	if !validPageShareToken(token) {
-		return PageShareLink{}, ErrNotFound
+		return model.PageShareLink{}, model.ErrNotFound
 	}
 	return s.repository.PageShareLink(ctx, pageShareTokenHash(token))
 }

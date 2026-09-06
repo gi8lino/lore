@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 const (
@@ -46,17 +48,17 @@ type MediaInUseError struct {
 
 // mediaRepository is the persistence contract required by media use cases.
 type mediaRepository interface {
-	AttachmentInfo(context.Context, int64) (Attachment, error)
-	AttachmentContent(context.Context, int64) (AttachmentData, error)
-	Attachments(context.Context) ([]Attachment, error)
+	AttachmentInfo(context.Context, int64) (model.Attachment, error)
+	AttachmentContent(context.Context, int64) (model.AttachmentData, error)
+	Attachments(context.Context) ([]model.Attachment, error)
 	DeleteAttachment(context.Context, int64) error
 	DeleteImage(context.Context, int64) error
-	ImageContent(context.Context, int64) (ImageData, error)
-	ImageInfo(context.Context, int64) (Image, error)
-	Images(context.Context) ([]Image, error)
-	ImagesByUser(context.Context, int64) ([]Image, error)
-	SaveAttachment(context.Context, string, string, []byte, int64) (Attachment, error)
-	SaveImage(context.Context, string, string, []byte, int64) (Image, error)
+	ImageContent(context.Context, int64) (model.ImageData, error)
+	ImageInfo(context.Context, int64) (model.Image, error)
+	Images(context.Context) ([]model.Image, error)
+	ImagesByUser(context.Context, int64) ([]model.Image, error)
+	SaveAttachment(context.Context, string, string, []byte, int64) (model.Attachment, error)
+	SaveImage(context.Context, string, string, []byte, int64) (model.Image, error)
 }
 
 // Error describes the number of references blocking media deletion.
@@ -80,24 +82,24 @@ func NewMedia(repository mediaRepository) *Media {
 }
 
 // UploadImage validates, normalizes, and stores an image.
-func (s *Media) UploadImage(ctx context.Context, filename string, data []byte, actor User) (Image, error) {
+func (s *Media) UploadImage(ctx context.Context, filename string, data []byte, actor model.User) (model.Image, error) {
 	if len(data) == 0 {
-		return Image{}, ErrEmptyFile
+		return model.Image{}, ErrEmptyFile
 	}
 	if len(data) > MaxImageBytes {
-		return Image{}, ErrFileTooLarge
+		return model.Image{}, ErrFileTooLarge
 	}
 
 	contentType := http.DetectContentType(data)
 	if !SupportedImageType(contentType) {
-		return Image{}, ErrUnsupportedFileType
+		return model.Image{}, ErrUnsupportedFileType
 	}
 
 	return s.repository.SaveImage(ctx, SanitizeImageFilename(filename, contentType), contentType, data, actor.ID)
 }
 
 // DeleteImage deletes an image when the actor owns it and it is unused, or is an administrator.
-func (s *Media) DeleteImage(ctx context.Context, id int64, actor User) error {
+func (s *Media) DeleteImage(ctx context.Context, id int64, actor model.User) error {
 	image, err := s.repository.ImageInfo(ctx, id)
 	if err != nil {
 		return err
@@ -113,25 +115,25 @@ func (s *Media) DeleteImage(ctx context.Context, id int64, actor User) error {
 }
 
 // UploadAttachment validates, normalizes, and stores a documentation attachment.
-func (s *Media) UploadAttachment(ctx context.Context, filename string, data []byte, actor User) (Attachment, error) {
+func (s *Media) UploadAttachment(ctx context.Context, filename string, data []byte, actor model.User) (model.Attachment, error) {
 	if len(data) == 0 {
-		return Attachment{}, ErrEmptyFile
+		return model.Attachment{}, ErrEmptyFile
 	}
 	if len(data) > MaxAttachmentBytes {
-		return Attachment{}, ErrFileTooLarge
+		return model.Attachment{}, ErrFileTooLarge
 	}
 
 	filename = sanitizeAttachmentFilename(filename)
 	contentType, supported := attachmentTypes[strings.ToLower(filepath.Ext(filename))]
 	if !supported {
-		return Attachment{}, ErrUnsupportedFileType
+		return model.Attachment{}, ErrUnsupportedFileType
 	}
 
 	return s.repository.SaveAttachment(ctx, filename, contentType, data, actor.ID)
 }
 
 // DeleteAttachment applies the same ownership and usage policy as images.
-func (s *Media) DeleteAttachment(ctx context.Context, id int64, actor User) error {
+func (s *Media) DeleteAttachment(ctx context.Context, id int64, actor model.User) error {
 	item, err := s.repository.AttachmentInfo(ctx, id)
 	if err != nil {
 		return err
@@ -233,26 +235,26 @@ func imageExtension(contentType string) string {
 }
 
 // Images returns all uploaded images with usage metadata.
-func (s *Media) Images(ctx context.Context) ([]Image, error) {
+func (s *Media) Images(ctx context.Context) ([]model.Image, error) {
 	return s.repository.Images(ctx)
 }
 
 // ImagesByUser returns images uploaded by one user.
-func (s *Media) ImagesByUser(ctx context.Context, userID int64) ([]Image, error) {
+func (s *Media) ImagesByUser(ctx context.Context, userID int64) ([]model.Image, error) {
 	return s.repository.ImagesByUser(ctx, userID)
 }
 
 // ImageContent returns stored image bytes and metadata.
-func (s *Media) ImageContent(ctx context.Context, id int64) (ImageData, error) {
+func (s *Media) ImageContent(ctx context.Context, id int64) (model.ImageData, error) {
 	return s.repository.ImageContent(ctx, id)
 }
 
 // Attachments returns all uploaded attachments with usage metadata.
-func (s *Media) Attachments(ctx context.Context) ([]Attachment, error) {
+func (s *Media) Attachments(ctx context.Context) ([]model.Attachment, error) {
 	return s.repository.Attachments(ctx)
 }
 
 // AttachmentContent returns stored attachment bytes and metadata.
-func (s *Media) AttachmentContent(ctx context.Context, id int64) (AttachmentData, error) {
+func (s *Media) AttachmentContent(ctx context.Context, id int64) (model.AttachmentData, error) {
 	return s.repository.AttachmentContent(ctx, id)
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/httpresponse"
-	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // LocalLogin renders and processes the optional Lore-managed sign-in flow.
@@ -172,7 +172,7 @@ func Setup(
 				http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 				return
 			}
-			if errors.Is(err, service.ErrAlreadyExists) || errors.Is(err, service.ErrForbidden) {
+			if errors.Is(err, model.ErrAlreadyExists) || errors.Is(err, model.ErrForbidden) {
 				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 				return
 			}

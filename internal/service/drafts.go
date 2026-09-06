@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // pageDraftRepository persists private editor drafts independently from page revisions.
 type pageDraftRepository interface {
-	PageDraft(context.Context, int64, string) (PageDraft, error)
-	PageDrafts(context.Context, int64, int) ([]PageDraft, error)
-	SavePageDraft(context.Context, int64, string, int64, string, string, map[string][]string) (PageDraft, error)
+	PageDraft(context.Context, int64, string) (model.PageDraft, error)
+	PageDrafts(context.Context, int64, int) ([]model.PageDraft, error)
+	SavePageDraft(context.Context, int64, string, int64, string, string, map[string][]string) (model.PageDraft, error)
 	DeletePageDraft(context.Context, int64, string) error
 }
 
@@ -22,7 +24,7 @@ type PageDraftSaveInput struct {
 	Title  string
 	Slug   string
 	Values map[string][]string
-	Actor  User
+	Actor  model.User
 }
 
 // Drafts coordinates private server-side editor drafts.
@@ -36,15 +38,15 @@ func NewDrafts(repository pageDraftRepository) *Drafts {
 }
 
 // Draft returns one private draft owned by the supplied user.
-func (s *Drafts) Draft(ctx context.Context, userID int64, key string) (PageDraft, error) {
+func (s *Drafts) Draft(ctx context.Context, userID int64, key string) (model.PageDraft, error) {
 	if userID <= 0 || !validPageDraftKey(key, 0, false) {
-		return PageDraft{}, ErrNotFound
+		return model.PageDraft{}, model.ErrNotFound
 	}
 	return s.repository.PageDraft(ctx, userID, strings.TrimSpace(key))
 }
 
 // List returns a user's most recently updated private drafts.
-func (s *Drafts) List(ctx context.Context, userID int64, limit int) ([]PageDraft, error) {
+func (s *Drafts) List(ctx context.Context, userID int64, limit int) ([]model.PageDraft, error) {
 	if userID <= 0 || limit <= 0 {
 		return nil, nil
 	}
@@ -52,13 +54,13 @@ func (s *Drafts) List(ctx context.Context, userID int64, limit int) ([]PageDraft
 }
 
 // Save validates and persists one private editor draft without creating a page revision.
-func (s *Drafts) Save(ctx context.Context, input PageDraftSaveInput) (PageDraft, error) {
+func (s *Drafts) Save(ctx context.Context, input PageDraftSaveInput) (model.PageDraft, error) {
 	input.Key = strings.TrimSpace(input.Key)
 	if input.Actor.ID <= 0 {
-		return PageDraft{}, ErrForbidden
+		return model.PageDraft{}, model.ErrForbidden
 	}
 	if input.PageID < 0 || !validPageDraftKey(input.Key, input.PageID, true) {
-		return PageDraft{}, newValidationError("draft", "Invalid page draft identifier.")
+		return model.PageDraft{}, newValidationError("draft", "Invalid page draft identifier.")
 	}
 
 	if input.Values == nil {

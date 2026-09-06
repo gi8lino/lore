@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,19 +71,19 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 	}{
 		{
 			name:   "untranslated not found",
-			err:    service.ErrNotFound,
+			err:    model.ErrNotFound,
 			status: http.StatusInternalServerError,
 			write:  writeUnexpectedProblem,
 		},
 		{
 			name:   "page not found",
-			err:    service.ErrNotFound,
+			err:    model.ErrNotFound,
 			status: http.StatusNotFound,
 			write:  writePageProblem,
 		},
 		{
 			name:   "page in bin",
-			err:    service.ErrPageInBin,
+			err:    model.ErrPageInBin,
 			status: http.StatusConflict,
 			write:  writePageProblem,
 		},
@@ -103,7 +104,7 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 		},
 		{
 			name:   "page assignment forbidden",
-			err:    service.ErrForbidden,
+			err:    model.ErrForbidden,
 			status: http.StatusForbidden,
 			write:  writePageSaveProblem,
 		},
@@ -137,7 +138,7 @@ func TestWriteAdminProblem(t *testing.T) {
 	writeAdminProblem(
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		response,
-		service.ErrAlreadyExists,
+		model.ErrAlreadyExists,
 		"Group",
 	)
 

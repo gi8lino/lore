@@ -4,20 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type knowledgeContentStub struct {
-	pages    map[string]service.Page
-	snippets map[string]service.KnowledgeSnippet
+	pages    map[string]model.Page
+	snippets map[string]model.KnowledgeSnippet
 }
 
-func (s knowledgeContentStub) GetPage(_ context.Context, slug string) (service.Page, error) {
+func (s knowledgeContentStub) GetPage(_ context.Context, slug string) (model.Page, error) {
 	page, ok := s.pages[slug]
 	if !ok {
-		return service.Page{}, service.ErrNotFound
+		return model.Page{}, model.ErrNotFound
 	}
 
 	return page, nil
@@ -27,10 +27,10 @@ func (s knowledgeContentStub) KnowledgeSnippetByName(
 	_ context.Context,
 	kind string,
 	name string,
-) (service.KnowledgeSnippet, error) {
+) (model.KnowledgeSnippet, error) {
 	item, ok := s.snippets[kind+":"+name]
 	if !ok {
-		return service.KnowledgeSnippet{}, service.ErrNotFound
+		return model.KnowledgeSnippet{}, model.ErrNotFound
 	}
 
 	return item, nil
@@ -48,13 +48,13 @@ func TestExpandKnowledgeMarkdownReportsMissingContent(t *testing.T) {
 	)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, service.ErrNotFound)
+	assert.ErrorIs(t, err, model.ErrNotFound)
 }
 
 func TestExpandKnowledgeMarkdownReportsRecursiveIncludes(t *testing.T) {
 	t.Parallel()
 
-	content := knowledgeContentStub{pages: map[string]service.Page{
+	content := knowledgeContentStub{pages: map[string]model.Page{
 		"recursive": {Slug: "recursive", Markdown: "{{include:recursive}}"},
 	}}
 	_, err := expandKnowledgeMarkdown(
@@ -87,14 +87,14 @@ func TestExpandKnowledgeMarkdownReportsDepthOverflow(t *testing.T) {
 func TestExpandKnowledgeMarkdownSyntax(t *testing.T) {
 	t.Parallel()
 	content := knowledgeContentStub{
-		snippets: map[string]service.KnowledgeSnippet{
+		snippets: map[string]model.KnowledgeSnippet{
 			"variable:site":    {Content: "Lore"},
 			"snippet:greeting": {Content: "Hello"},
 			"snippet:literal":  {Content: "{{var:site}}"},
 			"snippet:a:b":      {Content: "colon"},
 			"snippet:":         {Content: "empty name"},
 		},
-		pages: map[string]service.Page{
+		pages: map[string]model.Page{
 			"guide": {Markdown: "# {{var:site}}\n{{snippet:greeting}}"},
 		},
 	}

@@ -2,13 +2,15 @@ package service
 
 import (
 	"context"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // templateRepository contains reusable page template operations.
 type templateRepository interface {
-	PageTemplates(context.Context) ([]PageTemplate, error)
-	PageTemplate(context.Context, int64) (PageTemplate, error)
-	CreatePageTemplate(context.Context, string, string, string) (PageTemplate, error)
+	PageTemplates(context.Context) ([]model.PageTemplate, error)
+	PageTemplate(context.Context, int64) (model.PageTemplate, error)
+	CreatePageTemplate(context.Context, string, string, string) (model.PageTemplate, error)
 	UpdatePageTemplate(context.Context, int64, string, string, string) error
 	DeletePageTemplate(context.Context, int64) error
 }
@@ -22,12 +24,12 @@ func NewTemplates(repository templateRepository) *Templates {
 }
 
 // PageTemplates returns all reusable page templates.
-func (s *Templates) PageTemplates(ctx context.Context) ([]PageTemplate, error) {
+func (s *Templates) PageTemplates(ctx context.Context) ([]model.PageTemplate, error) {
 	return s.repository.PageTemplates(ctx)
 }
 
 // PageTemplate returns a reusable page template by identifier.
-func (s *Templates) PageTemplate(ctx context.Context, id int64) (PageTemplate, error) {
+func (s *Templates) PageTemplate(ctx context.Context, id int64) (model.PageTemplate, error) {
 	return s.repository.PageTemplate(ctx, id)
 }
 
@@ -35,7 +37,7 @@ func (s *Templates) PageTemplate(ctx context.Context, id int64) (PageTemplate, e
 func (s *Templates) CreatePageTemplate(
 	ctx context.Context,
 	name, description, markdown string,
-) (PageTemplate, error) {
+) (model.PageTemplate, error) {
 	return s.repository.CreatePageTemplate(ctx, name, description, markdown)
 }
 

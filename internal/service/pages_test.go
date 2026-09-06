@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,7 @@ func TestMoveValidatesDestinationBeforePersistence(t *testing.T) {
 	t.Parallel()
 
 	pages := NewPages(nil)
-	err := pages.Move(context.Background(), "guide", "", MovePageOptions{}, User{})
+	err := pages.Move(context.Background(), "guide", "", model.MovePageOptions{}, model.User{})
 
 	validation, ok := errors.AsType[*ValidationError](err)
 

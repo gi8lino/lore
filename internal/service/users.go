@@ -3,22 +3,24 @@ package service
 import (
 	"context"
 	"fmt"
+
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // userRepository contains account and external identity administration operations.
 type userRepository interface {
 	auditRepository
-	Users(context.Context) ([]AdminUser, error)
-	User(context.Context, int64) (User, error)
-	UserGroups(context.Context, int64) ([]Group, error)
+	Users(context.Context) ([]model.AdminUser, error)
+	User(context.Context, int64) (model.User, error)
+	UserGroups(context.Context, int64) ([]model.Group, error)
 	UpdateUser(context.Context, int64, string, bool, []int64, *bool) error
 	RevokeUserSessions(context.Context, int64) error
-	SearchUsers(context.Context, string, int) ([]User, error)
-	OIDCIdentities(context.Context) ([]OIDCIdentity, error)
-	OIDCGroupMappings(context.Context) ([]OIDCGroupMapping, error)
-	PendingOIDCIdentities(context.Context) ([]PendingOIDCIdentity, error)
-	ApprovePendingOIDCIdentity(context.Context, int64) (User, error)
-	LinkPendingOIDCIdentity(context.Context, int64, int64) (User, error)
+	SearchUsers(context.Context, string, int) ([]model.User, error)
+	OIDCIdentities(context.Context) ([]model.OIDCIdentity, error)
+	OIDCGroupMappings(context.Context) ([]model.OIDCGroupMapping, error)
+	PendingOIDCIdentities(context.Context) ([]model.PendingOIDCIdentity, error)
+	ApprovePendingOIDCIdentity(context.Context, int64) (model.User, error)
+	LinkPendingOIDCIdentity(context.Context, int64, int64) (model.User, error)
 	SetPendingOIDCIdentityRejected(context.Context, int64, bool) error
 	RemoveOIDCIdentity(context.Context, int64, string, string) error
 	HasLocalCredential(context.Context, int64) (bool, error)
@@ -31,17 +33,17 @@ type Users struct{ repository userRepository }
 func NewUsers(repository userRepository) *Users { return &Users{repository: repository} }
 
 // Users returns accounts with administration metadata.
-func (s *Users) Users(ctx context.Context) ([]AdminUser, error) {
+func (s *Users) Users(ctx context.Context) ([]model.AdminUser, error) {
 	return s.repository.Users(ctx)
 }
 
 // User returns an account by identifier.
-func (s *Users) User(ctx context.Context, id int64) (User, error) {
+func (s *Users) User(ctx context.Context, id int64) (model.User, error) {
 	return s.repository.User(ctx, id)
 }
 
 // UserGroups returns the groups assigned to a user.
-func (s *Users) UserGroups(ctx context.Context, userID int64) ([]Group, error) {
+func (s *Users) UserGroups(ctx context.Context, userID int64) ([]model.Group, error) {
 	return s.repository.UserGroups(ctx, userID)
 }
 
@@ -69,22 +71,22 @@ func (s *Users) RevokeUserSessions(ctx context.Context, userID, actorID int64) e
 }
 
 // SearchUsers returns accounts matching a display or login query.
-func (s *Users) SearchUsers(ctx context.Context, query string, limit int) ([]User, error) {
+func (s *Users) SearchUsers(ctx context.Context, query string, limit int) ([]model.User, error) {
 	return s.repository.SearchUsers(ctx, query, limit)
 }
 
 // OIDCIdentities returns the external identities linked to user accounts.
-func (s *Users) OIDCIdentities(ctx context.Context) ([]OIDCIdentity, error) {
+func (s *Users) OIDCIdentities(ctx context.Context) ([]model.OIDCIdentity, error) {
 	return s.repository.OIDCIdentities(ctx)
 }
 
 // OIDCGroupMappings returns external-to-local group mappings.
-func (s *Users) OIDCGroupMappings(ctx context.Context) ([]OIDCGroupMapping, error) {
+func (s *Users) OIDCGroupMappings(ctx context.Context) ([]model.OIDCGroupMapping, error) {
 	return s.repository.OIDCGroupMappings(ctx)
 }
 
 // PendingOIDCIdentities returns external identities awaiting administrator action.
-func (s *Users) PendingOIDCIdentities(ctx context.Context) ([]PendingOIDCIdentity, error) {
+func (s *Users) PendingOIDCIdentities(ctx context.Context) ([]model.PendingOIDCIdentity, error) {
 	return s.repository.PendingOIDCIdentities(ctx)
 }
 
@@ -92,10 +94,10 @@ func (s *Users) PendingOIDCIdentities(ctx context.Context) ([]PendingOIDCIdentit
 func (s *Users) ApprovePendingOIDCIdentity(
 	ctx context.Context,
 	pendingID, actorID int64,
-) (User, error) {
+) (model.User, error) {
 	user, err := s.repository.ApprovePendingOIDCIdentity(ctx, pendingID)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	_ = audit(s.repository,
@@ -115,10 +117,10 @@ func (s *Users) LinkPendingOIDCIdentity(
 	ctx context.Context,
 	pendingID, userID int64,
 	actorID int64,
-) (User, error) {
+) (model.User, error) {
 	user, err := s.repository.LinkPendingOIDCIdentity(ctx, pendingID, userID)
 	if err != nil {
-		return User{}, err
+		return model.User{}, err
 	}
 
 	_ = audit(s.repository,

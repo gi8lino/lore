@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/jackc/pgx/v5"
 )
 
 // Attachments returns attachment metadata with Markdown reference counts.
-func (s *Store) Attachments(ctx context.Context) ([]Attachment, error) {
+func (s *Store) Attachments(ctx context.Context) ([]model.Attachment, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT a.id,a.filename,a.content_type,a.size_bytes,coalesce(a.uploaded_by,0),coalesce(u.display_name,u.username,''),a.created_at,
        (SELECT count(*) FROM pages p WHERE p.deleted_at IS NULL AND p.markdown_content LIKE '%/attachments/'||a.id::text||'/%')
@@ -21,10 +22,10 @@ ORDER BY a.created_at DESC,a.id DESC`)
 
 	defer rows.Close()
 
-	var attachments []Attachment
+	var attachments []model.Attachment
 
 	for rows.Next() {
-		var item Attachment
+		var item model.Attachment
 		if err := rows.Scan(&item.ID, &item.Filename, &item.ContentType, &item.SizeBytes, &item.UploadedBy, &item.Uploader, &item.CreatedAt, &item.UsageCount); err != nil {
 			return nil, err
 		}
@@ -36,8 +37,8 @@ ORDER BY a.created_at DESC,a.id DESC`)
 }
 
 // AttachmentInfo returns metadata for one attachment.
-func (s *Store) AttachmentInfo(ctx context.Context, id int64) (Attachment, error) {
-	var item Attachment
+func (s *Store) AttachmentInfo(ctx context.Context, id int64) (model.Attachment, error) {
+	var item model.Attachment
 	err := s.pool.QueryRow(ctx, `
 SELECT a.id,a.filename,a.content_type,a.size_bytes,coalesce(a.uploaded_by,0),coalesce(u.display_name,u.username,''),a.created_at,
        (SELECT count(*) FROM pages p WHERE p.deleted_at IS NULL AND p.markdown_content LIKE '%/attachments/'||a.id::text||'/%')
@@ -54,30 +55,30 @@ WHERE a.id=$1`, id).Scan(
 		&item.UsageCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Attachment{}, ErrNotFound
+		return model.Attachment{}, model.ErrNotFound
 	}
 
 	return item, err
 }
 
 // AttachmentContent returns attachment metadata and bytes.
-func (s *Store) AttachmentContent(ctx context.Context, id int64) (AttachmentData, error) {
-	var item AttachmentData
+func (s *Store) AttachmentContent(ctx context.Context, id int64) (model.AttachmentData, error) {
+	var item model.AttachmentData
 	err := s.pool.QueryRow(ctx, `
 SELECT id,filename,content_type,size_bytes,coalesce(uploaded_by,0),created_at,data
 FROM attachments
 WHERE id=$1`, id).
 		Scan(&item.ID, &item.Filename, &item.ContentType, &item.SizeBytes, &item.UploadedBy, &item.CreatedAt, &item.Data)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return AttachmentData{}, ErrNotFound
+		return model.AttachmentData{}, model.ErrNotFound
 	}
 
 	return item, err
 }
 
 // SaveAttachment stores one uploaded attachment.
-func (s *Store) SaveAttachment(ctx context.Context, filename, contentType string, data []byte, userID int64) (Attachment, error) {
-	var item Attachment
+func (s *Store) SaveAttachment(ctx context.Context, filename, contentType string, data []byte, userID int64) (model.Attachment, error) {
+	var item model.Attachment
 	err := s.pool.QueryRow(ctx, `
 INSERT INTO attachments(filename,content_type,data,size_bytes,uploaded_by)
 VALUES($1,$2,$3,$4,$5)
@@ -100,7 +101,7 @@ func (s *Store) DeleteAttachment(ctx context.Context, id int64) error {
 DELETE FROM attachments
 WHERE id=$1`, id)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrNotFound
+		return model.ErrNotFound
 	}
 
 	return err

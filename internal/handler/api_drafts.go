@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/internal/httpresponse"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 )
 
@@ -83,9 +84,9 @@ func writeDraftProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 		return
 	}
 	switch {
-	case errors.Is(err, service.ErrNotFound):
+	case errors.Is(err, model.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Draft not found.")
-	case errors.Is(err, service.ErrForbidden):
+	case errors.Is(err, model.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, "The draft operation is not permitted.")
 	default:
 		writeUnexpectedProblem(logger, w, err)

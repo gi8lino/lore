@@ -4,24 +4,24 @@ import (
 	"context"
 
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/model"
 )
 
 // renderingOptions resolves administrator-controlled Markdown rendering behavior.
 func renderingOptions(
 	ctx context.Context,
 	settingsUseCases settingsService,
-) (options md.Options, rendering service.RenderingSettings, err error) {
+) (options md.Options, rendering model.RenderingSettings, err error) {
 	settings, err := settingsUseCases.ApplicationSettings(ctx)
 	if err != nil {
-		return md.Options{}, service.RenderingSettings{}, err
+		return md.Options{}, model.RenderingSettings{}, err
 	}
 
 	return renderingOptionsFromSettings(settings.Rendering), settings.Rendering, nil
 }
 
 // renderingOptionsFromSettings maps persisted rendering settings to Markdown renderer options.
-func renderingOptionsFromSettings(rendering service.RenderingSettings) md.Options {
+func renderingOptionsFromSettings(rendering model.RenderingSettings) md.Options {
 	return md.Options{
 		WikiLinks:          rendering.WikiLinks,
 		Callouts:           rendering.Callouts,

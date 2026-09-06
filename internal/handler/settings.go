@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gi8lino/lore/internal/httpresponse"
-
 	"github.com/gi8lino/lore/internal/auth"
+	"github.com/gi8lino/lore/internal/httpresponse"
+	"github.com/gi8lino/lore/internal/model"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/themes"
 )
@@ -168,7 +168,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			return
 		}
 
-		preferences := service.UserPreferences{
+		preferences := model.UserPreferences{
 			Theme:                    selectedTheme.Title,
 			ShowPageContents:         r.FormValue("show_page_contents") == "on",
 			NavigationDensity:        density,
