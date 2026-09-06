@@ -1,7 +1,8 @@
 // Administrator group-member picker behavior.
 
 import { showNotice } from "../../core/dialogs.ts";
-import { errorMessage, responseProblem } from "../../core/http.ts";
+import { isRecord } from "../../core/guards.ts";
+import { errorMessage, requestJSON } from "../../core/http.ts";
 
 interface GroupMember {
   id: number;
@@ -11,11 +12,14 @@ interface GroupMember {
 }
 
 function isGroupMember(value: unknown): value is GroupMember {
-  if (typeof value !== "object" || value === null) return false;
-
-  const member = value as Partial<GroupMember>;
-
-  return typeof member.id === "number" && typeof member.username === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.username === "string" &&
+    (value.email === undefined || typeof value.email === "string") &&
+    (value.display_name === undefined ||
+      typeof value.display_name === "string")
+  );
 }
 
 function groupMembers(value: unknown): GroupMember[] {
@@ -89,11 +93,9 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
       remove.addEventListener("click", async () => {
         remove.disabled = true;
         try {
-          const response = await fetch(`${groupMembersURL}/${member.id}`, {
+          await requestJSON(`${groupMembersURL}/${member.id}`, {
             method: "DELETE",
-            headers: { Accept: "application/json" },
           });
-          if (!response.ok) throw await responseProblem(response);
 
           members = members.filter((item) => item.id !== member.id);
           renderMembers();
@@ -117,12 +119,7 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
   // Loads members.
   async function loadMembers(): Promise<void> {
     try {
-      const response = await fetch(groupMembersURL, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw await responseProblem(response);
-
-      members = groupMembers(await response.json());
+      members = groupMembers(await requestJSON(groupMembersURL));
       renderMembers();
     } catch (error) {
       console.error("group members failed", error);
@@ -138,16 +135,11 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
     option.disabled = true;
 
     try {
-      const response = await fetch(groupMembersURL, {
+      const payload = await requestJSON(groupMembersURL, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id }),
       });
-      const payload: unknown = await response.json().catch(() => ({}));
-      if (!response.ok) throw await responseProblem(response, payload);
       if (!isGroupMember(payload)) throw new Error("Invalid member response.");
 
       if (!members.some((member) => member.id === payload.id))
@@ -224,16 +216,12 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
     controller = new AbortController();
 
     try {
-      const response = await fetch(
+      const payload = await requestJSON(
         `${userSearchURL}?q=${encodeURIComponent(query)}`,
-        {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        },
+        { signal: controller.signal },
       );
-      if (!response.ok) throw await responseProblem(response);
 
-      renderResults(groupMembers(await response.json()));
+      renderResults(groupMembers(payload));
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
 

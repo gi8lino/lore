@@ -1,6 +1,7 @@
 // Editor write, split, and preview modes.
 
-import { errorMessage, responseProblem } from "../../core/http.ts";
+import { isRecord } from "../../core/guards.ts";
+import { errorMessage, requestJSON } from "../../core/http.ts";
 import { renderMermaid, setupMarkdownEnhancements } from "../markdown.ts";
 import { preferredEditorMode, rememberEditorMode } from "./experience.ts";
 
@@ -13,11 +14,7 @@ interface PreviewPayload {
 }
 
 function isPreviewPayload(value: unknown): value is PreviewPayload {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as Partial<PreviewPayload>).html === "string"
-  );
+  return isRecord(value) && typeof value.html === "string";
 }
 
 function editorMode(value: string | undefined): EditorMode {
@@ -104,20 +101,15 @@ function setupEditorPreview(form: HTMLFormElement): void {
     previewStatus.textContent = "Rendering preview…";
 
     try {
-      const response = await fetch(previewEndpoint, {
+      const payload = await requestJSON(previewEndpoint, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           markdown: sourceEditor.value,
           slug: slug?.value || "",
         }),
         signal: controller.signal,
       });
-      const payload: unknown = await response.json();
-      if (!response.ok) throw await responseProblem(response, payload);
       if (!isPreviewPayload(payload))
         throw new Error("Invalid preview response.");
 

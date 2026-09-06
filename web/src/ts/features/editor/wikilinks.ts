@@ -1,5 +1,8 @@
 // Wiki-link autocomplete in the Markdown editor.
 
+import { isRecord } from "../../core/guards.ts";
+import { requestJSON } from "../../core/http.ts";
+
 const resultLimit = 8;
 
 interface WikiLinkTrigger {
@@ -13,11 +16,11 @@ interface WikiLinkPage {
 }
 
 function isWikiLinkPage(value: unknown): value is WikiLinkPage {
-  if (typeof value !== "object" || value === null) return false;
-
-  const page = value as Partial<WikiLinkPage>;
-
-  return typeof page.slug === "string" && typeof page.title === "string";
+  return (
+    isRecord(value) &&
+    typeof value.slug === "string" &&
+    typeof value.title === "string"
+  );
 }
 
 // Finds an unfinished wiki link at the caret.
@@ -157,13 +160,10 @@ function setupWikiLinks(form: HTMLFormElement): void {
     const currentRequest = ++request;
 
     try {
-      const response = await fetch(
+      const payload = await requestJSON(
         `/api/search?q=${encodeURIComponent(next.query)}`,
-        { headers: { Accept: "application/json" } },
       );
-      if (!response.ok || currentRequest !== request) return;
-
-      const payload: unknown = await response.json();
+      if (currentRequest !== request) return;
 
       results = Array.isArray(payload)
         ? payload.filter(isWikiLinkPage).slice(0, resultLimit)

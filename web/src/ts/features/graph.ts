@@ -1,5 +1,7 @@
 // Interactive knowledge graph rendering and inspection.
 
+import { requestJSON } from "../core/http.ts";
+
 type SVGAttributes = Record<string, string | number>;
 
 interface GraphNode {
@@ -306,14 +308,7 @@ function setupGraph(root: HTMLElement): void {
 
   async function loadGraph(url: string): Promise<void> {
     try {
-      const response = await fetch(url, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const value: unknown = await response.json();
-
-      graph = normalizedGraph(value);
+      graph = normalizedGraph(await requestJSON(url));
       render();
     } catch {
       emptyState.textContent = "The knowledge graph could not be loaded.";

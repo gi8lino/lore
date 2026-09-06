@@ -1,11 +1,9 @@
 // Notification inbox interactions.
 
+import { requestJSON } from "../core/http.ts";
+
 async function markRead(id: string): Promise<void> {
-  const response = await fetch(`/api/notifications/${id}/read`, {
-    method: "POST",
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  await requestJSON(`/api/notifications/${id}/read`, { method: "POST" });
 }
 
 function decrementNotificationBadge(menu: HTMLElement): void {

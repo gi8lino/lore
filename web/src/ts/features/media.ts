@@ -1,7 +1,8 @@
 // Image upload, library, and Markdown insertion.
 
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
-import { errorMessage, responseProblem } from "../core/http.ts";
+import { isRecord } from "../core/guards.ts";
+import { errorMessage, requestJSON } from "../core/http.ts";
 import { insertMarkdownAtSelection } from "./editor/toolbar.ts";
 
 export type ImageItem = {
@@ -17,16 +18,13 @@ export type ImageItem = {
 };
 
 function isImageItem(value: unknown): value is ImageItem {
-  if (typeof value !== "object" || value === null) return false;
-
-  const item = value as Partial<ImageItem>;
-
   return (
-    typeof item.id === "number" &&
-    typeof item.filename === "string" &&
-    typeof item.size_bytes === "number" &&
-    typeof item.usage_count === "number" &&
-    typeof item.url === "string"
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.filename === "string" &&
+    typeof value.size_bytes === "number" &&
+    typeof value.usage_count === "number" &&
+    typeof value.url === "string"
   );
 }
 
@@ -48,13 +46,10 @@ async function uploadImage(url: string, file: File): Promise<ImageItem> {
 
   data.append("file", file);
 
-  const response = await fetch(url, {
+  const payload = await requestJSON(url, {
     method: "POST",
-    headers: { Accept: "application/json" },
     body: data,
   });
-  const payload: unknown = await response.json();
-  if (!response.ok) throw await responseProblem(response, payload);
   if (!isImageItem(payload)) throw new Error("Invalid image response.");
 
   return payload;
@@ -179,12 +174,7 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
     mediaBody.innerHTML = '<p class="muted">Loading images…</p>';
 
     try {
-      const response = await fetch(mediaListURL, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw await responseProblem(response);
-
-      const payload: unknown = await response.json();
+      const payload = await requestJSON(mediaListURL);
 
       images = Array.isArray(payload) ? payload.filter(isImageItem) : [];
       loaded = true;
@@ -334,14 +324,7 @@ async function deleteMediaImage(button: HTMLButtonElement): Promise<void> {
   button.disabled = true;
 
   try {
-    const response = await fetch(deleteURL, {
-      method: "DELETE",
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => ({}));
-      throw await responseProblem(response, payload);
-    }
+    await requestJSON(deleteURL, { method: "DELETE" });
 
     item.remove();
 

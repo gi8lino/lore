@@ -1,6 +1,6 @@
 // Editor tag chips and autocomplete.
 
-import { responseProblem } from "../../core/http.ts";
+import { requestJSON } from "../../core/http.ts";
 
 interface RestoreDraftDetail {
   values?: Record<string, string[]>;
@@ -120,12 +120,7 @@ function setupTagEditor(editor: HTMLElement): void {
     if (tagsLoaded) return;
 
     try {
-      const response = await fetch(tagSource, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw await responseProblem(response);
-
-      const payload: unknown = await response.json();
+      const payload = await requestJSON(tagSource);
 
       availableTags = Array.isArray(payload)
         ? payload.filter((tag): tag is string => typeof tag === "string")

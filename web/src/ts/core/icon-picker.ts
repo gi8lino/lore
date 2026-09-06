@@ -1,5 +1,8 @@
 // Reusable Lucide icon picker behavior.
 
+import { isRecord } from "./guards.ts";
+import { requestJSON } from "./http.ts";
+
 interface IconOption {
   name: string;
   label: string;
@@ -11,12 +14,22 @@ interface IconPage {
   has_more: boolean;
 }
 
+function isIconOption(value: unknown): value is IconOption {
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.label === "string" &&
+    typeof value.svg === "string"
+  );
+}
+
 function isIconPage(value: unknown): value is IconPage {
-  if (typeof value !== "object" || value === null) return false;
-
-  const page = value as Partial<IconPage>;
-
-  return Array.isArray(page.items) && typeof page.has_more === "boolean";
+  return (
+    isRecord(value) &&
+    Array.isArray(value.items) &&
+    value.items.every(isIconOption) &&
+    typeof value.has_more === "boolean"
+  );
 }
 
 export function setupIconPicker(dialog: HTMLDialogElement): void {
@@ -139,13 +152,9 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
 
     try {
       const separator = iconsURL.includes("?") ? "&" : "?";
-      const response = await fetch(
+      const value = await requestJSON(
         `${iconsURL}${separator}q=${encodeURIComponent(query)}&offset=${offset}`,
-        { headers: { Accept: "application/json" } },
       );
-      if (!response.ok || currentRequest !== requestNumber) return;
-
-      const value: unknown = await response.json();
       if (!isIconPage(value) || currentRequest !== requestNumber) return;
 
       const options: IconOption[] = [];

@@ -1,5 +1,8 @@
 // Global command palette search and keyboard interaction.
 
+import { isRecord } from "./guards.ts";
+import { requestJSON } from "./http.ts";
+
 const maxResults = 7;
 
 interface CommandPage {
@@ -8,11 +11,11 @@ interface CommandPage {
 }
 
 function isCommandPage(value: unknown): value is CommandPage {
-  if (typeof value !== "object" || value === null) return false;
-
-  const page = value as Partial<CommandPage>;
-
-  return typeof page.slug === "string" && typeof page.title === "string";
+  return (
+    isRecord(value) &&
+    typeof value.slug === "string" &&
+    typeof value.title === "string"
+  );
 }
 
 // Wires command-palette search, navigation, and actions.
@@ -108,13 +111,10 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
     const current = ++requestID;
 
     try {
-      const response = await fetch(
+      const value = await requestJSON(
         `/api/search?q=${encodeURIComponent(query)}`,
-        { headers: { Accept: "application/json" } },
       );
-      if (!response.ok || current !== requestID) return;
-
-      const value: unknown = await response.json();
+      if (current !== requestID) return;
 
       pages = Array.isArray(value)
         ? value.filter(isCommandPage).slice(0, maxResults)

@@ -1,5 +1,7 @@
 // Editor slash-command matching and menu behavior.
 
+import { requestJSON } from "../../core/http.ts";
+
 interface SlashCommand {
   id: string;
   label: string;
@@ -147,12 +149,7 @@ function setupSlashCommands(form: HTMLFormElement): void {
 
   async function loadReusableCommands(): Promise<void> {
     try {
-      const response = await fetch("/api/editor/catalog", {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) return;
-
-      const catalog: unknown = await response.json();
+      const catalog = await requestJSON("/api/editor/catalog");
       const snippets = catalogSnippets(catalog);
       if (!snippets.length) return;
 

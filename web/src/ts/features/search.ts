@@ -1,6 +1,7 @@
 // Live global search behavior.
 
-import { responseProblem } from "../core/http.ts";
+import { isRecord } from "../core/guards.ts";
+import { requestJSON } from "../core/http.ts";
 
 interface SearchPage {
   slug: string;
@@ -8,11 +9,11 @@ interface SearchPage {
 }
 
 function isSearchPage(value: unknown): value is SearchPage {
-  if (typeof value !== "object" || value === null) return false;
-
-  const page = value as Partial<SearchPage>;
-
-  return typeof page.slug === "string" && typeof page.title === "string";
+  return (
+    isRecord(value) &&
+    typeof value.slug === "string" &&
+    typeof value.title === "string"
+  );
 }
 
 // Wires live search behavior.
@@ -103,16 +104,10 @@ function setupLiveSearch(form: HTMLFormElement): void {
     requestController = new AbortController();
 
     try {
-      const response = await fetch(
+      const payload = await requestJSON(
         `/api/search?q=${encodeURIComponent(searchInput.value.trim())}`,
-        {
-          headers: { Accept: "application/json" },
-          signal: requestController.signal,
-        },
+        { signal: requestController.signal },
       );
-      if (!response.ok) throw await responseProblem(response);
-
-      const payload: unknown = await response.json();
 
       renderResults(Array.isArray(payload) ? payload.filter(isSearchPage) : []);
     } catch (error) {

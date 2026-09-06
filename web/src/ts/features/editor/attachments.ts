@@ -1,6 +1,8 @@
 // Editor attachment upload and insertion.
 
 import { requestConfirmation } from "../../core/dialogs.ts";
+import { isRecord } from "../../core/guards.ts";
+import { requestJSON } from "../../core/http.ts";
 import { insertMarkdownAtSelection } from "./toolbar.ts";
 
 export interface AttachmentItem {
@@ -12,15 +14,12 @@ export interface AttachmentItem {
 }
 
 function isAttachmentItem(value: unknown): value is AttachmentItem {
-  if (typeof value !== "object" || value === null) return false;
-
-  const item = value as Partial<AttachmentItem>;
-
   return (
-    typeof item.id === "number" &&
-    typeof item.filename === "string" &&
-    typeof item.size_bytes === "number" &&
-    typeof item.url === "string"
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.filename === "string" &&
+    typeof value.size_bytes === "number" &&
+    typeof value.url === "string"
   );
 }
 
@@ -107,11 +106,12 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
       )
         return;
 
-      const response = await fetch(`/api/attachments/${item.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) element.remove();
+      try {
+        await requestJSON(`/api/attachments/${item.id}`, { method: "DELETE" });
+        element.remove();
+      } catch (error) {
+        console.error("attachment deletion failed", error);
+      }
     });
     actions.append(insert, remove);
     element.append(info, actions);
@@ -122,16 +122,17 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
   async function load(): Promise<void> {
     attachmentBody.innerHTML = '<p class="muted">Loading files…</p>';
 
-    const response = await fetch(attachmentListURL, {
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) {
+    let payload: unknown;
+
+    try {
+      payload = await requestJSON(attachmentListURL);
+    } catch (error) {
+      console.error("attachment library failed", error);
       attachmentBody.innerHTML =
         '<p class="muted">Files could not be loaded.</p>';
       return;
     }
 
-    const payload: unknown = await response.json();
     const items = Array.isArray(payload)
       ? payload.filter(isAttachmentItem)
       : [];
@@ -166,16 +167,19 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
     data.append("file", file);
     attachmentStatus.textContent = `Uploading ${file.name}…`;
 
-    const response = await fetch(attachmentUploadURL, {
-      method: "POST",
-      body: data,
-    });
-    if (!response.ok) {
+    let payload: unknown;
+
+    try {
+      payload = await requestJSON(attachmentUploadURL, {
+        method: "POST",
+        body: data,
+      });
+    } catch (error) {
+      console.error("attachment upload failed", error);
       attachmentStatus.textContent = "Upload failed.";
       return;
     }
 
-    const payload: unknown = await response.json();
     if (!isAttachmentItem(payload)) {
       attachmentStatus.textContent = "Upload returned an invalid response.";
       return;

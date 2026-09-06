@@ -2,7 +2,8 @@
 
 import { copyText } from "../core/clipboard.ts";
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
-import { errorMessage, responseProblem } from "../core/http.ts";
+import { isRecord } from "../core/guards.ts";
+import { errorMessage, requestJSON } from "../core/http.ts";
 
 interface TokenRecord {
   id: number;
@@ -18,24 +19,24 @@ interface CreateTokenResponse {
 }
 
 function isTokenRecord(value: unknown): value is TokenRecord {
-  if (typeof value !== "object" || value === null) return false;
-
-  const token = value as Partial<TokenRecord>;
-
   return (
-    typeof token.id === "number" &&
-    typeof token.name === "string" &&
-    typeof token.username === "string" &&
-    typeof token.creator === "string"
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    typeof value.name === "string" &&
+    typeof value.username === "string" &&
+    typeof value.creator === "string" &&
+    (value.expires_at === undefined ||
+      value.expires_at === null ||
+      typeof value.expires_at === "string")
   );
 }
 
 function isCreateTokenResponse(value: unknown): value is CreateTokenResponse {
-  if (typeof value !== "object" || value === null) return false;
-
-  const response = value as Partial<CreateTokenResponse>;
-
-  return typeof response.secret === "string" && isTokenRecord(response.token);
+  return (
+    isRecord(value) &&
+    typeof value.secret === "string" &&
+    isTokenRecord(value.token)
+  );
 }
 
 // Renders token secret.
@@ -139,16 +140,13 @@ async function createToken(form: HTMLFormElement): Promise<void> {
   submit.disabled = true;
 
   try {
-    const response = await fetch(form.action, {
+    const payload = await requestJSON(form.action, {
       method: "POST",
       headers: {
-        Accept: "application/json",
         "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
       },
       body: formBody(form),
     });
-    const payload: unknown = await response.json();
-    if (!response.ok) throw await responseProblem(response, payload);
     if (!isCreateTokenResponse(payload))
       throw new Error("Invalid token response.");
 
@@ -193,14 +191,7 @@ async function revokeToken(button: HTMLButtonElement): Promise<void> {
   button.disabled = true;
 
   try {
-    const response = await fetch(deleteURL, {
-      method: "DELETE",
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => ({}));
-      throw await responseProblem(response, payload);
-    }
+    await requestJSON(deleteURL, { method: "DELETE" });
 
     button.closest("[data-token-row]")?.remove();
   } catch (error) {

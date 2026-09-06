@@ -1,5 +1,8 @@
 // Client-side search for filesystem-backed static Lore sites.
 
+import { isRecord } from "../core/guards.ts";
+import { requestJSON } from "../core/http.ts";
+
 interface StaticSearchEntry {
   title: string;
   url: string;
@@ -12,14 +15,11 @@ interface RankedEntry {
 }
 
 function isStaticSearchEntry(value: unknown): value is StaticSearchEntry {
-  if (typeof value !== "object" || value === null) return false;
-
-  const entry = value as Partial<StaticSearchEntry>;
-
   return (
-    typeof entry.title === "string" &&
-    typeof entry.url === "string" &&
-    typeof entry.text === "string"
+    isRecord(value) &&
+    typeof value.title === "string" &&
+    typeof value.url === "string" &&
+    typeof value.text === "string"
   );
 }
 
@@ -32,12 +32,7 @@ let indexPromise: Promise<StaticSearchEntry[]> | null = null;
 
 async function fetchIndex(): Promise<StaticSearchEntry[]> {
   try {
-    const response = await fetch(searchIndexURL(), {
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const payload: unknown = await response.json();
+    const payload = await requestJSON(searchIndexURL());
 
     return Array.isArray(payload) ? payload.filter(isStaticSearchEntry) : [];
   } catch (error: unknown) {

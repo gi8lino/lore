@@ -1,5 +1,7 @@
 // User mention detection and autocomplete.
 
+import { requestJSON } from "../core/http.ts";
+
 const resultLimit = 50;
 
 type Fence = { character: string; length: number };
@@ -325,15 +327,12 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     const currentRequest = ++request;
 
     try {
-      const response = await fetch(
+      const payload = await requestJSON(
         `/api/mentions/users?q=${encodeURIComponent(next.query)}`,
-        {
-          headers: { Accept: "application/json" },
-        },
       );
-      if (!response.ok || currentRequest !== request) return;
+      if (currentRequest !== request) return;
 
-      results = mentionUsers(await response.json()).slice(0, resultLimit);
+      results = mentionUsers(payload).slice(0, resultLimit);
       active = results.length ? 0 : -1;
       render();
     } catch {

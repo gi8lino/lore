@@ -1,5 +1,7 @@
 // Editor diagnostics, outline, and metadata assistance.
 
+import { requestJSON } from "../../core/http.ts";
+
 const catalogURL = "/api/editor/catalog";
 
 type MarkdownHeading = { level: number; title: string; offset: number };
@@ -570,13 +572,7 @@ function setupIntelligence(form: HTMLFormElement): void {
 
   async function loadCatalog(url: string): Promise<void> {
     try {
-      const response = await fetch(url, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const value: unknown = await response.json();
-      catalog = normalizedCatalog(value);
+      catalog = normalizedCatalog(await requestJSON(url));
     } catch {
       // The editor remains useful without the optional catalog.
     }
