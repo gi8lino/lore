@@ -1,5 +1,6 @@
 // Editor write, split, and preview modes.
 
+import { createLatestRequest, isAbortError } from "../../core/async.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
 import { renderMermaid, setupMarkdownEnhancements } from "../markdown.ts";
@@ -88,15 +89,15 @@ function setupEditorPreview(form: HTMLFormElement): void {
   const previewPanel = preview;
   const previewContent = content;
   const previewStatus = status;
-  let controller: AbortController | null = null;
+  const previewRequests = createLatestRequest();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let mode: EditorMode = "write";
   let syncing = false;
 
   // Renders preview.
   async function renderPreview(): Promise<void> {
-    controller?.abort();
-    controller = new AbortController();
+    const signal = previewRequests.next();
+
     previewStatus.hidden = false;
     previewStatus.textContent = "Rendering preview…";
 
@@ -108,7 +109,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
           markdown: sourceEditor.value,
           slug: slug?.value || "",
         }),
-        signal: controller.signal,
+        signal,
       });
       if (!isPreviewPayload(payload))
         throw new Error("Invalid preview response.");
@@ -118,7 +119,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
       setupMarkdownEnhancements(previewPanel);
       await renderMermaid(previewPanel);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (isAbortError(error)) return;
 
       console.error("markdown preview failed", error);
       previewStatus.hidden = false;

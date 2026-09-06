@@ -1,5 +1,6 @@
 // Live global search behavior.
 
+import { createLatestRequest, isAbortError } from "../core/async.ts";
 import { isRecord } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
 
@@ -30,7 +31,7 @@ function setupLiveSearch(form: HTMLFormElement): void {
   results.hidden = true;
   form.append(results);
 
-  let requestController: AbortController | null = null;
+  const searchRequests = createLatestRequest();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeIndex = -1;
   let resultLinks: HTMLAnchorElement[] = [];
@@ -100,18 +101,17 @@ function setupLiveSearch(form: HTMLFormElement): void {
 
   // Runs the current live-search query.
   async function search(): Promise<void> {
-    requestController?.abort();
-    requestController = new AbortController();
+    const signal = searchRequests.next();
 
     try {
       const payload = await requestJSON(
         `/api/search?q=${encodeURIComponent(searchInput.value.trim())}`,
-        { signal: requestController.signal },
+        { signal },
       );
 
       renderResults(Array.isArray(payload) ? payload.filter(isSearchPage) : []);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (isAbortError(error)) return;
 
       console.error("live search failed", error);
       closeResults();

@@ -1,5 +1,10 @@
 // Administrator group-member picker behavior.
 
+import {
+  createDebouncer,
+  createLatestRequest,
+  isAbortError,
+} from "../../core/async.ts";
 import { showNotice } from "../../core/dialogs.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
@@ -50,8 +55,8 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
   const resultList = results;
   const renderedMembers = memberList;
   let members: GroupMember[] = [];
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let controller: AbortController | null = null;
+  const searchRequests = createLatestRequest();
+  const searchDebouncer = createDebouncer(() => void searchPeople(), 140);
 
   // Returns IDs for the currently rendered group members.
   function memberIDs(): Set<number> {
@@ -206,34 +211,30 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
   async function searchPeople(): Promise<void> {
     const query = personInput.value.trim();
     if ([...query].length < 2) {
-      controller?.abort();
+      searchRequests.abort();
       resultList.hidden = true;
       resultList.replaceChildren();
       return;
     }
 
-    controller?.abort();
-    controller = new AbortController();
+    const signal = searchRequests.next();
 
     try {
       const payload = await requestJSON(
         `${userSearchURL}?q=${encodeURIComponent(query)}`,
-        { signal: controller.signal },
+        { signal },
       );
 
       renderResults(groupMembers(payload));
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (isAbortError(error)) return;
 
       console.error("person search failed", error);
       resultList.hidden = true;
     }
   }
 
-  personInput.addEventListener("input", () => {
-    if (timer !== undefined) clearTimeout(timer);
-    timer = setTimeout(() => void searchPeople(), 140);
-  });
+  personInput.addEventListener("input", () => searchDebouncer.schedule());
   personInput.addEventListener("blur", () =>
     setTimeout(() => {
       resultList.hidden = true;

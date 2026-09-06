@@ -1,5 +1,10 @@
 // Reusable Lucide icon picker behavior.
 
+import {
+  createDebouncer,
+  createLatestRequest,
+  isAbortError,
+} from "./async.ts";
 import { isRecord } from "./guards.ts";
 import { requestJSON } from "./http.ts";
 
@@ -48,9 +53,12 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   const emptyState = empty;
 
   const iconsURL = dialog.dataset.iconsUrl || "/api/icons";
+  const optionRequests = createLatestRequest();
+  const searchDebouncer = createDebouncer(
+    () => void loadOptions(searchInput.value.trim()),
+    120,
+  );
   let activeOwner: HTMLElement | null = null;
-  let requestNumber = 0;
-  let searchTimer: ReturnType<typeof setTimeout> | undefined;
   let currentQuery = "";
   let nextOffset = 0;
   let hasMore = false;
@@ -144,7 +152,9 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
       emptyState.hidden = true;
     }
 
-    const currentRequest = append ? requestNumber : ++requestNumber;
+    const signal = append ? optionRequests.current() : optionRequests.next();
+    if (!signal) return;
+
     const offset = append ? nextOffset : 0;
 
     loading = true;
@@ -154,8 +164,9 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
       const separator = iconsURL.includes("?") ? "&" : "?";
       const value = await requestJSON(
         `${iconsURL}${separator}q=${encodeURIComponent(query)}&offset=${offset}`,
+        { signal },
       );
-      if (!isIconPage(value) || currentRequest !== requestNumber) return;
+      if (!isIconPage(value) || signal.aborted) return;
 
       const options: IconOption[] = [];
 
@@ -183,10 +194,11 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
       }
 
       emptyState.hidden = iconGrid.childElementCount !== 0;
-    } catch {
-      if (currentRequest === requestNumber) hasMore = false;
+    } catch (error) {
+      if (isAbortError(error)) return;
+      if (!signal.aborted) hasMore = false;
     } finally {
-      if (currentRequest === requestNumber) {
+      if (!signal.aborted) {
         loading = false;
         iconGrid.removeAttribute("aria-busy");
       }
@@ -204,6 +216,10 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
 
   // Closes picker.
   function closePicker(): void {
+    searchDebouncer.cancel();
+    optionRequests.abort();
+    loading = false;
+    iconGrid.removeAttribute("aria-busy");
     dialog.close();
     activeOwner = null;
   }
@@ -217,13 +233,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
     });
   }
 
-  searchInput.addEventListener("input", () => {
-    if (searchTimer !== undefined) clearTimeout(searchTimer);
-    searchTimer = setTimeout(
-      () => void loadOptions(searchInput.value.trim()),
-      120,
-    );
-  });
+  searchInput.addEventListener("input", () => searchDebouncer.schedule());
   iconGrid.addEventListener("scroll", () => {
     if (
       iconGrid.scrollHeight - iconGrid.scrollTop - iconGrid.clientHeight <
