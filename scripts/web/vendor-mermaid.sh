@@ -19,5 +19,5 @@ archive=$(
 )
 
 mkdir -p "$MERMAID_OUTPUT_DIR"
-tar -xOf "$workdir/$archive" package/dist/mermaid.min.js > "$MERMAID_OUTPUT_DIR/mermaid.min.js"
-tar -xOf "$workdir/$archive" package/LICENSE > "$MERMAID_OUTPUT_DIR/LICENSE"
+tar -xOf "$workdir/$archive" package/dist/mermaid.min.js >"$MERMAID_OUTPUT_DIR/mermaid.min.js"
+tar -xOf "$workdir/$archive" package/LICENSE >"$MERMAID_OUTPUT_DIR/LICENSE"

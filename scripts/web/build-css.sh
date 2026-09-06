@@ -25,15 +25,15 @@ if [ "$declared" -ne "$parsed" ]; then
 fi
 
 mkdir -p "$output_dir"
-: > "$output"
+: >"$output"
 
 printf '%s\n' "$imports" | while IFS= read -r relative; do
   [ -n "$relative" ] || continue
   case "$relative" in
-    /*|*../*|../*|*'/..')
-      echo "CSS import must stay below $source_dir: $relative" >&2
-      exit 1
-      ;;
+  /* | *../* | ../* | *'/..')
+    echo "CSS import must stay below $source_dir: $relative" >&2
+    exit 1
+    ;;
   esac
 
   source_file="$source_dir/$relative"
@@ -41,7 +41,7 @@ printf '%s\n' "$imports" | while IFS= read -r relative; do
     echo "CSS import not found: $source_file" >&2
     exit 1
   fi
-  cat "$source_file" >> "$output"
+  cat "$source_file" >>"$output"
 done
 
 # The source partials are build inputs only. Keep the embedded distribution to
