@@ -154,7 +154,7 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 		}
 
 		stripMarkdown(pages)
-		httpresponse.Respond(w, http.StatusOK, pages)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(pages))
 	}
 }
 

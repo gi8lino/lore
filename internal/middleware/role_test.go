@@ -45,7 +45,7 @@ func TestRequireRole(t *testing.T) {
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusForbidden, response.Code)
-		assert.JSONEq(t, `{"error":"Forbidden.","problems":null}`, response.Body.String())
+		assert.JSONEq(t, `{"error":"Forbidden.","problems":{}}`, response.Body.String())
 	})
 
 	t.Run("rejects an API role with a JSON problem", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestRequireRole(t *testing.T) {
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/admin", nil))
 
 		assert.Equal(t, http.StatusUnauthorized, response.Code)
-		assert.JSONEq(t, `{"error":"Unauthorized.","problems":null}`, response.Body.String())
+		assert.JSONEq(t, `{"error":"Unauthorized.","problems":{}}`, response.Body.String())
 	})
 }
 

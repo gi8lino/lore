@@ -79,7 +79,7 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusForbidden, response.Code)
-		assert.JSONEq(t, `{"error":"Forbidden.","problems":null}`, response.Body.String())
+		assert.JSONEq(t, `{"error":"Forbidden.","problems":{}}`, response.Body.String())
 	})
 
 	t.Run("rejects API writes with a JSON problem", func(t *testing.T) {

@@ -7,17 +7,14 @@ export interface ProblemPayload {
   problems?: Record<string, string>;
 }
 
-function isProblemPayload(value: unknown): value is ProblemPayload {
-  if (!isRecord(value)) return false;
+// Validates each field independently so malformed details cannot hide the message.
+export function parseProblemPayload(value: unknown): ProblemPayload {
+  if (!isRecord(value)) return {};
 
-  if (value.error !== undefined && typeof value.error !== "string") {
-    return false;
-  }
-  if (value.problems !== undefined && !isStringRecord(value.problems)) {
-    return false;
-  }
-
-  return true;
+  return {
+    error: typeof value.error === "string" ? value.error : undefined,
+    problems: isStringRecord(value.problems) ? value.problems : undefined,
+  };
 }
 
 export async function responseProblem(
@@ -33,7 +30,7 @@ export async function responseProblem(
       .catch(() => undefined);
   }
 
-  const problem = isProblemPayload(candidate) ? candidate : {};
+  const problem = parseProblemPayload(candidate);
   const details = Object.entries(problem.problems ?? {})
     .filter(([, message]) => message.trim() !== "")
     .map(([field, message]) => `${field.replaceAll("_", " ")}: ${message}`);
@@ -53,11 +50,15 @@ export async function requestJSON(
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
   const response = await fetch(input, { ...init, headers });
-  const payload: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) throw await responseProblem(response);
+  if (response.status === 204 || response.status === 205) return undefined;
 
-  if (!response.ok) throw await responseProblem(response, payload);
-
-  return payload;
+  try {
+    const payload: unknown = await response.json();
+    return payload;
+  } catch (error) {
+    throw new Error("Invalid JSON response.", { cause: error });
+  }
 }
 
 export function errorMessage(error: unknown): string {

@@ -36,7 +36,7 @@ func TestProblemWritesStructuredJSON(t *testing.T) {
 		}`, response.Body.String())
 	})
 
-	t.Run("keeps absent field problems null", func(t *testing.T) {
+	t.Run("writes absent field problems as an empty object", func(t *testing.T) {
 		t.Parallel()
 
 		response := httptest.NewRecorder()
@@ -46,7 +46,7 @@ func TestProblemWritesStructuredJSON(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, response.Code)
 		assert.JSONEq(t, `{
 			"error": "Page not found.",
-			"problems": null
+			"problems": {}
 		}`, response.Body.String())
 	})
 }

@@ -39,6 +39,8 @@ func KnowledgeGraphAPI(knowledgeUseCases knowledgeGraphService, logger *slog.Log
 			return
 		}
 
+		graph.Nodes = jsonSlice(graph.Nodes)
+		graph.Edges = jsonSlice(graph.Edges)
 		httpresponse.Respond(w, http.StatusOK, graph)
 	}
 }
@@ -158,7 +160,7 @@ func NotificationsAPI(knowledgeUseCases notificationService, logger *slog.Logger
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, map[string]any{"items": items, "unread": unread})
+		httpresponse.Respond(w, http.StatusOK, map[string]any{"items": jsonSlice(items), "unread": unread})
 	}
 }
 
@@ -278,7 +280,10 @@ func EditorCatalog(
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, map[string]any{"pages": items, "snippets": snippets, "aliases": aliases})
+		if aliases == nil {
+			aliases = map[string]string{}
+		}
+		httpresponse.Respond(w, http.StatusOK, map[string]any{"pages": items, "snippets": jsonSlice(snippets), "aliases": aliases})
 	}
 }
 

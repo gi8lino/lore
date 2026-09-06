@@ -19,7 +19,7 @@ func SearchAPI(catalogUseCases pageSearchService, logger *slog.Logger) http.Hand
 		}
 
 		stripMarkdown(pages)
-		httpresponse.Respond(w, http.StatusOK, pages)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(pages))
 	}
 }
 
@@ -32,7 +32,7 @@ func Tags(catalogUseCases pageTagService, logger *slog.Logger) http.HandlerFunc 
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, tags)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(tags))
 	}
 }
 
@@ -46,7 +46,7 @@ func Recent(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFu
 		}
 
 		stripMarkdown(pages)
-		httpresponse.Respond(w, http.StatusOK, pages)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(pages))
 	}
 }
 
@@ -69,6 +69,6 @@ func GroupsAPI(groupUseCases groupReader, logger *slog.Logger) http.HandlerFunc 
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, groups)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(groups))
 	}
 }

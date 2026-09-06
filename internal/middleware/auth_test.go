@@ -112,7 +112,7 @@ func TestAuthenticateAPIReturnsServerErrorForUnexpectedAuthFailure(t *testing.T)
 	assert.Equal(t, http.StatusInternalServerError, response.Code)
 	assert.JSONEq(
 		t,
-		`{"error":"The request could not be processed.","problems":null}`,
+		`{"error":"The request could not be processed.","problems":{}}`,
 		response.Body.String(),
 	)
 }

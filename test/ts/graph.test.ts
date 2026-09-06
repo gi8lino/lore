@@ -1,4 +1,5 @@
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 import { graphNeighborhood } from "../../web/src/ts/features/graph.ts";
@@ -57,4 +58,15 @@ test("knowledgeGraph rejects malformed graph entries instead of filtering them",
 
   assert.ok(caught instanceof Error);
   assert.equal(caught.message, "Invalid knowledge graph nodes.");
+});
+
+test("knowledgeGraph accepts the empty Go graph contract", async () => {
+  const { knowledgeGraph } = await import("../../web/src/ts/features/graph.ts");
+  const fixtures = JSON.parse(
+    readFileSync("test/contracts/http.json", "utf8"),
+  ) as Record<string, unknown>;
+  assert.deepEqual(knowledgeGraph(fixtures.empty_graph), {
+    nodes: [],
+    edges: [],
+  });
 });

@@ -1299,7 +1299,7 @@ func SearchAdminUsers(userUseCases userDirectoryService, logger *slog.Logger) ht
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, users)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(users))
 	}
 }
 
@@ -1322,7 +1322,7 @@ func AdminGroupMembers(groupUseCases groupReader, logger *slog.Logger) http.Hand
 			return
 		}
 
-		httpresponse.Respond(w, http.StatusOK, members)
+		httpresponse.Respond(w, http.StatusOK, jsonSlice(members))
 	}
 }
 

@@ -1,9 +1,6 @@
 // Reusable client-side validation for server-backed Lore forms.
 
-type ProblemResponse = {
-  error?: string;
-  problems?: Record<string, string> | null;
-};
+import { parseProblemPayload, type ProblemPayload } from "./core/http.ts";
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -184,7 +181,7 @@ function showFormMessage(form: HTMLFormElement, message: string): void {
 
 function showServerProblems(
   form: HTMLFormElement,
-  problem: ProblemResponse,
+  problem: ProblemPayload,
 ): boolean {
   let firstInvalid: FormControl | null = null;
 
@@ -250,7 +247,8 @@ async function submitForm(form: HTMLFormElement): Promise<void> {
       return;
     }
 
-    const problem = (await response.json()) as ProblemResponse;
+    const payload: unknown = await response.json();
+    const problem = parseProblemPayload(payload);
 
     if (!showServerProblems(form, problem)) {
       showFormMessage(
