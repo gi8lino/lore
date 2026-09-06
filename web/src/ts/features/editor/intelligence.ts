@@ -1,3 +1,4 @@
+import { slugifyPagePath as editorSlug } from "../../core/slug.ts";
 // Editor diagnostics, outline, and metadata assistance.
 
 import { requestJSON } from "../../core/http.ts";
@@ -18,24 +19,7 @@ type Diagnostic = SourceRange & {
   replacement?: string;
 };
 
-// Normalizes a page reference for editor comparisons.
-export function editorSlug(value: unknown): string {
-  let output = "";
-  let separator = false;
-
-  for (const character of String(value || "")
-    .trim()
-    .toLocaleLowerCase()) {
-    if (/[a-z0-9/_-]/.test(character)) {
-      if (separator && output) output += "-";
-
-      separator = false;
-      output += character;
-    } else separator = true;
-  }
-
-  return output.replace(/^-+|-+$/g, "");
-}
+export { editorSlug };
 
 // Extracts Markdown headings while ignoring fenced code.
 export function markdownHeadings(source: string): MarkdownHeading[] {

@@ -51,8 +51,8 @@ WHERE page_id=$1`, pageID); err != nil {
 	keys := slices.Sorted(maps.Keys(properties))
 
 	for _, key := range keys {
-		key = strings.TrimSpace(key)
 		value := strings.TrimSpace(properties[key])
+		key = strings.TrimSpace(key)
 		if key == "" || value == "" {
 			continue
 		}

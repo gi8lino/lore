@@ -95,7 +95,7 @@ func (s *Store) Search(ctx context.Context, query string, limit int) ([]domain.P
 
 	limitParam := args.add(limit)
 	sql := `
-SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),coalesce(u.display_name,u.username,''),p.created_at,p.updated_at,p.view_count,coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL),'{}'),` + rank + `
+SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),coalesce(u.display_name,u.username,''),p.created_at,p.updated_at,p.view_count,coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL),'{}'),p.status,` + rank + `
 FROM pages p
 LEFT JOIN navigation_icons ni ON ni.path=p.slug
 LEFT JOIN users u ON u.id=p.updated_by
@@ -116,7 +116,7 @@ LIMIT ` + limitParam
 
 	for rows.Next() {
 		var p domain.Page
-		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Icon, &p.Markdown, &p.CreatedBy, &p.UpdatedBy, &p.Author, &p.CreatedAt, &p.UpdatedAt, &p.ViewCount, &p.Tags, &p.Rank); err != nil {
+		if err := rows.Scan(&p.ID, &p.Slug, &p.Title, &p.Icon, &p.Markdown, &p.CreatedBy, &p.UpdatedBy, &p.Author, &p.CreatedAt, &p.UpdatedAt, &p.ViewCount, &p.Tags, &p.Status, &p.Rank); err != nil {
 			return nil, err
 		}
 

@@ -1,3 +1,4 @@
+import { slugifyPagePath as slugifyEditorPath } from "../../core/slug.ts";
 // Editor drafts, navigation guards, stats, and workspace state.
 
 import { requestConfirmation, showNotice } from "../../core/dialogs.ts";
@@ -49,22 +50,7 @@ function isDraftValues(value: unknown): value is DraftValues {
   );
 }
 
-// Normalizes editor text into a Lore page path.
-export function slugifyEditorPath(value: string): string {
-  let output = "";
-  let separator = false;
-
-  for (const character of value.trim().toLocaleLowerCase()) {
-    if (/[a-z0-9/_-]/.test(character)) {
-      if (separator && output) output += "-";
-
-      separator = false;
-      output += character;
-    } else separator = true;
-  }
-
-  return output.replace(/^-+|-+$/g, "");
-}
+export { slugifyEditorPath };
 
 // Calculates word, character, and line counts.
 export function editorWordStats(value: string): {

@@ -5,10 +5,8 @@ import (
 	stdhtml "html"
 	"strconv"
 	"strings"
-	"unicode"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
-	"github.com/gi8lino/lore/internal/ascii"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -185,36 +183,6 @@ func engine(options Options) goldmark.Markdown {
 		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 		goldmark.WithRendererOptions(goldhtml.WithUnsafe()),
 	)
-}
-
-// Slug converts human-readable page text into a canonical wiki slug.
-func Slug(value string) string {
-	value = strings.TrimSpace(value)
-	var output strings.Builder
-	separator := false
-
-	for _, r := range value {
-		r = unicode.ToLower(r)
-		switch {
-		case isSlugRune(r):
-			if separator && output.Len() > 0 {
-				output.WriteByte('-')
-			}
-
-			separator = false
-
-			output.WriteRune(r)
-		default:
-			separator = true
-		}
-	}
-
-	return strings.Trim(output.String(), "-")
-}
-
-// isSlugRune reports whether character can be preserved in a canonical wiki slug.
-func isSlugRune(character rune) bool {
-	return ascii.IsAlphanumeric(character) || character == '/' || character == '_' || character == '-'
 }
 
 // Links extracts unique canonical wiki-link targets from Markdown source.
