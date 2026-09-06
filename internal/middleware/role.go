@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/auth"
@@ -10,11 +11,7 @@ import (
 
 // RequireRole authorizes an authenticated request against one of the allowed roles.
 func RequireRole(roles ...string) Middleware {
-	allowed := make(map[string]struct{}, len(roles))
-
-	for _, role := range roles {
-		allowed[role] = struct{}{}
-	}
+	allowed := slices.Clone(roles)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +20,7 @@ func RequireRole(roles ...string) Middleware {
 				roleUnauthorized(w, r)
 				return
 			}
-			if _, ok := allowed[user.Role]; !ok {
+			if !slices.Contains(allowed, user.Role) {
 				roleForbidden(w, r)
 				return
 			}

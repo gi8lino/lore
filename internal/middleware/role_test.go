@@ -84,3 +84,24 @@ func TestRequireRole(t *testing.T) {
 		assert.JSONEq(t, `{"error":"Unauthorized.","problems":null}`, response.Body.String())
 	})
 }
+
+func TestRequireRoleSnapshotsAllowedRoles(t *testing.T) {
+	roles := []string{"admin"}
+	middleware := RequireRole(roles...)
+	roles[0] = "viewer"
+	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	for _, tt := range []struct {
+		role   string
+		status int
+	}{
+		{"admin", http.StatusNoContent},
+		{"viewer", http.StatusForbidden},
+	} {
+		response := httptest.NewRecorder()
+		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/admin", nil), domain.User{ID: 1, Role: tt.role})
+		handler.ServeHTTP(response, request)
+		assert.Equal(t, tt.status, response.Code)
+	}
+}

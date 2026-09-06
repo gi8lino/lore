@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -105,7 +106,7 @@ func NewOIDC(
 		groupClaim:          strings.TrimSpace(config.GroupClaim),
 		groupSync:           config.GroupSync,
 		groupsAuthoritative: config.GroupsAuthoritative,
-		groupMappings:       append([]domain.OIDCGroupMapping(nil), config.GroupMappings...),
+		groupMappings:       slices.Clone(config.GroupMappings),
 		adminGroup:          strings.TrimSpace(config.AdminGroup),
 		oauth: &oauth2.Config{
 			ClientID:     config.ClientID,
