@@ -19,6 +19,16 @@
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^scripts/web/vendor-mermaid\\.sh$/"],
+      "matchStrings": [
+        "MERMAID_VERSION=\"\\$\\{MERMAID_VERSION:-(?<currentValue>[^}]+)\\}\""
+      ],
+      "depNameTemplate": "mermaid",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm"
     }
   ],
   "packageRules": [
