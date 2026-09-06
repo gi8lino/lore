@@ -7,6 +7,7 @@ require (
 	github.com/containeroo/httpgrace v0.2.0
 	github.com/containeroo/tinyflags v0.0.81
 	github.com/coreos/go-oidc/v3 v3.21.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/kaugesaar/lucide-go v0.25.0
 	github.com/microcosm-cc/bluemonday v1.0.27
@@ -23,7 +24,6 @@ require (
 require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
