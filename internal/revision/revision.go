@@ -109,7 +109,7 @@ func diff(previous, current string, number int) []DiffLine {
 }
 
 // lineChanges returns line additions and removals between two revision bodies.
-func lineChanges(previous, current string) (int, int) {
+func lineChanges(previous, current string) (added int, removed int) {
 	before := strings.Split(previous, "\n")
 	after := strings.Split(current, "\n")
 

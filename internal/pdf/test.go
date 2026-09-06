@@ -25,7 +25,7 @@ type TestResult struct {
 }
 
 // RenderTest renders Lore's fixed PDF diagnostic document and returns it for inspection.
-func RenderTest(ctx context.Context, endpoint string) (TestResult, func(), error) {
+func RenderTest(ctx context.Context, endpoint string) (result TestResult, cleanup func(), err error) {
 	file, cleanup, err := Render(ctx, endpoint, "Lore PDF service test", "en", testBody())
 	if err != nil {
 		return TestResult{}, cleanup, err

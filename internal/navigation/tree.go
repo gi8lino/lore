@@ -131,7 +131,7 @@ func Children(tree []Node, slug string) []Node {
 }
 
 // children recursively locates a node while distinguishing a leaf from no match.
-func children(tree []Node, slug string) ([]Node, bool) {
+func children(tree []Node, slug string) (descendants []Node, found bool) {
 	for _, node := range tree {
 		if node.Slug == slug {
 			return node.Children, true

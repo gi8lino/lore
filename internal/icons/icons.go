@@ -42,7 +42,7 @@ func Search(query string, limit int) []Option {
 }
 
 // SearchPage returns one page of generated icons and whether another page is available.
-func SearchPage(query string, offset, limit int) ([]Option, bool) {
+func SearchPage(query string, offset, limit int) (options []Option, hasMore bool) {
 	if limit <= 0 {
 		return nil, false
 	}
@@ -52,7 +52,7 @@ func SearchPage(query string, offset, limit int) ([]Option, bool) {
 	}
 
 	query = strings.ToLower(strings.TrimSpace(query))
-	result := make([]Option, 0, min(limit+1, len(navigationOptions)))
+	options = make([]Option, 0, min(limit+1, len(navigationOptions)))
 	matched := 0
 
 	for _, option := range navigationOptions {
@@ -65,17 +65,17 @@ func SearchPage(query string, offset, limit int) ([]Option, bool) {
 			continue
 		}
 
-		result = append(result, option)
-		if len(result) > limit {
+		options = append(options, option)
+		if len(options) > limit {
 			break
 		}
 	}
 
-	if len(result) > limit {
-		return result[:limit], true
+	if len(options) > limit {
+		return options[:limit], true
 	}
 
-	return result, false
+	return options, false
 }
 
 // IsNavigationIcon reports whether a persisted page or navigation icon is allowed.

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -346,60 +347,76 @@ func (b *Builder) parseTemplate(pageTemplate, basePath string) (*template.Templa
 	)
 }
 
+type pageDiscovery struct {
+	sourceDir string
+	pages     []sourcePage
+	routes    map[string]string
+}
+
 func discoverPages(sourceDir string) ([]sourcePage, error) {
-	var pages []sourcePage
-	routes := make(map[string]string)
-	err := filepath.WalkDir(sourceDir, func(filename string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if filename == sourceDir {
-			return nil
-		}
-		if entry.IsDir() {
-			if strings.HasPrefix(entry.Name(), ".") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
-			return nil
-		}
+	discovery := pageDiscovery{
+		sourceDir: sourceDir,
+		routes:    make(map[string]string),
+	}
 
-		relative, err := filepath.Rel(sourceDir, filename)
-		if err != nil {
-			return err
-		}
-
-		relative = filepath.ToSlash(relative)
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			return err
-		}
-
-		route := markdownFileRoute(relative)
-		if existing, found := routes[route]; found {
-			return fmt.Errorf("markdown files %s and %s map to the same route %q", existing, relative, route)
-		}
-
-		routes[route] = relative
-		title, hasTitle := markdownTitle(string(data), route)
-		pages = append(pages, sourcePage{
-			SourcePath:      relative,
-			Route:           route,
-			Title:           title,
-			Markdown:        string(data),
-			HasTitleHeading: hasTitle,
-		})
-
-		return nil
-	})
-	if err != nil {
+	if err := filepath.WalkDir(sourceDir, discovery.visit); err != nil {
 		return nil, err
 	}
 
-	sort.Slice(pages, func(i, j int) bool { return pages[i].SourcePath < pages[j].SourcePath })
-	return pages, nil
+	slices.SortFunc(discovery.pages, compareSourcePages)
+
+	return discovery.pages, nil
+}
+
+func (d *pageDiscovery) visit(filename string, entry fs.DirEntry, walkErr error) error {
+	if walkErr != nil {
+		return walkErr
+	}
+	if filename == d.sourceDir {
+		return nil
+	}
+	if entry.IsDir() {
+		if strings.HasPrefix(entry.Name(), ".") {
+			return filepath.SkipDir
+		}
+
+		return nil
+	}
+	if !strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
+		return nil
+	}
+
+	relative, err := filepath.Rel(d.sourceDir, filename)
+	if err != nil {
+		return err
+	}
+
+	relative = filepath.ToSlash(relative)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	route := markdownFileRoute(relative)
+	if existing, found := d.routes[route]; found {
+		return fmt.Errorf("markdown files %s and %s map to the same route %q", existing, relative, route)
+	}
+
+	d.routes[route] = relative
+	title, hasTitle := markdownTitle(string(data), route)
+	d.pages = append(d.pages, sourcePage{
+		SourcePath:      relative,
+		Route:           route,
+		Title:           title,
+		Markdown:        string(data),
+		HasTitleHeading: hasTitle,
+	})
+
+	return nil
+}
+
+func compareSourcePages(left, right sourcePage) int {
+	return strings.Compare(left.SourcePath, right.SourcePath)
 }
 
 func hasHomePage(pages []sourcePage) bool {
@@ -425,7 +442,7 @@ func markdownFileRoute(filename string) string {
 	return strings.Trim(clean, "/")
 }
 
-func markdownTitle(source, route string) (string, bool) {
+func markdownTitle(source, route string) (title string, hasTitle bool) {
 	lines := strings.Split(strings.TrimPrefix(source, "\ufeff"), "\n")
 	fence := ""
 
@@ -630,7 +647,7 @@ func processRenderedHTML(
 	removeTitle bool,
 	routesBySource map[string]string,
 	basePath string,
-) (string, string, error) {
+) (renderedHTML string, searchText string, err error) {
 	contextNode := &xhtml.Node{Type: xhtml.ElementNode, DataAtom: atom.Div, Data: "div"}
 	nodes, err := xhtml.ParseFragment(strings.NewReader(rendered), contextNode)
 	if err != nil {
@@ -740,27 +757,27 @@ func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string,
 
 func textFromNodes(nodes []*xhtml.Node) string {
 	var output strings.Builder
-	var walk func(*xhtml.Node)
-	walk = func(node *xhtml.Node) {
-		if node.Type == xhtml.TextNode {
-			output.WriteString(node.Data)
-			output.WriteByte(' ')
-		}
-
-		if node.Type == xhtml.ElementNode && (node.Data == "script" || node.Data == "style") {
-			return
-		}
-
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
-	}
 
 	for _, node := range nodes {
-		walk(node)
+		appendNodeText(&output, node)
 	}
 
 	return output.String()
+}
+
+func appendNodeText(output *strings.Builder, node *xhtml.Node) {
+	if node.Type == xhtml.TextNode {
+		output.WriteString(node.Data)
+		output.WriteByte(' ')
+	}
+
+	if node.Type == xhtml.ElementNode && (node.Data == "script" || node.Data == "style") {
+		return
+	}
+
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		appendNodeText(output, child)
+	}
 }
 
 func normalizeSearchText(value string) string {

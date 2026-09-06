@@ -45,7 +45,7 @@ func ValidateURL(value string) error {
 
 // Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.
 // The caller must call cleanup after serving the file.
-func Render(ctx context.Context, endpoint, title, language, rendered string) (*os.File, func(), error) {
+func Render(ctx context.Context, endpoint, title, language, rendered string) (file *os.File, cleanup func(), err error) {
 	noop := func() {}
 	if endpoint == "" {
 		return nil, noop, ErrNotConfigured
@@ -91,12 +91,12 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (*o
 		return nil, noop, errors.New("PDF service returned an invalid PDF")
 	}
 
-	file, err := os.CreateTemp("", "lore-pdf-*.pdf")
+	file, err = os.CreateTemp("", "lore-pdf-*.pdf")
 	if err != nil {
 		return nil, noop, err
 	}
 
-	cleanup := func() { _ = file.Close(); _ = os.Remove(file.Name()) }
+	cleanup = func() { _ = file.Close(); _ = os.Remove(file.Name()) }
 	size, err := io.Copy(file, io.LimitReader(io.MultiReader(strings.NewReader(string(prefix)), response.Body), maxPDFBytes+1))
 	if err != nil {
 		cleanup()

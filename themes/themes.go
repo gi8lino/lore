@@ -96,7 +96,7 @@ func Load(directory string) ([]Theme, error) {
 }
 
 // Find returns the named theme using a case-insensitive filename match.
-func Find(available []Theme, name string) (Theme, bool) {
+func Find(available []Theme, name string) (theme Theme, found bool) {
 	for _, theme := range available {
 		if strings.EqualFold(theme.Title, name) {
 			return theme, true

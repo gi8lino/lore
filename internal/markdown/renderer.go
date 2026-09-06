@@ -483,7 +483,7 @@ func (r *Renderer) preprocessDetails(source string, resolve func(string) string,
 }
 
 // parseTabTitle parses a top-level tab declaration such as === "Linux".
-func parseTabTitle(line string) (string, bool) {
+func parseTabTitle(line string) (title string, ok bool) {
 	if strings.TrimLeft(line, " \t") != line {
 		return "", false
 	}
@@ -497,13 +497,13 @@ func parseTabTitle(line string) (string, bool) {
 }
 
 // parseDetailsTitle parses ??? and ???+ collapsible block declarations.
-func parseDetailsTitle(line string) (string, bool, bool) {
+func parseDetailsTitle(line string) (title string, open bool, ok bool) {
 	if strings.TrimLeft(line, " \t") != line {
 		return "", false, false
 	}
 
 	trimmed := strings.TrimSpace(line)
-	open := strings.HasPrefix(trimmed, "???+")
+	open = strings.HasPrefix(trimmed, "???+")
 	prefix := "???"
 
 	if open {
@@ -512,13 +512,13 @@ func parseDetailsTitle(line string) (string, bool, bool) {
 		return "", false, false
 	}
 
-	title, ok := parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, prefix)))
+	title, ok = parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, prefix)))
 
 	return title, open, ok
 }
 
 // parseQuotedTitle parses one quoted block title and supports standard Go-style escapes.
-func parseQuotedTitle(value string) (string, bool) {
+func parseQuotedTitle(value string) (title string, ok bool) {
 	if len(value) < 2 || value[0] != '"' || value[len(value)-1] != '"' {
 		return "", false
 	}
@@ -532,8 +532,8 @@ func parseQuotedTitle(value string) (string, bool) {
 }
 
 // indentedBody collects blank and four-space-indented lines following a custom block declaration.
-func indentedBody(lines []string, start int) ([]string, int) {
-	body := make([]string, 0)
+func indentedBody(lines []string, start int) (body []string, next int) {
+	body = make([]string, 0)
 	index := start
 
 	for index < len(lines) {
@@ -558,7 +558,7 @@ func indentedBody(lines []string, start int) ([]string, int) {
 }
 
 // stripBlockIndent removes one tab or four spaces from a custom block body line.
-func stripBlockIndent(line string) (string, bool) {
+func stripBlockIndent(line string) (content string, ok bool) {
 	if strings.HasPrefix(line, "\t") {
 		return strings.TrimPrefix(line, "\t"), true
 	}
@@ -649,7 +649,7 @@ func walkWikiLinksLine(line string, visit func(target, label string)) {
 }
 
 // parseWikiLink splits a wiki-link body into target and optional label.
-func parseWikiLink(value string) (string, string, bool) {
+func parseWikiLink(value string) (target string, label string, ok bool) {
 	target, label, hasLabel := strings.Cut(value, "|")
 	target = strings.TrimSpace(target)
 	if target == "" {
@@ -807,7 +807,7 @@ func previousTableLine(lines []string, index int) bool {
 }
 
 // parseTableDirective parses trusted table colors and optional browser interactions.
-func parseTableDirective(line string) (tableStyle, bool) {
+func parseTableDirective(line string) (style tableStyle, ok bool) {
 	if !strings.HasPrefix(line, "{table ") || !strings.HasSuffix(line, "}") {
 		return tableStyle{}, false
 	}
@@ -898,6 +898,13 @@ func tableTone(value string) bool {
 	}
 }
 
+// tableDirectiveWalker tracks the nearest table while applying rendered table markers.
+type tableDirectiveWalker struct {
+	options   Options
+	markers   []*xhtml.Node
+	lastTable *xhtml.Node
+}
+
 // applyTableDirectiveMarkers applies trusted directives to the nearest preceding rendered table.
 func applyTableDirectiveMarkers(rendered string, options Options) (string, error) {
 	contextNode := &xhtml.Node{Type: xhtml.ElementNode, DataAtom: atom.Div, Data: "div"}
@@ -906,36 +913,12 @@ func applyTableDirectiveMarkers(rendered string, options Options) (string, error
 		return "", err
 	}
 
-	var markers []*xhtml.Node
-	var lastTable *xhtml.Node
-	var walk func(*xhtml.Node)
-	walk = func(node *xhtml.Node) {
-		if node.Type == xhtml.ElementNode {
-			if node.Data == "table" {
-				lastTable = node
-			}
-			if node.Data == "div" &&
-				strings.Contains(" "+htmlAttribute(node, "class")+" ", " lore-table-style-marker ") {
-				if directive, ok := parseTableDirective(htmlAttribute(node, "data-table-style")); ok &&
-					lastTable != nil {
-					applyTableDirective(lastTable, directive, options)
-				}
-
-				markers = append(markers, node)
-
-				return
-			}
-		}
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
-	}
-
+	walker := tableDirectiveWalker{options: options}
 	for _, node := range nodes {
-		walk(node)
+		walker.walk(node)
 	}
 
-	for _, marker := range markers {
+	for _, marker := range walker.markers {
 		if marker.Parent != nil {
 			marker.Parent.RemoveChild(marker)
 		}
@@ -950,6 +933,30 @@ func applyTableDirectiveMarkers(rendered string, options Options) (string, error
 	}
 
 	return output.String(), nil
+}
+
+// walk applies one table marker in document order and records it for removal.
+func (w *tableDirectiveWalker) walk(node *xhtml.Node) {
+	if node.Type == xhtml.ElementNode {
+		if node.Data == "table" {
+			w.lastTable = node
+		}
+
+		if node.Data == "div" &&
+			strings.Contains(" "+htmlAttribute(node, "class")+" ", " lore-table-style-marker ") {
+			if directive, ok := parseTableDirective(htmlAttribute(node, "data-table-style")); ok &&
+				w.lastTable != nil {
+				applyTableDirective(w.lastTable, directive, w.options)
+			}
+
+			w.markers = append(w.markers, node)
+			return
+		}
+	}
+
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		w.walk(child)
+	}
 }
 
 // applyTableDirective applies enabled colors and interaction classes to one rendered table.
@@ -1022,19 +1029,21 @@ func applyTableDirective(table *xhtml.Node, directive tableStyle, options Option
 // tableRows returns table rows in document order.
 func tableRows(table *xhtml.Node) []*xhtml.Node {
 	var rows []*xhtml.Node
-	var walk func(*xhtml.Node)
-	walk = func(node *xhtml.Node) {
-		if node.Type == xhtml.ElementNode && node.Data == "tr" {
-			rows = append(rows, node)
-			return
-		}
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
+	appendTableRows(table, &rows)
+
+	return rows
+}
+
+// appendTableRows collects row elements without descending into a row once found.
+func appendTableRows(node *xhtml.Node, rows *[]*xhtml.Node) {
+	if node.Type == xhtml.ElementNode && node.Data == "tr" {
+		*rows = append(*rows, node)
+		return
 	}
 
-	walk(table)
-	return rows
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		appendTableRows(child, rows)
+	}
 }
 
 // rowCells returns direct th and td children for one rendered row.
