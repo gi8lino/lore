@@ -4,15 +4,17 @@ import { requiredAttribute, requiredElement } from "../../core/dom.ts";
 import { requireArrayOf } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 
-interface RestoreDraftDetail {
-  values?: Record<string, string[]>;
-}
-
 // Wires tag editor behavior.
 function setupTagEditor(editor: HTMLElement): void {
   const chipList = requiredElement<HTMLElement>(editor, "[data-tag-chips]");
-  const tagInput = requiredElement<HTMLInputElement>(editor, "[data-tag-input]");
-  const tagValue = requiredElement<HTMLInputElement>(editor, "[data-tag-value]");
+  const tagInput = requiredElement<HTMLInputElement>(
+    editor,
+    "[data-tag-input]",
+  );
+  const tagValue = requiredElement<HTMLInputElement>(
+    editor,
+    "[data-tag-value]",
+  );
   const suggestionList = requiredElement<HTMLElement>(
     editor,
     "[data-tag-suggestions]",
@@ -168,9 +170,8 @@ function setupTagEditor(editor: HTMLElement): void {
     if (tagInput.value.trim()) addTag(tagInput.value);
     syncValue();
   });
-  form?.addEventListener("editor:restore-draft", (event: Event) => {
-    const detail = (event as CustomEvent<RestoreDraftDetail>).detail;
-    const raw = String(detail?.values?.tags?.[0] || "");
+  form?.addEventListener("editor:restore-draft", (event) => {
+    const raw = String(event.detail.values.tags?.[0] || "");
 
     selectedTags = raw
       .split(",")

@@ -33,20 +33,26 @@ function worker() {
     },
   };
   runInNewContext(readFileSync("web/dist/sw.js", "utf8"), runtime);
+
+  const message = async (data: unknown, clientID = "tab-1"): Promise<void> => {
+    let finished: Promise<void> = Promise.resolve();
+
+    listeners.get("message")!({
+      data,
+      source: { id: clientID },
+      waitUntil: (value: Promise<void>) => {
+        finished = value;
+      },
+    });
+    await finished;
+  };
+
   return {
     runtime,
     stored,
-    configure: async (userID: string, clientID = "tab-1") => {
-      let finished: Promise<void> = Promise.resolve();
-      listeners.get("message")!({
-        data: { type: "configure-user", userID },
-        source: { id: clientID },
-        waitUntil: (value: Promise<void>) => {
-          finished = value;
-        },
-      });
-      await finished;
-    },
+    message,
+    configure: (userID: string, clientID = "tab-1") =>
+      message({ type: "configure-user", userID }, clientID),
     request: (clientID = "tab-1", path = "/pages/start") => {
       let response: Promise<Response> | undefined;
       listeners.get("fetch")!({
@@ -124,4 +130,19 @@ test("stable asset URLs refresh online and fall back only when offline", async (
     await (await w.request("tab-1", "/assets/app.js"))?.text(),
     "release-two",
   );
+});
+
+test("malformed configure-user messages are ignored instead of coerced", async () => {
+  const w = worker();
+
+  await w.configure("7");
+  await w.message({ type: "configure-user", userID: 8 });
+
+  w.runtime.fetch = async () =>
+    new Response("private", { headers: { "X-Lore-User-ID": "7" } });
+
+  const response = w.request();
+  assert.ok(response);
+  await response;
+  assert.equal(w.stored.get("lore-pages-v2-7")?.size, 1);
 });

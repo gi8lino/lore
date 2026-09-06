@@ -2,12 +2,12 @@
 
 import { requestConfirmation, showNotice } from "../../core/dialogs.ts";
 import { requiredAttribute } from "../../core/dom.ts";
+import { dispatchEditorEvent, type DraftValues } from "./events.ts";
 import type { EditorMode } from "./preview.ts";
 
 const editorModeStorageKey = "lore.editor.mode";
 const draftPrefix = "lore.editor.draft:";
 
-type DraftValues = Record<string, string[]>;
 type DraftSource = "local" | "server";
 type DraftState = "idle" | "pending" | "saving" | "saved" | "local";
 
@@ -233,9 +233,7 @@ function draftDiffers(
 }
 
 function restoreDraftValues(form: HTMLFormElement, values: DraftValues): void {
-  form.dispatchEvent(
-    new CustomEvent("editor:restore-draft", { detail: { values } }),
-  );
+  dispatchEditorEvent(form, "editor:restore-draft", { values });
 
   const dynamicNames = new Set(["property_key", "property_value"]);
   const protectedNames = new Set(["original_slug"]);
@@ -740,7 +738,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
       case "p":
         if (event.shiftKey) {
           event.preventDefault();
-          form.dispatchEvent(new CustomEvent("editor:toggle-preview"));
+          dispatchEditorEvent(form, "editor:toggle-preview");
         }
         break;
     }

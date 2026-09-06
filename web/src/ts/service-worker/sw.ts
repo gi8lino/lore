@@ -1,3 +1,4 @@
+/// <reference path="../contracts.d.ts" />
 /// <reference lib="webworker" />
 
 // Offline asset caching and user-scoped private page caching.
@@ -18,10 +19,14 @@ function privateOperation(work: () => Promise<unknown>): Promise<void> {
 
 const serviceWorker = self as unknown as ServiceWorkerGlobalScope;
 
-type ConfigureUserMessage = {
-  type?: unknown;
-  userID?: unknown;
-};
+function isConfigureUserMessage(value: unknown): value is ConfigureUserMessage {
+  if (typeof value !== "object" || value === null) return false;
+
+  const message = value as { type?: unknown; userID?: unknown };
+  return (
+    message.type === "configure-user" && typeof message.userID === "string"
+  );
+}
 
 function handleInstall(): void {
   void serviceWorker.skipWaiting();
@@ -63,15 +68,14 @@ async function removeOtherPrivateCaches(): Promise<void> {
 }
 
 function handleMessage(event: ExtendableMessageEvent): void {
-  const data = event.data as ConfigureUserMessage | null;
-  if (data?.type !== "configure-user") return;
+  const data: unknown = event.data;
+  if (!isConfigureUserMessage(data)) return;
 
   const source = event.source;
   if (!source || !("id" in source)) return;
 
-  const userID = String(data.userID || "");
-  const nextCache = /^[1-9][0-9]*$/.test(userID)
-    ? `${pageCachePrefix}${userID}`
+  const nextCache = /^[1-9][0-9]*$/.test(data.userID)
+    ? `${pageCachePrefix}${data.userID}`
     : "";
 
   if (nextCache !== pageCacheName || !nextCache) {

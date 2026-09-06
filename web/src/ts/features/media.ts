@@ -80,7 +80,10 @@ function hasDraggedImage(dataTransfer: DataTransfer | null): boolean {
 
 // Wires media dialog behavior.
 function setupMediaDialog(dialog: HTMLDialogElement): void {
-  const open = requiredElement<HTMLElement>(document, "[data-media-dialog-open]");
+  const open = requiredElement<HTMLElement>(
+    document,
+    "[data-media-dialog-open]",
+  );
   const close = requiredElement<HTMLButtonElement>(
     dialog,
     "[data-media-dialog-close]",

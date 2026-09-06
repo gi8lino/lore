@@ -23,8 +23,7 @@ function isGroupMember(value: unknown): value is GroupMember {
     typeof value.id === "number" &&
     typeof value.username === "string" &&
     (value.email === undefined || typeof value.email === "string") &&
-    (value.display_name === undefined ||
-      typeof value.display_name === "string")
+    (value.display_name === undefined || typeof value.display_name === "string")
   );
 }
 

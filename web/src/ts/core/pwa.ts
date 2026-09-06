@@ -2,6 +2,10 @@
 
 const pageCachePrefix = "lore-pages-";
 
+function configureUserMessage(userID: string): ConfigureUserMessage {
+  return { type: "configure-user", userID };
+}
+
 // Clears private page caches.
 async function clearPrivatePageCaches(): Promise<void> {
   if (!("caches" in window)) return;
@@ -21,7 +25,7 @@ function configureWorker(registration: ServiceWorkerRegistration): void {
   const worker =
     registration.active || registration.waiting || registration.installing;
 
-  worker?.postMessage({ type: "configure-user", userID });
+  worker?.postMessage(configureUserMessage(userID));
 }
 
 // Protects logout.
@@ -37,10 +41,9 @@ function protectLogout(): void {
     event.preventDefault();
 
     try {
-      navigator.serviceWorker?.controller?.postMessage({
-        type: "configure-user",
-        userID: "",
-      });
+      navigator.serviceWorker?.controller?.postMessage(
+        configureUserMessage(""),
+      );
       await clearPrivatePageCaches();
     } catch {
       /* best effort */

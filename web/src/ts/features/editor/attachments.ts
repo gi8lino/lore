@@ -66,7 +66,10 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
     dialog,
     "[data-attachment-upload]",
   );
-  const status = requiredElement<HTMLElement>(dialog, "[data-attachment-status]");
+  const status = requiredElement<HTMLElement>(
+    dialog,
+    "[data-attachment-status]",
+  );
   const attachmentDialog = dialog;
   const attachmentListURL = requiredAttribute(
     dialog,

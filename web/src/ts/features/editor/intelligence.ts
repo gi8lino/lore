@@ -1,6 +1,7 @@
 // Editor diagnostics, outline, and metadata assistance.
 
 import { requestJSON } from "../../core/http.ts";
+import type { DraftValues } from "./events.ts";
 
 const catalogURL = "/api/editor/catalog";
 
@@ -22,7 +23,6 @@ type Diagnostic = SourceRange & {
   detail?: string;
   replacement?: string;
 };
-type DraftValues = Record<string, string[]>;
 
 function isCatalog(value: unknown): value is EditorCatalog {
   if (typeof value !== "object" || value === null) return false;
@@ -341,9 +341,8 @@ function setupProperties(form: HTMLFormElement): void {
     form.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
-  form.addEventListener("editor:restore-draft", (event: Event) => {
-    const custom = event as CustomEvent<{ values?: DraftValues }>;
-    const values = custom.detail?.values || {};
+  form.addEventListener("editor:restore-draft", (event) => {
+    const values: DraftValues = event.detail.values;
     const keys = Array.isArray(values.property_key) ? values.property_key : [];
     const propertyValues = Array.isArray(values.property_value)
       ? values.property_value

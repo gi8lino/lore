@@ -186,7 +186,8 @@ function isMentionUser(value: unknown): value is MentionUser {
   return (
     isRecord(value) &&
     typeof value.username === "string" &&
-    (value.display_name === undefined || typeof value.display_name === "string") &&
+    (value.display_name === undefined ||
+      typeof value.display_name === "string") &&
     (value.role === undefined || typeof value.role === "string") &&
     (value.self === undefined || typeof value.self === "boolean")
   );

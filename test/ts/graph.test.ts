@@ -40,14 +40,15 @@ test("graphNeighborhood expands matching search results with their relationships
 });
 
 test("knowledgeGraph rejects malformed graph entries instead of filtering them", async () => {
-  const { knowledgeGraph } = await import(
-    "../../web/src/ts/features/graph.ts"
-  );
+  const { knowledgeGraph } = await import("../../web/src/ts/features/graph.ts");
   let caught: unknown;
 
   try {
     knowledgeGraph({
-      nodes: [{ slug: "a", title: "Alpha" }, { slug: 7, title: "Broken" }],
+      nodes: [
+        { slug: "a", title: "Alpha" },
+        { slug: 7, title: "Broken" },
+      ],
       edges: [],
     });
   } catch (error) {

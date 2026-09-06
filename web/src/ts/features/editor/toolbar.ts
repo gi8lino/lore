@@ -1,6 +1,7 @@
 // Markdown toolbar selection and insertion helpers.
 
 import { formatMarkdownDocument } from "./formatter.ts";
+import { dispatchEditorEvent } from "./events.ts";
 
 // Inserts Markdown at the textarea selection.
 export function insertMarkdownAtSelection(
@@ -206,7 +207,7 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
         insertMarkdownAtSelection(editor, "---");
         break;
       case "find":
-        form?.dispatchEvent(new CustomEvent("editor:find"));
+        if (form) dispatchEditorEvent(form, "editor:find");
         break;
       case "format-document": {
         const formatted = formatMarkdownDocument(editor.value);
