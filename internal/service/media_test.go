@@ -124,3 +124,23 @@ func TestDeleteImageAllowsAdministratorOverride(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(7), repository.deletedImageID)
 }
+
+func TestSanitizeFilenameCharacterRuns(t *testing.T) {
+	for _, tt := range []struct{ name, want string }{
+		{"my   diagram.png", "my-diagram.png"},
+		{"aé💡b.png", "a-b.png"},
+		{"a--b.png", "a--b.png"},
+		{"a - b.png", "a---b.png"},
+		{"  ../some/path/image.png  ", "image.png"},
+		{"._-hello_world-_.", "hello_world"},
+		{"💡...", "fallback"},
+		{"", "fallback"},
+		{"Mixed.Case_123.txt", "Mixed.Case_123.txt"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sanitizeFilename(tt.name, "fallback"); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

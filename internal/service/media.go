@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -26,8 +25,7 @@ var (
 )
 
 var (
-	mediaFilenameUnsafe = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
-	attachmentTypes     = map[string]string{
+	attachmentTypes = map[string]string{
 		".pdf":  "application/pdf",
 		".txt":  "text/plain; charset=utf-8",
 		".md":   "text/markdown; charset=utf-8",
@@ -187,7 +185,20 @@ func sanitizeAttachmentFilename(filename string) string {
 // sanitizeFilename reduces an uploaded basename to URL-safe characters.
 func sanitizeFilename(filename, fallback string) string {
 	name := strings.TrimSpace(filepath.Base(filename))
-	name = mediaFilenameUnsafe.ReplaceAllString(name, "-")
+	var safe strings.Builder
+	invalidRun := false
+	for _, character := range name {
+		allowed := character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' ||
+			character >= '0' && character <= '9' || character == '.' || character == '_' || character == '-'
+		if allowed {
+			safe.WriteRune(character)
+			invalidRun = false
+		} else if !invalidRun {
+			safe.WriteByte('-')
+			invalidRun = true
+		}
+	}
+	name = safe.String()
 	name = strings.Trim(name, "-._")
 	if name == "" {
 		return fallback
