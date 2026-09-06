@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/ascii"
 	"github.com/gi8lino/lore/internal/domain"
 )
 
@@ -199,12 +200,10 @@ func sanitizeFilename(filename, fallback string) string {
 	var safe strings.Builder
 	invalidRun := false
 	for _, character := range name {
-		switch {
-		case character >= 'a' && character <= 'z', character >= 'A' && character <= 'Z',
-			character >= '0' && character <= '9', character == '.', character == '_', character == '-':
+		if isSafeFilenameRune(character) {
 			safe.WriteRune(character)
 			invalidRun = false
-		case !invalidRun:
+		} else if !invalidRun {
 			safe.WriteByte('-')
 			invalidRun = true
 		}
@@ -216,6 +215,11 @@ func sanitizeFilename(filename, fallback string) string {
 	}
 
 	return name
+}
+
+// isSafeFilenameRune reports whether character can be preserved in a sanitized upload name.
+func isSafeFilenameRune(character rune) bool {
+	return ascii.IsAlphanumeric(character) || character == '.' || character == '_' || character == '-'
 }
 
 // imageExtension returns the canonical extension for a supported image MIME type.

@@ -1,6 +1,10 @@
 package store
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/gi8lino/lore/internal/ascii"
+)
 
 // mentionedUsernames extracts distinct, lower-case mentions in source order.
 // A mention begins at the start of text or after a non-word character. Names
@@ -22,7 +26,7 @@ func mentionedUsernames(text string) []string {
 			continue
 		}
 		end := offset
-		for end < len(text) && (mentionWordByte(text[end]) || text[end] == '.' || text[end] == '-') {
+		for end < len(text) && mentionNameByte(text[end]) {
 			end++
 		}
 		if end == offset {
@@ -39,12 +43,12 @@ func mentionedUsernames(text string) []string {
 	return usernames
 }
 
+// mentionNameByte reports whether value can occur inside a username mention.
+func mentionNameByte(value byte) bool {
+	return mentionWordByte(value) || value == '.' || value == '-'
+}
+
 // mentionWordByte defines the ASCII word characters used at mention boundaries.
 func mentionWordByte(value byte) bool {
-	switch {
-	case value >= 'a' && value <= 'z', value >= 'A' && value <= 'Z', value >= '0' && value <= '9', value == '_':
-		return true
-	default:
-		return false
-	}
+	return ascii.IsAlphanumeric(rune(value)) || value == '_'
 }

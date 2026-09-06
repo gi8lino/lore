@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/gi8lino/lore/internal/ascii"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -195,7 +196,7 @@ func Slug(value string) string {
 	for _, r := range value {
 		r = unicode.ToLower(r)
 		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '/', r == '_', r == '-':
+		case isSlugRune(r):
 			if separator && output.Len() > 0 {
 				output.WriteByte('-')
 			}
@@ -209,6 +210,11 @@ func Slug(value string) string {
 	}
 
 	return strings.Trim(output.String(), "-")
+}
+
+// isSlugRune reports whether character can be preserved in a canonical wiki slug.
+func isSlugRune(character rune) bool {
+	return ascii.IsAlphanumeric(character) || character == '/' || character == '_' || character == '-'
 }
 
 // Links extracts unique canonical wiki-link targets from Markdown source.
