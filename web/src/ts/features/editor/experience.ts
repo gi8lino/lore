@@ -1,6 +1,7 @@
 // Editor drafts, navigation guards, stats, and workspace state.
 
 import { requestConfirmation, showNotice } from "../../core/dialogs.ts";
+import { requiredAttribute } from "../../core/dom.ts";
 import type { EditorMode } from "./preview.ts";
 
 const editorModeStorageKey = "lore.editor.mode";
@@ -281,12 +282,7 @@ function restoreDraftValues(form: HTMLFormElement, values: DraftValues): void {
   }
 }
 
-async function loadServerDraft(
-  form: HTMLFormElement,
-): Promise<DraftCandidate | null> {
-  const url = form.dataset.draftUrl;
-  if (!url) return null;
-
+async function loadServerDraft(url: string): Promise<DraftCandidate | null> {
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -300,12 +296,9 @@ async function loadServerDraft(
 }
 
 async function saveServerDraft(
-  form: HTMLFormElement,
+  url: string,
   draft: DraftValue,
 ): Promise<unknown> {
-  const url = form.dataset.draftUrl;
-  if (!url) throw new Error("server draft URL is missing");
-
   const response = await fetch(url, {
     method: "PUT",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -321,10 +314,7 @@ async function saveServerDraft(
   return response.json();
 }
 
-async function deleteServerDraft(form: HTMLFormElement): Promise<void> {
-  const url = form.dataset.draftUrl;
-  if (!url) return;
-
+async function deleteServerDraft(url: string): Promise<void> {
   const response = await fetch(url, {
     method: "DELETE",
     headers: { Accept: "application/json" },
@@ -356,13 +346,14 @@ function setupDrafts(
   if (!banner || !restore || !discard || !source)
     return { clearDraft: async () => {}, flushDraft: async () => true };
 
+  const draftURL = requiredAttribute(form, "data-draft-url");
   let timer: ReturnType<typeof setTimeout> | undefined;
   let generation = 0;
   let candidate: DraftCandidate | null = null;
 
   void (async () => {
     const local = parseStoredDraft(form);
-    const server = await loadServerDraft(form);
+    const server = await loadServerDraft(draftURL);
 
     candidate =
       [local, server]
@@ -409,7 +400,7 @@ function setupDrafts(
     } catch {
       // Browser fallback cleanup is best effort.
     }
-    if (deleteServer) await deleteServerDraft(form);
+    if (deleteServer) await deleteServerDraft(draftURL);
   };
 
   discard.addEventListener("click", async () => {
@@ -445,7 +436,7 @@ function setupDrafts(
   ): Promise<boolean> => {
     setDraftState("saving");
     try {
-      await saveServerDraft(form, value);
+      await saveServerDraft(draftURL, value);
 
       if (currentGeneration === generation) setDraftState("saved");
 
@@ -629,7 +620,7 @@ function setupEditorExperience(form: HTMLFormElement): void {
   let dirty = false;
   let draftState: DraftState = "idle";
   const pristineLabel = form.dataset.editorNew === "true" ? "Ready" : "Saved";
-  const exitURL = form.dataset.editorExitUrl || "/";
+  const exitURL = requiredAttribute(form, "data-editor-exit-url");
 
   function renderDirty(): void {
     saveStatus.classList.toggle("dirty", dirty);

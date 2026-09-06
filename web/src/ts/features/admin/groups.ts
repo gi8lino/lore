@@ -6,7 +6,7 @@ import {
   isAbortError,
 } from "../../core/async.ts";
 import { showNotice } from "../../core/dialogs.ts";
-import { requiredElement } from "../../core/dom.ts";
+import { requiredAttribute, requiredElement } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
 
@@ -33,10 +33,8 @@ function groupMembers(value: unknown): GroupMember[] {
 
 // Wires group member picker behavior.
 export function setupGroupMemberPicker(card: HTMLElement): void {
-  const membersURL = card.dataset.membersUrl;
-  const usersURL = card.dataset.usersUrl;
-  if (!membersURL || !usersURL) return;
-
+  const groupMembersURL = requiredAttribute(card, "data-members-url");
+  const userSearchURL = requiredAttribute(card, "data-users-url");
   const personInput = requiredElement<HTMLInputElement>(
     card,
     "[data-group-person-input]",
@@ -50,8 +48,6 @@ export function setupGroupMemberPicker(card: HTMLElement): void {
     "[data-group-member-list]",
   );
   const count = requiredElement<HTMLElement>(card, "[data-group-member-count]");
-  const groupMembersURL = membersURL;
-  const userSearchURL = usersURL;
   let members: GroupMember[] = [];
   const searchRequests = createLatestRequest();
   const searchDebouncer = createDebouncer(() => void searchPeople(), 140);

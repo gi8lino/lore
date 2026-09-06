@@ -1,6 +1,10 @@
 // Rendered page interactions and page-local state.
 
-import { requiredElement, requiredElements } from "../core/dom.ts";
+import {
+  requiredAttribute,
+  requiredElement,
+  requiredElements,
+} from "../core/dom.ts";
 
 export function initPage(): void {
   const pageHeading = document.querySelector<HTMLElement>(".page-heading");
@@ -120,9 +124,9 @@ export function initPage(): void {
   }
 
   async function persistPageContentsPreference(show: boolean): Promise<void> {
-    const url = pageContentsToggle?.dataset.preferenceUrl;
-    if (!url) return;
+    if (!pageContentsToggle) return;
 
+    const url = requiredAttribute(pageContentsToggle, "data-preference-url");
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -276,13 +280,11 @@ function setupRevisionDialog(dialog: HTMLDialogElement): void {
     dialog,
     "[data-revision-dialog-body]",
   );
+  const revisionURL = requiredAttribute(open, "data-revision-url");
   let loaded = false;
 
   async function loadRevisionHistory(): Promise<void> {
     if (loaded) return;
-
-    const revisionURL = open.dataset.revisionUrl;
-    if (!revisionURL) return;
 
     open.disabled = true;
     body.innerHTML = '<p class="muted">Loading revision history…</p>';

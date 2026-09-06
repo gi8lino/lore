@@ -1,6 +1,7 @@
 // Editor write, split, and preview modes.
 
 import { createLatestRequest, isAbortError } from "../../core/async.ts";
+import { requiredAttribute } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
 import { renderMermaid, setupMarkdownEnhancements } from "../markdown.ts";
@@ -71,19 +72,17 @@ function setupEditorPreview(form: HTMLFormElement): void {
   const buttons = [
     ...form.querySelectorAll<HTMLButtonElement>("[data-editor-mode]"),
   ];
-  const previewURL = form.dataset.previewUrl;
   if (
     !workspace ||
     !source ||
     !preview ||
     !content ||
     !status ||
-    !buttons.length ||
-    !previewURL
+    !buttons.length
   )
     return;
 
-  const previewEndpoint = previewURL;
+  const previewEndpoint = requiredAttribute(form, "data-preview-url");
   const editorWorkspace = workspace;
   const sourceEditor = source;
   const previewPanel = preview;

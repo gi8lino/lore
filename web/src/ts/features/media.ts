@@ -1,7 +1,7 @@
 // Image upload, library, and Markdown insertion.
 
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
-import { requiredElement } from "../core/dom.ts";
+import { requiredAttribute, requiredElement } from "../core/dom.ts";
 import { isRecord } from "../core/guards.ts";
 import { errorMessage, requestJSON } from "../core/http.ts";
 import { insertMarkdownAtSelection } from "./editor/toolbar.ts";
@@ -106,12 +106,8 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   const mediaUploadInput = uploadInput;
   const mediaUploadStatus = uploadStatus;
   const editor = textarea;
-  const listURL = dialog.dataset.mediaListUrl;
-  const uploadURL = dialog.dataset.mediaUploadUrl;
-  if (!listURL || !uploadURL) return;
-
-  const mediaListURL = listURL;
-  const mediaUploadURL = uploadURL;
+  const mediaListURL = requiredAttribute(dialog, "data-media-list-url");
+  const mediaUploadURL = requiredAttribute(dialog, "data-media-upload-url");
 
   let images: ImageItem[] = [];
   let loaded = false;
@@ -323,8 +319,7 @@ async function deleteMediaImage(button: HTMLButtonElement): Promise<void> {
   )
     return;
 
-  const deleteURL = button.dataset.deleteUrl;
-  if (!deleteURL) return;
+  const deleteURL = requiredAttribute(button, "data-delete-url");
 
   button.disabled = true;
 

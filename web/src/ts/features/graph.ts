@@ -1,6 +1,6 @@
 // Interactive knowledge graph rendering and inspection.
 
-import { requiredElement } from "../core/dom.ts";
+import { requiredAttribute, requiredElement } from "../core/dom.ts";
 import { requestJSON } from "../core/http.ts";
 
 type SVGAttributes = Record<string, string | number>;
@@ -161,6 +161,7 @@ function setupGraph(root: HTMLElement): void {
     inspectorPanel,
     "[data-graph-inspector-close]",
   );
+  const graphURL = requiredAttribute(root, "data-graph-url");
   let graph: KnowledgeGraph = { nodes: [], edges: [] };
   let focus = root.dataset.graphFocus || "";
   let selected = focus;
@@ -312,9 +313,6 @@ function setupGraph(root: HTMLElement): void {
     render();
   });
   window.addEventListener("resize", render);
-
-  const graphURL = root.dataset.graphUrl;
-  if (!graphURL) return;
 
   async function loadGraph(url: string): Promise<void> {
     try {

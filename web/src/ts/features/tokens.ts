@@ -2,6 +2,7 @@
 
 import { copyText } from "../core/clipboard.ts";
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
+import { requiredAttribute } from "../core/dom.ts";
 import { isRecord } from "../core/guards.ts";
 import { errorMessage, requestJSON } from "../core/http.ts";
 
@@ -185,8 +186,7 @@ async function revokeToken(button: HTMLButtonElement): Promise<void> {
   )
     return;
 
-  const deleteURL = button.dataset.deleteUrl;
-  if (!deleteURL) return;
+  const deleteURL = requiredAttribute(button, "data-delete-url");
 
   button.disabled = true;
 

@@ -1,6 +1,10 @@
 // Administrator user access and external identity editors.
 
-import { requiredElement, requiredElements } from "../../core/dom.ts";
+import {
+  requiredAttribute,
+  requiredElement,
+  requiredElements,
+} from "../../core/dom.ts";
 
 // Returns group identifiers encoded on a user row action.
 function selectedGroupIDs(button: HTMLElement): Set<string> {
@@ -68,9 +72,7 @@ export function setupAdminUserEditor(dialog: HTMLDialogElement): void {
   });
 
   function openUserEditor(button: HTMLButtonElement): void {
-    const userID = button.dataset.userId;
-    if (!userID) return;
-
+    const userID = requiredAttribute(button, "data-user-id");
     const groups = selectedGroupIDs(button);
 
     editorForm.reset();
@@ -163,8 +165,7 @@ export function setupPendingOIDCEditor(dialog: HTMLDialogElement): void {
   );
 
   function openPendingIdentityEditor(button: HTMLButtonElement): void {
-    const pendingID = button.dataset.pendingId;
-    if (!pendingID) return;
+    const pendingID = requiredAttribute(button, "data-pending-id");
 
     identityName.textContent =
       button.dataset.pendingName || "Review OIDC identity";

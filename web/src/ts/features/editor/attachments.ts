@@ -1,7 +1,7 @@
 // Editor attachment upload and insertion.
 
 import { requestConfirmation } from "../../core/dialogs.ts";
-import { requiredElement } from "../../core/dom.ts";
+import { requiredAttribute, requiredElement } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 import { insertMarkdownAtSelection } from "./toolbar.ts";
@@ -61,13 +61,15 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
     dialog,
     "[data-attachment-status]",
   );
-  const listURL = dialog.dataset.attachmentListUrl;
-  const uploadURL = dialog.dataset.attachmentUploadUrl;
-  if (!listURL || !uploadURL) return;
-
   const attachmentDialog = dialog;
-  const attachmentListURL = listURL;
-  const attachmentUploadURL = uploadURL;
+  const attachmentListURL = requiredAttribute(
+    dialog,
+    "data-attachment-list-url",
+  );
+  const attachmentUploadURL = requiredAttribute(
+    dialog,
+    "data-attachment-upload-url",
+  );
   const attachmentBody = body;
   const attachmentStatus = status;
   const editor = textarea;

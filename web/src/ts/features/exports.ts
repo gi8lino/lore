@@ -2,7 +2,7 @@
 
 import { copyText } from "../core/clipboard.ts";
 import { showNotice } from "../core/dialogs.ts";
-import { requiredElement } from "../core/dom.ts";
+import { requiredAttribute, requiredElement } from "../core/dom.ts";
 import { errorMessage, responseProblem } from "../core/http.ts";
 
 // Wires admin export behavior.
@@ -73,10 +73,8 @@ async function downloadPDF(
   dialog: HTMLDialogElement,
   button: HTMLButtonElement,
   progress: HTMLElement,
+  pdfURL: string,
 ): Promise<void> {
-  const pdfURL = button.dataset.url;
-  if (!pdfURL) return;
-
   button.disabled = true;
 
   let progressVisible = false;
@@ -144,6 +142,8 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
     dialog,
     "[data-share-progress]",
   );
+  const permalinkPath = requiredAttribute(permalink, "data-url");
+  const pdfURL = requiredAttribute(pdf, "data-url");
 
   open.addEventListener("click", () => dialog.showModal());
   close.addEventListener("click", () => dialog.close());
@@ -153,10 +153,7 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   permalink.addEventListener("click", async () => {
     const original = permalinkStatus.textContent;
     try {
-      const path = permalink.dataset.url;
-      if (!path) throw new Error("Permalink URL is missing.");
-
-      const url = new URL(path, window.location.href).href;
+      const url = new URL(permalinkPath, window.location.href).href;
 
       await copyText(url);
       permalinkStatus.textContent = "Copied. Authentication is still required.";
@@ -181,7 +178,10 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   });
   markdown.addEventListener("click", () => dialog.close());
 
-  pdf.addEventListener("click", () => void downloadPDF(dialog, pdf, progress));
+  pdf.addEventListener(
+    "click",
+    () => void downloadPDF(dialog, pdf, progress, pdfURL),
+  );
 }
 
 // Initializes exports.

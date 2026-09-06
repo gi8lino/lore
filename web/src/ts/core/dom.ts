@@ -20,3 +20,10 @@ export function requiredElements<ElementType extends Element>(
 
   return elements;
 }
+
+export function requiredAttribute(element: Element, name: string): string {
+  const value = element.getAttribute(name)?.trim();
+  if (!value) throw new Error(`Missing required attribute: ${name}`);
+
+  return value;
+}

@@ -1,5 +1,7 @@
 // Sidebar, navigation tree, and account-menu behavior.
 
+import { requiredAttribute } from "../core/dom.ts";
+
 const MIN_SIDEBAR_WIDTH = 220;
 const MAX_SIDEBAR_WIDTH = 420;
 const SIDEBAR_WIDTH_PRESETS = new Map<number, string>([
@@ -82,6 +84,10 @@ function initNavigationTree(): void {
     ),
   ];
   const remember = navigation.dataset.navigationRemember?.trim() === "true";
+  const stateURL = requiredAttribute(
+    navigationRoot,
+    "data-navigation-state-url",
+  );
   const scrollKey = `${NAVIGATION_SCROLL_KEY}:${window.matchMedia(MOBILE_SIDEBAR_QUERY).matches ? "mobile" : "desktop"}`;
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let savePromise: Promise<void> = Promise.resolve();
@@ -109,8 +115,7 @@ function initNavigationTree(): void {
   }
 
   function saveExpandedState(): Promise<void> {
-    const stateURL = navigationRoot.dataset.navigationStateUrl;
-    if (!remember || !stateURL) return Promise.resolve();
+    if (!remember) return Promise.resolve();
 
     const expanded = expandedPaths();
 
@@ -403,6 +408,10 @@ function initSidebarResize(): void {
 
   const sidebarRoot = sidebar;
   const resizeHandle = handle;
+  const sidebarWidthURL = requiredAttribute(
+    resizeHandle,
+    "data-sidebar-width-url",
+  );
   let startX = 0;
   let startWidth = 0;
   let activePointer: number | undefined;
@@ -416,11 +425,8 @@ function initSidebarResize(): void {
   }
 
   async function persistWidth(width: number): Promise<void> {
-    const url = resizeHandle.dataset.sidebarWidthUrl;
-    if (!url) return;
-
     try {
-      await postJSON(url, { width });
+      await postJSON(sidebarWidthURL, { width });
     } catch (error) {
       console.error("failed to save sidebar width", error);
     }

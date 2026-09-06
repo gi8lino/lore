@@ -1,5 +1,6 @@
 // Notification inbox interactions.
 
+import { requiredAttribute } from "../core/dom.ts";
 import { requestJSON } from "../core/http.ts";
 
 async function markRead(id: string): Promise<void> {
@@ -41,8 +42,7 @@ function handleNotificationClick(menu: HTMLElement, event: MouseEvent): void {
   const item = target.closest<HTMLElement>("[data-notification-id]");
   if (!item || !item.classList.contains("unread")) return;
 
-  const id = item.dataset.notificationId;
-  if (!id) return;
+  const id = requiredAttribute(item, "data-notification-id");
 
   void readNotification(menu, item, id);
 }
