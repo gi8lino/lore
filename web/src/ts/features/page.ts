@@ -1,5 +1,7 @@
 // Rendered page interactions and page-local state.
 
+import { requiredElement, requiredElements } from "../core/dom.ts";
+
 export function initPage(): void {
   const pageHeading = document.querySelector<HTMLElement>(".page-heading");
   const pageReading = document.querySelector<HTMLElement>(".page-reading");
@@ -248,27 +250,42 @@ export function initPage(): void {
   const revisionDialog = document.querySelector<HTMLDialogElement>(
     "[data-revision-dialog]",
   );
-  const revisionDialogOpen = document.querySelector<HTMLButtonElement>(
+  if (revisionDialog) setupRevisionDialog(revisionDialog);
+
+  const moveDialog = document.querySelector<HTMLDialogElement>(
+    "[data-move-page-dialog]",
+  );
+  if (moveDialog) setupMoveDialog(moveDialog);
+
+  const commentDialog = document.querySelector<HTMLDialogElement>(
+    "[data-comment-dialog]",
+  );
+  if (commentDialog) setupCommentDialog(commentDialog);
+}
+
+function setupRevisionDialog(dialog: HTMLDialogElement): void {
+  const open = requiredElement<HTMLButtonElement>(
+    document,
     "[data-revision-dialog-open]",
   );
-  const revisionDialogClose = revisionDialog?.querySelector<HTMLButtonElement>(
+  const close = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-revision-dialog-close]",
   );
-  const revisionDialogBody = revisionDialog?.querySelector<HTMLElement>(
+  const body = requiredElement<HTMLElement>(
+    dialog,
     "[data-revision-dialog-body]",
   );
-  let revisionHistoryLoaded = false;
+  let loaded = false;
 
   async function loadRevisionHistory(): Promise<void> {
-    if (revisionHistoryLoaded || !revisionDialogOpen || !revisionDialogBody)
-      return;
+    if (loaded) return;
 
-    const revisionURL = revisionDialogOpen.dataset.revisionUrl;
+    const revisionURL = open.dataset.revisionUrl;
     if (!revisionURL) return;
 
-    revisionDialogOpen.disabled = true;
-    revisionDialogBody.innerHTML =
-      '<p class="muted">Loading revision history…</p>';
+    open.disabled = true;
+    body.innerHTML = '<p class="muted">Loading revision history…</p>';
 
     try {
       const response = await fetch(revisionURL, {
@@ -276,85 +293,90 @@ export function initPage(): void {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      revisionDialogBody.innerHTML = await response.text();
-      revisionHistoryLoaded = true;
+      body.innerHTML = await response.text();
+      loaded = true;
     } catch (error) {
       console.error("failed to load revision history", error);
-      revisionDialogBody.innerHTML =
+      body.innerHTML =
         '<p class="revision-dialog-error">Revision history could not be loaded. Close the dialog and try again.</p>';
     } finally {
-      revisionDialogOpen.disabled = false;
+      open.disabled = false;
     }
   }
 
-  revisionDialogOpen?.addEventListener("click", () => {
-    revisionDialog?.showModal();
+  open.addEventListener("click", () => {
+    dialog.showModal();
     void loadRevisionHistory();
   });
-  revisionDialogClose?.addEventListener("click", () => revisionDialog?.close());
-  revisionDialog?.addEventListener("click", (event) => {
-    if (event.target === revisionDialog) revisionDialog.close();
+  close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event: MouseEvent) => {
+    if (event.target === dialog) dialog.close();
   });
+}
 
-  const moveDialog = document.querySelector<HTMLDialogElement>(
-    "[data-move-page-dialog]",
-  );
-
-  for (const button of document.querySelectorAll<HTMLButtonElement>(
+function setupMoveDialog(dialog: HTMLDialogElement): void {
+  const openButtons = requiredElements<HTMLButtonElement>(
+    document,
     "[data-move-page-open]",
-  )) {
-    button.addEventListener("click", () => moveDialog?.showModal());
-  }
-  for (const button of moveDialog?.querySelectorAll<HTMLButtonElement>(
-    "[data-move-page-close]",
-  ) || []) {
-    button.addEventListener("click", () => moveDialog?.close());
-  }
-
-  moveDialog?.addEventListener("click", (event) => {
-    if (event.target === moveDialog) moveDialog.close();
-  });
-
-  const commentDialog = document.querySelector<HTMLDialogElement>(
-    "[data-comment-dialog]",
   );
-  const commentAnchor = commentDialog?.querySelector<HTMLTextAreaElement>(
+  const closeButtons = requiredElements<HTMLButtonElement>(
+    dialog,
+    "[data-move-page-close]",
+  );
+
+  for (const button of openButtons)
+    button.addEventListener("click", () => dialog.showModal());
+
+  for (const button of closeButtons)
+    button.addEventListener("click", () => dialog.close());
+
+  dialog.addEventListener("click", (event: MouseEvent) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
+
+function selectedPageText(): string {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) return "";
+
+  const range = selection.getRangeAt(0);
+  const prose = document.querySelector<HTMLElement>(".page-reading .prose");
+  if (!prose || !prose.contains(range.commonAncestorContainer)) return "";
+
+  return selection.toString().trim().slice(0, 500);
+}
+
+function setupCommentDialog(dialog: HTMLDialogElement): void {
+  const anchor = requiredElement<HTMLTextAreaElement>(
+    dialog,
     "[data-comment-anchor]",
   );
-
-  function selectedPageText(): string {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || !selection.rangeCount) return "";
-
-    const range = selection.getRangeAt(0);
-    const prose = document.querySelector<HTMLElement>(".page-reading .prose");
-    if (!prose || !prose.contains(range.commonAncestorContainer)) return "";
-
-    return selection.toString().trim().slice(0, 500);
-  }
-
-  for (const button of document.querySelectorAll<HTMLButtonElement>(
+  const body = requiredElement<HTMLTextAreaElement>(
+    dialog,
+    'textarea[name="body"]',
+  );
+  const openButtons = requiredElements<HTMLButtonElement>(
+    document,
     "[data-comment-dialog-open]",
-  )) {
-    button.addEventListener("click", () => {
-      if (commentAnchor && !commentAnchor.value.trim())
-        commentAnchor.value = selectedPageText();
+  );
+  const closeButtons = requiredElements<HTMLButtonElement>(
+    dialog,
+    "[data-comment-dialog-close]",
+  );
 
-      commentDialog?.showModal();
-      requestAnimationFrame(() =>
-        commentDialog
-          ?.querySelector<HTMLTextAreaElement>('textarea[name="body"]')
-          ?.focus(),
-      );
+  for (const button of openButtons) {
+    button.addEventListener("click", () => {
+      if (!anchor.value.trim()) anchor.value = selectedPageText();
+
+      dialog.showModal();
+      requestAnimationFrame(() => body.focus());
     });
   }
-  for (const button of commentDialog?.querySelectorAll<HTMLButtonElement>(
-    "[data-comment-dialog-close]",
-  ) || []) {
-    button.addEventListener("click", () => commentDialog?.close());
-  }
 
-  commentDialog?.addEventListener("click", (event) => {
-    if (event.target === commentDialog) commentDialog.close();
+  for (const button of closeButtons)
+    button.addEventListener("click", () => dialog.close());
+
+  dialog.addEventListener("click", (event: MouseEvent) => {
+    if (event.target === dialog) dialog.close();
   });
 }

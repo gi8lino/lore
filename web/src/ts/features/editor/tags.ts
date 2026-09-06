@@ -1,5 +1,6 @@
 // Editor tag chips and autocomplete.
 
+import { requiredElement } from "../../core/dom.ts";
 import { requestJSON } from "../../core/http.ts";
 
 interface RestoreDraftDetail {
@@ -8,20 +9,23 @@ interface RestoreDraftDetail {
 
 // Wires tag editor behavior.
 function setupTagEditor(editor: HTMLElement): void {
-  const chips = editor.querySelector<HTMLElement>("[data-tag-chips]");
-  const input = editor.querySelector<HTMLInputElement>("[data-tag-input]");
-  const value = editor.querySelector<HTMLInputElement>("[data-tag-value]");
-  const suggestions = editor.querySelector<HTMLElement>(
+  const chipList = requiredElement<HTMLElement>(editor, "[data-tag-chips]");
+  const tagInput = requiredElement<HTMLInputElement>(
+    editor,
+    "[data-tag-input]",
+  );
+  const tagValue = requiredElement<HTMLInputElement>(
+    editor,
+    "[data-tag-value]",
+  );
+  const suggestionList = requiredElement<HTMLElement>(
+    editor,
     "[data-tag-suggestions]",
   );
   const source = editor.dataset.tagSource;
-  if (!chips || !input || !value || !suggestions || !source) return;
+  if (!source) return;
 
   const tagSource = source;
-  const chipList = chips;
-  const tagInput = input;
-  const tagValue = value;
-  const suggestionList = suggestions;
   let availableTags: string[] = [];
   let tagsLoaded = false;
   let selectedTags = tagValue.value

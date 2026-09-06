@@ -1,3 +1,4 @@
+import { requiredElement, requiredElements } from "../../core/dom.ts";
 // Markdown table creation, selection, and style controls.
 
 const tableTones = new Set([
@@ -506,79 +507,66 @@ function insertTable(
 }
 
 function setupTablePalette(toolbar: HTMLElement): void {
-  const textarea = document.querySelector<HTMLTextAreaElement>(
+  const editor = requiredElement<HTMLTextAreaElement>(
+    document,
     "[data-markdown-editor]",
   );
-  const dialog = document.querySelector<HTMLDialogElement>(
+  const tableDialog = requiredElement<HTMLDialogElement>(
+    document,
     "[data-table-format-dialog]",
   );
-  const open = toolbar.querySelector<HTMLButtonElement>(
+  const open = requiredElement<HTMLButtonElement>(
+    toolbar,
     "[data-table-format-open]",
   );
-  if (!textarea || !dialog || !open) return;
-
-  const existingPanel = dialog.querySelector<HTMLElement>(
+  const existing = requiredElement<HTMLElement>(
+    tableDialog,
     "[data-table-format-existing]",
   );
-  const insertPanel = dialog.querySelector<HTMLElement>(
+  const insertControls = requiredElement<HTMLElement>(
+    tableDialog,
     "[data-table-format-insert]",
   );
-  const context = dialog.querySelector<HTMLElement>(
+  const tableContext = requiredElement<HTMLElement>(
+    tableDialog,
     "[data-table-format-context]",
   );
-  const targetInputs = [
-    ...dialog.querySelectorAll<TableTargetInput>(
-      '[name="table-format-target"]',
-    ),
-  ];
-  const toneInputs = [
-    ...dialog.querySelectorAll<HTMLInputElement>('[name="table-format-tone"]'),
-  ];
-  const sortable = dialog.querySelector<HTMLInputElement>(
+  const targetInputs = requiredElements<TableTargetInput>(
+    tableDialog,
+    '[name="table-format-target"]',
+  );
+  const toneInputs = requiredElements<HTMLInputElement>(
+    tableDialog,
+    '[name="table-format-tone"]',
+  );
+  const sortableControl = requiredElement<HTMLInputElement>(
+    tableDialog,
     "[data-table-format-sortable]",
   );
-  const filterable = dialog.querySelector<HTMLInputElement>(
+  const filterableControl = requiredElement<HTMLInputElement>(
+    tableDialog,
     "[data-table-format-filterable]",
   );
-  const clear = dialog.querySelector<HTMLButtonElement>(
+  const clearButton = requiredElement<HTMLButtonElement>(
+    tableDialog,
     "[data-table-format-clear]",
   );
-  const rows = dialog.querySelector<HTMLInputElement>(
+  const rowInput = requiredElement<HTMLInputElement>(
+    tableDialog,
     "[data-table-insert-rows]",
   );
-  const columns = dialog.querySelector<HTMLInputElement>(
+  const columnInput = requiredElement<HTMLInputElement>(
+    tableDialog,
     "[data-table-insert-columns]",
   );
-  const insert = dialog.querySelector<HTMLButtonElement>(
+  const insertButton = requiredElement<HTMLButtonElement>(
+    tableDialog,
     "[data-table-insert-submit]",
   );
-  const closeButtons = [
-    ...dialog.querySelectorAll<HTMLButtonElement>("[data-table-format-close]"),
-  ];
-  if (
-    !existingPanel ||
-    !insertPanel ||
-    !context ||
-    !sortable ||
-    !filterable ||
-    !clear ||
-    !rows ||
-    !columns ||
-    !insert
-  )
-    return;
-
-  const editor = textarea;
-  const tableDialog = dialog;
-  const existing = existingPanel;
-  const insertControls = insertPanel;
-  const tableContext = context;
-  const sortableControl = sortable;
-  const filterableControl = filterable;
-  const clearButton = clear;
-  const rowInput = rows;
-  const columnInput = columns;
-  const insertButton = insert;
+  const closeButtons = requiredElements<HTMLButtonElement>(
+    tableDialog,
+    "[data-table-format-close]",
+  );
   let currentTable: MarkdownTable | null = null;
 
   function selectedTarget(): string {

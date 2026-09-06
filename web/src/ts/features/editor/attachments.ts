@@ -1,6 +1,7 @@
 // Editor attachment upload and insertion.
 
 import { requestConfirmation } from "../../core/dialogs.ts";
+import { requiredElement } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { requestJSON } from "../../core/http.ts";
 import { insertMarkdownAtSelection } from "./toolbar.ts";
@@ -32,30 +33,37 @@ export function attachmentMarkdown(
 
 // Wires attachment dialog behavior.
 function setupAttachmentDialog(form: HTMLFormElement): void {
-  const dialog = document.querySelector<HTMLDialogElement>(
+  const dialog = requiredElement<HTMLDialogElement>(
+    document,
     "[data-attachment-dialog]",
   );
-  const open = form.querySelector<HTMLButtonElement>(
+  const open = requiredElement<HTMLButtonElement>(
+    form,
     "[data-attachment-dialog-open]",
   );
-  const textarea = form.querySelector<HTMLTextAreaElement>(
+  const textarea = requiredElement<HTMLTextAreaElement>(
+    form,
     "[data-markdown-editor]",
   );
-  if (!dialog || !open || !textarea) return;
-
-  const close = dialog.querySelector<HTMLButtonElement>(
+  const close = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-attachment-dialog-close]",
   );
-  const body = dialog.querySelector<HTMLElement>(
+  const body = requiredElement<HTMLElement>(
+    dialog,
     "[data-attachment-dialog-body]",
   );
-  const upload = dialog.querySelector<HTMLInputElement>(
+  const upload = requiredElement<HTMLInputElement>(
+    dialog,
     "[data-attachment-upload]",
   );
-  const status = dialog.querySelector<HTMLElement>("[data-attachment-status]");
+  const status = requiredElement<HTMLElement>(
+    dialog,
+    "[data-attachment-status]",
+  );
   const listURL = dialog.dataset.attachmentListUrl;
   const uploadURL = dialog.dataset.attachmentUploadUrl;
-  if (!body || !status || !listURL || !uploadURL) return;
+  if (!listURL || !uploadURL) return;
 
   const attachmentDialog = dialog;
   const attachmentListURL = listURL;
@@ -154,11 +162,11 @@ function setupAttachmentDialog(form: HTMLFormElement): void {
     attachmentDialog.showModal();
     void load();
   });
-  close?.addEventListener("click", () => attachmentDialog.close());
+  close.addEventListener("click", () => attachmentDialog.close());
   attachmentDialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === attachmentDialog) attachmentDialog.close();
   });
-  upload?.addEventListener("change", async () => {
+  upload.addEventListener("change", async () => {
     const file = upload.files?.[0];
     if (!file) return;
 

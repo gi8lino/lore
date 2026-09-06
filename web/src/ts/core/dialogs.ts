@@ -1,5 +1,7 @@
 // Reusable confirmation and notice dialog helpers.
 
+import { requiredElement, requiredElements } from "./dom.ts";
+
 interface ConfirmationOptions {
   eyebrow?: string;
   title?: string;
@@ -31,35 +33,36 @@ export function requestConfirmation(
   const dialog = confirmationDialog();
   if (!dialog) return Promise.resolve(false);
 
-  const eyebrow = dialog.querySelector<HTMLElement>(
+  const eyebrow = requiredElement<HTMLElement>(
+    dialog,
     "[data-confirm-dialog-eyebrow]",
   );
-  const title = dialog.querySelector<HTMLElement>(
+  const title = requiredElement<HTMLElement>(
+    dialog,
     "[data-confirm-dialog-title]",
   );
-  const body = dialog.querySelector<HTMLElement>(
+  const body = requiredElement<HTMLElement>(
+    dialog,
     "[data-confirm-dialog-message]",
   );
-  const accept = dialog.querySelector<HTMLButtonElement>(
+  const accept = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-confirm-dialog-accept]",
   );
-  const cancelLabel = dialog.querySelector<HTMLElement>(
+  const cancelLabel = requiredElement<HTMLElement>(
+    dialog,
     "[data-confirm-dialog-cancel-label]",
   );
-  const cancelButtons = [
-    ...dialog.querySelectorAll<HTMLButtonElement>(
-      "[data-confirm-dialog-cancel]",
-    ),
-  ];
-  if (!title || !body || !accept) return Promise.resolve(false);
+  const cancelButtons = requiredElements<HTMLButtonElement>(
+    dialog,
+    "[data-confirm-dialog-cancel]",
+  );
 
-  if (eyebrow) eyebrow.textContent = options.eyebrow || "Confirmation";
-
+  eyebrow.textContent = options.eyebrow || "Confirmation";
   title.textContent = options.title || "Confirm action";
   body.textContent = message || "Continue?";
   accept.textContent = options.confirmLabel || "Continue";
-
-  if (cancelLabel) cancelLabel.textContent = options.cancelLabel || "Cancel";
+  cancelLabel.textContent = options.cancelLabel || "Cancel";
 
   accept.classList.toggle("danger", options.danger !== false);
   accept.classList.toggle("primary", options.danger === false);
@@ -97,14 +100,18 @@ export function showNotice(
   const dialog = noticeDialog();
   if (!dialog) return Promise.resolve();
 
-  const title = dialog.querySelector<HTMLElement>("[data-notice-dialog-title]");
-  const body = dialog.querySelector<HTMLElement>(
+  const title = requiredElement<HTMLElement>(
+    dialog,
+    "[data-notice-dialog-title]",
+  );
+  const body = requiredElement<HTMLElement>(
+    dialog,
     "[data-notice-dialog-message]",
   );
-  const closeButtons = [
-    ...dialog.querySelectorAll<HTMLButtonElement>("[data-notice-dialog-close]"),
-  ];
-  if (!title || !body) return Promise.resolve();
+  const closeButtons = requiredElements<HTMLButtonElement>(
+    dialog,
+    "[data-notice-dialog-close]",
+  );
 
   title.textContent = options.title || "Notice";
   body.textContent = message || "";

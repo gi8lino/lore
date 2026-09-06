@@ -1,5 +1,6 @@
 // Global command palette search and keyboard interaction.
 
+import { requiredElement } from "./dom.ts";
 import { isRecord } from "./guards.ts";
 import { requestJSON } from "./http.ts";
 
@@ -20,19 +21,18 @@ function isCommandPage(value: unknown): value is CommandPage {
 
 // Wires command-palette search, navigation, and actions.
 function setupCommandPalette(dialog: HTMLDialogElement): void {
-  const input = dialog.querySelector<HTMLInputElement>(
+  const inputElement = requiredElement<HTMLInputElement>(
+    dialog,
     "[data-command-palette-input]",
   );
-  const results = dialog.querySelector<HTMLElement>(
+  const resultsElement = requiredElement<HTMLElement>(
+    dialog,
     "[data-command-palette-results]",
   );
-  const closeButtons = dialog.querySelectorAll<HTMLButtonElement>(
+  const closeButton = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-command-palette-close]",
   );
-  if (!input || !results) return;
-
-  const inputElement = input;
-  const resultsElement = results;
 
   let pages: CommandPage[] = [];
   let active = -1;
@@ -177,7 +177,7 @@ function setupCommandPalette(dialog: HTMLDialogElement): void {
   });
 
   inputElement.addEventListener("input", () => void search());
-  closeButtons.forEach((button) => button.addEventListener("click", close));
+  closeButton.addEventListener("click", close);
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) close();
   });

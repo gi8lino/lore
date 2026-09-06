@@ -1,6 +1,7 @@
 // Image upload, library, and Markdown insertion.
 
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
+import { requiredElement } from "../core/dom.ts";
 import { isRecord } from "../core/guards.ts";
 import { errorMessage, requestJSON } from "../core/http.ts";
 import { insertMarkdownAtSelection } from "./editor/toolbar.ts";
@@ -75,18 +76,25 @@ function hasDraggedImage(dataTransfer: DataTransfer | null): boolean {
 
 // Wires media dialog behavior.
 function setupMediaDialog(dialog: HTMLDialogElement): void {
-  const open = document.querySelector<HTMLElement>("[data-media-dialog-open]");
-  const close = dialog.querySelector<HTMLButtonElement>(
+  const open = requiredElement<HTMLElement>(
+    document,
+    "[data-media-dialog-open]",
+  );
+  const close = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-media-dialog-close]",
   );
-  const body = dialog.querySelector<HTMLElement>("[data-media-dialog-body]");
-  const uploadInput = dialog.querySelector<HTMLInputElement>(
+  const body = requiredElement<HTMLElement>(dialog, "[data-media-dialog-body]");
+  const uploadInput = requiredElement<HTMLInputElement>(
+    dialog,
     "[data-media-upload-input]",
   );
-  const uploadStatus = dialog.querySelector<HTMLElement>(
+  const uploadStatus = requiredElement<HTMLElement>(
+    dialog,
     "[data-media-upload-status]",
   );
-  const textarea = document.querySelector<HTMLTextAreaElement>(
+  const textarea = requiredElement<HTMLTextAreaElement>(
+    document,
     "[data-markdown-editor]",
   );
   const sourcePane =
@@ -94,9 +102,6 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   const dropStatus =
     sourcePane?.querySelector<HTMLElement>("[data-editor-upload-status]") ??
     null;
-  if (!open || !close || !body || !uploadInput || !uploadStatus || !textarea)
-    return;
-
   const mediaBody = body;
   const mediaUploadInput = uploadInput;
   const mediaUploadStatus = uploadStatus;

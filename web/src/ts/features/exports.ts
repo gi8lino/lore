@@ -2,6 +2,7 @@
 
 import { copyText } from "../core/clipboard.ts";
 import { showNotice } from "../core/dialogs.ts";
+import { requiredElement } from "../core/dom.ts";
 import { errorMessage, responseProblem } from "../core/http.ts";
 
 // Wires admin export behavior.
@@ -114,36 +115,35 @@ async function downloadPDF(
 
 // Wires share dialog behavior.
 function setupShareDialog(dialog: HTMLDialogElement): void {
-  const open = document.querySelector<HTMLButtonElement>(
+  const open = requiredElement<HTMLButtonElement>(
+    document,
     "[data-share-dialog-open]",
   );
-  const close = dialog.querySelector<HTMLButtonElement>(
+  const close = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-share-dialog-close]",
   );
-  const permalink = dialog.querySelector<HTMLButtonElement>(
+  const permalink = requiredElement<HTMLButtonElement>(
+    dialog,
     "[data-share-permalink]",
   );
-  const permalinkStatus = dialog.querySelector<HTMLElement>(
+  const permalinkStatus = requiredElement<HTMLElement>(
+    dialog,
     "[data-share-permalink-status]",
   );
-  const print = dialog.querySelector<HTMLButtonElement>("[data-share-print]");
-  const pdf = dialog.querySelector<HTMLButtonElement>("[data-share-pdf]");
-  const markdown = dialog.querySelector<HTMLAnchorElement>(
+  const print = requiredElement<HTMLButtonElement>(
+    dialog,
+    "[data-share-print]",
+  );
+  const pdf = requiredElement<HTMLButtonElement>(dialog, "[data-share-pdf]");
+  const markdown = requiredElement<HTMLAnchorElement>(
+    dialog,
     "[data-share-markdown]",
   );
-  const progress = dialog.querySelector<HTMLElement>("[data-share-progress]");
-  if (
-    !open ||
-    !close ||
-    !permalink ||
-    !permalinkStatus ||
-    !print ||
-    !pdf ||
-    !markdown ||
-    !progress
-  ) {
-    return;
-  }
+  const progress = requiredElement<HTMLElement>(
+    dialog,
+    "[data-share-progress]",
+  );
 
   open.addEventListener("click", () => dialog.showModal());
   close.addEventListener("click", () => dialog.close());

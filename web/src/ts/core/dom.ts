@@ -9,3 +9,14 @@ export function requiredElement<ElementType extends Element>(
 
   return element;
 }
+
+export function requiredElements<ElementType extends Element>(
+  root: ParentNode,
+  selector: string,
+): ElementType[] {
+  const elements = [...root.querySelectorAll<ElementType>(selector)];
+  if (!elements.length)
+    throw new Error(`Missing required elements: ${selector}`);
+
+  return elements;
+}

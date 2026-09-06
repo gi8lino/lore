@@ -1,5 +1,6 @@
 // Interactive knowledge graph rendering and inspection.
 
+import { requiredElement } from "../core/dom.ts";
 import { requestJSON } from "../core/http.ts";
 
 type SVGAttributes = Record<string, string | number>;
@@ -122,16 +123,44 @@ export function graphNeighborhood(
 
 // Wires graph behavior.
 function setupGraph(root: HTMLElement): void {
-  const svg = root.querySelector<SVGSVGElement>("[data-graph-svg]");
-  const search = root.querySelector<HTMLInputElement>("[data-graph-search]");
-  const empty = root.querySelector<HTMLElement>("[data-graph-empty]");
-  const inspector = root.querySelector<HTMLElement>("[data-graph-inspector]");
-  if (!svg || !search || !empty || !inspector) return;
-
-  const graphSVG = svg;
-  const graphSearch = search;
-  const emptyState = empty;
-  const inspectorPanel = inspector;
+  const graphSVG = requiredElement<SVGSVGElement>(root, "[data-graph-svg]");
+  const graphSearch = requiredElement<HTMLInputElement>(
+    root,
+    "[data-graph-search]",
+  );
+  const emptyState = requiredElement<HTMLElement>(root, "[data-graph-empty]");
+  const inspectorPanel = requiredElement<HTMLElement>(
+    root,
+    "[data-graph-inspector]",
+  );
+  const inspectorTitle = requiredElement<HTMLElement>(
+    inspectorPanel,
+    "[data-graph-title]",
+  );
+  const inspectorSlug = requiredElement<HTMLElement>(
+    inspectorPanel,
+    "[data-graph-slug]",
+  );
+  const inspectorStatus = requiredElement<HTMLElement>(
+    inspectorPanel,
+    "[data-graph-status]",
+  );
+  const inspectorDegree = requiredElement<HTMLElement>(
+    inspectorPanel,
+    "[data-graph-degree]",
+  );
+  const inspectorOpen = requiredElement<HTMLAnchorElement>(
+    inspectorPanel,
+    "[data-graph-open]",
+  );
+  const fitButton = requiredElement<HTMLButtonElement>(
+    root,
+    "[data-graph-fit]",
+  );
+  const inspectorClose = requiredElement<HTMLButtonElement>(
+    inspectorPanel,
+    "[data-graph-inspector-close]",
+  );
   let graph: KnowledgeGraph = { nodes: [], edges: [] };
   let focus = root.dataset.graphFocus || "";
   let selected = focus;
@@ -141,27 +170,12 @@ function setupGraph(root: HTMLElement): void {
     selected = node.slug;
     inspectorPanel.hidden = false;
 
-    const title =
-      inspectorPanel.querySelector<HTMLElement>("[data-graph-title]");
-    const slug = inspectorPanel.querySelector<HTMLElement>("[data-graph-slug]");
-    const status = inspectorPanel.querySelector<HTMLElement>(
-      "[data-graph-status]",
-    );
-    const degreeLabel = inspectorPanel.querySelector<HTMLElement>(
-      "[data-graph-degree]",
-    );
-    const open =
-      inspectorPanel.querySelector<HTMLAnchorElement>("[data-graph-open]");
-
-    if (title) title.textContent = node.title;
-    if (slug) slug.textContent = node.slug;
-    if (status) {
-      status.textContent = node.status || "verified";
-      status.className = `page-status-badge status-${node.status || "verified"}`;
-    }
-    if (degreeLabel)
-      degreeLabel.textContent = `${degree} linked page${degree === 1 ? "" : "s"}`;
-    if (open) open.href = `/pages/${node.slug}`;
+    inspectorTitle.textContent = node.title;
+    inspectorSlug.textContent = node.slug;
+    inspectorStatus.textContent = node.status || "verified";
+    inspectorStatus.className = `page-status-badge status-${node.status || "verified"}`;
+    inspectorDegree.textContent = `${degree} linked page${degree === 1 ? "" : "s"}`;
+    inspectorOpen.href = `/pages/${node.slug}`;
 
     render();
   }
@@ -285,22 +299,18 @@ function setupGraph(root: HTMLElement): void {
   }
 
   graphSearch.addEventListener("input", render);
-  root
-    .querySelector<HTMLButtonElement>("[data-graph-fit]")
-    ?.addEventListener("click", () => {
-      focus = "";
-      selected = "";
-      graphSearch.value = "";
-      inspectorPanel.hidden = true;
-      render();
-    });
-  inspectorPanel
-    .querySelector<HTMLButtonElement>("[data-graph-inspector-close]")
-    ?.addEventListener("click", () => {
-      inspectorPanel.hidden = true;
-      selected = "";
-      render();
-    });
+  fitButton.addEventListener("click", () => {
+    focus = "";
+    selected = "";
+    graphSearch.value = "";
+    inspectorPanel.hidden = true;
+    render();
+  });
+  inspectorClose.addEventListener("click", () => {
+    inspectorPanel.hidden = true;
+    selected = "";
+    render();
+  });
   window.addEventListener("resize", render);
 
   const graphURL = root.dataset.graphUrl;
