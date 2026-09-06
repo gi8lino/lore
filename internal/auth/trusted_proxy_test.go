@@ -102,3 +102,17 @@ func TestFirstHeader(t *testing.T) {
 		assert.Empty(t, firstHeader(request, []string{"X-User"}))
 	})
 }
+
+func TestTrustedProxyClearsReturnedExternalAdminStatus(t *testing.T) {
+	t.Parallel()
+	repository := &trustedProxyRepositoryStub{user: domain.User{ID: 7, Role: "viewer", Enabled: true, ExternalAdmin: true}}
+	authenticator := NewTrustedProxy(repository, TrustedProxyHeaders{Username: []string{"X-User"}, Groups: []string{"X-Groups"}, AdminGroup: "/admins"})
+	request := httptest.NewRequest("GET", "/", nil)
+	request.Header.Set("X-User", "example")
+	request.Header.Set("X-Groups", "/readers")
+	user, err := authenticator.Authenticate(request)
+	require.NoError(t, err)
+	assert.False(t, user.ExternalAdmin)
+	assert.False(t, repository.admin)
+	assert.Equal(t, "viewer", user.Role)
+}

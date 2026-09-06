@@ -54,7 +54,7 @@
             </label>
             <label>
               New password
-              <input type="password" name="new_password" autocomplete="new-password" minlength="12" data-error-required="Enter a new password." data-error-minlength="Use at least 12 characters." required />
+              <input type="password" name="new_password" autocomplete="new-password" minlength="12" data-validate-password data-error-required="Enter a new password." data-error-minlength="Use at least 12 characters." required />
               <small>At least 12 characters.</small>
             </label>
             <label>
@@ -331,5 +331,3 @@
     </div>
   </section>
 {{ end }}
-
-

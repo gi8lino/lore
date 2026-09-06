@@ -32,7 +32,7 @@ func (a *Bearer) Authenticate(r *http.Request) (domain.User, error) {
 	}
 
 	user, err := a.repository.UserByToken(r.Context(), token)
-	if errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) || (err == nil && !user.Enabled) {
 		return domain.User{}, ErrInvalidCredentials
 	}
 

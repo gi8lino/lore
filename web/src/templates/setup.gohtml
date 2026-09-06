@@ -23,7 +23,7 @@
       </label>
       <label>
         Password
-        <input type="password" name="password" autocomplete="new-password" minlength="12" data-error-required="Password is required." data-error-minlength="Use at least 12 characters." required />
+        <input type="password" name="password" autocomplete="new-password" minlength="12" data-validate-password data-error-required="Password is required." data-error-minlength="Use at least 12 characters." required />
         <small>At least 12 characters.</small>
       </label>
       <label>
@@ -38,5 +38,3 @@
     </p>
   </section>
 {{ end }}
-
-

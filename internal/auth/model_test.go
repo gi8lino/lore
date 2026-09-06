@@ -90,3 +90,10 @@ func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 
 	assert.EqualError(t, browser.validateSettings(settings), "OIDC session secret must be at least 32 characters")
 }
+
+func TestBrowserValidationRequiresAdministratorGroupSources(t *testing.T) {
+	t.Parallel()
+	browser := &browserAuthenticator{oidcConfig: OIDCConfig{ClientSecret: "secret", SessionSecret: "0123456789abcdef0123456789abcdef"}}
+	assert.Error(t, browser.validateSettings(domain.AuthenticationSettings{Mode: "oidc", OIDCIssuer: "https://example.test", OIDCClientID: "lore", OIDCAdminGroup: "/admins"}))
+	assert.Error(t, browser.validateSettings(domain.AuthenticationSettings{Mode: "trusted-proxy", TrustedUsernameHeaders: []string{"X-User"}, TrustedAdminGroup: "/admins"}))
+}

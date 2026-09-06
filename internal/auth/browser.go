@@ -281,6 +281,9 @@ func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSe
 		if len(settings.TrustedUsernameHeaders) == 0 {
 			return errors.New("trusted-proxy authentication requires at least one username header")
 		}
+		if strings.TrimSpace(settings.TrustedAdminGroup) != "" && len(settings.TrustedGroupHeaders) == 0 {
+			return errors.New("trusted-proxy administrator elevation requires a group header")
+		}
 		return nil
 	case AuthModeOIDC:
 		issuer := strings.TrimSpace(settings.OIDCIssuer)
@@ -288,8 +291,8 @@ func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSe
 		if issuer == "" || clientID == "" {
 			return errors.New("OIDC authentication requires an issuer and client ID")
 		}
-		if settings.OIDCGroupSync && strings.TrimSpace(settings.OIDCGroupClaim) == "" {
-			return errors.New("OIDC group synchronization requires a group claim")
+		if (settings.OIDCGroupSync || strings.TrimSpace(settings.OIDCAdminGroup) != "") && strings.TrimSpace(settings.OIDCGroupClaim) == "" {
+			return errors.New("OIDC group synchronization and administrator elevation require a group claim")
 		}
 		if b.oidcConfig.ClientSecret == "" {
 			return errors.New("OIDC client secret is not configured")

@@ -126,3 +126,11 @@ func setupProblems(t *testing.T, form url.Values) []httpresponse.FieldProblem {
 	require.NoError(t, request.ParseForm())
 	return setupValidationProblems(request)
 }
+
+func TestLocalPasswordValidationRejectsBcryptOverflow(t *testing.T) {
+	t.Parallel()
+	password := strings.Repeat("a", 73)
+	assert.Equal(t, []httpresponse.FieldProblem{
+		httpresponse.NewFieldProblem("password", "Use at most 72 UTF-8 bytes."),
+	}, localPasswordValidationProblems(password, password, "password", "password_confirm", true))
+}

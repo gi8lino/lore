@@ -292,7 +292,7 @@
           <div class="form-grid">
             <label>
               New password
-              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-error-minlength="Use at least 12 characters." data-admin-user-local-password-input disabled />
+              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-validate-password data-error-minlength="Use at least 12 characters." data-admin-user-local-password-input disabled />
             </label>
             <label>
               Confirm password
@@ -388,5 +388,3 @@
     </div>
   </dialog>
 {{ end }}
-
-

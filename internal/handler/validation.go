@@ -45,8 +45,8 @@ func localPasswordValidationProblems(
 
 	if password == "" {
 		problems = append(problems, httpresponse.NewFieldProblem(passwordField, "Password is required."))
-	} else if !auth.ValidLocalPassword(password) {
-		problems = append(problems, httpresponse.NewFieldProblem(passwordField, "Use at least 12 characters."))
+	} else if problem := auth.LocalPasswordProblem(password); problem != "" {
+		problems = append(problems, httpresponse.NewFieldProblem(passwordField, problem))
 	}
 
 	if confirmation == "" {

@@ -18,7 +18,6 @@ import (
 const (
 	localSessionCookie = "lore_local_session"
 	localSessionTTL    = 12 * time.Hour
-	minimumPasswordLen = 12
 )
 
 // Local authenticates optional password-backed Lore accounts.
@@ -46,7 +45,7 @@ func (l *Local) Authenticate(r *http.Request) (domain.User, error) {
 		r.Context(),
 		localSessionHash(cookie.Value),
 	)
-	if errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) || (err == nil && !user.Enabled) {
 		return domain.User{}, ErrUnauthenticated
 	}
 
@@ -62,7 +61,7 @@ func (l *Local) SignIn(
 		ctx,
 		strings.TrimSpace(username),
 	)
-	if errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) || (err == nil && !user.Enabled) {
 		return domain.User{}, "", ErrInvalidCredentials
 	}
 	if err != nil {
@@ -109,7 +108,7 @@ func (l *Local) ChangePassword(
 	if err != nil {
 		return "", err
 	}
-	if user.ID != userID {
+	if !user.Enabled || user.ID != userID {
 		return "", ErrInvalidCredentials
 	}
 
@@ -227,15 +226,10 @@ func (l *Local) ClearSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ValidLocalPassword reports whether a password satisfies the local-login minimum length.
-func ValidLocalPassword(password string) bool {
-	return len([]rune(password)) >= minimumPasswordLen
-}
-
 // localPasswordHash hashes a validated local password with bcrypt.
 func localPasswordHash(password string) (string, error) {
-	if !ValidLocalPassword(password) {
-		return "", errors.New("local password must be at least 12 characters")
+	if problem := LocalPasswordProblem(password); problem != "" {
+		return "", errors.New(problem)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(

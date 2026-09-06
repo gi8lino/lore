@@ -99,6 +99,7 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	// Auth
 	authModeFlag := tinyflags.Enum(flags, "auth-mode", auth.AuthModeNone, "Emergency override for the database-managed authentication mode",
 		auth.AuthModeNone,
+		auth.AuthModeLocal,
 		auth.AuthModeTrustedProxy,
 		auth.AuthModeOIDC,
 	).

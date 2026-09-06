@@ -1,6 +1,7 @@
 // Reusable client-side validation for server-backed Lore forms.
 
 import { parseProblemPayload, type ProblemPayload } from "./core/http.ts";
+import { localPasswordProblem } from "./core/password.ts";
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -97,6 +98,10 @@ function clearFieldError(control: FormControl): void {
 function localMessage(control: FormControl): string {
   if (control.validity.valueMissing) {
     return control.dataset.errorRequired || "This field is required.";
+  }
+  if (control.hasAttribute("data-validate-password") && control.value !== "") {
+    const problem = localPasswordProblem(control.value);
+    if (problem) return problem;
   }
   if (control.validity.typeMismatch) {
     return control.dataset.errorType || control.validationMessage;

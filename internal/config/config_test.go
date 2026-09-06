@@ -124,3 +124,18 @@ func TestPDFURLValidation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, cfg.PDFURL)
 }
+
+func TestLocalAuthenticationOverride(t *testing.T) {
+	t.Parallel()
+	cfg, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--auth-mode", "local"})
+	require.NoError(t, err)
+	assert.Equal(t, auth.AuthModeLocal, cfg.AuthModeOverride)
+}
+
+func TestLocalAuthenticationOverrideFromEnvironment(t *testing.T) {
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__AUTH_MODE", "local")
+	cfg, err := parseTestConfig(nil)
+	require.NoError(t, err)
+	assert.Equal(t, auth.AuthModeLocal, cfg.AuthModeOverride)
+}

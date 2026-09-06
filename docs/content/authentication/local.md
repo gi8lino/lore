@@ -12,9 +12,9 @@ The local username is the account's current Lore username. Creating a local pass
 
 While OIDC or trusted-proxy authentication is active, administrators can disable an individual local credential from **Administration → Users**. The control appears only for accounts that have a local password. A disabled credential cannot create a new local session, and disabling it revokes its existing local sessions. OIDC identities, trusted-proxy authentication, and API tokens belonging to the same Lore user are not affected. Lore does not allow this state to be changed from the user editor while local authentication is active, preventing an administrator from disabling the login method currently protecting the installation.
 
-Administrators can also create or replace another account's local password from the same user editor while external authentication is active. Passwords must contain at least 12 characters. Setting a password enables the local credential and revokes its previous local sessions.
+Administrators can also create or replace another account's local password from the same user editor while external authentication is active. Passwords must contain at least 12 Unicode characters and at most 72 UTF-8 bytes. Setting a password enables the local credential and revokes its previous local sessions.
 
-The first administrator is created through `/setup` on a fresh database. Passwords must contain at least 12 characters. Password hashes use bcrypt.
+The first administrator is created through `/setup` on a fresh database. Passwords must contain at least 12 Unicode characters and at most 72 UTF-8 bytes. Password hashes use bcrypt.
 
 A successful sign-in creates a random 32-byte session token. Lore stores only a SHA-256 representation of that token in PostgreSQL and sends the raw value in an HTTP-only cookie. Local sessions expire after 12 hours.
 

@@ -133,7 +133,7 @@ func (o *OIDC) Authenticate(r *http.Request) (domain.User, error) {
 	}
 
 	user, err := o.repository.OIDCUser(r.Context(), current.Issuer, current.Subject)
-	if errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) || (err == nil && !user.Enabled) {
 		return domain.User{}, ErrUnauthenticated
 	}
 	if err != nil {

@@ -60,8 +60,8 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (domain.User, error) {
 			return domain.User{}, err
 		}
 
+		user.ExternalAdmin = externalAdmin
 		if externalAdmin {
-			user.ExternalAdmin = true
 			user.Role = "admin"
 		}
 	}
