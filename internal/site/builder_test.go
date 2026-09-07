@@ -2,14 +2,44 @@ package site
 
 import (
 	"context"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestStaticBrowserAssetsIncludeModuleDependencies(t *testing.T) {
+	t.Parallel()
+
+	output := t.TempDir()
+	require.NoError(t, NewBuilder(web.Assets, "test", "test").copyBrowserAssets(output))
+	exported := os.DirFS(filepath.Join(output, "assets"))
+	// Inspect the actual emitted modules, including side-effect and dynamic imports.
+	imports := regexp.MustCompile(`(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"']+)["']`)
+	for _, name := range staticBrowserAssets {
+		if !strings.HasSuffix(name, ".js") {
+			continue
+		}
+		data, err := fs.ReadFile(exported, name)
+		require.NoError(t, err)
+		for _, match := range imports.FindAllSubmatch(data, -1) {
+			dependency := string(match[1])
+			if !strings.HasPrefix(dependency, ".") {
+				continue
+			}
+			_, err := fs.Stat(exported, path.Join(path.Dir(name), dependency))
+			assert.NoError(t, err, "%s imports missing asset %s", name, dependency)
+		}
+	}
+}
 
 func TestMarkdownFileRoute(t *testing.T) {
 	t.Parallel()
