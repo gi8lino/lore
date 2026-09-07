@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/containeroo/httpgrace v0.2.0
-	github.com/containeroo/tinyflags v0.0.81
+	github.com/containeroo/tinyflags v0.0.82
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/jackc/pgx/v5 v5.10.0
