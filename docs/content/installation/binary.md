@@ -2,6 +2,8 @@
 
 Lore can run as a normal Go binary when PostgreSQL is reachable.
 
+Release archives are available for Linux and macOS on both AMD64 and ARM64.
+
 A development build can be started with:
 
 ```sh
