@@ -79,6 +79,9 @@ type searchEntry struct {
 }
 
 type viewData struct {
+	LogoURL       string
+	FaviconURL    string
+	FaviconICOURL string
 	SiteName      string
 	SiteURL       string
 	BasePath      string
@@ -161,10 +164,19 @@ func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
 	if err := os.MkdirAll(config.OutputDir, 0o755); err != nil {
 		return Result{}, err
 	}
+	if config.AssetsDir != "" {
+		if err := copySourceAssets(config.AssetsDir, filepath.Join(config.OutputDir, "assets")); err != nil {
+			return Result{}, fmt.Errorf("copy assets_dir: %w", err)
+		}
+	}
 	if err := b.copyBrowserAssets(config.OutputDir); err != nil {
 		return Result{}, err
 	}
 	if err := copySourceAssets(config.SourceDir, config.OutputDir); err != nil {
+		return Result{}, err
+	}
+	branding, err := copyBranding(config, basePath)
+	if err != nil {
 		return Result{}, err
 	}
 	if err := os.WriteFile(filepath.Join(config.OutputDir, ".nojekyll"), nil, 0o644); err != nil {
@@ -198,6 +210,9 @@ func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
 	}
 
 	common := viewData{
+		LogoURL:       branding.LogoURL,
+		FaviconURL:    branding.FaviconURL,
+		FaviconICOURL: branding.FaviconICOURL,
 		SiteName:      config.SiteName,
 		SiteURL:       config.SiteURL,
 		BasePath:      basePath,
@@ -940,4 +955,30 @@ func writeSitemap(config Config, pages []sourcePage) error {
 // compareSearchEntries orders search results by case-insensitive page title.
 func compareSearchEntries(left, right searchEntry) int {
 	return cmp.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
+}
+
+// copyBranding gives explicitly configured images precedence over copied assets.
+func copyBranding(config Config, basePath string) (viewData, error) {
+	data := viewData{FaviconURL: basePath + "assets/favicon.svg"}
+	for _, asset := range []struct {
+		source, destination string
+		target              *string
+	}{
+		{config.Logo, "assets/site-logo" + strings.ToLower(filepath.Ext(config.Logo)), &data.LogoURL},
+		{config.Favicon, "assets/site-favicon" + strings.ToLower(filepath.Ext(config.Favicon)), &data.FaviconURL},
+		{config.FaviconICO, "favicon.ico", &data.FaviconICOURL},
+	} {
+		if asset.source == "" {
+			continue
+		}
+		contents, err := os.ReadFile(asset.source)
+		if err != nil {
+			return viewData{}, fmt.Errorf("read branding image: %w", err)
+		}
+		if err := os.WriteFile(filepath.Join(config.OutputDir, filepath.FromSlash(asset.destination)), contents, 0o644); err != nil {
+			return viewData{}, err
+		}
+		*asset.target = basePath + asset.destination
+	}
+	return data, nil
 }

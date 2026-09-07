@@ -7,7 +7,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="generator" content="Lore {{ .Version }}" />
     <title>{{ .Title }} · {{ .SiteName }}</title>
-    <link rel="icon" href="{{ asseturl "favicon.svg" }}" type="image/svg+xml" />
+    <link rel="icon" href="{{ .FaviconURL }}" />
+    {{ if .FaviconICOURL }}<link rel="alternate icon" href="{{ .FaviconICOURL }}" type="image/x-icon" />{{ end }}
     <link rel="stylesheet" href="{{ asseturl "css/app.css" }}" />
     <script id="lore-themes" type="application/json">{{ .ThemeData }}</script>
     <script src="{{ asseturl "js/theme-init.js" }}"></script>
@@ -34,7 +35,7 @@
       >
         {{ icon "menu" 20 }}
       </button>
-      <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ logo }}</a>
+      <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ if .LogoURL }}<img class="lore-logo" src="{{ .LogoURL }}" alt="{{ .SiteName }}" />{{ else }}{{ logo }}{{ end }}</a>
       <form class="global-search" action="{{ searchurl }}" data-static-search>
         <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
         <input

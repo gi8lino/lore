@@ -212,3 +212,42 @@ func TestValidateWikiLinksRejectsMissingTarget(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `unresolved wiki link "missing-page"`)
 }
+
+func TestBuildConfiguredBranding(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	config := DefaultConfig()
+	config.SourceDir = filepath.Join(root, "content")
+	config.OutputDir = filepath.Join(root, "site")
+	config.AssetsDir = filepath.Join(root, "images")
+	config.SiteURL = "https://example.com/never/"
+	require.NoError(t, os.MkdirAll(config.SourceDir, 0o755))
+	require.NoError(t, os.MkdirAll(config.AssetsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(config.SourceDir, "index.md"), []byte("# Home"), 0o644))
+	config.Logo = filepath.Join(config.AssetsDir, "logo.svg")
+	config.Favicon = filepath.Join(config.AssetsDir, "icon.png")
+	config.FaviconICO = filepath.Join(config.AssetsDir, "fallback.ico")
+	for _, name := range []string{config.Logo, config.Favicon, config.FaviconICO, filepath.Join(config.AssetsDir, "extra.txt")} {
+		require.NoError(t, os.WriteFile(name, []byte("custom image"), 0o644))
+	}
+	_, err := NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	require.NoError(t, err)
+	for _, route := range []string{"index.html", "search/index.html", "404.html"} {
+		html, err := os.ReadFile(filepath.Join(config.OutputDir, route))
+		require.NoError(t, err)
+		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
+	}
+	for _, name := range []string{"assets/site-logo.svg", "assets/site-favicon.png", "favicon.ico", "assets/extra.txt"} {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, name))
+		require.NoError(t, err)
+		assert.Equal(t, "custom image", string(data))
+	}
+	// Invalid branding must not erase the previously generated site.
+	config.Logo = filepath.Join(root, "missing.svg")
+	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	require.ErrorContains(t, err, "logo")
+	_, err = os.Stat(filepath.Join(config.OutputDir, "index.html"))
+	require.NoError(t, err)
+}
