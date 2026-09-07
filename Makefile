@@ -29,13 +29,12 @@ PRETTIER_VERSION ?= 3.9.6
 BINARY ?= lore
 COMMAND ?= ./cmd
 RUN_ARGS ?=
-SITE_CONFIG ?= docs/lore-site.toml
 BUILD_VERSION ?= dev
 BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 
 ## Site Configuration
-SITE_CONFIG ?= lore-site.toml
+SITE_CONFIG ?= docs/lore-site.toml
 SITE_PORT ?= 8081
 
 # Default tag prefix. Override with an empty value for unprefixed tags.
