@@ -2,7 +2,28 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-import { requestJSON, responseProblem } from "../../web/src/ts/core/http.ts";
+import {
+  followedRedirectURL,
+  requestJSON,
+  responseProblem,
+} from "../../web/src/ts/core/http.ts";
+
+test("followedRedirectURL recognizes a redirect followed by fetch", () => {
+  assert.equal(
+    followedRedirectURL({
+      redirected: true,
+      url: "https://example.test/pages/new-page",
+    }),
+    "https://example.test/pages/new-page",
+  );
+  assert.equal(
+    followedRedirectURL({
+      redirected: false,
+      url: "https://example.test/pages",
+    }),
+    null,
+  );
+});
 
 void test("responseProblem validates problem payload fields", async () => {
   const response = new Response(JSON.stringify({ error: "fallback" }), {

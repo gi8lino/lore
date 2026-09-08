@@ -7,6 +7,12 @@ export interface ProblemPayload {
   problems?: Record<string, string>;
 }
 
+export function followedRedirectURL(
+  response: Pick<Response, "redirected" | "url">,
+): string | null {
+  return response.redirected ? response.url : null;
+}
+
 // Validates each field independently so malformed details cannot hide the message.
 export function parseProblemPayload(value: unknown): ProblemPayload {
   if (!isRecord(value)) return {};

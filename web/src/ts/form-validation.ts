@@ -5,7 +5,11 @@ import {
   showProblemDialog,
   type ProblemDialogDetail,
 } from "./core/dialogs.ts";
-import { parseProblemPayload, type ProblemPayload } from "./core/http.ts";
+import {
+  followedRedirectURL,
+  parseProblemPayload,
+  type ProblemPayload,
+} from "./core/http.ts";
 import { localPasswordProblem } from "./core/password.ts";
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -260,17 +264,12 @@ async function submitForm(form: HTMLFormElement): Promise<void> {
       body: formBody(form),
       credentials: "same-origin",
       headers: { Accept: "application/json" },
-      redirect: "manual",
     });
 
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("Location");
-
-      if (!location)
-        throw new Error("Redirect response did not include a location.");
-
+    const redirectURL = followedRedirectURL(response);
+    if (redirectURL) {
       form.dispatchEvent(new CustomEvent("lore:form-submit-success"));
-      window.location.assign(new URL(location, response.url).href);
+      window.location.assign(redirectURL);
       return;
     }
 
