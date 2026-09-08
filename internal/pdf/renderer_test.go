@@ -17,7 +17,7 @@ import (
 func TestDocumentEscapesThePageTitle(t *testing.T) {
 	t.Parallel()
 
-	result := document(`Runbooks <production>`, "de-CH", `<p>Content</p>`)
+	result := Document(`Runbooks <production>`, "de-CH", `<p>Content</p>`)
 
 	assert.Contains(t, result, `<html lang="de-CH">`)
 	assert.Contains(t, result, `<title>Runbooks &lt;production&gt;</title>`)
@@ -27,7 +27,7 @@ func TestDocumentEscapesThePageTitle(t *testing.T) {
 func TestDocumentExpandsInteractiveMarkdown(t *testing.T) {
 	t.Parallel()
 
-	result := document(
+	result := Document(
 		"Runbook",
 		"en",
 		`<details class="markdown-details"><summary>Steps</summary><div class="markdown-tab-panel markdown-tab-panel-hidden">Deploy</div></details>`,

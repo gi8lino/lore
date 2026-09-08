@@ -259,19 +259,16 @@ func addRoutes(
 		"GET /export/markdown/{slug...}",
 		browserAuthn(handler.ExportPageMarkdown(catalogUseCases, mediaUseCases, logger)),
 	)
-	mux.Handle(
-		"GET /export/pdf/{slug...}",
-		browserAuthn(handler.ExportPagePDF(
-			catalogUseCases,
-			settingsUseCases,
-			navigationUseCases,
-			knowledgeUseCases,
-			mediaUseCases,
-			renderer,
-			views,
-			logger,
-		)),
-	)
+	exportPDF := browserAuthn(handler.ExportPagePDF(
+		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
+		mediaUseCases, renderer, views, logger,
+	))
+	mux.Handle("GET /export/pdf/{slug...}", exportPDF)
+	mux.Handle("POST /export/pdf/{slug...}", exportPDF)
+	mux.Handle("POST /export/preview/{slug...}", browserAuthn(handler.PreviewPageExport(
+		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
+		mediaUseCases, renderer, views, logger,
+	)))
 	mux.Handle("POST /pages/delete/{slug...}", browserAuthn(adminAuthz(handler.DeletePageForm(pageUseCases, views))))
 	mux.Handle("POST /pages/move/{slug...}", browserAuthn(editorAuthz(handler.MovePageForm(pageUseCases, logger))))
 	mux.Handle("POST /pages/review/{slug...}", browserAuthn(editorAuthz(handler.ReviewPageForm(pageUseCases, logger))))

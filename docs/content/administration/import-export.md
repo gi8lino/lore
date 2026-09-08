@@ -19,3 +19,30 @@ A single page can be exported as Markdown. If it references stored images, Lore 
 Administrators can export selected pages or all pages as an archive. PDF export uses the normal Markdown renderer, inlines stored images, and sends the self-contained HTML to the configured HTML-to-PDF service.
 
 Filesystem static site generation is a separate publishing path described in [Static sites](../static-sites.md).
+
+## Customized print and PDF output
+
+Readers can expand **Customize variables** in a page's **Share and export** dialog
+to supply temporary values for that output. **Preview print / PDF** and **Print**
+use the same resolved, image-embedded HTML and stylesheet as PDF export. PDF
+conversion still happens in the configured HTML-to-PDF service, which receives
+ordinary HTML and needs no variable-specific changes.
+
+Overrides are request-local and discarded when the dialog closes. They never
+change stored values, pages, revisions, or Markdown exports. See
+[Templates and snippets](../knowledge/snippets-templates.md#temporary-values-for-print-and-pdf)
+for the reading panel, reset behavior, and limits.
+
+The browser-authenticated export endpoints accept JSON with the exact stored
+variable names. Only changed values need to be supplied:
+
+```json
+{ "variables": { "environment": "staging" } }
+```
+
+`POST /export/preview/{slug...}` returns `{"document":"..."}` containing the clean
+print document. `POST /export/pdf/{slug...}` returns the generated PDF. Both use
+private, non-cacheable responses. Malformed requests return 400; invalid or unused
+variable overrides return 422 through Lore's field-problem format. Existing
+`GET /export/pdf/{slug...}` links continue to use saved values; URL parameters do
+not set overrides. These are browser export routes, not bearer-token API routes.

@@ -2,6 +2,7 @@
 
 import { initAdmin } from "./features/admin/index.ts";
 import { initEditor } from "./features/editor/index.ts";
+import { initPageVariables } from "./features/variables.ts";
 import { initExports } from "./features/exports.ts";
 import { initLayout } from "./features/layout.ts";
 import { initMarkdown } from "./features/markdown.ts";
@@ -28,6 +29,7 @@ initEditor();
 initMedia();
 initTokens();
 initExports();
+initPageVariables();
 initPage();
 initDashboard();
 initGraph();

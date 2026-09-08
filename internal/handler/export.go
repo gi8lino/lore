@@ -76,6 +76,13 @@ func ExportPagePDF(
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		overrides, err := readExportVariables(w, r)
+		if err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid export request.")
+			return
+		}
+
 		applicationSettings, err := settingsUseCases.ApplicationSettings(r.Context())
 		if err != nil {
 			writeInternalServerError(logger, w, err)
@@ -108,42 +115,10 @@ func ExportPagePDF(
 		}
 
 		settings := applicationSettings.Rendering
-		options := renderingOptionsFromSettings(settings)
-		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
+		rendered, err := renderExportHTML(r.Context(), catalogUseCases, knowledgeUseCases,
+			navigationUseCases, mediaUseCases, renderer, views, pageData, settings, overrides)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
-			return
-		}
-
-		expandedMarkdown, err := expandKnowledgeMarkdown(
-			r.Context(),
-			knowledgeContentFrom(
-				catalogUseCases,
-				knowledgeUseCases,
-			),
-			pageData.Markdown,
-			nil,
-			0,
-		)
-		if err != nil {
-			writeInternalServerError(logger, w, err)
-			return
-		}
-
-		page, err := renderer.RenderPageResolvedWithFunctions(
-			expandedMarkdown,
-			md.Slug,
-			options,
-			md.Functions{Subpages: string(subpages)},
-		)
-		if err != nil {
-			writeInternalServerError(logger, w, err)
-			return
-		}
-
-		rendered, err := inlineRenderedMedia(r.Context(), mediaUseCases, page.HTML)
-		if err != nil {
-			writeExportProblem(logger, w, err)
+			writeRenderedExportProblem(logger, w, err)
 			return
 		}
 

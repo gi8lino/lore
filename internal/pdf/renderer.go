@@ -75,7 +75,7 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 		return nil, noop, err
 	}
 
-	content := document(title, language, rendered)
+	content := Document(title, language, rendered)
 	if len(content) > maxHTMLBytes {
 		return nil, noop, errors.New("PDF document exceeds the 32 MiB request limit")
 	}
@@ -135,8 +135,9 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 	return file, cleanup, nil
 }
 
-// document wraps rendered wiki HTML in a self-contained print-oriented document.
-func document(title, language, rendered string) string {
+// Document wraps rendered wiki HTML in a self-contained print-oriented document.
+// The caller must sanitize rendered HTML before passing it to this function.
+func Document(title, language, rendered string) string {
 	rendered = strings.ReplaceAll(rendered, " markdown-tab-panel-hidden", "")
 	rendered = strings.ReplaceAll(
 		rendered,

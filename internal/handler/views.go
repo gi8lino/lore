@@ -240,6 +240,8 @@ type ViewData struct {
 	Groups []domain.Group
 	// PageTemplates contains reusable templates available to page authors.
 	PageTemplates []domain.PageTemplate
+	// PageVariables contains distinct variables resolved in this reading page.
+	PageVariables []pageVariable
 	// KnowledgeSnippets contains reusable variables and Markdown snippets.
 	KnowledgeSnippets []domain.KnowledgeSnippet
 	// PageStatuses contains lifecycle statuses available to page editors.

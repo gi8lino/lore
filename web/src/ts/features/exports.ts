@@ -3,7 +3,9 @@
 import { copyText } from "../core/clipboard.ts";
 import { showNotice } from "../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../core/dom.ts";
-import { errorMessage, responseProblem } from "../core/http.ts";
+import { errorMessage, requestJSON, responseProblem } from "../core/http.ts";
+import { variableOverrides } from "./variables.ts";
+import { loadPrintPreview, parseExportPreview } from "./export-preview.ts";
 
 // Wires admin export behavior.
 function setupAdminExport(): void {
@@ -69,48 +71,6 @@ function downloadFilename(response: Response, fallback: string): string {
   return plain?.[1] || fallback;
 }
 
-async function downloadPDF(
-  dialog: HTMLDialogElement,
-  button: HTMLButtonElement,
-  progress: HTMLElement,
-  pdfURL: string,
-): Promise<void> {
-  button.disabled = true;
-
-  let progressVisible = false;
-  const progressTimer = setTimeout(() => {
-    progress.hidden = false;
-    progressVisible = true;
-  }, 350);
-
-  try {
-    const response = await fetch(pdfURL, {
-      headers: { Accept: "application/pdf" },
-    });
-    if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => ({}));
-      throw await responseProblem(response, payload);
-    }
-
-    const blob = await response.blob();
-
-    downloadBlob(blob, downloadFilename(response, "lore-page.pdf"));
-    dialog.close();
-  } catch (error) {
-    console.error("PDF export failed", error);
-    dialog.close();
-    await showNotice(errorMessage(error) || "PDF could not be generated.", {
-      title: "PDF export failed",
-    });
-  } finally {
-    clearTimeout(progressTimer);
-
-    if (progressVisible) progress.hidden = true;
-
-    button.disabled = false;
-  }
-}
-
 // Wires share dialog behavior.
 function setupShareDialog(dialog: HTMLDialogElement): void {
   const open = requiredElement<HTMLButtonElement>(
@@ -142,14 +102,208 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
     dialog,
     "[data-share-progress]",
   );
+  const preview = requiredElement<HTMLButtonElement>(
+    dialog,
+    "[data-share-preview]",
+  );
+  const previewPanel = requiredElement<HTMLElement>(
+    dialog,
+    "[data-export-preview-panel]",
+  );
+  const previewHost = requiredElement<HTMLElement>(
+    dialog,
+    "[data-export-preview-host]",
+  );
+  const previewHide = requiredElement<HTMLButtonElement>(
+    dialog,
+    "[data-export-preview-hide]",
+  );
+  const errorOutput = requiredElement<HTMLElement>(
+    dialog,
+    "[data-share-error]",
+  );
+  const status = requiredElement<HTMLElement>(dialog, "[data-export-status]");
+  const variableForm = dialog.querySelector<HTMLFormElement>(
+    "[data-export-variables-form]",
+  );
+  const variableDetails = dialog.querySelector<HTMLDetailsElement>(
+    "[data-export-variables]",
+  );
+  const fields = [
+    ...dialog.querySelectorAll<HTMLTextAreaElement>("[data-export-variable]"),
+  ];
   const permalinkPath = requiredAttribute(permalink, "data-url");
   const pdfURL = requiredAttribute(pdf, "data-url");
+  const previewURL = requiredAttribute(dialog, "data-preview-url");
+  let operation: AbortController | null = null;
+  let previewFrame: HTMLIFrameElement | null = null;
+  let previewKey = "";
 
-  open.addEventListener("click", () => dialog.showModal());
+  function payload(): string {
+    const variables = variableOverrides(
+      fields.map((field) => ({
+        name: requiredAttribute(field, "data-export-variable"),
+        value: field.value,
+        saved: field.defaultValue,
+      })),
+    );
+    return JSON.stringify({ variables });
+  }
+
+  function clearPreview(): void {
+    previewFrame = null;
+    previewKey = "";
+    previewPanel.hidden = true;
+    previewHost.replaceChildren();
+    dialog.classList.remove("share-dialog-preview");
+  }
+
+  function setBusy(busy: boolean): void {
+    for (const control of [preview, print, pdf, ...fields])
+      control.disabled = busy;
+    const reset = variableForm?.querySelector<HTMLButtonElement>(
+      "[data-export-reset]",
+    );
+    if (reset) reset.disabled = busy;
+    previewHide.disabled = busy;
+    dialog.setAttribute("aria-busy", String(busy));
+  }
+
+  function resetSession(): void {
+    operation?.abort();
+    operation = null;
+    variableForm?.reset();
+    if (variableDetails) variableDetails.open = false;
+    clearPreview();
+    errorOutput.textContent = "";
+    errorOutput.hidden = true;
+    status.hidden = true;
+    progress.hidden = true;
+    setBusy(false);
+  }
+
+  async function runExport(kind: "preview" | "print" | "pdf"): Promise<void> {
+    if (operation) return;
+    const controller = new AbortController();
+    operation = controller;
+    const body = payload(); // Snapshot input before awaiting any request.
+    setBusy(true);
+    errorOutput.textContent = "";
+    errorOutput.hidden = true;
+    status.textContent =
+      kind === "print" ? "Preparing print document..." : "Preparing preview...";
+    status.hidden = kind === "pdf";
+    const timer =
+      kind === "pdf"
+        ? window.setTimeout(() => {
+            if (operation === controller) progress.hidden = false;
+          }, 350)
+        : undefined;
+    try {
+      const init: RequestInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: kind === "pdf" ? "application/pdf" : "application/json",
+        },
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+        credentials: "same-origin",
+      };
+      if (kind === "pdf") {
+        const response = await fetch(pdfURL, init);
+        if (!response.ok) throw await responseProblem(response);
+        const contentType = response.headers
+          .get("Content-Type")
+          ?.split(";")[0]
+          .trim();
+        if (contentType !== "application/pdf")
+          throw new Error(
+            "The server did not return a PDF. Your session may have expired.",
+          );
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        downloadBlob(blob, downloadFilename(response, "lore-page.pdf"));
+        dialog.close();
+        return;
+      }
+      if (!previewFrame || previewKey !== body) {
+        const documentHTML = parseExportPreview(
+          await requestJSON(previewURL, init),
+        );
+        if (controller.signal.aborted) return;
+        clearPreview();
+        previewPanel.hidden = false;
+        dialog.classList.add("share-dialog-preview");
+        previewFrame = await loadPrintPreview(
+          previewHost,
+          documentHTML,
+          controller.signal,
+        );
+        previewKey = body;
+      }
+      if (controller.signal.aborted) return;
+      previewPanel.hidden = false;
+      dialog.classList.add("share-dialog-preview");
+      if (kind === "print") {
+        const printWindow = previewFrame.contentWindow;
+        if (!printWindow)
+          throw new Error("The print document is not available.");
+        printWindow.focus();
+        printWindow.print();
+        // Keep the frame alive: some browsers return before their print dialog
+        // closes. Only closing this export session discards the temporary data.
+      } else {
+        previewPanel.scrollIntoView({ block: "nearest" });
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        errorOutput.textContent = errorMessage(error);
+        errorOutput.hidden = false;
+        if (kind !== "pdf") clearPreview();
+      }
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      if (operation === controller) {
+        operation = null;
+        setBusy(false);
+        progress.hidden = true;
+        status.hidden = true;
+      }
+    }
+  }
+
+  open.addEventListener("click", () => {
+    resetSession();
+    dialog.showModal();
+  });
   close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", resetSession);
+  dialog.addEventListener("keydown", (event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
+      event.preventDefault();
+      void runExport("print");
+    }
+  });
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) dialog.close();
   });
+  variableForm?.addEventListener("submit", (event: SubmitEvent) =>
+    event.preventDefault(),
+  );
+  variableForm?.addEventListener("reset", clearPreview);
+  variableForm?.addEventListener("input", () => {
+    clearPreview();
+    errorOutput.hidden = true;
+  });
+  previewHide.addEventListener("click", () => {
+    clearPreview();
+    preview.focus();
+  });
+  preview.addEventListener("click", () => void runExport("preview"));
+  print.addEventListener("click", () => void runExport("print"));
+  pdf.addEventListener("click", () => void runExport("pdf"));
   permalink.addEventListener("click", async () => {
     const original = permalinkStatus.textContent;
     try {
@@ -172,16 +326,7 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
     }
   });
 
-  print.addEventListener("click", () => {
-    dialog.close();
-    requestAnimationFrame(() => window.print());
-  });
   markdown.addEventListener("click", () => dialog.close());
-
-  pdf.addEventListener(
-    "click",
-    () => void downloadPDF(dialog, pdf, progress, pdfURL),
-  );
 }
 
 // Initializes exports.

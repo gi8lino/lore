@@ -175,12 +175,12 @@ func ViewPage(
 			return
 		}
 
-		expandedMarkdown, err := expandKnowledgeMarkdown(
+		expanded, err := expandPageKnowledge(
 			r.Context(),
 			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
 			page.Markdown,
 			nil,
-			0,
+			true,
 		)
 		if err != nil {
 			writeInternalServerError(views.logger, w, err)
@@ -188,10 +188,10 @@ func ViewPage(
 		}
 
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
-			expandedMarkdown,
+			expanded.Markdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: string(subpages)},
+			md.Functions{Subpages: string(subpages), Variables: expanded.Annotations},
 		)
 		if err != nil {
 			writeInternalServerError(views.logger, w, err)
@@ -215,6 +215,7 @@ func ViewPage(
 		}
 
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
+		data.PageVariables = expanded.Variables
 		data.OutgoingLinks = outgoingLinks
 		data.BrokenLinks = brokenLinks
 		data.Comments = comments

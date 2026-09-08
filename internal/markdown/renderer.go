@@ -12,6 +12,7 @@ import (
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	goldhtml "github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
 	xhtml "golang.org/x/net/html"
@@ -26,6 +27,8 @@ type Renderer struct {
 
 // Options controls optional Markdown rendering features.
 type Options struct {
+	// variables is request-local provenance used only for reading-page inspection.
+	variables []Variable
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
 	// WikiLinkPrefix is prepended to resolved wiki-link targets. Empty uses /pages/.
@@ -116,8 +119,10 @@ type RenderedPage struct {
 	Contents []Heading
 }
 
-// Functions contains trusted dynamic HTML for opt-in Markdown functions.
+// Functions contains trusted dynamic HTML and request-local variable provenance.
 type Functions struct {
+	// Variables preserves the identities of server-expanded values for inspection.
+	Variables []Variable
 	// Subpages is the generated navigation tree inserted by {{subpages}}.
 	Subpages string
 }
@@ -142,6 +147,7 @@ func New() *Renderer {
 	policy.AllowAttrs("role").OnElements("div", "button")
 	policy.AllowAttrs("type", "aria-selected").OnElements("button")
 	policy.AllowAttrs("open").OnElements("details")
+	policy.AllowAttrs("data-page-variable").OnElements("span")
 	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 	// UGCPolicy's Paragraph filter rejects ordinary image text such as '&' and
 	// '{width=50%}'. Keep alt/title as text; the sanitizer still escapes their
@@ -153,7 +159,7 @@ func New() *Renderer {
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
-func engine(options Options) goldmark.Markdown {
+func engine(options Options, ranges ...variableRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
 	if options.Tables {
@@ -188,9 +194,11 @@ func engine(options Options) goldmark.Markdown {
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
-			parser.WithASTTransformers(util.Prioritized(imageWidthTransformer{}, 100)),
+			parser.WithASTTransformers(util.Prioritized(imageWidthTransformer{}, 100),
+				util.Prioritized(variableTransformer{ranges: ranges}, 200)),
 		),
-		goldmark.WithRendererOptions(goldhtml.WithUnsafe()),
+		goldmark.WithRendererOptions(goldhtml.WithUnsafe(),
+			renderer.WithNodeRenderers(util.Prioritized(variableNodeRenderer{ranges: ranges}, 100))),
 	)
 }
 
@@ -256,6 +264,32 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	options Options,
 	functions Functions,
 ) (RenderedPage, error) {
+	if len(functions.Variables) != 0 {
+		return r.renderPageWithVariables(source, resolve, options, functions)
+	}
+	return r.renderPage(source, resolve, options, functions)
+}
+
+// renderPageWithVariables preserves the normal render as the authority. Source
+// annotations are used only when removing them produces that same document.
+func (r *Renderer) renderPageWithVariables(source string, resolve func(string) string, options Options, functions Functions) (RenderedPage, error) {
+	plain, _ := resolveVariableTokens(source, functions.Variables)
+	normal, err := r.renderPage(plain, resolve, options, functions)
+	if err != nil {
+		return RenderedPage{}, err
+	}
+	options.variables = functions.Variables
+	annotated, err := r.renderPage(source, resolve, options, functions)
+	if err != nil {
+		return normal, nil
+	}
+	if equivalentVariableHTML(annotated.HTML, normal.HTML) {
+		normal.HTML = annotated.HTML
+	}
+	return normal, nil
+}
+
+func (r *Renderer) renderPage(source string, resolve func(string) string, options Options, functions Functions) (RenderedPage, error) {
 	source = preprocessFunctions(source)
 	raw, err := r.renderRawResolved(source, resolve, options)
 	if err != nil {
@@ -321,8 +355,9 @@ func (r *Renderer) renderRawResolved(source string, resolve func(string) string,
 		source = preprocessTableDirectives(source, options)
 	}
 
+	source, ranges := resolveVariableTokens(source, options.variables)
 	var output bytes.Buffer
-	if err := engine(options).Convert([]byte(source), &output); err != nil {
+	if err := engine(options, ranges...).Convert([]byte(source), &output); err != nil {
 		return "", err
 	}
 
