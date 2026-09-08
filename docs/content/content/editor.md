@@ -15,6 +15,18 @@ A save can include:
 - deprecated replacement target;
 - structured key/value properties.
 
+## Quick insert
+
+The Markdown editor provides the same reusable insert actions from the keyboard and toolbar:
+
+- type `@` to search for and insert a user mention;
+- type `{{` to search stored variables and insert the canonical `{{var:name}}` macro;
+- use **Insert → Mention** or **Insert → Variable** for the same pickers;
+- type `/` at the start of a line to open editor commands. `/mention` and `/variable` open the corresponding pickers, while
+  stored variables and snippets also appear as direct slash-command results.
+
+Autocomplete is suppressed inside fenced code blocks where Lore keeps knowledge macros literal.
+
 ## Draft protection
 
 Lore has two draft mechanisms with different purposes.

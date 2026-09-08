@@ -489,6 +489,10 @@ body.editor-focus-mode {
   display: none;
 }
 
+.editor-variable-menu {
+  z-index: 80;
+}
+
 .editor-suggestion-option {
   display: grid;
   width: 100%;

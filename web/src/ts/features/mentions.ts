@@ -2,6 +2,7 @@
 
 import { isRecord, requireArrayOf } from "../core/guards.ts";
 import { requestJSON } from "../core/http.ts";
+import { textareaCaretOffset } from "../core/textarea.ts";
 
 const resultLimit = 50;
 
@@ -13,7 +14,6 @@ type MentionUser = {
   role?: string;
   self?: boolean;
 };
-type CaretOffset = { left: number; top: number };
 
 // Reports whether a caret offset is inside fenced code.
 function fencedCodeAt(value: string, caret: number): boolean {
@@ -127,61 +127,6 @@ function appendHighlighted(
   );
 }
 
-// Calculates the caret offset inside a textarea.
-function caretOffset(source: HTMLTextAreaElement, caret: number): CaretOffset {
-  const computed = getComputedStyle(source);
-  const mirror = document.createElement("div");
-  const properties = [
-    "font-family",
-    "font-size",
-    "font-weight",
-    "font-style",
-    "letter-spacing",
-    "text-transform",
-    "line-height",
-    "padding-top",
-    "padding-right",
-    "padding-bottom",
-    "padding-left",
-    "border-top-width",
-    "border-right-width",
-    "border-bottom-width",
-    "border-left-width",
-  ];
-
-  mirror.style.position = "fixed";
-  mirror.style.left = "-10000px";
-  mirror.style.top = "0";
-  mirror.style.visibility = "hidden";
-  mirror.style.whiteSpace = "pre-wrap";
-  mirror.style.overflowWrap = "break-word";
-  mirror.style.wordBreak = "normal";
-  mirror.style.boxSizing = computed.boxSizing;
-  mirror.style.width = `${source.offsetWidth}px`;
-
-  for (const property of properties)
-    mirror.style.setProperty(property, computed.getPropertyValue(property));
-
-  mirror.textContent = source.value.slice(0, caret);
-
-  const marker = document.createElement("span");
-
-  marker.textContent = source.value.slice(caret, caret + 1) || "\u200b";
-  mirror.append(marker);
-  document.body.append(mirror);
-
-  const lineHeight =
-    Number.parseFloat(computed.lineHeight) ||
-    Number.parseFloat(computed.fontSize) * 1.4;
-  const offset = {
-    left: marker.offsetLeft - source.scrollLeft,
-    top: marker.offsetTop - source.scrollTop + lineHeight,
-  };
-
-  mirror.remove();
-  return offset;
-}
-
 function isMentionUser(value: unknown): value is MentionUser {
   return (
     isRecord(value) &&
@@ -209,6 +154,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   const menu = document.createElement("div");
 
   menu.className = "mention-suggestion-menu";
+  menu.id = "mention-suggestions";
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
   menu.setAttribute("aria-label", "Mention a user");
@@ -226,7 +172,10 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     active = -1;
     menu.hidden = true;
     menu.replaceChildren();
-    source.setAttribute("aria-expanded", "false");
+    if (source.getAttribute("aria-controls") === menu.id) {
+      source.removeAttribute("aria-controls");
+      source.setAttribute("aria-expanded", "false");
+    }
   }
 
   function position(): void {
@@ -234,7 +183,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
 
     const sourceRect = source.getBoundingClientRect();
     const anchorRect = suggestionAnchor.getBoundingClientRect();
-    const caret = caretOffset(source, source.selectionStart ?? 0);
+    const caret = textareaCaretOffset(source, source.selectionStart ?? 0);
     const menuWidth = Math.min(
       390,
       Math.max(260, suggestionAnchor.clientWidth - 16),
@@ -300,6 +249,7 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
     }
 
     menu.hidden = false;
+    source.setAttribute("aria-controls", menu.id);
     source.setAttribute("aria-expanded", "true");
     position();
   }

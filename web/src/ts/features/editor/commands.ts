@@ -2,13 +2,14 @@
 
 import { requestJSON } from "../../core/http.ts";
 import { parseEditorCatalog } from "./catalog.ts";
+import { insertInlineAtSelection } from "./toolbar.ts";
 
 interface SlashCommand {
   id: string;
   label: string;
   description: string;
   markdown?: string;
-  action?: "table" | "image";
+  action?: "table" | "image" | "mention" | "variable";
 }
 
 interface SlashCommandTrigger {
@@ -65,6 +66,18 @@ const commands: SlashCommand[] = [
     label: "Details",
     description: "Collapsible details block",
     markdown: '??? "Details"\n\n    Hidden details.',
+  },
+  {
+    id: "mention",
+    label: "Mention",
+    description: "Mention a Lore user",
+    action: "mention",
+  },
+  {
+    id: "variable",
+    label: "Variable",
+    description: "Insert a reusable variable",
+    action: "variable",
   },
   {
     id: "image",
@@ -225,6 +238,14 @@ function setupSlashCommands(form: HTMLFormElement): void {
           editor.setRangeText("", currentTrigger.start, end, "end");
           editor.dispatchEvent(new Event("input", { bubbles: true }));
           form.querySelector<HTMLElement>("[data-media-dialog-open]")?.click();
+          break;
+        case "mention":
+          editor.setRangeText("", currentTrigger.start, end, "end");
+          insertInlineAtSelection(editor, "@");
+          break;
+        case "variable":
+          editor.setRangeText("", currentTrigger.start, end, "end");
+          insertInlineAtSelection(editor, "{{");
           break;
       }
     }

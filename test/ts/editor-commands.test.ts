@@ -18,4 +18,6 @@ test("slash commands filter by label and description", () => {
   assert.ok(
     matchingSlashCommands("collapsible").some((item) => item.id === "details"),
   );
+  assert.equal(matchingSlashCommands("mention")[0].id, "mention");
+  assert.equal(matchingSlashCommands("variable")[0].id, "variable");
 });

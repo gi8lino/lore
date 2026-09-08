@@ -3,7 +3,20 @@
 import { formatMarkdownDocument } from "./formatter.ts";
 import { dispatchEditorEvent } from "./events.ts";
 
-// Inserts Markdown at the textarea selection.
+// Inserts inline text at the textarea selection without adding line breaks.
+export function insertInlineAtSelection(
+  textarea: HTMLTextAreaElement,
+  text: string,
+): void {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+
+  textarea.setRangeText(text, start, end, "end");
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// Inserts block Markdown at the textarea selection.
 export function insertMarkdownAtSelection(
   textarea: HTMLTextAreaElement,
   markdown: string,
@@ -142,6 +155,12 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
     }
 
     switch (action) {
+      case "mention":
+        insertInlineAtSelection(editor, "@");
+        break;
+      case "variable":
+        insertInlineAtSelection(editor, "{{");
+        break;
       case "bold":
         wrapMarkdownSelection(editor, "**", "**", "bold text");
         break;

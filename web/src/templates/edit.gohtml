@@ -389,6 +389,15 @@
 
         <div class="markdown-toolbar-group" aria-label="Insert">
           <span class="markdown-toolbar-group-label"></span>
+          <details class="markdown-toolbar-menu markdown-toolbar-insert-menu">
+            <summary title="Insert" aria-label="Insert">
+              {{ icon "plus" 16 }}<span></span>{{ icon "chevron-down" 12 }}
+            </summary>
+            <div class="markdown-toolbar-popover">
+              <button type="button" data-markdown-action="mention">{{ icon "at-sign" 15 }}<span>Mention</span></button>
+              <button type="button" data-markdown-action="variable">{{ icon "variable" 15 }}<span>Variable</span></button>
+            </div>
+          </details>
           <button type="button" data-markdown-action="link" title="Link (⌘/Ctrl+Shift+K)" aria-label="Link">
             {{ icon "link" 16 }}
           </button>
@@ -532,6 +541,7 @@
               placeholder="# Start writing…"
               data-markdown-editor
               data-mention-autocomplete
+              data-variable-autocomplete
             >{{ if .Page }}{{ .Page.Markdown }}{{ else if .EditorTemplate }}{{ .EditorTemplate.Markdown }}{{ end }}</textarea>
             <div class="editor-source-statusbar">
               <span data-editor-word-count>0 words</span>
@@ -807,5 +817,6 @@
     </div>
   </dialog>
 {{ end }}
+
 
 

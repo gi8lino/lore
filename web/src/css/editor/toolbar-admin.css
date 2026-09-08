@@ -383,3 +383,11 @@
   padding: 8px 10px;
   color: var(--text);
 }
+
+.markdown-toolbar-insert-menu > summary span {
+  white-space: nowrap;
+}
+
+.markdown-toolbar-insert-menu .markdown-toolbar-popover button {
+  gap: 7px;
+}
