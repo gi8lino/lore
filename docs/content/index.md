@@ -24,5 +24,3 @@ Lore is a small, self-hosted, Markdown-first wiki. The normal server is a single
 - [API](api/index.md) documents the authenticated JSON surface and personal access tokens.
 - [Static sites](static-sites.md) documents the filesystem builder used for this documentation.
 - [Development](development.md) and [architecture](architecture.md) describe the codebase.
-
-{{subpages}}

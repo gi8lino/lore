@@ -8,6 +8,4 @@ Application settings are stored in PostgreSQL and changed through the administra
 
 The PDF integration includes a service test that renders a fixed two-page diagnostic document. Lore verifies that a PDF was returned, reports its page count and size, and shows the generated document so an administrator can judge the visual result.
 
-- [Runtime configuration](runtime.md)
-- [Authentication](../authentication/index.md)
-- [Themes](../themes.md)
+{{subpages}}
