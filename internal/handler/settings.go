@@ -141,6 +141,12 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			return
 		}
 
+		navigationStyle := r.FormValue("navigation_style")
+		if !domain.ValidNavigationStyle(navigationStyle) {
+			httpresponse.Problem(w, http.StatusBadRequest, "Unknown navigation style.")
+			return
+		}
+
 		density := r.FormValue("navigation_density")
 		if !domain.ValidNavigationDensity(density) {
 			httpresponse.Problem(w, http.StatusBadRequest, "Unknown navigation density.")
@@ -166,6 +172,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 		preferences := domain.UserPreferences{
 			Theme:                    selectedTheme.Title,
 			ShowPageContents:         r.FormValue("show_page_contents") == "on",
+			NavigationStyle:          navigationStyle,
 			NavigationDensity:        density,
 			SidebarWidth:             sidebarWidth,
 			ShowNavigationGuides:     r.FormValue("show_navigation_guides") == "on",

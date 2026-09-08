@@ -4,7 +4,7 @@ The **Settings** page shows the current account identity, role, and group member
 
 ## Presentation
 
-Users can select a theme, show or hide the page table of contents, choose comfortable or compact navigation density, and set the desktop sidebar width. Sidebar width offers Narrow, Standard, and Wide presets while direct edge dragging can store a custom width between 220 and 420 pixels.
+Users can select a theme, show or hide the page table of contents, choose a persistent desktop navigation style (Sidebar, Top bar, or Page tree), choose comfortable or compact navigation density, and set the desktop sidebar width. Sidebar width offers Narrow, Standard, and Wide presets while direct edge dragging can store a custom width between 220 and 420 pixels.
 
 Navigation preferences also control indentation guides, whether expanded folders are remembered, whether favorite pages are pinned above the tree, whether recently viewed pages are shown, and whether folder page counts are displayed.
 

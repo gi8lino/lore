@@ -50,3 +50,34 @@
     </a>
   {{ end }}
 {{ end }}
+
+
+
+{{ define "top-navigation" }}
+  <nav class="desktop-top-navigation" aria-label="Page navigation">
+    <div class="desktop-top-navigation-inner">
+      <a class="top-navigation-home" href="/">{{ icon "house" 15 }}<span>Home</span></a>
+      {{ range .Navigation }}
+        {{ if .Children }}
+          <details class="top-navigation-group">
+            <summary{{ if .ContainsActive }} class="contains-active"{{ end }}>
+              {{ template "nav-icon" .Icon }}<span>{{ .Title }}</span>{{ icon "chevron-down" 13 }}
+            </summary>
+            <div class="top-navigation-popover">
+              {{ if .Page }}
+                <a class="top-navigation-root-link{{ if .Active }} active{{ end }}" href="/pages/{{ .Slug }}"{{ if .Active }} aria-current="page"{{ end }}>
+                  {{ template "nav-icon" .Icon }}<span>{{ .Title }}</span>
+                </a>
+              {{ end }}
+              <div class="navigation-tree">{{ range .Children }}{{ template "nav-entry" . }}{{ end }}</div>
+            </div>
+          </details>
+        {{ else if .Page }}
+          <a class="top-navigation-page{{ if .Active }} active{{ end }}" href="/pages/{{ .Slug }}"{{ if .Active }} aria-current="page"{{ end }}>
+            {{ template "nav-icon" .Icon }}<span>{{ .Title }}</span>
+          </a>
+        {{ end }}
+      {{ end }}
+    </div>
+  </nav>
+{{ end }}

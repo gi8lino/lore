@@ -24,6 +24,12 @@ var (
 )
 
 const (
+	// NavigationStyleSidebar keeps Lore's full navigation sidebar.
+	NavigationStyleSidebar = "sidebar"
+	// NavigationStyleTopbar moves page navigation into a horizontal desktop bar.
+	NavigationStyleTopbar = "topbar"
+	// NavigationStyleTree uses a focused page-tree sidebar.
+	NavigationStyleTree = "tree"
 	// NavigationDensityComfortable is the default roomy sidebar layout.
 	NavigationDensityComfortable = "comfortable"
 	// NavigationDensityCompact reduces vertical navigation spacing.
@@ -427,6 +433,8 @@ type UserPreferences struct {
 	Theme string
 	// ShowPageContents controls whether wiki pages render a heading table of contents.
 	ShowPageContents bool
+	// NavigationStyle controls the desktop navigation layout.
+	NavigationStyle string
 	// NavigationDensity controls vertical spacing in the page tree.
 	NavigationDensity string
 	// SidebarWidth is the desktop sidebar width in CSS pixels.
@@ -567,6 +575,16 @@ func ValidUserRole(value string) bool {
 	}
 }
 
+// ValidNavigationStyle reports whether value is a supported desktop navigation layout.
+func ValidNavigationStyle(value string) bool {
+	switch value {
+	case NavigationStyleSidebar, NavigationStyleTopbar, NavigationStyleTree:
+		return true
+	default:
+		return false
+	}
+}
+
 // ValidNavigationDensity reports whether value is a supported navigation density.
 func ValidNavigationDensity(value string) bool {
 	return value == NavigationDensityComfortable || value == NavigationDensityCompact
@@ -596,6 +614,7 @@ func ValidPageStatus(value string) bool {
 func DefaultUserPreferences() UserPreferences {
 	return UserPreferences{
 		ShowPageContents:         true,
+		NavigationStyle:          NavigationStyleSidebar,
 		NavigationDensity:        NavigationDensityComfortable,
 		SidebarWidth:             DefaultSidebarWidth,
 		ShowNavigationGuides:     true,

@@ -74,6 +74,7 @@ CREATE TABLE user_preferences (
   user_id bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
   theme text NOT NULL DEFAULT '',
   show_page_contents boolean NOT NULL DEFAULT true,
+  navigation_style text NOT NULL DEFAULT 'sidebar' CHECK (navigation_style IN ('sidebar', 'topbar', 'tree')),
   navigation_density text NOT NULL DEFAULT 'comfortable' CHECK (navigation_density IN ('comfortable', 'compact')),
   sidebar_width integer NOT NULL DEFAULT 280 CHECK (sidebar_width BETWEEN 220 AND 420),
   show_navigation_guides boolean NOT NULL DEFAULT true,
@@ -386,4 +387,5 @@ CREATE INDEX page_drafts_user_updated_idx
 CREATE INDEX page_drafts_page_idx
   ON page_drafts (page_id)
   WHERE page_id IS NOT NULL;
+
 

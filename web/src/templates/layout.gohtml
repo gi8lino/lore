@@ -18,6 +18,7 @@
     <body
       data-render-mermaid="{{ if .RenderMermaid }}true{{ else }}false{{ end }}"
       data-coding-ligatures="{{ if .ApplicationSettings.Rendering.CodingLigatures }}true{{ else }}false{{ end }}"
+      data-navigation-style="{{ .Preferences.NavigationStyle }}"
       data-navigation-density="{{ .Preferences.NavigationDensity }}"
       data-navigation-guides="{{ if .Preferences.ShowNavigationGuides }}true{{ else }}false{{ end }}"
       data-current-page="{{ if .Page }}{{ .Page.Slug }}{{ end }}"
@@ -26,6 +27,7 @@
       style="--sidebar: {{ .Preferences.SidebarWidth }}px"
     >
       {{ template "header" . }}
+      {{ if and (not .AdminSection) (eq .Preferences.NavigationStyle "topbar") }}{{ template "top-navigation" . }}{{ end }}
       <div class="shell{{ if .AdminSection }} admin-shell{{ end }}">
         {{ if .AdminSection }}
           {{ template "admin-sidebar" . }}
@@ -68,4 +70,5 @@
     </body>
   </html>
 {{ end }}
+
 

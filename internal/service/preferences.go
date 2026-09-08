@@ -34,6 +34,9 @@ func (s *Preferences) SavePreferences(
 	userID int64,
 	preferences domain.UserPreferences,
 ) error {
+	if !domain.ValidNavigationStyle(preferences.NavigationStyle) {
+		return newValidationError("navigation_style", "Choose a valid navigation style.")
+	}
 	if !domain.ValidNavigationDensity(preferences.NavigationDensity) {
 		return newValidationError("navigation_density", "Choose a valid navigation density.")
 	}
