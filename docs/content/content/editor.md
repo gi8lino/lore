@@ -2,6 +2,8 @@
 
 The editor is available to `admin` and `editor` accounts. It works with Markdown source and server-rendered preview so preview behavior matches persisted page rendering.
 
+![Lore Markdown editor showing this page in split view](../assets/screenshots/editor.png)
+
 ## Page fields
 
 A save can include:

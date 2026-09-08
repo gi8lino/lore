@@ -13,6 +13,7 @@ make lint
 make fmt
 make build
 make site
+make screenshots
 ```
 
 `make run`, `make build`, and frontend-related checks ensure npm dependencies exist before invoking TypeScript. `web/dist` is generated and ignored by Git.
@@ -22,6 +23,8 @@ make site
 All authored frontend code is TypeScript under `web/src/ts`; frontend tests are TypeScript under `test/ts`. `tsc` emits native ES modules into `web/dist/js`. The service worker has its own TypeScript project so Web Worker types do not leak into the browser DOM project. Node-based tests likewise have a separate TypeScript configuration.
 
 The production deployment does not need Node.js. Node/npm/TypeScript exist only while building assets.
+
+`make screenshots` starts a disposable PostgreSQL container, imports `docs/content` into a temporary Lore instance, and regenerates the images under `docs/content/assets/screenshots`. It uses Playwright with the locally installed Chrome channel and requires Docker, Chrome, `curl`, and `zip`. Set `SCREENSHOT_BROWSER_CHANNEL` to another Playwright Chromium channel when needed.
 
 CSS remains framework-free and is split by responsibility under `web/src/css`. `scripts/web/build-css.sh` bundles the CSS entrypoint.
 

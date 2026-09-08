@@ -11,6 +11,16 @@ Lore gives you a focused place to write, organize, search, and share documentati
 
 The same binary can also publish Markdown as a read-only static documentation site without PostgreSQL or a running Lore server.
 
+## Screenshots
+
+### Documentation dashboard
+
+![Lore dashboard populated with the project documentation](docs/content/assets/screenshots/dashboard.png)
+
+### Markdown editor
+
+![Lore Markdown editor showing documentation in split view](docs/content/assets/screenshots/editor.png)
+
 ## Quick start
 
 Start Lore with Docker Compose:

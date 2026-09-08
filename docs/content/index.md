@@ -2,6 +2,8 @@
 
 Lore is a small, self-hosted, Markdown-first wiki. The normal server is a single Go binary backed by PostgreSQL; the same codebase can also build a read-only static documentation site from ordinary Markdown files.
 
+![Lore dashboard populated with this documentation](assets/screenshots/dashboard.png)
+
 ## Choose a mode
 
 **Lore server** is the full collaborative wiki. It provides authentication, roles, editing, private drafts, page history, groups, search, media, administration, API tokens, discussions, and PostgreSQL-backed knowledge features.

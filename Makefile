@@ -36,6 +36,8 @@ LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 ## Site Configuration
 SITE_CONFIG ?= docs/lore-site.toml
 SITE_PORT ?= 8081
+SCREENSHOT_SCRIPT := scripts/screenshots/run.sh
+SCREENSHOT_BROWSER_CHANNEL ?= chrome
 
 ## Formatting
 PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
@@ -138,6 +140,10 @@ site-serve: generate web ## Build and serve the documentation site locally.
 		--site-url "http://127.0.0.1:$(SITE_PORT)/"
 	@echo "Serving Lore documentation at http://127.0.0.1:$(SITE_PORT)"
 	python3 -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory docs/site
+
+.PHONY: screenshots
+screenshots: generate web $(NODE_MODULES) ## Regenerate documentation screenshots from docs/content using an isolated database.
+	SCREENSHOT_BROWSER_CHANNEL="$(SCREENSHOT_BROWSER_CHANNEL)" $(SCREENSHOT_SCRIPT)
 
 .PHONY: vet
 vet: generate web ## Run Go static analysis.
