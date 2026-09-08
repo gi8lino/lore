@@ -4,11 +4,41 @@ import assert from "node:assert/strict";
 import {
   editorWordStats,
   immediateEditorPathOptions,
+  preferredEditorMode,
+  rememberEditorMode,
   resolvedGuidedEditorPath,
   slugifyEditorPath,
 } from "../../web/src/ts/features/editor/experience.ts";
 import { replaceAllPlainText } from "../../web/src/ts/features/editor/search.ts";
 import { editorModeCopy } from "../../web/src/ts/features/editor/preview.ts";
+
+test("editor reopens in the last source-visible mode, never preview", () => {
+  const values = new Map<string, string>();
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+  });
+
+  try {
+    assert.equal(preferredEditorMode(), "write");
+    for (const mode of ["write", "split"] as const) {
+      rememberEditorMode(mode);
+      rememberEditorMode("preview");
+      assert.equal(preferredEditorMode(), mode);
+    }
+    values.set("lore.editor.mode", "preview");
+    assert.equal(preferredEditorMode(), "write");
+    values.set("lore.editor.mode", "invalid");
+    assert.equal(preferredEditorMode(), "write");
+  } finally {
+    if (original) Object.defineProperty(globalThis, "localStorage", original);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});
 
 test("editor path preview follows Lore slug rules", () => {
   assert.equal(slugifyEditorPath("Postgres Restore"), "postgres-restore");

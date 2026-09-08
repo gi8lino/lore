@@ -132,7 +132,7 @@ type RenderingSettings struct {
 	SyntaxHighlighting bool
 	// ContentLanguage is the BCP 47 language tag applied to wiki content and the editor.
 	ContentLanguage string
-	// CodingLigatures enables supported OpenType coding ligatures in rendered code.
+	// CodingLigatures enables supported OpenType coding ligatures in rendered text and code.
 	CodingLigatures bool
 	// Mermaid enables browser-side Mermaid diagram rendering.
 	Mermaid bool

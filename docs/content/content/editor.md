@@ -4,6 +4,8 @@ The editor is available to `admin` and `editor` accounts. It works with Markdown
 
 ![Lore Markdown editor showing this page in split view](../assets/screenshots/editor.png)
 
+The editor opens in your last **Write** or **Split** view. **Preview** is temporary and never becomes the starting view.
+
 ## Page fields
 
 A save can include:
@@ -29,7 +31,7 @@ The Markdown editor provides the same reusable insert actions from the keyboard 
 
 Autocomplete is suppressed inside fenced code blocks where Lore keeps knowledge macros literal.
 
-The Markdown source editor always disables coding ligatures so operator sequences remain visually literal while editing. The **Coding ligatures** rendering setting applies only to inline and fenced code in the preview and rendered page, not to ordinary prose.
+The Markdown source editor always disables coding ligatures so operator sequences remain visually literal while editing. The **Coding ligatures** rendering setting shows operator ligatures in ordinary text, inline code, and fenced code in the preview and rendered page. When enabled alongside **Typographer**, ASCII operators such as `-->`, `<<`, and `>>` are preserved instead of being converted to dashes or quotation marks.
 
 ## Draft protection
 

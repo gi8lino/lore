@@ -62,6 +62,8 @@ type Options struct {
 	DefinitionLists bool
 	// Typographer enables typographic punctuation substitutions.
 	Typographer bool
+	// CodingLigatures preserves ASCII operators when typographic punctuation is enabled.
+	CodingLigatures bool
 }
 
 // DefaultOptions returns the rendering behavior used before administrator customization.
@@ -188,7 +190,18 @@ func engine(options Options, ranges ...variableRange) goldmark.Markdown {
 		extensions = append(extensions, extension.DefinitionList)
 	}
 	if options.Typographer {
-		extensions = append(extensions, extension.Typographer)
+		var typographer goldmark.Extender = extension.Typographer
+		if options.CodingLigatures {
+			typographer = extension.NewTypographer(extension.WithTypographicSubstitutions(
+				extension.TypographicSubstitutions{
+					extension.EnDash:          nil,
+					extension.EmDash:          nil,
+					extension.LeftAngleQuote:  nil,
+					extension.RightAngleQuote: nil,
+				},
+			))
+		}
+		extensions = append(extensions, typographer)
 	}
 	if options.SyntaxHighlighting {
 		extensions = append(extensions, highlighting.NewHighlighting(
