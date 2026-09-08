@@ -166,11 +166,7 @@
             Page path <span class="optional">optional</span>
             <input
               name="slug" data-error-label="Path"
-              value="{{ if .Page }}
-                {{ .Page.Slug }}
-              {{ else }}
-                {{ .EditorInitialSlug }}
-              {{ end }}"
+              value="{{ if .Page }}{{ .Page.Slug }}{{ else }}{{ .EditorInitialSlug }}{{ end }}"
               placeholder="infrastructure/postgres/restore"
               autocomplete="off"
             />
