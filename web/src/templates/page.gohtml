@@ -22,10 +22,12 @@
 {{ define "subpage-toc" }}
   {{ if .Subpages }}
     <nav class="subpage-toc" aria-label="Pages in this section">
-      <div class="subpage-toc-heading">
-        <span aria-hidden="true">{{ icon "list-tree" 18 }}</span>
-        <h2>Pages in this section</h2>
-      </div>
+      {{ if .ShowSubpagesTitle }}
+        <div class="subpage-toc-heading">
+          <span aria-hidden="true">{{ icon "list-tree" 18 }}</span>
+          <h2>{{ .SubpagesTitle }}</h2>
+        </div>
+      {{ end }}
       <ul class="subpage-toc-list subpage-toc-root">
         {{ range .Subpages }}{{ template "subpage-entry" . }}{{ end }}
       </ul>

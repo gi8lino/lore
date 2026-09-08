@@ -168,12 +168,7 @@ func ViewPage(
 		}
 		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
-		data.Subpages = navigation.Children(data.Navigation, slug)
-		subpages, err := renderTemplateHTML(views, "page", "subpage-toc", data)
-		if err != nil {
-			writeInternalServerError(views.logger, w, err)
-			return
-		}
+		renderSubpages := subpagesTemplateRenderer(views, navigation.Children(data.Navigation, slug))
 
 		expanded, err := expandPageKnowledge(
 			r.Context(),
@@ -191,7 +186,7 @@ func ViewPage(
 			expanded.Markdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: string(subpages), Variables: expanded.Annotations},
+			md.Functions{Subpages: renderSubpages, Variables: expanded.Annotations},
 		)
 		if err != nil {
 			writeInternalServerError(views.logger, w, err)

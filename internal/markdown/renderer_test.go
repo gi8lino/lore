@@ -167,12 +167,75 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 		"Before\n\n{{subpages}}\n\nAfter\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: `<nav class="subpage-toc">Generated pages</nav>`},
+		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+			assert.Equal(t, "Pages in this section", options.Title)
+			assert.True(t, options.ShowTitle)
+
+			return `<nav class="subpage-toc">Generated pages</nav>`, nil
+		}},
 	)
 
 	require.NoError(t, err)
 	assert.Contains(t, rendered.HTML, "<p>Before</p>\n<nav class=\"subpage-toc\">Generated pages</nav>\n<p>After</p>")
 	assert.NotContains(t, rendered.HTML, "{{subpages}}")
+}
+
+func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
+	t.Parallel()
+
+	renderer := New()
+	rendered, err := renderer.RenderPageResolvedWithFunctions(
+		`{{subpages title="Related pages"}}`,
+		Slug,
+		DefaultOptions(),
+		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+			assert.Equal(t, "Related pages", options.Title)
+			assert.True(t, options.ShowTitle)
+
+			return `<nav>Custom title</nav>`, nil
+		}},
+	)
+
+	require.NoError(t, err)
+	assert.Contains(t, rendered.HTML, "<nav>Custom title</nav>")
+}
+
+func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
+	t.Parallel()
+
+	renderer := New()
+	rendered, err := renderer.RenderPageResolvedWithFunctions(
+		`{{subpages title=""}}`,
+		Slug,
+		DefaultOptions(),
+		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+			assert.Empty(t, options.Title)
+			assert.False(t, options.ShowTitle)
+
+			return `<nav>No visible title</nav>`, nil
+		}},
+	)
+
+	require.NoError(t, err)
+	assert.Contains(t, rendered.HTML, "<nav>No visible title</nav>")
+}
+
+func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
+	t.Parallel()
+
+	renderer := New()
+	rendered, err := renderer.RenderPageResolvedWithFunctions(
+		`{{subpages depth=2}}`,
+		Slug,
+		DefaultOptions(),
+		Functions{Subpages: func(SubpagesOptions) (string, error) {
+			return `<nav>Generated pages</nav>`, nil
+		}},
+	)
+
+	require.NoError(t, err)
+	assert.Contains(t, rendered.HTML, "{{subpages depth=2}}")
+	assert.NotContains(t, rendered.HTML, "Generated pages")
 }
 
 func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
@@ -183,7 +246,9 @@ func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 		"```markdown\n{{subpages}}\n```\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: `<nav>Generated pages</nav>`},
+		Functions{Subpages: func(SubpagesOptions) (string, error) {
+			return `<nav>Generated pages</nav>`, nil
+		}},
 	)
 
 	require.NoError(t, err)

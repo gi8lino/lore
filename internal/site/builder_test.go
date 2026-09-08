@@ -11,6 +11,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,6 +138,31 @@ func TestHasHomePage(t *testing.T) {
 
 	assert.True(t, hasHomePage([]sourcePage{{Route: ""}, {Route: "guide"}}))
 	assert.False(t, hasHomePage([]sourcePage{{Route: "guide"}}))
+}
+
+func TestRenderSubpagesTitle(t *testing.T) {
+	t.Parallel()
+
+	tree := []navigation.Node{{Slug: "guide", Title: "Guide", Page: true}}
+
+	t.Run("renders configured title", func(t *testing.T) {
+		t.Parallel()
+
+		html := renderSubpages(tree, "", "/docs/", md.SubpagesOptions{Title: "Related & useful", ShowTitle: true})
+
+		assert.Contains(t, html, "<h2>Related &amp; useful</h2>")
+		assert.Contains(t, html, `href="/docs/guide/"`)
+	})
+
+	t.Run("hides an empty title", func(t *testing.T) {
+		t.Parallel()
+
+		html := renderSubpages(tree, "", "/docs/", md.SubpagesOptions{})
+
+		assert.NotContains(t, html, "subpage-toc-heading")
+		assert.NotContains(t, html, "<h2>")
+		assert.Contains(t, html, `href="/docs/guide/"`)
+	})
 }
 
 func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {

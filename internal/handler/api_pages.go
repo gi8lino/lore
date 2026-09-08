@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"html/template"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -83,7 +82,7 @@ func PreviewMarkdown(
 		}
 
 		slug := md.Slug(request.Slug)
-		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
+		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, views, slug)
 		if err != nil {
 			writeInternalServerError(logger, w, err)
 			return
@@ -105,7 +104,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: string(subpages)},
+			md.Functions{Subpages: renderSubpages},
 		)
 		if err != nil {
 			writeInternalServerError(logger, w, err)
@@ -116,21 +115,21 @@ func PreviewMarkdown(
 	}
 }
 
-// subpagesHTML builds the current subtree used by dynamic Markdown rendering.
-func subpagesHTML(
+// subpagesRenderer prepares the current subtree used by dynamic Markdown rendering.
+func subpagesRenderer(
 	ctx context.Context,
 	navigationUseCases navigationService,
 	views *Views,
 	slug string,
-) (template.HTML, error) {
+) (md.SubpagesRenderer, error) {
 	pages, err := navigationUseCases.NavigationPages(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	icons, err := navigationUseCases.NavigationIcons(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	items := make([]navigation.Page, 0, len(pages))
@@ -139,9 +138,23 @@ func subpagesHTML(
 		items = append(items, navigation.Page{Slug: page.Slug, Title: page.Title, Icon: page.Icon})
 	}
 
-	data := ViewData{Subpages: navigation.Children(navigation.Build(items, navigation.Options{Icons: icons}), slug)}
+	children := navigation.Children(navigation.Build(items, navigation.Options{Icons: icons}), slug)
 
-	return renderTemplateHTML(views, "page", "subpage-toc", data)
+	return subpagesTemplateRenderer(views, children), nil
+}
+
+// subpagesTemplateRenderer renders one prepared subtree with invocation-specific presentation options.
+func subpagesTemplateRenderer(views *Views, children []navigation.Node) md.SubpagesRenderer {
+	return func(options md.SubpagesOptions) (string, error) {
+		data := ViewData{
+			Subpages:          children,
+			SubpagesTitle:     options.Title,
+			ShowSubpagesTitle: options.ShowTitle,
+		}
+		html, err := renderTemplateHTML(views, "page", "subpage-toc", data)
+
+		return string(html), err
+	}
 }
 
 // ListPages returns recently updated wiki pages up to the requested limit.

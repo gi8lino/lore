@@ -246,12 +246,14 @@ func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
 
 			return routeSuffix(normalized)
 		}
-		subpages := renderSubpages(baseTree, page.Route, basePath)
+		renderSubpagesForPage := func(options md.SubpagesOptions) (string, error) {
+			return renderSubpages(baseTree, page.Route, basePath, options), nil
+		}
 		rendered, err := b.renderer.RenderPageResolvedWithFunctions(
 			page.Markdown,
 			resolveWiki,
 			options,
-			md.Functions{Subpages: subpages},
+			md.Functions{Subpages: renderSubpagesForPage},
 		)
 		if err != nil {
 			return Result{}, fmt.Errorf("render %s: %w", page.SourcePath, err)
@@ -609,7 +611,7 @@ func expandedPrefixes(route string) []string {
 	return expanded
 }
 
-func renderSubpages(tree []navigation.Node, route, basePath string) string {
+func renderSubpages(tree []navigation.Node, route, basePath string, options md.SubpagesOptions) string {
 	children := tree
 
 	if strings.Trim(route, "/") != "" {
@@ -622,7 +624,13 @@ func renderSubpages(tree []navigation.Node, route, basePath string) string {
 
 	var output strings.Builder
 
-	output.WriteString(`<nav class="subpage-toc" aria-label="Pages in this section"><div class="subpage-toc-heading"><h2>Pages in this section</h2></div><ul class="subpage-toc-list subpage-toc-root">`)
+	output.WriteString(`<nav class="subpage-toc" aria-label="Pages in this section">`)
+	if options.ShowTitle {
+		output.WriteString(`<div class="subpage-toc-heading"><h2>`)
+		output.WriteString(template.HTMLEscapeString(options.Title))
+		output.WriteString(`</h2></div>`)
+	}
+	output.WriteString(`<ul class="subpage-toc-list subpage-toc-root">`)
 
 	for _, child := range children {
 		renderSubpageNode(&output, child, basePath)

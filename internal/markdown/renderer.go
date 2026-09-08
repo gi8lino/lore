@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/gi8lino/lore/internal/subpages"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -121,15 +122,24 @@ type RenderedPage struct {
 	Contents []Heading
 }
 
+// SubpagesOptions controls one {{subpages}} invocation.
+type SubpagesOptions = subpages.Options
+
+// SubpagesRenderer renders trusted child-navigation HTML for one invocation.
+type SubpagesRenderer func(SubpagesOptions) (string, error)
+
 // Functions contains trusted dynamic HTML and request-local variable provenance.
 type Functions struct {
 	// Variables preserves the identities of server-expanded values for inspection.
 	Variables []Variable
-	// Subpages is the generated navigation tree inserted by {{subpages}}.
-	Subpages string
+	// Subpages renders the generated navigation tree inserted by {{subpages}}.
+	Subpages SubpagesRenderer
 }
 
-const subpagesPlaceholder = `<div class="lore-function-subpages"></div>`
+type subpagesInvocation struct {
+	placeholder string
+	options     SubpagesOptions
+}
 
 // tabSection contains one parsed Markdown tab label and body.
 type tabSection struct {
@@ -303,7 +313,7 @@ func (r *Renderer) renderPageWithVariables(source string, resolve func(string) s
 }
 
 func (r *Renderer) renderPage(source string, resolve func(string) string, options Options, functions Functions) (RenderedPage, error) {
-	source = preprocessFunctions(source)
+	source, invocations := preprocessFunctions(source)
 	raw, err := r.renderRawResolved(source, resolve, options)
 	if err != nil {
 		return RenderedPage{}, err
@@ -311,15 +321,26 @@ func (r *Renderer) renderPage(source string, resolve func(string) string, option
 
 	html := r.sanitizer.Sanitize(raw)
 	contents := extractHeadings(html)
-	html = strings.ReplaceAll(html, subpagesPlaceholder, functions.Subpages)
+
+	for _, invocation := range invocations {
+		replacement := ""
+		if functions.Subpages != nil {
+			replacement, err = functions.Subpages(invocation.options)
+			if err != nil {
+				return RenderedPage{}, err
+			}
+		}
+		html = strings.Replace(html, invocation.placeholder, replacement, 1)
+	}
 
 	return RenderedPage{HTML: html, Contents: contents}, nil
 }
 
 // preprocessFunctions replaces standalone function calls outside fenced code with safe placeholders.
-func preprocessFunctions(source string) string {
+func preprocessFunctions(source string) (string, []subpagesInvocation) {
 	lines := strings.Split(source, "\n")
 	output := make([]string, 0, len(lines))
+	invocations := make([]subpagesInvocation, 0, 1)
 
 	for index := 0; index < len(lines); {
 		if marker := fenceDelimiter(lines[index]); marker != "" {
@@ -327,8 +348,10 @@ func preprocessFunctions(source string) string {
 			continue
 		}
 
-		if strings.TrimSpace(lines[index]) == "{{subpages}}" {
-			output = append(output, subpagesPlaceholder)
+		if options, ok := parseSubpagesFunction(lines[index]); ok {
+			placeholder := `<div class="lore-function-subpages lore-function-subpages-` + strconv.Itoa(len(invocations)) + `"></div>`
+			invocations = append(invocations, subpagesInvocation{placeholder: placeholder, options: options})
+			output = append(output, placeholder)
 		} else {
 			output = append(output, lines[index])
 		}
@@ -336,7 +359,12 @@ func preprocessFunctions(source string) string {
 		index++
 	}
 
-	return strings.Join(output, "\n")
+	return strings.Join(output, "\n"), invocations
+}
+
+// parseSubpagesFunction parses the supported named options from one standalone invocation.
+func parseSubpagesFunction(line string) (SubpagesOptions, bool) {
+	return subpages.Parse(line)
 }
 
 // renderRawResolved renders Markdown extensions into unsanitized HTML for recursive block rendering.

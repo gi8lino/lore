@@ -59,7 +59,7 @@ Lore resolves the source file at build time and rewrites the link to the generat
 
 Non-Markdown files under the source directory are copied into the output tree. Relative image and asset URLs are rewritten so they continue to work after page routes become directory-style URLs.
 
-Lore wiki links use the same Lore renderer and are rewritten to static routes. Unresolved or ambiguous wiki-link targets fail the build, so a published static site does not silently ship broken Lore links. `{{subpages}}` is generated from the filesystem page hierarchy.
+Lore wiki links use the same Lore renderer and are rewritten to static routes. Unresolved or ambiguous wiki-link targets fail the build, so a published static site does not silently ship broken Lore links. `{{subpages}}` is generated from the filesystem page hierarchy and supports the same optional `title="..."` heading override as server-rendered pages.
 
 ## Logos, favicons, and extra assets
 

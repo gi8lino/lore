@@ -54,11 +54,11 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	subpages, err := subpagesHTML(ctx, navigation, views, page.Slug)
+	renderSubpages, err := subpagesRenderer(ctx, navigation, views, page.Slug)
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: string(subpages)})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages})
 	if err != nil {
 		return "", err
 	}
