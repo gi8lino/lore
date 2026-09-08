@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"strings"
 	"time"
 
@@ -24,7 +23,7 @@ func (s *Store) CreateToken(
 ) (domain.IssuedToken, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.IssuedToken{}, errors.New("token name is required")
+		return domain.IssuedToken{}, domain.NewValidationError("name", "A token name is required.")
 	}
 
 	user, err := s.User(ctx, userID)

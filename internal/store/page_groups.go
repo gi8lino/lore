@@ -41,7 +41,7 @@ func validateAssignableGroup(ctx context.Context, tx pgx.Tx, groupID int64, user
 		return nil
 	}
 	if groupID < 0 {
-		return domain.ErrForbidden
+		return &domain.GroupAssignmentError{Field: "owner_group_id"}
 	}
 
 	var allowed bool
@@ -59,7 +59,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 	}
 
 	if !allowed {
-		return domain.ErrForbidden
+		return &domain.GroupAssignmentError{Field: "owner_group_id"}
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func replacePageGroups(ctx context.Context, tx pgx.Tx, pageID int64, groupIDs []
 
 	for _, groupID := range groupIDs {
 		if groupID <= 0 {
-			return domain.ErrForbidden
+			return &domain.GroupAssignmentError{Field: "group_ids"}
 		}
 		if _, exists := unique[groupID]; exists {
 			continue
@@ -94,7 +94,7 @@ SELECT EXISTS(SELECT 1 FROM user_groups WHERE user_id=$1 AND group_id=$2)`, user
 		}
 
 		if !allowed {
-			return domain.ErrForbidden
+			return &domain.GroupAssignmentError{Field: "group_ids"}
 		}
 	}
 

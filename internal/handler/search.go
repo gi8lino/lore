@@ -12,13 +12,13 @@ func Search(
 		query := r.URL.Query().Get("q")
 		pages, err := catalogUseCases.Search(r.Context(), query, 50)
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, "Search")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 

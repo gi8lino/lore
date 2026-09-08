@@ -7,7 +7,6 @@ import (
 
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Stats returns high-level database counts for administrators.
@@ -101,12 +100,12 @@ func (s *Store) UpdateUser(
 	localCredentialEnabled *bool,
 ) error {
 	if !domain.ValidUserRole(role) {
-		return errors.New("invalid user role")
+		return domain.NewValidationError("role", "Choose a valid user role.")
 	}
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -118,7 +117,7 @@ SET role=$2,
     session_version=CASE WHEN enabled AND NOT $3 THEN session_version+1 ELSE session_version END
 WHERE id=$1`, userID, role, enabled)
 	if err != nil {
-		return err
+		return mutationError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.ErrNotFound
@@ -128,7 +127,7 @@ WHERE id=$1`, userID, role, enabled)
 		if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
 WHERE user_id=$1`, userID); err != nil {
-			return err
+			return mutationError(err)
 		}
 	}
 	if localCredentialEnabled != nil {
@@ -136,13 +135,13 @@ WHERE user_id=$1`, userID); err != nil {
 UPDATE local_credentials
 SET enabled=$2,updated_at=now()
 WHERE user_id=$1`, userID, *localCredentialEnabled); err != nil {
-			return err
+			return mutationError(err)
 		}
 		if !*localCredentialEnabled {
 			if _, err := tx.Exec(ctx, `
 DELETE FROM local_sessions
 WHERE user_id=$1`, userID); err != nil {
-				return err
+				return mutationError(err)
 			}
 		}
 	}
@@ -150,7 +149,7 @@ WHERE user_id=$1`, userID); err != nil {
 	if _, err := tx.Exec(ctx, `
 DELETE FROM user_groups
 WHERE user_id=$1`, userID); err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	for _, groupID := range groupIDs {
@@ -158,11 +157,11 @@ WHERE user_id=$1`, userID); err != nil {
 INSERT INTO user_groups(user_id,group_id)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
-			return err
+			return mutationError(err)
 		}
 	}
 
-	return tx.Commit(ctx)
+	return mutationError(tx.Commit(ctx))
 }
 
 // RevokeUserSessions invalidates local and OIDC sessions for one account.
@@ -231,7 +230,7 @@ ORDER BY lower(g.name),g.id`)
 func (s *Store) CreateGroup(ctx context.Context, name string) (domain.Group, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return domain.Group{}, errors.New("group name is required")
+		return domain.Group{}, domain.NewValidationError("name", "A group name is required.")
 	}
 
 	var group domain.Group
@@ -240,11 +239,8 @@ INSERT INTO wiki_groups(name)
 VALUES($1)
 RETURNING id,name`, name).
 		Scan(&group.ID, &group.Name)
-	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return domain.Group{}, domain.ErrAlreadyExists
-	}
 
-	return group, err
+	return group, mutationError(err)
 }
 
 // DeleteGroup removes a group and all of its user memberships.
@@ -455,7 +451,7 @@ WHERE singleton=true`, pdfURL)
 func (s *Store) SaveAuthenticationSettings(ctx context.Context, settings domain.AuthenticationSettings) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -470,7 +466,7 @@ WHERE EXISTS (
   WHERE singleton=true
     AND (oidc_admin_group IS DISTINCT FROM $1 OR oidc_group_claim IS DISTINCT FROM $2)
 )`, settings.OIDCAdminGroup, settings.OIDCGroupClaim); err != nil {
-		return err
+		return mutationError(err)
 	}
 	if _, err := tx.Exec(ctx, `
 UPDATE users
@@ -481,7 +477,7 @@ WHERE EXISTS (
   WHERE singleton=true
     AND (trusted_admin_group IS DISTINCT FROM $1 OR trusted_group_headers IS DISTINCT FROM $2)
 )`, settings.TrustedAdminGroup, settings.TrustedGroupHeaders); err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	if _, err := tx.Exec(ctx, `
@@ -513,26 +509,23 @@ WHERE singleton=true`,
 		settings.TrustedGroupHeaders,
 		settings.TrustedAdminGroup,
 	); err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	if _, err := tx.Exec(ctx, `
 DELETE FROM oidc_group_mappings`); err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	for _, mapping := range settings.OIDCGroupMappings {
 		if _, err := tx.Exec(ctx, `
 INSERT INTO oidc_group_mappings(oidc_group,group_id)
 VALUES($1,$2)`, strings.TrimSpace(mapping.OIDCGroup), mapping.GroupID); err != nil {
-			if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23503" {
-				return domain.ErrNotFound
-			}
-			return err
+			return mutationError(err)
 		}
 	}
 
-	return tx.Commit(ctx)
+	return mutationError(tx.Commit(ctx))
 }
 
 // SaveRenderingSettings updates administrator-controlled Markdown rendering features.

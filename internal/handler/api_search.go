@@ -14,7 +14,7 @@ func SearchAPI(catalogUseCases pageSearchService, logger *slog.Logger) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.Search(r.Context(), r.URL.Query().Get("q"), 50)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -28,7 +28,7 @@ func Tags(catalogUseCases pageTagService, logger *slog.Logger) http.HandlerFunc 
 	return func(w http.ResponseWriter, r *http.Request) {
 		tags, err := catalogUseCases.Tags(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -41,7 +41,7 @@ func Recent(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFu
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 50)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -65,7 +65,7 @@ func GroupsAPI(groupUseCases groupReader, logger *slog.Logger) http.HandlerFunc 
 
 		groups, err := groupUseCases.AssignableGroups(r.Context(), user)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 

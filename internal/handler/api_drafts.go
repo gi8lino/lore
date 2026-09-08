@@ -89,7 +89,7 @@ func writeDraftProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, "The draft operation is not permitted.")
 	default:
-		writeUnexpectedProblem(logger, w, err)
+		writeInternalServerError(logger, w, err)
 	}
 }
 

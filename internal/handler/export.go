@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -51,14 +52,9 @@ func ExportPageMarkdown(
 			return
 		}
 
-		file, modTime, cleanup, err := createExportArchive(
-			r.Context(),
-			catalogUseCases,
-			mediaUseCases,
-			[]string{slug},
-		)
+		file, modTime, cleanup, err := createExportArchive(r.Context(), catalogUseCases, mediaUseCases, []string{slug})
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeExportProblem(logger, w, err)
 			return
 		}
 
@@ -82,13 +78,16 @@ func ExportPagePDF(
 	return func(w http.ResponseWriter, r *http.Request) {
 		applicationSettings, err := settingsUseCases.ApplicationSettings(r.Context())
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		pdfURL := effectivePDFURL(views.runtime.PDFURL, applicationSettings.PDFURL)
 		if pdfURL == "" {
-			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is not configured. Configure a PDF service in Administration or set LORE__PDF_URL.")
+			httpresponse.Problem(w,
+				http.StatusServiceUnavailable,
+				"PDF export is not configured. Configure a PDF service in Administration or set LORE__PDF_URL.",
+			)
 			return
 		}
 
@@ -112,7 +111,7 @@ func ExportPagePDF(
 		options := renderingOptionsFromSettings(settings)
 		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -127,7 +126,7 @@ func ExportPagePDF(
 			0,
 		)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -138,13 +137,13 @@ func ExportPagePDF(
 			md.Functions{Subpages: string(subpages)},
 		)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		rendered, err := inlineRenderedMedia(r.Context(), mediaUseCases, page.HTML)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeExportProblem(logger, w, err)
 			return
 		}
 
@@ -185,7 +184,7 @@ func ExportPages(
 
 		slugs, err := exportSlugs(r, navigationUseCases)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 		if len(slugs) == 0 {
@@ -216,7 +215,7 @@ func ExportPages(
 			slugs,
 		)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeExportProblem(logger, w, err)
 			return
 		}
 
@@ -425,7 +424,7 @@ func exportedImagePath(
 		var err error
 		image, err = mediaUseCases.ImageContent(ctx, id)
 		if err != nil {
-			return "", err
+			return "", &exportMediaError{cause: err}
 		}
 		cache[id] = image
 	}
@@ -567,7 +566,7 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 			if !ok {
 				image, err := mediaUseCases.ImageContent(ctx, id)
 				if err != nil {
-					return "", err
+					return "", &exportMediaError{cause: err}
 				}
 				dataURL = "data:" + image.ContentType + ";base64," + base64.StdEncoding.EncodeToString(image.Data)
 				cache[id] = dataURL
@@ -581,4 +580,22 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 			result.WriteString(raw)
 		}
 	}
+}
+
+// exportMediaError retains the origin of a media failure in a multi-resource export.
+type exportMediaError struct{ cause error }
+
+func (e *exportMediaError) Error() string { return fmt.Sprintf("export image: %v", e.cause) }
+func (e *exportMediaError) Unwrap() error { return e.cause }
+
+func writeExportProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if _, media := errors.AsType[*exportMediaError](err); media {
+		if errors.Is(err, domain.ErrNotFound) {
+			httpresponse.Problem(w, http.StatusNotFound, "An image referenced by this export was not found.")
+			return
+		}
+		writeInternalServerError(logger, w, err)
+		return
+	}
+	writePageProblem(logger, w, err)
 }

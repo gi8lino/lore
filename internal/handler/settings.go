@@ -36,13 +36,13 @@ func Settings(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := viewData(r, viewDataUseCases, views, "Settings")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		data.Groups, err = userUseCases.UserGroups(r.Context(), data.User.ID)
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -52,14 +52,14 @@ func Settings(
 
 		data.UserTokens, err = tokenUseCases.UserTokens(r.Context(), data.User.ID)
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		if data.CanEdit {
 			images, err := mediaUseCases.ImagesByUser(r.Context(), data.User.ID)
 			if err != nil {
-				writeUnexpectedProblem(views.logger, w, err)
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 
@@ -110,12 +110,8 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 		}
 
 		token, err := local.ChangePassword(r.Context(), user.ID, user.Username, currentPassword, newPassword)
-		if errors.Is(err, auth.ErrInvalidCredentials) {
-			httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.", httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
-			return
-		}
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writePasswordChangeProblem(logger, w, err)
 			return
 		}
 
@@ -163,7 +159,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 
 		current, err := preferenceUseCases.Preferences(r.Context(), user.ID)
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -180,7 +176,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			ExpandedNavigation:       current.ExpandedNavigation,
 		}
 		if err := preferenceUseCases.SavePreferences(r.Context(), user.ID, preferences); err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writePreferencesProblem(views.logger, w, err)
 			return
 		}
 
@@ -210,7 +206,7 @@ func SavePageContentsPreference(preferenceUseCases preferenceService, views *Vie
 		}
 
 		if err := preferenceUseCases.SetShowPageContents(r.Context(), user.ID, show); err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -249,7 +245,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 			return
 		}
 		if err := preferenceUseCases.SetExpandedNavigation(r.Context(), user.ID, request.Expanded); err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -288,10 +284,29 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 			return
 		}
 		if err := preferenceUseCases.SetSidebarWidth(r.Context(), user.ID, request.Width); err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writePreferencesProblem(logger, w, err)
 			return
 		}
 
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// writePasswordChangeProblem translates recovery-password authentication failures.
+func writePasswordChangeProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.",
+			httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
+	default:
+		writeInternalServerError(logger, w, err)
+	}
+}
+
+// writePreferencesProblem translates persisted preference validation failures.
+func writePreferencesProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if writeValidationProblem(w, err, "Preferences validation failed.") {
+		return
+	}
+	writeInternalServerError(logger, w, err)
 }

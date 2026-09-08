@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
 )
@@ -38,6 +39,10 @@ func (s *Templates) CreatePageTemplate(
 	ctx context.Context,
 	name, description, markdown string,
 ) (domain.PageTemplate, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.PageTemplate{}, newValidationError("name", "A template name is required.")
+	}
 	return s.repository.CreatePageTemplate(ctx, name, description, markdown)
 }
 
@@ -47,6 +52,10 @@ func (s *Templates) UpdatePageTemplate(
 	id int64,
 	name, description, markdown string,
 ) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return newValidationError("name", "A template name is required.")
+	}
 	return s.repository.UpdatePageTemplate(ctx, id, name, description, markdown)
 }
 

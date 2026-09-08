@@ -2,6 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -31,14 +33,13 @@ func TestWriteMediaUploadProblem(t *testing.T) {
 			t.Parallel()
 
 			response := httptest.NewRecorder()
-			handled := writeMediaUploadProblem(
+			writeMediaUploadProblem(
 				slog.New(slog.NewTextHandler(io.Discard, nil)),
 				response,
 				test.err,
 				attachmentMedia,
 			)
 
-			assert.True(t, handled)
 			assert.Equal(t, test.status, response.Code)
 		})
 	}
@@ -48,14 +49,13 @@ func TestWriteMediaDeleteProblem(t *testing.T) {
 	t.Parallel()
 
 	response := httptest.NewRecorder()
-	handled := writeMediaDeleteProblem(
+	writeMediaDeleteProblem(
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		response,
 		&service.MediaInUseError{References: 2},
 		imageMedia,
 	)
 
-	assert.True(t, handled)
 	assert.Equal(t, http.StatusConflict, response.Code)
 	assert.Contains(t, response.Body.String(), "Image is still referenced 2 time(s).")
 }
@@ -73,7 +73,7 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 			name:   "untranslated not found",
 			err:    domain.ErrNotFound,
 			status: http.StatusInternalServerError,
-			write:  writeUnexpectedProblem,
+			write:  writeInternalServerError,
 		},
 		{
 			name:   "page not found",
@@ -145,4 +145,49 @@ func TestWriteAdminProblem(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, response.Code)
 	assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
 	assert.Contains(t, response.Body.String(), "Group already exists.")
+}
+
+func TestAdminValidationUsesFieldProblems(t *testing.T) {
+	t.Parallel()
+	response := httptest.NewRecorder()
+	writeAdminProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response,
+		&service.ValidationError{Fields: []service.FieldError{{Field: "name", Message: "A group name is required."}}}, "Group")
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.JSONEq(t, `{"error":"Group validation failed.","problems":{"name":"A group name is required."}}`, response.Body.String())
+}
+
+func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		err     error
+		status  int
+		message string
+	}{
+		{domain.ErrRevisionNotFound, http.StatusNotFound, "Revision not found."},
+		{domain.ErrCommentNotFound, http.StatusNotFound, "Comment not found."},
+		{&domain.GroupAssignmentError{Field: "owner_group_id"}, http.StatusForbidden, `"owner_group_id"`},
+		{&domain.GroupAssignmentError{Field: "group_ids"}, http.StatusForbidden, `"group_ids"`},
+	}
+	for _, test := range tests {
+		t.Run(test.message, func(t *testing.T) {
+			t.Parallel()
+			response := httptest.NewRecorder()
+			writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", test.err))
+			assert.Equal(t, test.status, response.Code)
+			assert.Contains(t, response.Body.String(), test.message)
+		})
+	}
+}
+
+func TestValidationResponseDoesNotExposeCause(t *testing.T) {
+	t.Parallel()
+	cause := errors.New("private SQL and connection details")
+	err := domain.NewValidationError("group_ids", "Choose an existing group.")
+	err.Cause = cause
+	response := httptest.NewRecorder()
+	assert.True(t, writeValidationProblem(response, fmt.Errorf("update: %w", err), "Validation failed."))
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Contains(t, response.Body.String(), "Choose an existing group.")
+	assert.NotContains(t, response.Body.String(), cause.Error())
+	assert.ErrorIs(t, err, cause)
 }

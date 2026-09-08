@@ -20,7 +20,7 @@ func KnowledgeGraphPage(viewDataUseCases viewDataService, views *Views) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := viewData(r, viewDataUseCases, views, "Knowledge graph")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -35,7 +35,7 @@ func KnowledgeGraphAPI(knowledgeUseCases knowledgeGraphService, logger *slog.Log
 	return func(w http.ResponseWriter, r *http.Request) {
 		graph, err := knowledgeUseCases.KnowledgeGraph(r.Context(), 300)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -61,11 +61,6 @@ func MovePageForm(pageUseCases pageMoveService, logger *slog.Logger) http.Handle
 			KeepAliases:         r.FormValue("keep_aliases") == "on",
 		}
 		if err := pageUseCases.Move(r.Context(), r.PathValue("slug"), newSlug, options, user); err != nil {
-			if validation, ok := errors.AsType[*service.ValidationError](err); ok {
-				httpresponse.Problem(w, http.StatusBadRequest, validation.Error())
-				return
-			}
-
 			writePageProblem(logger, w, err)
 			return
 		}
@@ -108,7 +103,7 @@ func CreateSavedSearch(knowledgeUseCases savedSearchService, logger *slog.Logger
 			r.FormValue("query"),
 			r.FormValue("pinned") == "on",
 		); err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeSavedSearchProblem(logger, w, err)
 			return
 		}
 
@@ -137,7 +132,7 @@ func DeleteSavedSearch(knowledgeUseCases savedSearchService, logger *slog.Logger
 			return
 		}
 		if err := knowledgeUseCases.DeleteSavedSearch(r.Context(), user.ID, id); err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeSavedSearchProblem(logger, w, err)
 			return
 		}
 
@@ -156,7 +151,7 @@ func NotificationsAPI(knowledgeUseCases notificationService, logger *slog.Logger
 
 		items, unread, err := knowledgeUseCases.Notifications(r.Context(), user.ID, 30)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -186,7 +181,7 @@ func MarkNotificationRead(knowledgeUseCases notificationService, logger *slog.Lo
 		}
 
 		if err := knowledgeUseCases.MarkNotificationRead(r.Context(), user.ID, id); err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -258,7 +253,7 @@ func EditorCatalog(
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := navigationUseCases.NavigationPages(r.Context())
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -270,13 +265,13 @@ func EditorCatalog(
 
 		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		aliases, err := catalogUseCases.PageAliases(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -296,13 +291,13 @@ func AdminSnippets(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Snippets & variables", "snippets")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		items, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -379,19 +374,19 @@ func AdminPages(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Pages", "pages")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		pages, err := catalogUseCases.PageInventory(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -431,7 +426,7 @@ func BulkAdminPages(
 				slugs,
 			)
 			if exportErr != nil {
-				writePageProblem(logger, w, exportErr)
+				writeExportProblem(logger, w, exportErr)
 				return
 			}
 
@@ -478,4 +473,19 @@ func uniqueNonEmpty(values []string) []string {
 	}
 
 	return result
+}
+
+// writeSavedSearchProblem translates failures for searches owned by the current user.
+func writeSavedSearchProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if writeValidationProblem(w, err, "Saved search validation failed.") {
+		return
+	}
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Saved search not found.")
+	case errors.Is(err, domain.ErrAlreadyExists):
+		httpresponse.Problem(w, http.StatusConflict, "Saved search already exists.")
+	default:
+		writeInternalServerError(logger, w, err)
+	}
 }

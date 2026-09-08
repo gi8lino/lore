@@ -35,7 +35,7 @@ func CreatePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 
 		issued, err := tokenUseCases.CreateToken(r.Context(), name, user.ID, user.ID, expiresAt)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeTokenCreateProblem(logger, w, err)
 			return
 		}
 
@@ -62,12 +62,7 @@ func DeletePersonalToken(tokenUseCases tokenService, logger *slog.Logger) http.H
 			return
 		}
 		if err := tokenUseCases.DeleteUserToken(r.Context(), id, user.ID); err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
-				return
-			}
-
-			writeUnexpectedProblem(logger, w, err)
+			writeTokenDeleteProblem(logger, w, err)
 			return
 		}
 
@@ -99,12 +94,7 @@ func CreateAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 
 		issued, err := tokenUseCases.CreateToken(r.Context(), name, userID, admin.ID, expiresAt)
 		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				httpresponse.Problem(w, http.StatusNotFound, "User not found.")
-				return
-			}
-
-			writeUnexpectedProblem(logger, w, err)
+			writeTokenCreateProblem(logger, w, err)
 			return
 		}
 
@@ -121,12 +111,7 @@ func DeleteAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 			return
 		}
 		if err := tokenUseCases.DeleteToken(r.Context(), id); err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
-				return
-			}
-
-			writeUnexpectedProblem(logger, w, err)
+			writeTokenDeleteProblem(logger, w, err)
 			return
 		}
 
@@ -188,4 +173,27 @@ func writeTokenFormError(w http.ResponseWriter, err error) {
 		return
 	}
 	httpresponse.Problem(w, http.StatusBadRequest, "Invalid token form.")
+}
+
+// writeTokenCreateProblem translates token validation and owner lookup failures.
+func writeTokenCreateProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if writeValidationProblem(w, err, "Token validation failed.") {
+		return
+	}
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "User not found.")
+	default:
+		writeInternalServerError(logger, w, err)
+	}
+}
+
+// writeTokenDeleteProblem translates token revocation failures.
+func writeTokenDeleteProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
+	default:
+		writeInternalServerError(logger, w, err)
+	}
 }

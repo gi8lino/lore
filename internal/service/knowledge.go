@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
 )
@@ -54,6 +55,14 @@ func (s *Knowledge) SaveKnowledgeSnippet(
 	id, userID int64,
 	kind, name, description, content string,
 ) (domain.KnowledgeSnippet, error) {
+	kind = strings.TrimSpace(kind)
+	name = strings.TrimSpace(name)
+	if kind != "variable" && kind != "snippet" {
+		return domain.KnowledgeSnippet{}, newValidationError("kind", "Choose variable or snippet.")
+	}
+	if name == "" {
+		return domain.KnowledgeSnippet{}, newValidationError("name", "A snippet name is required.")
+	}
 	item, err := s.repository.SaveKnowledgeSnippet(ctx, id, userID, kind, name, description, content)
 	if err != nil {
 		return domain.KnowledgeSnippet{}, err
@@ -87,6 +96,14 @@ func (s *Knowledge) SaveSavedSearch(
 	name, query string,
 	pinned bool,
 ) error {
+	name = strings.TrimSpace(name)
+	query = strings.TrimSpace(query)
+	if name == "" {
+		return newValidationError("name", "A saved search name is required.")
+	}
+	if query == "" {
+		return newValidationError("query", "A search query is required.")
+	}
 	return s.repository.SaveSavedSearch(ctx, userID, id, name, query, pinned)
 }
 

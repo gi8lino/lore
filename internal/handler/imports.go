@@ -51,7 +51,7 @@ func AdminImport(viewDataUseCases viewDataService, views *Views) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Import", "import")
 		if err != nil {
-			writeUnexpectedProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 

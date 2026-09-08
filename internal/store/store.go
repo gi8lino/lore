@@ -387,23 +387,23 @@ func (s *Store) SavePage(
 	user domain.User,
 ) (domain.Page, error) {
 	if !domain.ValidPageStatus(metadata.Status) {
-		return domain.Page{}, errors.New("invalid page status")
+		return domain.Page{}, domain.NewValidationError("status", "Choose a valid page status.")
 	}
 	if metadata.ReviewIntervalDays < 0 {
-		return domain.Page{}, errors.New("invalid review interval")
+		return domain.Page{}, domain.NewValidationError("review_interval_days", "Choose a valid review interval.")
 	}
 
 	metadata.DeprecatedTarget = strings.TrimSpace(metadata.DeprecatedTarget)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if err := validateAssignableGroup(ctx, tx, metadata.OwnerGroupID, user); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	lookupSlug := slug
@@ -440,7 +440,7 @@ INSERT INTO pages(
 			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
 		).Scan(&id)
 	case err != nil:
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	case deleted:
 		return domain.Page{}, domain.ErrPageInBin
 	default:
@@ -448,7 +448,7 @@ INSERT INTO pages(
 			var conflict bool
 			if err = tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>$2) OR EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1 AND page_id<>$2)`, slug, id).Scan(&conflict); err != nil {
-				return domain.Page{}, err
+				return domain.Page{}, mutationError(err)
 			}
 			if conflict {
 				return domain.Page{}, domain.ErrAlreadyExists
@@ -457,20 +457,20 @@ SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>$2) OR EXISTS(SELECT 1 F
 UPDATE pages
 SET slug=$2
 WHERE id=$1`, id, slug); err != nil {
-				return domain.Page{}, err
+				return domain.Page{}, mutationError(err)
 			}
 			if _, err = tx.Exec(ctx, `
 UPDATE navigation_icons
 SET path=$2
 WHERE path=$1`, lookupSlug, slug); err != nil {
-				return domain.Page{}, err
+				return domain.Page{}, mutationError(err)
 			}
 			if _, err = tx.Exec(ctx, `
 INSERT INTO page_aliases(alias,page_id)
 VALUES($1,$2)
 ON CONFLICT(alias) DO UPDATE
 SET page_id=EXCLUDED.page_id`, lookupSlug, id); err != nil {
-				return domain.Page{}, err
+				return domain.Page{}, mutationError(err)
 			}
 		}
 
@@ -486,7 +486,7 @@ WHERE id=$1`,
 	}
 
 	if err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	icon = strings.TrimSpace(icon)
@@ -495,13 +495,13 @@ WHERE id=$1`,
 		if _, err = tx.Exec(ctx, `
 DELETE FROM navigation_icons
 WHERE path=$1`, slug); err != nil {
-			return domain.Page{}, err
+			return domain.Page{}, mutationError(err)
 		}
 	} else if _, err = tx.Exec(ctx, `
 INSERT INTO navigation_icons(path,icon)
 VALUES($1,$2)
 ON CONFLICT(path) DO UPDATE SET icon=EXCLUDED.icon`, slug, icon); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	var rev int
@@ -509,18 +509,18 @@ ON CONFLICT(path) DO UPDATE SET icon=EXCLUDED.icon`, slug, icon); err != nil {
 SELECT coalesce(max(revision_number),0)+1
 FROM page_revisions
 WHERE page_id=$1`, id).Scan(&rev); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 	if _, err = tx.Exec(ctx, `
 INSERT INTO page_revisions(page_id,revision_number,markdown_content,created_by,message)
 VALUES($1,$2,$3,$4,$5)`, id, rev, markdown, user.ID, message); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	if _, err = tx.Exec(ctx, `
 DELETE FROM page_tags
 WHERE page_id=$1`, id); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	for _, tag := range tags {
@@ -536,28 +536,28 @@ VALUES($1)
 ON CONFLICT(name) DO UPDATE
 SET name=EXCLUDED.name
 RETURNING id`, tag).Scan(&tagID); err != nil {
-			return domain.Page{}, err
+			return domain.Page{}, mutationError(err)
 		}
 		if _, err = tx.Exec(ctx, `
 INSERT INTO page_tags(page_id,tag_id)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, id, tagID); err != nil {
-			return domain.Page{}, err
+			return domain.Page{}, mutationError(err)
 		}
 	}
 
 	if err = replacePageGroups(ctx, tx, id, groupIDs, user); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	if err = replacePageProperties(ctx, tx, id, properties); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	if _, err = tx.Exec(ctx, `
 DELETE FROM page_links
 WHERE source_page_id=$1`, id); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	for _, link := range links {
@@ -565,12 +565,12 @@ WHERE source_page_id=$1`, id); err != nil {
 INSERT INTO page_links(source_page_id,target_slug)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, id, link); err != nil {
-			return domain.Page{}, err
+			return domain.Page{}, mutationError(err)
 		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return domain.Page{}, err
+		return domain.Page{}, mutationError(err)
 	}
 
 	return s.GetPage(ctx, slug)
@@ -644,7 +644,7 @@ WHERE slug=$1 AND deleted_at IS NOT NULL`,
 		return domain.ErrNotFound
 	}
 
-	return err
+	return mutationError(err)
 }
 
 // PermanentlyDeletePage removes one page already held in the recycle bin.
@@ -860,7 +860,7 @@ WHERE p.slug=$1 AND p.deleted_at IS NULL AND r.revision_number=$2`, slug, number
 		&record.Markdown,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return revision.Revision{}, domain.ErrNotFound
+		return revision.Revision{}, domain.ErrRevisionNotFound
 	}
 
 	return record, err

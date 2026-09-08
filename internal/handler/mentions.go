@@ -28,7 +28,7 @@ func MentionUsers(userUseCases userDirectoryService, logger *slog.Logger) http.H
 
 		users, err := userUseCases.SearchUsers(r.Context(), strings.TrimSpace(r.URL.Query().Get("q")), 50)
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 

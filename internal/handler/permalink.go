@@ -21,12 +21,7 @@ func PagePermalink(catalogUseCases pagePermalinkService, logger *slog.Logger) ht
 
 		slug, err := catalogUseCases.PageSlugByID(r.Context(), id)
 		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
-				return
-			}
-
-			writeUnexpectedProblem(logger, w, err)
+			writePermalinkProblem(logger, w, err)
 			return
 		}
 
@@ -43,4 +38,14 @@ func permalinkPageID(value string) (pageID int64, err error) {
 	}
 
 	return id, nil
+}
+
+// writePermalinkProblem translates stable page lookup failures.
+func writePermalinkProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Not found.")
+	default:
+		writeInternalServerError(logger, w, err)
+	}
 }

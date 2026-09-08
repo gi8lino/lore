@@ -78,14 +78,14 @@ func PreviewMarkdown(
 
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		slug := md.Slug(request.Slug)
 		subpages, err := subpagesHTML(r.Context(), navigationUseCases, views, slug)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -97,7 +97,7 @@ func PreviewMarkdown(
 			0,
 		)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -108,7 +108,7 @@ func PreviewMarkdown(
 			md.Functions{Subpages: string(subpages)},
 		)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -149,7 +149,7 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 100)
 		if err != nil {
-			writePageProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -182,6 +182,9 @@ func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.Handle
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				w.Header().Set("Content-Location", "/api/pages/"+target)
 				page, err = catalogUseCases.GetPage(r.Context(), target)
+			} else if !errors.Is(aliasErr, domain.ErrNotFound) {
+				writeInternalServerError(logger, w, aliasErr)
+				return
 			}
 		}
 

@@ -24,7 +24,7 @@ func (s *Store) SetExternalAdminStatus(ctx context.Context, userID int64, method
 	case "trusted-proxy":
 		query = `UPDATE users SET trusted_proxy_admin_observed=true,trusted_proxy_external_admin=$2 WHERE id=$1`
 	default:
-		return errors.New("unsupported external authentication method")
+		return domain.NewValidationError("method", "Choose a supported external authentication method.")
 	}
 
 	tag, err := s.pool.Exec(ctx, query, userID, admin)
@@ -247,7 +247,7 @@ func (s *Store) LoginOIDCUser(
 	email = strings.TrimSpace(email)
 	displayName = strings.TrimSpace(displayName)
 	if issuer == "" || subject == "" || username == "" {
-		return domain.User{}, errors.New("OIDC issuer, subject, and preferred username are required")
+		return domain.User{}, domain.NewValidationError("identity", "The identity provider must supply issuer, subject, and username.")
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -675,7 +675,7 @@ func createOIDCUser(
 ) (domain.User, error) {
 	username = strings.TrimSpace(username)
 	if username == "" {
-		return domain.User{}, errors.New("OIDC preferred username is required")
+		return domain.User{}, domain.NewValidationError("username", "The identity provider must supply a username.")
 	}
 
 	available, err := usernameAvailable(ctx, tx, username, 0)

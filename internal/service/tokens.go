@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -39,6 +40,10 @@ func (s *Tokens) CreateToken(
 	userID, createdBy int64,
 	expiresAt *time.Time,
 ) (domain.IssuedToken, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.IssuedToken{}, newValidationError("name", "A token name is required.")
+	}
 	return s.repository.CreateToken(ctx, name, userID, createdBy, expiresAt)
 }
 

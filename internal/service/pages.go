@@ -15,30 +15,6 @@ import (
 	"github.com/gi8lino/lore/internal/revision"
 )
 
-// FieldError describes one invalid application input field.
-type FieldError struct {
-	Field   string
-	Message string
-}
-
-// ValidationError collects application-level input failures.
-type ValidationError struct {
-	Fields []FieldError
-}
-
-// Error returns the first validation failure or a generic fallback.
-func (e *ValidationError) Error() string {
-	if len(e.Fields) == 0 {
-		return "validation failed"
-	}
-	return e.Fields[0].Message
-}
-
-// newValidationError creates a single-field validation error.
-func newValidationError(field, message string) error {
-	return &ValidationError{Fields: []FieldError{{Field: field, Message: message}}}
-}
-
 // PageSaveInput contains transport-independent page mutation fields.
 type PageSaveInput struct {
 	PreviousSlug       string
@@ -231,10 +207,16 @@ func (s *Pages) Move(
 	options domain.MovePageOptions,
 	actor domain.User,
 ) error {
-	oldSlug = strings.TrimSpace(oldSlug)
+	oldSlug = strings.Trim(strings.TrimSpace(oldSlug), "/")
 	newSlug = md.Slug(newSlug)
 	if oldSlug == "" || newSlug == "" {
 		return &ValidationError{Fields: []FieldError{{Field: "slug", Message: "A destination path is required."}}}
+	}
+	if oldSlug == newSlug {
+		return newValidationError("slug", "Choose a different destination path.")
+	}
+	if options.MoveChildren && strings.HasPrefix(newSlug, oldSlug+"/") {
+		return newValidationError("slug", "A page tree cannot be moved inside itself.")
 	}
 	if err := s.repository.MovePage(ctx, oldSlug, newSlug, options, actor); err != nil {
 		return err
@@ -320,6 +302,10 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 
 // AddComment adds a discussion comment and emits mention notifications.
 func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor domain.User) error {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return newValidationError("body", "A comment is required.")
+	}
 	settings, err := s.repository.ApplicationSettings(ctx)
 	if err != nil {
 		return err
@@ -472,6 +458,13 @@ func (s *Pages) bulkMove(ctx context.Context, slugs []string, target string, act
 	target = md.Slug(target)
 	if target == "" {
 		return newValidationError("target", "A target path is required.")
+	}
+
+	for _, slug := range slugs {
+		source := strings.Trim(strings.TrimSpace(slug), "/")
+		if source == "" || source == target+"/"+path.Base(source) {
+			return newValidationError("target", "Choose a different destination for every selected page.")
+		}
 	}
 
 	orderedSlugs := slices.Clone(slugs)

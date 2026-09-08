@@ -40,7 +40,7 @@ func ListImages(mediaUseCases imageService, logger *slog.Logger) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		images, err := mediaUseCases.Images(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -68,12 +68,13 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxImageBytes+1))
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		image, err := mediaUseCases.UploadImage(r.Context(), header.Filename, data, user)
-		if writeMediaUploadProblem(logger, w, err, imageMedia) {
+		if err != nil {
+			writeMediaUploadProblem(logger, w, err, imageMedia)
 			return
 		}
 
@@ -84,7 +85,7 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 }
 
 // ServeImage writes one stored image with immutable private caching headers.
-func ServeImage(mediaUseCases imageService) http.HandlerFunc {
+func ServeImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		if err != nil || id <= 0 {
@@ -94,12 +95,7 @@ func ServeImage(mediaUseCases imageService) http.HandlerFunc {
 
 		image, err := mediaUseCases.ImageContent(r.Context(), id)
 		if err != nil {
-			if err == domain.ErrNotFound {
-				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
-				return
-			}
-
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeMediaReadProblem(logger, w, err)
 			return
 		}
 
@@ -123,7 +119,8 @@ func DeleteImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 		}
 
 		err = mediaUseCases.DeleteImage(r.Context(), id, user)
-		if writeMediaDeleteProblem(logger, w, err, imageMedia) {
+		if err != nil {
+			writeMediaDeleteProblem(logger, w, err, imageMedia)
 			return
 		}
 

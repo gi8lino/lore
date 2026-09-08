@@ -34,6 +34,12 @@ func (s *Preferences) SavePreferences(
 	userID int64,
 	preferences domain.UserPreferences,
 ) error {
+	if !domain.ValidNavigationDensity(preferences.NavigationDensity) {
+		return newValidationError("navigation_density", "Choose a valid navigation density.")
+	}
+	if !domain.ValidSidebarWidth(preferences.SidebarWidth) {
+		return newValidationError("sidebar_width", "Sidebar width is out of range.")
+	}
 	return s.repository.SavePreferences(ctx, userID, preferences)
 }
 
@@ -53,5 +59,8 @@ func (s *Preferences) SetExpandedNavigation(
 
 // SetSidebarWidth updates a user's preferred sidebar width.
 func (s *Preferences) SetSidebarWidth(ctx context.Context, userID int64, width int) error {
+	if !domain.ValidSidebarWidth(width) {
+		return newValidationError("sidebar_width", "Sidebar width is out of range.")
+	}
 	return s.repository.SetSidebarWidth(ctx, userID, width)
 }

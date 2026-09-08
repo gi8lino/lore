@@ -24,7 +24,7 @@ func ListAttachments(mediaUseCases attachmentService, logger *slog.Logger) http.
 	return func(w http.ResponseWriter, r *http.Request) {
 		items, err := mediaUseCases.Attachments(r.Context())
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -57,12 +57,13 @@ func UploadAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxAttachmentBytes+1))
 		if err != nil {
-			writeUnexpectedProblem(logger, w, err)
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
 		item, err := mediaUseCases.UploadAttachment(r.Context(), header.Filename, data, user)
-		if writeMediaUploadProblem(logger, w, err, attachmentMedia) {
+		if err != nil {
+			writeMediaUploadProblem(logger, w, err, attachmentMedia)
 			return
 		}
 
@@ -71,7 +72,7 @@ func UploadAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 }
 
 // ServeAttachment downloads one stored attachment.
-func ServeAttachment(mediaUseCases attachmentService) http.HandlerFunc {
+func ServeAttachment(mediaUseCases attachmentService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		if err != nil || id <= 0 {
@@ -81,12 +82,7 @@ func ServeAttachment(mediaUseCases attachmentService) http.HandlerFunc {
 
 		item, err := mediaUseCases.AttachmentContent(r.Context(), id)
 		if err != nil {
-			if err == domain.ErrNotFound {
-				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
-				return
-			}
-
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeMediaReadProblem(logger, w, err)
 			return
 		}
 
@@ -110,7 +106,8 @@ func DeleteAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 		}
 
 		err = mediaUseCases.DeleteAttachment(r.Context(), id, user)
-		if writeMediaDeleteProblem(logger, w, err, attachmentMedia) {
+		if err != nil {
+			writeMediaDeleteProblem(logger, w, err, attachmentMedia)
 			return
 		}
 

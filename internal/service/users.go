@@ -56,6 +56,9 @@ func (s *Users) UpdateUser(
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
+	if !domain.ValidUserRole(role) {
+		return newValidationError("role", "Choose a valid user role.")
+	}
 	return s.repository.UpdateUser(ctx, userID, role, enabled, groupIDs, localCredentialEnabled)
 }
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
 )
@@ -35,6 +36,10 @@ func (s *Groups) AssignableGroups(ctx context.Context, user domain.User) ([]doma
 
 // CreateGroup creates a collaboration group.
 func (s *Groups) CreateGroup(ctx context.Context, name string) (domain.Group, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.Group{}, newValidationError("name", "A group name is required.")
+	}
 	return s.repository.CreateGroup(ctx, name)
 }
 

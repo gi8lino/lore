@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"github.com/gi8lino/lore/internal/icons"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
 )
@@ -39,5 +41,9 @@ func (s *Navigation) NavigationIcons(ctx context.Context) (map[string]string, er
 
 // SetNavigationIcon sets or clears the icon for a navigation path.
 func (s *Navigation) SetNavigationIcon(ctx context.Context, path, icon string) error {
+	icon = strings.TrimSpace(icon)
+	if !icons.IsNavigationIcon(icon) {
+		return newValidationError("icon", "Choose an icon from the available Lucide icons.")
+	}
 	return s.repository.SetNavigationIcon(ctx, path, icon)
 }

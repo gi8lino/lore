@@ -20,7 +20,7 @@ func LocalLogin(
 	return func(w http.ResponseWriter, r *http.Request) {
 		allowed, err := browserAuth.LocalLoginAllowed(r.Context())
 		if err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 		if !allowed {
@@ -31,13 +31,13 @@ func LocalLogin(
 		if views.runtime.AuthModeOverride == "" {
 			settings, err := settingsUseCases.ApplicationSettings(r.Context())
 			if err != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 
 			required, err := systemUseCases.SetupRequired(r.Context())
 			if err != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 			if required && settings.Authentication.Mode == string(auth.AuthModeNone) {
@@ -65,29 +65,13 @@ func LocalLogin(
 				http.Redirect(w, r, next, http.StatusSeeOther)
 				return
 			}
-			if !errors.Is(err, auth.ErrInvalidCredentials) {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-				return
-			}
-
-			data, dataErr := publicViewData(views, "Local sign in")
-			if dataErr != nil {
-				httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
-				return
-			}
-
-			data.AuthError = "Invalid username or password."
-			data.AuthNext = next
-
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusUnauthorized)
-			renderPublic(views, w, "login", data)
+			writeLocalLoginProblem(views, w, err, next)
 			return
 		}
 
 		data, err := publicViewData(views, "Local sign in")
 		if err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -114,7 +98,7 @@ func Setup(
 
 		settings, err := settingsUseCases.ApplicationSettings(r.Context())
 		if err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 		if settings.Authentication.Mode != string(auth.AuthModeNone) {
@@ -124,7 +108,7 @@ func Setup(
 
 		required, err := systemUseCases.SetupRequired(r.Context())
 		if err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 		if !required {
@@ -147,7 +131,7 @@ func Setup(
 
 				data, dataErr := publicViewData(views, "Set up Lore")
 				if dataErr != nil {
-					httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+					writeInternalServerError(views.logger, w, dataErr)
 					return
 				}
 
@@ -172,18 +156,13 @@ func Setup(
 				http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 				return
 			}
-			if errors.Is(err, domain.ErrAlreadyExists) || errors.Is(err, domain.ErrForbidden) {
-				httpresponse.Problem(w, http.StatusNotFound, "Not found.")
-				return
-			}
-
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeSetupProblem(views, w, err)
 			return
 		}
 
 		data, err := publicViewData(views, "Set up Lore")
 		if err != nil {
-			httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -199,4 +178,33 @@ func safeAuthNext(value string) string {
 	}
 
 	return value
+}
+
+// writeLocalLoginProblem preserves the sign-in form for invalid credentials.
+func writeLocalLoginProblem(views *Views, w http.ResponseWriter, err error, next string) {
+	switch {
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		data, dataErr := publicViewData(views, "Local sign in")
+		if dataErr != nil {
+			writeInternalServerError(views.logger, w, dataErr)
+			return
+		}
+		data.AuthError = "Invalid username or password."
+		data.AuthNext = next
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusUnauthorized)
+		renderPublic(views, w, "login", data)
+	default:
+		writeInternalServerError(views.logger, w, err)
+	}
+}
+
+// writeSetupProblem keeps an already-completed setup unavailable to anonymous callers.
+func writeSetupProblem(views *Views, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, domain.ErrAlreadyExists), errors.Is(err, domain.ErrForbidden):
+		httpresponse.Problem(w, http.StatusNotFound, "Not found.")
+	default:
+		writeInternalServerError(views.logger, w, err)
+	}
 }

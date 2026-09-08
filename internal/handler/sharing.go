@@ -149,11 +149,10 @@ func publicShareHeaders(w http.ResponseWriter) {
 
 // writePublicShareError hides whether an invalid, revoked, or deleted share link ever existed.
 func writePublicShareError(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if errors.Is(err, domain.ErrNotFound) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Share link not found or no longer available.")
-		return
+	default:
+		writeInternalServerError(logger.With("operation", "public_share"), w, err)
 	}
-
-	logger.Error("public share request failed", "event", "public_share_failed", "error", err)
-	httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
 }

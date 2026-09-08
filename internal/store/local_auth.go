@@ -29,7 +29,7 @@ func (s *Store) CreateInitialLocalAdministrator(
 	email = strings.TrimSpace(email)
 	displayName = strings.TrimSpace(displayName)
 	if username == "" || passwordHash == "" {
-		return domain.User{}, errors.New("username and password hash are required")
+		return domain.User{}, domain.NewValidationError("username", "A username and password are required.")
 	}
 
 	displayName = cmp.Or(displayName, username)
@@ -143,7 +143,7 @@ SELECT EXISTS(
 // SetLocalCredential creates or replaces a user's local password hash.
 func (s *Store) SetLocalCredential(ctx context.Context, userID int64, passwordHash string) error {
 	if userID <= 0 || passwordHash == "" {
-		return errors.New("user and password hash are required")
+		return domain.NewValidationError("user_id", "A user and password are required.")
 	}
 
 	tx, err := s.pool.Begin(ctx)

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"errors"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,31 +29,31 @@ func Home(
 		user, _ := auth.User(r)
 		favorites, err := catalogUseCases.Favorites(r.Context(), user.ID)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		recent, err := catalogUseCases.ListPages(r.Context(), 8)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		viewed, err := catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		popular, err := catalogUseCases.Popular(r.Context(), 8)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		recentEdits, err := catalogUseCases.RecentEdited(r.Context(), user.ID, 6)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -61,14 +62,14 @@ func Home(
 		if user.Role == "admin" || user.Role == "editor" {
 			drafts, err = draftUseCases.List(r.Context(), user.ID, 6)
 			if err != nil {
-				writePageProblem(views.logger, w, err)
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, "Home")
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -97,6 +98,9 @@ func ViewPage(
 			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
 				http.Redirect(w, r, "/pages/"+target, http.StatusPermanentRedirect)
 				return
+			} else if !errors.Is(aliasErr, domain.ErrNotFound) {
+				writeInternalServerError(views.logger, w, aliasErr)
+				return
 			}
 		}
 
@@ -115,7 +119,7 @@ func ViewPage(
 
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -142,14 +146,14 @@ func ViewPage(
 		if len(page.Tags) > 0 {
 			related, err = catalogUseCases.Search(r.Context(), "tag:"+page.Tags[0], 6)
 			if err != nil {
-				writePageProblem(views.logger, w, err)
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -167,7 +171,7 @@ func ViewPage(
 		data.Subpages = navigation.Children(data.Navigation, slug)
 		subpages, err := renderTemplateHTML(views, "page", "subpage-toc", data)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -179,7 +183,7 @@ func ViewPage(
 			0,
 		)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -190,7 +194,7 @@ func ViewPage(
 			md.Functions{Subpages: string(subpages)},
 		)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -242,13 +246,13 @@ func EditPage(
 		user := currentUser(r)
 		data, err := viewData(r, viewDataUseCases, views, "New page")
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.AssignableGroups(r.Context(), user)
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -257,7 +261,7 @@ func EditPage(
 		data.PageStatuses = domain.PageStatuses()
 		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
 		if err != nil {
-			writePageProblem(views.logger, w, err)
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -270,7 +274,7 @@ func EditPage(
 		if r.PathValue("slug") == "" {
 			templates, err := templateUseCases.PageTemplates(r.Context())
 			if err != nil {
-				writePageProblem(views.logger, w, err)
+				writeInternalServerError(views.logger, w, err)
 				return
 			}
 
@@ -282,6 +286,9 @@ func EditPage(
 					selected, templateErr := templateUseCases.PageTemplate(r.Context(), id)
 					if templateErr == nil {
 						data.EditorTemplate = &selected
+					} else if !errors.Is(templateErr, domain.ErrNotFound) {
+						writeInternalServerError(views.logger, w, templateErr)
+						return
 					}
 				}
 			}
@@ -506,4 +513,58 @@ func withoutSlug(pages []domain.Page, slug string) []domain.Page {
 	}
 
 	return result
+}
+
+// writePageProblem translates page-domain errors into HTTP problems.
+func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if assignment, ok := errors.AsType[*domain.GroupAssignmentError](err); ok {
+		httpresponse.Problem(w, http.StatusForbidden, "The selected page groups are not assignable.",
+			httpresponse.NewFieldProblem(assignment.Field, "Choose groups you are allowed to assign."))
+		return
+	}
+	if writeValidationProblem(w, err, "Page validation failed.") {
+		return
+	}
+	switch {
+	case errors.Is(err, domain.ErrRevisionNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Revision not found.")
+	case errors.Is(err, domain.ErrCommentNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Comment not found.")
+	case errors.Is(err, domain.ErrNotFound):
+		httpresponse.Problem(w, http.StatusNotFound, "Page not found.")
+	case errors.Is(err, domain.ErrAlreadyExists):
+		httpresponse.Problem(w, http.StatusConflict, "Page path already exists.",
+			httpresponse.NewFieldProblem("slug", "Choose a different page path."))
+	case errors.Is(err, domain.ErrForbidden):
+		httpresponse.Problem(w, http.StatusForbidden, "The page operation is not permitted.")
+	case errors.Is(err, domain.ErrPageInBin):
+		httpresponse.Problem(w,
+			http.StatusConflict,
+			"This page path is currently in the recycle bin.",
+			httpresponse.NewFieldProblem(
+				"slug",
+				"Restore the deleted page or choose a different path.",
+			),
+		)
+	case errors.Is(err, service.ErrDiscussionsDisabled):
+		httpresponse.Problem(w, http.StatusForbidden, "Page discussions are disabled.")
+	default:
+		writeInternalServerError(logger, w, err)
+	}
+}
+
+// writePageSaveProblem translates errors specific to creating or updating a page.
+func writePageSaveProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+	if _, typed := errors.AsType[*domain.GroupAssignmentError](err); !typed && errors.Is(err, domain.ErrForbidden) {
+		httpresponse.Problem(w,
+			http.StatusForbidden,
+			"You cannot assign this page to one or more selected groups.",
+			httpresponse.NewFieldProblem(
+				"group_ids",
+				"One or more selected groups are not assignable by this user.",
+			),
+		)
+		return
+	}
+	writePageProblem(logger, w, err)
 }

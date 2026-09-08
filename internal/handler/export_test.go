@@ -3,6 +3,10 @@ package handler
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -63,4 +67,15 @@ func TestInlineRenderedMediaReturnsLookupError(t *testing.T) {
 	_, err := inlineRenderedMedia(context.Background(), media, `<img src="/media/1/a"><img src="/media/2/b">`)
 	require.ErrorIs(t, err, failure)
 	assert.Equal(t, []int64{1}, media.calls)
+}
+
+func TestExportMissingImageKeepsResourceContext(t *testing.T) {
+	t.Parallel()
+	_, err := inlineRenderedMedia(context.Background(), &exportMediaStub{err: domain.ErrNotFound}, `<img src="/media/1/a.png">`)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+	response := httptest.NewRecorder()
+	writeExportProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, err)
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.Contains(t, response.Body.String(), "An image referenced by this export was not found.")
+	assert.NotContains(t, response.Body.String(), "Page not found")
 }

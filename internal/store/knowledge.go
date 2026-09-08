@@ -10,7 +10,6 @@ import (
 
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // PageProperties returns structured properties for one page.
@@ -116,8 +115,11 @@ func validKnowledgeSnippetKind(kind string) bool {
 func (s *Store) SaveKnowledgeSnippet(ctx context.Context, id, userID int64, kind, name, description, content string) (domain.KnowledgeSnippet, error) {
 	kind = strings.TrimSpace(kind)
 	name = strings.TrimSpace(name)
-	if name == "" || !validKnowledgeSnippetKind(kind) {
-		return domain.KnowledgeSnippet{}, errors.New("invalid snippet")
+	if !validKnowledgeSnippetKind(kind) {
+		return domain.KnowledgeSnippet{}, domain.NewValidationError("kind", "Choose variable or snippet.")
+	}
+	if name == "" {
+		return domain.KnowledgeSnippet{}, domain.NewValidationError("name", "A snippet name is required.")
 	}
 
 	var item domain.KnowledgeSnippet
@@ -137,15 +139,11 @@ WHERE id=$1
 RETURNING id,kind,name,description,content,updated_at`, id, kind, name, strings.TrimSpace(description), content, userID).
 			Scan(&item.ID, &item.Kind, &item.Name, &item.Description, &item.Content, &item.UpdatedAt)
 	}
-
-	if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-		return domain.KnowledgeSnippet{}, domain.ErrAlreadyExists
-	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.KnowledgeSnippet{}, domain.ErrNotFound
 	}
 
-	return item, err
+	return item, mutationError(err)
 }
 
 // DeleteKnowledgeSnippet removes one reusable value.
@@ -191,18 +189,18 @@ ORDER BY pinned DESC,lower(name),id`, userID)
 func (s *Store) SaveSavedSearch(ctx context.Context, userID, id int64, name, query string, pinned bool) error {
 	name = strings.TrimSpace(name)
 	query = strings.TrimSpace(query)
-	if name == "" || query == "" {
-		return errors.New("saved search name and query are required")
+	if name == "" {
+		return domain.NewValidationError("name", "A saved search name is required.")
+	}
+	if query == "" {
+		return domain.NewValidationError("query", "A search query is required.")
 	}
 	if id == 0 {
 		_, err := s.pool.Exec(ctx, `
 INSERT INTO saved_searches(user_id,name,query,pinned)
 VALUES($1,$2,$3,$4)`, userID, name, query, pinned)
-		if databaseError, ok := errors.AsType[*pgconn.PgError](err); ok && databaseError.Code == "23505" {
-			return domain.ErrAlreadyExists
-		}
 
-		return err
+		return mutationError(err)
 	}
 
 	tag, err := s.pool.Exec(ctx, `
@@ -213,7 +211,7 @@ WHERE id=$1 AND user_id=$2`, id, userID, name, query, pinned)
 		return domain.ErrNotFound
 	}
 
-	return err
+	return mutationError(err)
 }
 
 // DeleteSavedSearch deletes one named search owned by a user.
@@ -346,7 +344,7 @@ ORDER BY (c.resolved_at IS NOT NULL),c.created_at`, slug)
 func (s *Store) AddPageComment(ctx context.Context, slug string, userID int64, anchor, body string) (domain.PageComment, error) {
 	body = strings.TrimSpace(body)
 	if body == "" {
-		return domain.PageComment{}, errors.New("comment is required")
+		return domain.PageComment{}, domain.NewValidationError("body", "A comment is required.")
 	}
 
 	var item domain.PageComment
@@ -376,7 +374,7 @@ UPDATE page_comments
 SET resolved_at=$2,updated_at=now()
 WHERE id=$1`, id, value)
 	if err == nil && tag.RowsAffected() == 0 {
-		return domain.ErrNotFound
+		return domain.ErrCommentNotFound
 	}
 
 	return err
@@ -523,15 +521,15 @@ func (s *Store) MovePage(ctx context.Context, oldSlug, newSlug string, options d
 	oldSlug = strings.Trim(strings.TrimSpace(oldSlug), "/")
 	newSlug = strings.Trim(strings.TrimSpace(newSlug), "/")
 	if oldSlug == "" || newSlug == "" || oldSlug == newSlug {
-		return errors.New("invalid page move")
+		return domain.NewValidationError("slug", "Choose a different, non-empty destination path.")
 	}
 	if options.MoveChildren && strings.HasPrefix(newSlug, oldSlug+"/") {
-		return errors.New("cannot move a page tree inside itself")
+		return domain.NewValidationError("slug", "A page tree cannot be moved inside itself.")
 	}
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -552,7 +550,7 @@ ORDER BY length(slug),slug`
 
 	rows, err := tx.Query(ctx, query, oldSlug)
 	if err != nil {
-		return err
+		return mutationError(err)
 	}
 
 	type movedPage struct {
@@ -566,7 +564,7 @@ ORDER BY length(slug),slug`
 		var item movedPage
 		if err := rows.Scan(&item.id, &item.old); err != nil {
 			rows.Close()
-			return err
+			return mutationError(err)
 		}
 
 		item.new = newSlug + strings.TrimPrefix(item.old, oldSlug)
@@ -575,7 +573,7 @@ ORDER BY length(slug),slug`
 
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		return err
+		return mutationError(err)
 	}
 
 	rows.Close()
@@ -592,7 +590,7 @@ ORDER BY length(slug),slug`
 		var conflict bool
 		if err := tx.QueryRow(ctx, `
 SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>ALL($2::bigint[])) OR EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1 AND page_id<>ALL($2::bigint[]))`, item.new, movingIDs).Scan(&conflict); err != nil {
-			return err
+			return mutationError(err)
 		}
 		if conflict {
 			return domain.ErrAlreadyExists
@@ -606,13 +604,13 @@ SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>ALL($2::bigint[])) OR EX
 UPDATE pages
 SET slug=$2,updated_by=$3,updated_at=now()
 WHERE id=$1`, item.id, item.new, user.ID); err != nil {
-			return err
+			return mutationError(err)
 		}
 		if _, err := tx.Exec(ctx, `
 UPDATE navigation_icons
 SET path=$2
 WHERE path=$1`, item.old, item.new); err != nil {
-			return err
+			return mutationError(err)
 		}
 
 		if options.KeepAliases {
@@ -621,7 +619,7 @@ INSERT INTO page_aliases(alias,page_id)
 VALUES($1,$2)
 ON CONFLICT(alias) DO UPDATE
 SET page_id=EXCLUDED.page_id`, item.old, item.id); err != nil {
-				return err
+				return mutationError(err)
 			}
 		}
 	}
@@ -631,7 +629,7 @@ SET page_id=EXCLUDED.page_id`, item.old, item.id); err != nil {
 UPDATE page_links
 SET target_slug=$2
 WHERE target_slug=$1`, item.old, item.new); err != nil {
-			return err
+			return mutationError(err)
 		}
 	}
 
@@ -641,7 +639,7 @@ SELECT id,markdown_content
 FROM pages
 WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 		if err != nil {
-			return err
+			return mutationError(err)
 		}
 
 		type sourceEdit struct {
@@ -654,7 +652,7 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 			var item sourceEdit
 			if err := rows.Scan(&item.id, &item.markdown); err != nil {
 				rows.Close()
-				return err
+				return mutationError(err)
 			}
 
 			updated := item.markdown
@@ -670,7 +668,7 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 
 		if err := rows.Err(); err != nil {
 			rows.Close()
-			return err
+			return mutationError(err)
 		}
 
 		rows.Close()
@@ -680,7 +678,7 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 UPDATE pages
 SET markdown_content=$2,updated_by=$3,updated_at=now()
 WHERE id=$1`, edit.id, edit.markdown, user.ID); err != nil {
-				return err
+				return mutationError(err)
 			}
 
 			var revisionNumber int
@@ -688,17 +686,17 @@ WHERE id=$1`, edit.id, edit.markdown, user.ID); err != nil {
 SELECT coalesce(max(revision_number),0)+1
 FROM page_revisions
 WHERE page_id=$1`, edit.id).Scan(&revisionNumber); err != nil {
-				return err
+				return mutationError(err)
 			}
 			if _, err := tx.Exec(ctx, `
 INSERT INTO page_revisions(page_id,revision_number,markdown_content,created_by,message)
 VALUES($1,$2,$3,$4,$5)`, edit.id, revisionNumber, edit.markdown, user.ID, "Update links after page move"); err != nil {
-				return err
+				return mutationError(err)
 			}
 		}
 	}
 
-	return tx.Commit(ctx)
+	return mutationError(tx.Commit(ctx))
 }
 
 // rewriteDirectWikiTarget updates direct wiki links while preserving their labels.
@@ -740,7 +738,7 @@ ORDER BY p.slug`)
 // BulkSetPageStatus updates lifecycle status for selected pages.
 func (s *Store) BulkSetPageStatus(ctx context.Context, slugs []string, status string) error {
 	if !domain.ValidPageStatus(status) {
-		return errors.New("invalid page status")
+		return domain.NewValidationError("status", "Choose a valid page status.")
 	}
 
 	_, err := s.pool.Exec(ctx, `
@@ -755,7 +753,7 @@ WHERE slug=ANY($1::text[]) AND deleted_at IS NULL`, slugs, status)
 func (s *Store) BulkAddPageTag(ctx context.Context, slugs []string, tag string) error {
 	tag = strings.ToLower(strings.TrimSpace(tag))
 	if tag == "" {
-		return errors.New("tag is required")
+		return domain.NewValidationError("tag", "A tag is required.")
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -788,7 +786,7 @@ ON CONFLICT DO NOTHING`, slugs, tagID); err != nil {
 // BulkAssignPageGroup assigns one collaboration group to selected pages.
 func (s *Store) BulkAssignPageGroup(ctx context.Context, slugs []string, groupID int64) error {
 	if groupID <= 0 {
-		return errors.New("group is required")
+		return domain.NewValidationError("group_id", "Choose a valid group.")
 	}
 
 	_, err := s.pool.Exec(ctx, `
@@ -797,7 +795,7 @@ SELECT id,$2 FROM pages
 WHERE slug=ANY($1::text[]) AND deleted_at IS NULL
 ON CONFLICT DO NOTHING`, slugs, groupID)
 
-	return err
+	return mutationError(err)
 }
 
 // BulkDeletePages moves selected pages to the recycle bin.
