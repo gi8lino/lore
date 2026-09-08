@@ -38,6 +38,5 @@ func renderingOptionsFromSettings(rendering domain.RenderingSettings) md.Options
 		Footnotes:          rendering.Footnotes,
 		DefinitionLists:    rendering.DefinitionLists,
 		Typographer:        rendering.Typographer,
-		CodingLigatures:    rendering.CodingLigatures,
 	}
 }

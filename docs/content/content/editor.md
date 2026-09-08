@@ -29,6 +29,8 @@ The Markdown editor provides the same reusable insert actions from the keyboard 
 
 Autocomplete is suppressed inside fenced code blocks where Lore keeps knowledge macros literal.
 
+The Markdown source editor always disables coding ligatures so operator sequences remain visually literal while editing. The **Coding ligatures** rendering setting applies only to inline and fenced code in the preview and rendered page, not to ordinary prose.
+
 ## Draft protection
 
 Lore has two draft mechanisms with different purposes.
