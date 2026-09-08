@@ -4,6 +4,12 @@ CREATE TABLE users (
   email text NOT NULL DEFAULT '',
   display_name text NOT NULL DEFAULT '',
   role text NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+  enabled boolean NOT NULL DEFAULT true,
+  session_version bigint NOT NULL DEFAULT 1,
+  oidc_admin_observed boolean NOT NULL DEFAULT false,
+  oidc_external_admin boolean NOT NULL DEFAULT false,
+  trusted_proxy_admin_observed boolean NOT NULL DEFAULT false,
+  trusted_proxy_external_admin boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_login timestamptz
 );
@@ -52,9 +58,13 @@ CREATE TABLE application_settings (
   oidc_group_claim text NOT NULL DEFAULT 'groups',
   oidc_group_sync boolean NOT NULL DEFAULT false,
   oidc_groups_authoritative boolean NOT NULL DEFAULT true,
+  oidc_admin_group text NOT NULL DEFAULT '',
   trusted_username_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-User', 'X-Auth-Request-User', 'Remote-User']::text[],
   trusted_email_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-Email', 'X-Auth-Request-Email', 'X-Authentik-Email']::text[],
   trusted_display_name_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-Name', 'X-Auth-Request-Preferred-Username', 'X-Authentik-Name']::text[],
+  trusted_group_headers text[] NOT NULL DEFAULT ARRAY['X-Forwarded-Groups', 'X-Auth-Request-Groups']::text[],
+  trusted_admin_group text NOT NULL DEFAULT '',
+  pdf_url text NOT NULL DEFAULT '',
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -329,6 +339,7 @@ CREATE INDEX oidc_group_mappings_group_idx ON oidc_group_mappings (group_id);
 CREATE TABLE local_credentials (
   user_id bigint PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
   password_hash text NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
