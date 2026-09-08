@@ -22,15 +22,26 @@ The default `lore-site.toml` configuration file is optional. Without it, Lore us
 
 ## Configuration
 
+A complete `site.toml` can use all of the following settings:
+
 ```toml
-site_name = "My Docs"
+site_name = "My Documentation"
 site_url = "https://docs.example.com/"
-source_dir = "docs"
+
+source_dir = "content"
 output_dir = "site"
+
 theme = "Light"
 language = "en"
 mermaid = true
+
+logo = "../branding/logo.svg"
+favicon = "../branding/favicon.svg"
+favicon_ico = "../branding/favicon.ico"
+assets_dir = "../assets"
 ```
+
+`logo`, `favicon`, `favicon_ico`, and `assets_dir` are resolved relative to the configuration file. Normal relative paths, including `../`, are supported, so assets may live in a parent directory. Absolute paths are supported too. `source_dir` and `output_dir` are resolved relative to the process working directory.
 
 `site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
 
@@ -73,7 +84,7 @@ favicon_ico = "content/favicon.ico"
 assets_dir = "assets"
 ```
 
-Absolute paths are also accepted. `logo`, `favicon`, `favicon_ico`, and `assets_dir` resolve relative to the configuration file; `source_dir` and `output_dir` remain relative to the process working directory so command-line overrides behave predictably.
+These path-resolution rules are the same as in the complete configuration example above.
 
 Configured branding files keep a natural public path instead of being renamed:
 
