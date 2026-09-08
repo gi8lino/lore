@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -22,13 +21,16 @@ type variableExportStub struct {
 	settingsService
 	navigationService
 	knowledgeContentStub
-	application domain.ApplicationSettings
+	application     domain.ApplicationSettings
+	navigationPages []domain.Page
 }
 
 func (s variableExportStub) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
 	return s.application, nil
 }
-func (variableExportStub) NavigationPages(context.Context) ([]domain.Page, error) { return nil, nil }
+func (s variableExportStub) NavigationPages(context.Context) ([]domain.Page, error) {
+	return s.navigationPages, nil
+}
 func (variableExportStub) NavigationIcons(context.Context) (map[string]string, error) {
 	return nil, nil
 }
@@ -39,10 +41,7 @@ func variableExportFixture(t *testing.T) (variableExportStub, *Views, *slog.Logg
 	content.pages["guide"] = domain.Page{Slug: "guide", Title: "Deployment", Language: "en", Markdown: "production {{var:environment}}\n\n```text\n{{var:environment}}\n```"}
 	stub := variableExportStub{knowledgeContentStub: content}
 	stub.application.Rendering = domain.RenderingSettings{Tables: true, WikiLinks: true}
-	views := &Views{templates: map[string]*template.Template{
-		"page": template.Must(template.New("page").Parse(`{{define "subpage-toc"}}{{end}}`)),
-	}}
-	return stub, views, slog.New(slog.NewTextHandler(io.Discard, nil))
+	return stub, &Views{}, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func TestReadExportVariables(t *testing.T) {
@@ -90,11 +89,11 @@ func TestPreviewPageExportVariables(t *testing.T) {
 	t.Parallel()
 	t.Run("returns a private clean preview without needing a PDF service", func(t *testing.T) {
 		t.Parallel()
-		stub, views, logger := variableExportFixture(t)
+		stub, _, logger := variableExportFixture(t)
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"environment":"staging"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), views, logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
 		var result exportPreviewResponse
@@ -108,11 +107,11 @@ func TestPreviewPageExportVariables(t *testing.T) {
 	})
 	t.Run("rejects an unused variable with a field problem", func(t *testing.T) {
 		t.Parallel()
-		stub, views, logger := variableExportFixture(t)
+		stub, _, logger := variableExportFixture(t)
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"contact":"other"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), views, logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
 		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 		assert.Contains(t, response.Body.String(), `"variables"`)
 	})
@@ -120,18 +119,18 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"variables":[]}`))
-		PreviewPageExport(nil, nil, nil, nil, nil, nil, nil, nil)(response, request)
+		PreviewPageExport(nil, nil, nil, nil, nil, nil, nil)(response, request)
 		assert.Equal(t, http.StatusBadRequest, response.Code)
 	})
 	t.Run("sanitizes markup in temporary values", func(t *testing.T) {
 		t.Parallel()
-		stub, views, logger := variableExportFixture(t)
+		stub, _, logger := variableExportFixture(t)
 		body, err := json.Marshal(exportVariablesRequest{Variables: map[string]string{"environment": `<script>alert(1)</script><img src="image.png" onerror="alert(1)">`}})
 		require.NoError(t, err)
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body)))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), views, logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		var result exportPreviewResponse
 		require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
@@ -140,11 +139,11 @@ func TestPreviewPageExportVariables(t *testing.T) {
 	})
 	t.Run("returns a missing page separately from render dependency failures", func(t *testing.T) {
 		t.Parallel()
-		stub, views, logger := variableExportFixture(t)
+		stub, _, logger := variableExportFixture(t)
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{}`))
 		request.SetPathValue("slug", "missing")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), views, logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
 		assert.Equal(t, http.StatusNotFound, response.Code)
 	})
 }
@@ -152,6 +151,13 @@ func TestPreviewPageExportVariables(t *testing.T) {
 func TestPDFReceivesTemporaryVariables(t *testing.T) {
 	t.Parallel()
 	stub, views, logger := variableExportFixture(t)
+	page := stub.pages["guide"]
+	page.Markdown = "production {{var:environment}}\n\n{{subpages title=\"Related pages\"}}\n\n```text\n{{var:environment}}\n```"
+	stub.pages["guide"] = page
+	stub.navigationPages = []domain.Page{
+		{Slug: "guide", Title: "Guide"},
+		{Slug: "guide/install", Title: "Install"},
+	}
 	sent := make(chan string, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -175,6 +181,8 @@ func TestPDFReceivesTemporaryVariables(t *testing.T) {
 	assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
 	sentHTML := <-sent
 	assert.Contains(t, sentHTML, "production staging")
+	assert.Contains(t, sentHTML, "Related pages")
+	assert.Contains(t, sentHTML, `/pages/guide/install`)
 	assert.Contains(t, sentHTML, "{{var:environment}}")
 	assert.NotContains(t, sentHTML, "data-page-variable")
 	assert.Equal(t, "production", stub.snippets["variable:environment"].Content)

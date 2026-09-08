@@ -267,7 +267,7 @@ func addRoutes(
 	mux.Handle("POST /export/pdf/{slug...}", exportPDF)
 	mux.Handle("POST /export/preview/{slug...}", browserAuthn(handler.PreviewPageExport(
 		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
-		mediaUseCases, renderer, views, logger,
+		mediaUseCases, renderer, logger,
 	)))
 	mux.Handle("POST /pages/delete/{slug...}", browserAuthn(adminAuthz(handler.DeletePageForm(pageUseCases, views))))
 	mux.Handle("POST /pages/move/{slug...}", browserAuthn(editorAuthz(handler.MovePageForm(pageUseCases, logger))))
@@ -332,7 +332,6 @@ func addRoutes(
 			catalogUseCases,
 			knowledgeUseCases,
 			renderer,
-			views,
 			logger,
 		))),
 	)

@@ -22,8 +22,7 @@ type exportPreviewResponse struct {
 	Document string `json:"document"`
 }
 
-// readExportVariables accepts overrides only in a POST body, never in a URL.
-// Existing GET PDF links continue to render the currently saved values.
+// readExportVariables accepts variable overrides only from POST request bodies.
 func readExportVariables(w http.ResponseWriter, r *http.Request) (map[string]string, error) {
 	if r.Method != http.MethodPost {
 		return nil, nil
@@ -36,8 +35,7 @@ func readExportVariables(w http.ResponseWriter, r *http.Request) (map[string]str
 	return request.Variables, nil
 }
 
-// renderExportHTML is shared by print preview and PDF export. It has no mutation
-// dependencies and never emits the reading page's variable inspection markers.
+// renderExportHTML renders the shared self-contained page body used by print preview and PDF export.
 func renderExportHTML(
 	ctx context.Context,
 	catalog pageContentService,
@@ -45,7 +43,6 @@ func renderExportHTML(
 	navigation navigationService,
 	media imageContentService,
 	renderer *md.Renderer,
-	views *Views,
 	page domain.Page,
 	settings domain.RenderingSettings,
 	overrides map[string]string,
@@ -54,7 +51,7 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	renderSubpages, err := subpagesRenderer(ctx, navigation, views, page.Slug)
+	renderSubpages, err := subpagesRenderer(ctx, navigation, page.Slug)
 	if err != nil {
 		return "", err
 	}
@@ -65,8 +62,7 @@ func renderExportHTML(
 	return inlineRenderedMedia(ctx, media, rendered.HTML)
 }
 
-// PreviewPageExport returns a self-contained, script-free print document. The
-// same stylesheet and resolver are used by PDF export; no PDF service is needed.
+// PreviewPageExport returns a self-contained script-free print document without calling the PDF service.
 func PreviewPageExport(
 	catalog pageContentService,
 	settings settingsService,
@@ -74,7 +70,6 @@ func PreviewPageExport(
 	knowledge knowledgeContentService,
 	media imageContentService,
 	renderer *md.Renderer,
-	views *Views,
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +94,7 @@ func PreviewPageExport(
 			writeInternalServerError(logger, w, err)
 			return
 		}
-		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, views, page, application.Rendering, overrides)
+		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, page, application.Rendering, overrides)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)
 			return
@@ -109,8 +104,7 @@ func PreviewPageExport(
 	}
 }
 
-// writeRenderedExportProblem distinguishes invalid overrides and missing media
-// from failures loading the dependencies of an otherwise existing page.
+// writeRenderedExportProblem translates expected rendered-export failures and hides infrastructure errors.
 func writeRenderedExportProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	if writeValidationProblem(w, err, "Export validation failed.") {
 		return

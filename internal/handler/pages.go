@@ -16,6 +16,7 @@ import (
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/subpages"
 )
 
 // Home renders the wiki dashboard for the current user.
@@ -168,7 +169,7 @@ func ViewPage(
 		}
 		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
-		renderSubpages := subpagesTemplateRenderer(views, navigation.Children(data.Navigation, slug))
+		renderSubpages := subpages.NewRenderer(navigation.Children(data.Navigation, slug), wikiPageURL)
 
 		expanded, err := expandPageKnowledge(
 			r.Context(),
@@ -324,6 +325,7 @@ func EditPage(
 	}
 }
 
+// splitPagePath separates a page slug into its parent path and final segment.
 func splitPagePath(slug string) (string, string) {
 	slug = strings.Trim(strings.TrimSpace(slug), "/")
 	if index := strings.LastIndexByte(slug, '/'); index >= 0 {

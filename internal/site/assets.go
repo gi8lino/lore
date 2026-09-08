@@ -12,9 +12,6 @@ import (
 
 var staticBrowserAssets = []string{
 	"css/app.css",
-	"favicon.svg",
-	"lore-mark.svg",
-	"lore.svg",
 	"js/static.js",
 	"js/theme-init.js",
 	"js/core/clipboard.js",
@@ -34,7 +31,8 @@ type brandingData struct {
 	FaviconICOURL string
 }
 
-func (b *Builder) prepareOutput(config Config, basePath string) (brandingData, error) {
+// prepareOutput recreates the output directory and publishes runtime, source, and branding assets.
+func (b *builder) prepareOutput(config Config, basePath string) (brandingData, error) {
 	if err := recreateDirectory(config.OutputDir); err != nil {
 		return brandingData{}, err
 	}
@@ -53,6 +51,7 @@ func (b *Builder) prepareOutput(config Config, basePath string) (brandingData, e
 	return branding, nil
 }
 
+// recreateDirectory replaces one directory with an empty writable directory.
 func recreateDirectory(directory string) error {
 	if err := os.RemoveAll(directory); err != nil {
 		return err
@@ -61,7 +60,8 @@ func recreateDirectory(directory string) error {
 	return os.MkdirAll(directory, 0o755)
 }
 
-func (b *Builder) copyBuildAssets(config Config) error {
+// copyBuildAssets publishes configured assets, required browser assets, and source files in precedence order.
+func (b *builder) copyBuildAssets(config Config) error {
 	if err := copyConfiguredAssets(config.AssetsDir, config.OutputDir); err != nil {
 		return err
 	}
@@ -75,6 +75,7 @@ func (b *Builder) copyBuildAssets(config Config) error {
 	return nil
 }
 
+// copyConfiguredAssets publishes the optional asset directory below the generated assets path.
 func copyConfiguredAssets(sourceDir, outputDir string) error {
 	if sourceDir == "" {
 		return nil
@@ -87,7 +88,8 @@ func copyConfiguredAssets(sourceDir, outputDir string) error {
 	return nil
 }
 
-func (b *Builder) copyBrowserAssets(outputDir string) error {
+// copyBrowserAssets publishes only the browser runtime files required by static pages.
+func (b *builder) copyBrowserAssets(outputDir string) error {
 	for _, name := range staticBrowserAssets {
 		data, err := fs.ReadFile(b.appFS, name)
 		if err != nil {
@@ -103,6 +105,7 @@ func (b *Builder) copyBrowserAssets(outputDir string) error {
 	return nil
 }
 
+// copySourceAssets recursively copies non-Markdown source files while skipping hidden directories.
 func copySourceAssets(sourceDir, outputDir string) error {
 	return filepath.WalkDir(sourceDir, func(filename string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -130,8 +133,9 @@ func copySourceAssets(sourceDir, outputDir string) error {
 	})
 }
 
+// publishBranding resolves and publishes only branding files explicitly configured by the user.
 func publishBranding(config Config, basePath string) (brandingData, error) {
-	branding := brandingData{FaviconURL: basePath + "assets/favicon.svg"}
+	branding := brandingData{}
 
 	logoURL, err := publishConfiguredFile(config, config.Logo)
 	if err != nil {
@@ -160,9 +164,7 @@ func publishBranding(config Config, basePath string) (brandingData, error) {
 	return branding, nil
 }
 
-// publishConfiguredFile returns the public path of a configured file. Files that
-// already live below source_dir or assets_dir keep their natural relative path.
-// Files outside those copied trees are published under assets using their own name.
+// publishConfiguredFile publishes one configured file while preserving its natural public path when possible.
 func publishConfiguredFile(config Config, filename string) (string, error) {
 	if filename == "" {
 		return "", nil
@@ -179,6 +181,7 @@ func publishConfiguredFile(config Config, filename string) (string, error) {
 	return publicPath, nil
 }
 
+// configuredPublicPath derives the generated public path for one configured file.
 func configuredPublicPath(config Config, filename string) (string, error) {
 	if relative, found, err := relativeFilePath(config.SourceDir, filename); err != nil {
 		return "", err
@@ -195,6 +198,7 @@ func configuredPublicPath(config Config, filename string) (string, error) {
 	return path.Join("assets", filepath.Base(filename)), nil
 }
 
+// relativeFilePath returns a slash-separated path when filename is contained by root.
 func relativeFilePath(root, filename string) (string, bool, error) {
 	if root == "" {
 		return "", false, nil
@@ -220,6 +224,7 @@ func relativeFilePath(root, filename string) (string, bool, error) {
 	return filepath.ToSlash(relative), true, nil
 }
 
+// copyFile copies one filesystem file and creates its destination directory.
 func copyFile(source, destination string) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return err
@@ -249,6 +254,7 @@ func copyFile(source, destination string) error {
 	return outputCloseErr
 }
 
+// writeFile writes one generated file and creates its destination directory.
 func writeFile(filename string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 		return err

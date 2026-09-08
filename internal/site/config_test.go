@@ -17,7 +17,7 @@ func TestConfigRejectsOverlappingSourceAndOutput(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.SourceDir = filepath.Join(root, "docs")
 		config.OutputDir = filepath.Join(root, "docs", "site")
 
@@ -28,7 +28,7 @@ func TestConfigRejectsOverlappingSourceAndOutput(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.SourceDir = filepath.Join(root, "site", "docs")
 		config.OutputDir = filepath.Join(root, "site")
 
@@ -55,7 +55,7 @@ favicon_ico = "content/favicon.ico"
 assets_dir = "assets"
 `), 0o644))
 
-	config, err := LoadConfig(filename, true)
+	config, err := loadConfig(filename, true)
 
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(root, "assets", "never.svg"), config.Logo)
@@ -71,7 +71,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.Logo = filepath.Join(root, "missing.svg")
 
@@ -82,7 +82,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.Logo = filepath.Join(config.OutputDir, "image.svg")
 
@@ -93,7 +93,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.Favicon = filepath.Join(root, "missing.svg")
 
@@ -104,7 +104,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.Favicon = filepath.Join(config.OutputDir, "image.svg")
 
@@ -115,7 +115,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.FaviconICO = filepath.Join(root, "missing.ico")
 
@@ -126,7 +126,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.FaviconICO = filepath.Join(config.OutputDir, "favicon.ico")
 
@@ -137,7 +137,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.OutputDir = filepath.Join(root, "output")
 		config.AssetsDir = filepath.Join(root, "missing")
 
@@ -148,7 +148,7 @@ func TestBrandingValidation(t *testing.T) {
 		t.Parallel()
 
 		root := t.TempDir()
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.AssetsDir = filepath.Join(root, "assets")
 		config.OutputDir = filepath.Join(config.AssetsDir, "site")
 		require.NoError(t, os.MkdirAll(config.AssetsDir, 0o755))
@@ -190,15 +190,27 @@ mermaid = true
 	assert.False(t, cfg.Mermaid)
 }
 
-func TestBuildFlagsRejectInvalidDirectoryOverride(t *testing.T) {
+func TestDefaultConfigUsesGenericBranding(t *testing.T) {
 	t.Parallel()
 
+	config := defaultConfig()
+
+	assert.Equal(t, "Documentation", config.SiteName)
+	assert.Empty(t, config.Logo)
+	assert.Empty(t, config.Favicon)
+	assert.Empty(t, config.FaviconICO)
+}
+
+func TestBuildFlagsValidateOverrides(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
 	flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
 	resolve := BindFlags(flags)
 
 	require.NoError(t, flags.Parse([]string{
-		"--source", "docs",
-		"--output", "docs",
+		"--source", filepath.Join(root, "docs"),
+		"--output", filepath.Join(root, "docs", "site"),
 	}))
 
 	_, err := resolve()

@@ -28,9 +28,7 @@ func TestRunLogsOverrides(t *testing.T) {
 		assets[name] = &fstest.MapFile{Data: []byte("asset")}
 	}
 
-	assets["lore.svg"] = &fstest.MapFile{Data: []byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)}
-
-	config := DefaultConfig()
+	config := defaultConfig()
 	config.SourceDir = source
 	config.OutputDir = output
 
@@ -38,10 +36,8 @@ func TestRunLogsOverrides(t *testing.T) {
 	err := Run(
 		context.Background(),
 		assets,
-		"test",
-		"deadbeef",
 		config,
-		map[string]any{"site-name": "Lore Docs"},
+		map[string]any{"site-name": "Example Docs"},
 		&stdout,
 	)
 

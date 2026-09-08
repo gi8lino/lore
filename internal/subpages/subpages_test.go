@@ -3,7 +3,9 @@ package subpages
 import (
 	"testing"
 
+	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParse(t *testing.T) {
@@ -63,5 +65,60 @@ func TestParse(t *testing.T) {
 		_, ok := Parse(`{{subpages title=Related}}`)
 
 		assert.False(t, ok)
+	})
+}
+
+func TestNewRenderer(t *testing.T) {
+	t.Parallel()
+
+	children := []navigation.Node{
+		{
+			Title: "Guide",
+			Slug:  "guide",
+			Icon:  "book-open",
+			Page:  true,
+			Children: []navigation.Node{
+				{Title: "Install", Slug: "guide/install", Page: true},
+			},
+		},
+	}
+	render := NewRenderer(children, func(slug string) string {
+		return "/docs/" + slug + "/"
+	})
+
+	t.Run("uses invocation title and resolved URLs", func(t *testing.T) {
+		t.Parallel()
+
+		html, err := render(Options{Title: "Related pages", ShowTitle: true})
+
+		require.NoError(t, err)
+		assert.Contains(t, html, "Related pages")
+		assert.Contains(t, html, `href="/docs/guide/"`)
+		assert.Contains(t, html, `href="/docs/guide/install/"`)
+		assert.Contains(t, html, `subpage-toc-node-icon`)
+	})
+
+	t.Run("hides invocation title", func(t *testing.T) {
+		t.Parallel()
+
+		html, err := render(Options{ShowTitle: false})
+
+		require.NoError(t, err)
+		assert.NotContains(t, html, "subpage-toc-heading")
+		assert.Contains(t, html, `href="/docs/guide/"`)
+	})
+
+	t.Run("escapes page labels", func(t *testing.T) {
+		t.Parallel()
+
+		render := NewRenderer([]navigation.Node{{Title: `<script>alert(1)</script>`, Slug: "safe", Page: true}}, func(slug string) string {
+			return "/" + slug + "/"
+		})
+		html, err := render(Options{Title: `<unsafe>`, ShowTitle: true})
+
+		require.NoError(t, err)
+		assert.NotContains(t, html, "<script>")
+		assert.Contains(t, html, "&lt;unsafe&gt;")
+		assert.Contains(t, html, "&lt;script&gt;alert(1)&lt;/script&gt;")
 	})
 }

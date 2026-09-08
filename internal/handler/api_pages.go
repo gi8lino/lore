@@ -12,6 +12,7 @@ import (
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/service"
+	"github.com/gi8lino/lore/internal/subpages"
 )
 
 // previewRequest contains Markdown submitted for server-side editor preview.
@@ -61,7 +62,6 @@ func PreviewMarkdown(
 	catalogUseCases pageContentService,
 	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
-	views *Views,
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +82,7 @@ func PreviewMarkdown(
 		}
 
 		slug := md.Slug(request.Slug)
-		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, views, slug)
+		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, slug)
 		if err != nil {
 			writeInternalServerError(logger, w, err)
 			return
@@ -115,13 +115,12 @@ func PreviewMarkdown(
 	}
 }
 
-// subpagesRenderer prepares the current subtree used by dynamic Markdown rendering.
+// subpagesRenderer prepares the current navigation subtree for the shared subpages renderer.
 func subpagesRenderer(
 	ctx context.Context,
 	navigationUseCases navigationService,
-	views *Views,
 	slug string,
-) (md.SubpagesRenderer, error) {
+) (func(md.SubpagesOptions) (string, error), error) {
 	pages, err := navigationUseCases.NavigationPages(ctx)
 	if err != nil {
 		return nil, err
@@ -133,28 +132,17 @@ func subpagesRenderer(
 	}
 
 	items := make([]navigation.Page, 0, len(pages))
-
 	for _, page := range pages {
 		items = append(items, navigation.Page{Slug: page.Slug, Title: page.Title, Icon: page.Icon})
 	}
 
-	children := navigation.Children(navigation.Build(items, navigation.Options{Icons: icons}), slug)
-
-	return subpagesTemplateRenderer(views, children), nil
+	tree := navigation.Build(items, navigation.Options{Icons: icons})
+	return subpages.NewRenderer(navigation.Children(tree, slug), wikiPageURL), nil
 }
 
-// subpagesTemplateRenderer renders one prepared subtree with invocation-specific presentation options.
-func subpagesTemplateRenderer(views *Views, children []navigation.Node) md.SubpagesRenderer {
-	return func(options md.SubpagesOptions) (string, error) {
-		data := ViewData{
-			Subpages:          children,
-			SubpagesTitle:     options.Title,
-			ShowSubpagesTitle: options.ShowTitle,
-		}
-		html, err := renderTemplateHTML(views, "page", "subpage-toc", data)
-
-		return string(html), err
-	}
+// wikiPageURL returns the server route for one wiki page slug.
+func wikiPageURL(slug string) string {
+	return "/pages/" + strings.Trim(slug, "/")
 }
 
 // ListPages returns recently updated wiki pages up to the requested limit.

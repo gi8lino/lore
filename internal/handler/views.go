@@ -171,12 +171,6 @@ type ViewData struct {
 	HTML template.HTML
 	// PageContents contains heading links for the current rendered page.
 	PageContents []markdown.Heading
-	// Subpages contains the generated navigation subtree below the current page.
-	Subpages []navigation.Node
-	// SubpagesTitle is the visible heading selected by the current {{subpages}} invocation.
-	SubpagesTitle string
-	// ShowSubpagesTitle reports whether the current {{subpages}} invocation displays its heading.
-	ShowSubpagesTitle bool
 	// Pages contains the primary page collection for the current view.
 	Pages []domain.Page
 	// Favorites contains the current user's favorite pages.

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/fs"
 	"net/url"
 	"os"
 	"path"
@@ -26,7 +25,8 @@ type siteTemplates struct {
 	notFound *template.Template
 }
 
-func (b *Builder) parseTemplates(basePath string) (siteTemplates, error) {
+// parseTemplates parses every static page template against the shared layout and helpers.
+func (b *builder) parseTemplates(basePath string) (siteTemplates, error) {
 	page, err := b.parseTemplate("page.gohtml", basePath)
 	if err != nil {
 		return siteTemplates{}, err
@@ -45,17 +45,10 @@ func (b *Builder) parseTemplates(basePath string) (siteTemplates, error) {
 	return siteTemplates{page: page, search: search, notFound: notFound}, nil
 }
 
-func (b *Builder) parseTemplate(pageTemplate, basePath string) (*template.Template, error) {
-	logoSVG, err := fs.ReadFile(b.appFS, "lore.svg")
-	if err != nil {
-		return nil, err
-	}
-
+// parseTemplate parses one static page template with URL and icon helpers.
+func (b *builder) parseTemplate(pageTemplate, basePath string) (*template.Template, error) {
 	funcs := template.FuncMap{
 		"icon": icons.SVG,
-		"logo": func() template.HTML {
-			return template.HTML(logoSVG)
-		},
 		"pageurl": func(route string) string {
 			return pageURL(basePath, route)
 		},
@@ -75,6 +68,7 @@ func (b *Builder) parseTemplate(pageTemplate, basePath string) (*template.Templa
 	)
 }
 
+// staticBasePath derives the generated URL prefix from the configured site URL.
 func staticBasePath(siteURL string) (string, error) {
 	if strings.TrimSpace(siteURL) == "" {
 		return "/", nil
@@ -104,6 +98,7 @@ func staticBasePath(siteURL string) (string, error) {
 	return strings.TrimSuffix(cleaned, "/") + "/", nil
 }
 
+// pageURL returns the clean public URL for one generated page route.
 func pageURL(basePath, route string) string {
 	basePath = ensureBasePath(basePath)
 	route = strings.Trim(route, "/")
@@ -114,6 +109,7 @@ func pageURL(basePath, route string) string {
 	return basePath + route + "/"
 }
 
+// ensureBasePath normalizes a URL prefix to one leading and trailing slash.
 func ensureBasePath(basePath string) string {
 	if basePath == "" || basePath == "." {
 		return "/"
@@ -127,6 +123,7 @@ func ensureBasePath(basePath string) string {
 	return basePath + "/"
 }
 
+// routeSuffix converts one normalized route into its directory-style suffix.
 func routeSuffix(route string) string {
 	route = strings.Trim(route, "/")
 	if route == "" {
@@ -136,6 +133,7 @@ func routeSuffix(route string) string {
 	return route + "/"
 }
 
+// outputPath maps one page route to its generated HTML path.
 func outputPath(route string) string {
 	if strings.Trim(route, "/") == "" {
 		return "index.html"
@@ -144,10 +142,12 @@ func outputPath(route string) string {
 	return filepath.Join(filepath.FromSlash(strings.Trim(route, "/")), "index.html")
 }
 
+// outputFilename returns the generated HTML filename for one route.
 func outputFilename(outputDir, route string) string {
 	return outputFile(outputDir, outputPath(route))
 }
 
+// outputFile joins an output directory with generated path components.
 func outputFile(outputDir string, parts ...string) string {
 	all := make([]string, 0, len(parts)+1)
 	all = append(all, outputDir)
@@ -155,6 +155,7 @@ func outputFile(outputDir string, parts ...string) string {
 	return filepath.Join(all...)
 }
 
+// writeTemplate renders one complete static HTML page through an in-memory buffer before writing it.
 func writeTemplate(tmpl *template.Template, filename string, data viewData) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 		return err
@@ -168,6 +169,7 @@ func writeTemplate(tmpl *template.Template, filename string, data viewData) erro
 	return os.WriteFile(filename, output.Bytes(), 0o644)
 }
 
+// writeJSON writes indented JSON terminated by a newline.
 func writeJSON(filename string, value any) error {
 	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
@@ -178,6 +180,7 @@ func writeJSON(filename string, value any) error {
 	return os.WriteFile(filename, data, 0o644)
 }
 
+// writeSitemap writes sitemap.xml when site_url is an absolute HTTP or HTTPS URL.
 func writeSitemap(config Config, pages []sourcePage) error {
 	if strings.TrimSpace(config.SiteURL) == "" {
 		return nil

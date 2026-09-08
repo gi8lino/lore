@@ -13,40 +13,40 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-const DefaultConfigPath = "site.toml"
+const defaultConfigPath = "lore-site.toml"
 
 // Config contains filesystem-backed static site build settings.
 type Config struct {
-	Logo       string            `toml:"logo"`
-	Favicon    string            `toml:"favicon"`
-	FaviconICO string            `toml:"favicon_ico"`
-	AssetsDir  string            `toml:"assets_dir"`
-	SiteName   string            `toml:"site_name"`
-	SiteURL    string            `toml:"site_url"`
-	SourceDir  string            `toml:"source_dir"`
-	OutputDir  string            `toml:"output_dir"`
-	Theme      string            `toml:"theme"`
-	Language   string            `toml:"language"`
-	Mermaid    bool              `toml:"mermaid"`
-	LogFormat  logging.LogFormat `toml:"-"`
+	Logo       string `toml:"logo"`
+	Favicon    string `toml:"favicon"`
+	FaviconICO string `toml:"favicon_ico"`
+	AssetsDir  string `toml:"assets_dir"`
+	SiteName   string `toml:"site_name"`
+	SiteURL    string `toml:"site_url"`
+	SourceDir  string `toml:"source_dir"`
+	OutputDir  string `toml:"output_dir"`
+	Theme      string `toml:"theme"`
+	Language   string `toml:"language"`
+	Mermaid    bool   `toml:"mermaid"`
+	logFormat  logging.LogFormat
 }
 
-// DefaultConfig returns a useful zero-infrastructure documentation setup.
-func DefaultConfig() Config {
+// defaultConfig returns generic zero-infrastructure static site defaults.
+func defaultConfig() Config {
 	return Config{
-		SiteName:  "Lore",
+		SiteName:  "Documentation",
 		SourceDir: "docs",
 		OutputDir: "site",
 		Theme:     themes.DefaultTheme,
 		Language:  "en",
 		Mermaid:   true,
-		LogFormat: logging.LogFormatText,
+		logFormat: logging.LogFormatJSON,
 	}
 }
 
-// LoadConfig reads an optional TOML site configuration.
-func LoadConfig(filename string, required bool) (Config, error) {
-	config := DefaultConfig()
+// loadConfig reads an optional TOML site configuration and resolves config-relative asset paths.
+func loadConfig(filename string, required bool) (Config, error) {
+	config := defaultConfig()
 	file, err := os.Open(filename)
 	if errors.Is(err, os.ErrNotExist) && !required {
 		return config, nil
@@ -60,29 +60,30 @@ func LoadConfig(filename string, required bool) (Config, error) {
 		return Config{}, fmt.Errorf("parse %s: %w", filename, err)
 	}
 
-	config.resolveBrandingPaths(filepath.Dir(filename))
+	config.resolveAssetPaths(filepath.Dir(filename))
 	if err := config.validate(); err != nil {
 		return Config{}, err
 	}
-
 	return config, nil
 }
 
-func (c *Config) resolveBrandingPaths(configDir string) {
+// resolveAssetPaths resolves user-supplied branding and asset paths relative to the config file.
+func (c *Config) resolveAssetPaths(configDir string) {
 	resolveRelativePath(configDir, &c.Logo)
 	resolveRelativePath(configDir, &c.Favicon)
 	resolveRelativePath(configDir, &c.FaviconICO)
 	resolveRelativePath(configDir, &c.AssetsDir)
 }
 
+// resolveRelativePath resolves one non-empty relative path against the supplied directory.
 func resolveRelativePath(baseDir string, filename *string) {
 	if *filename == "" || filepath.IsAbs(*filename) {
 		return
 	}
-
 	*filename = filepath.Clean(filepath.Join(baseDir, *filename))
 }
 
+// validate checks all static site configuration invariants before output is modified.
 func (c Config) validate() error {
 	if err := c.validateRequiredFields(); err != nil {
 		return err
@@ -90,13 +91,13 @@ func (c Config) validate() error {
 	if err := c.validateBuildDirectories(); err != nil {
 		return err
 	}
-	if err := c.validateBrandingPaths(); err != nil {
+	if err := c.validateAssetPaths(); err != nil {
 		return err
 	}
-
 	return c.validateBrandingFormats()
 }
 
+// validateRequiredFields rejects empty values required to build a complete site.
 func (c Config) validateRequiredFields() error {
 	switch {
 	case strings.TrimSpace(c.SiteName) == "":
@@ -114,6 +115,7 @@ func (c Config) validateRequiredFields() error {
 	}
 }
 
+// validateBuildDirectories rejects source and output directory overlap.
 func (c Config) validateBuildDirectories() error {
 	source, err := filepath.Abs(c.SourceDir)
 	if err != nil {
@@ -126,11 +128,11 @@ func (c Config) validateBuildDirectories() error {
 	if directoriesOverlap(source, output) {
 		return errors.New("source_dir and output_dir must be separate directories")
 	}
-
 	return nil
 }
 
-func (c Config) validateBrandingPaths() error {
+// validateAssetPaths checks configured branding files and the optional asset directory.
+func (c Config) validateAssetPaths() error {
 	if err := validateConfiguredPath("logo", c.Logo, c.OutputDir, false); err != nil {
 		return err
 	}
@@ -140,10 +142,10 @@ func (c Config) validateBrandingPaths() error {
 	if err := validateConfiguredPath("favicon_ico", c.FaviconICO, c.OutputDir, false); err != nil {
 		return err
 	}
-
 	return validateConfiguredPath("assets_dir", c.AssetsDir, c.OutputDir, true)
 }
 
+// validateConfiguredPath checks one configured file or directory and prevents output overlap.
 func validateConfiguredPath(name, filename, outputDir string, directory bool) error {
 	if filename == "" {
 		return nil
@@ -171,18 +173,18 @@ func validateConfiguredPath(name, filename, outputDir string, directory bool) er
 	if !directory && !info.Mode().IsRegular() {
 		return fmt.Errorf("%s must be a regular file", name)
 	}
-
 	return nil
 }
 
+// pathOverlapsOutput reports whether a configured path would read from generated output.
 func pathOverlapsOutput(pathname, output string, directory bool) bool {
 	if pathname == output || directoryContains(output, pathname) {
 		return true
 	}
-
 	return directory && directoryContains(pathname, output)
 }
 
+// validateBrandingFormats checks configured branding file extensions.
 func (c Config) validateBrandingFormats() error {
 	if err := validateImageFormat("logo", c.Logo); err != nil {
 		return err
@@ -193,10 +195,10 @@ func (c Config) validateBrandingFormats() error {
 	if c.FaviconICO != "" && !strings.EqualFold(filepath.Ext(c.FaviconICO), ".ico") {
 		return errors.New("favicon_ico must be an ICO file")
 	}
-
 	return nil
 }
 
+// validateImageFormat accepts browser-compatible image extensions for configurable branding.
 func validateImageFormat(name, filename string) error {
 	if filename == "" {
 		return nil
@@ -218,44 +220,37 @@ func directoriesOverlap(left, right string) bool {
 	if directoryContains(left, right) {
 		return true
 	}
-
 	return directoryContains(right, left)
 }
 
+// directoryContains reports whether child is nested below parent.
 func directoryContains(parent, child string) bool {
 	relative, err := filepath.Rel(parent, child)
 	if err != nil || relative == "." {
 		return false
 	}
-
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-// BindFlags registers the lore build flags and returns a resolver for the parsed Config.
+// BindFlags registers static site flags and returns a resolver for the effective configuration.
 func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
-	defaults := DefaultConfig()
+	defaults := defaultConfig()
 
-	configPath := flags.String("config", DefaultConfigPath, "TOML site configuration file").
-		Placeholder("FILE")
-	siteName := flags.String("site-name", defaults.SiteName, "Site title").
-		Placeholder("NAME")
-	siteURL := flags.String("site-url", defaults.SiteURL, "Published site URL").
-		Placeholder("URL")
-	source := flags.String("source", defaults.SourceDir, "Markdown source directory").
-		Placeholder("DIR")
-	output := flags.String("output", defaults.OutputDir, "Generated site directory").
-		Placeholder("DIR")
-	theme := flags.String("theme", defaults.Theme, "Lore theme").
-		Placeholder("THEME")
-	language := flags.String("language", defaults.Language, "HTML content language").
-		Placeholder("LANG")
+	configPath := flags.String("config", defaultConfigPath, "TOML site configuration file").Placeholder("FILE")
+	siteName := flags.String("site-name", defaults.SiteName, "Site title").Placeholder("NAME")
+	siteURL := flags.String("site-url", defaults.SiteURL, "Published site URL").Placeholder("URL")
+	source := flags.String("source", defaults.SourceDir, "Markdown source directory").Placeholder("DIR")
+	output := flags.String("output", defaults.OutputDir, "Generated site directory").Placeholder("DIR")
+	theme := flags.String("theme", defaults.Theme, "Theme").Placeholder("THEME")
+	language := flags.String("language", defaults.Language, "HTML content language").Placeholder("LANG")
 	mermaid := flags.Bool("mermaid", defaults.Mermaid, "Enable Mermaid rendering").Strict()
-	logFormat := tinyflags.Enum(flags, "log-format", logging.LogFormatText, "Log output format", logging.LogFormatText, logging.LogFormatJSON).
+	logFormat := flags.String("log-format", string(defaults.logFormat), "Log output format").
+		Choices(string(logging.LogFormatText), string(logging.LogFormatJSON)).
 		Short("l").
 		Placeholder("FORMAT")
 
 	return func() (Config, error) {
-		cfg, err := LoadConfig(*configPath.Value(), configPath.Changed())
+		cfg, err := loadConfig(*configPath.Value(), configPath.Changed())
 		if err != nil {
 			return Config{}, err
 		}
@@ -281,13 +276,11 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 		if mermaid.Changed() {
 			cfg.Mermaid = *mermaid.Value()
 		}
-
-		cfg.LogFormat = *logFormat.Value()
+		cfg.logFormat = logging.LogFormat(*logFormat.Value())
 
 		if err := cfg.validate(); err != nil {
 			return Config{}, err
 		}
-
 		return cfg, nil
 	}
 }

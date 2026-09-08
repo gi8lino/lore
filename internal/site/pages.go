@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
-	"html/template"
 	"io/fs"
 	"net/url"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"unicode"
 
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/navigation"
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -26,6 +24,7 @@ type pageDiscovery struct {
 	routes    map[string]string
 }
 
+// discoverPages discovers Markdown source files and maps them to static routes.
 func discoverPages(sourceDir string) ([]sourcePage, error) {
 	discovery := pageDiscovery{
 		sourceDir: sourceDir,
@@ -40,6 +39,7 @@ func discoverPages(sourceDir string) ([]sourcePage, error) {
 	return discovery.pages, nil
 }
 
+// visit collects one Markdown file during source directory traversal.
 func (d *pageDiscovery) visit(filename string, entry fs.DirEntry, walkErr error) error {
 	if walkErr != nil {
 		return walkErr
@@ -86,10 +86,12 @@ func (d *pageDiscovery) visit(filename string, entry fs.DirEntry, walkErr error)
 	return nil
 }
 
+// compareSourcePages orders discovered pages by source path.
 func compareSourcePages(left, right sourcePage) int {
 	return cmp.Compare(left.SourcePath, right.SourcePath)
 }
 
+// hasHomePage reports whether the discovered pages contain the root route.
 func hasHomePage(pages []sourcePage) bool {
 	for _, page := range pages {
 		if page.Route == "" {
@@ -100,6 +102,7 @@ func hasHomePage(pages []sourcePage) bool {
 	return false
 }
 
+// indexPages builds source-route and wiki-link lookup indexes.
 func indexPages(pages []sourcePage) (map[string]string, map[string]string) {
 	routesBySource := make(map[string]string, len(pages))
 	wikiTargets := make(map[string]string, len(pages)*2)
@@ -117,6 +120,7 @@ func indexPages(pages []sourcePage) (map[string]string, map[string]string) {
 	return routesBySource, wikiTargets
 }
 
+// markdownFileRoute maps a Markdown source filename to its clean static route.
 func markdownFileRoute(filename string) string {
 	clean := strings.TrimPrefix(path.Clean("/"+filepath.ToSlash(filename)), "/")
 	clean = strings.TrimSuffix(clean, path.Ext(clean))
@@ -131,6 +135,7 @@ func markdownFileRoute(filename string) string {
 	return strings.Trim(clean, "/")
 }
 
+// markdownTitle extracts the first level-one heading or derives a title from the route.
 func markdownTitle(source, route string) (title string, hasTitle bool) {
 	lines := strings.Split(strings.TrimPrefix(source, "\ufeff"), "\n")
 	fence := ""
@@ -173,6 +178,7 @@ func markdownTitle(source, route string) (title string, hasTitle bool) {
 	return strings.Join(words, " "), false
 }
 
+// registerWikiTarget records an unambiguous wiki-link target.
 func registerWikiTarget(targets map[string]string, ambiguous map[string]bool, target, route string) {
 	target = strings.Trim(target, "/")
 	if target == "" && route != "" {
@@ -186,6 +192,7 @@ func registerWikiTarget(targets map[string]string, ambiguous map[string]bool, ta
 	targets[target] = route
 }
 
+// validateWikiLinks rejects source pages that reference unresolved wiki targets.
 func validateWikiLinks(page sourcePage, targets map[string]string) error {
 	for _, target := range md.Links(page.Markdown) {
 		if _, found := targets[target]; !found {
@@ -196,6 +203,7 @@ func validateWikiLinks(page sourcePage, targets map[string]string) error {
 	return nil
 }
 
+// expandedPrefixes returns navigation ancestors that should be expanded for a route.
 func expandedPrefixes(route string) []string {
 	parts := strings.Split(strings.Trim(route, "/"), "/")
 	if len(parts) <= 1 {
@@ -210,66 +218,7 @@ func expandedPrefixes(route string) []string {
 	return expanded
 }
 
-func subpagesRenderer(tree []navigation.Node, route, basePath string) md.SubpagesRenderer {
-	children := tree
-	if strings.Trim(route, "/") != "" {
-		children = navigation.Children(tree, route)
-	}
-
-	return func(options md.SubpagesOptions) (string, error) {
-		if len(children) == 0 {
-			return "", nil
-		}
-
-		label := options.Title
-		if !options.ShowTitle || strings.TrimSpace(label) == "" {
-			label = "Pages in this section"
-		}
-
-		var output strings.Builder
-		output.WriteString(`<nav class="subpage-toc" aria-label="`)
-		output.WriteString(template.HTMLEscapeString(label))
-		output.WriteString(`">`)
-		if options.ShowTitle {
-			output.WriteString(`<div class="subpage-toc-heading"><h2>`)
-			output.WriteString(template.HTMLEscapeString(options.Title))
-			output.WriteString(`</h2></div>`)
-		}
-		output.WriteString(`<ul class="subpage-toc-list subpage-toc-root">`)
-		for _, child := range children {
-			renderSubpageNode(&output, child, basePath)
-		}
-		output.WriteString(`</ul></nav>`)
-
-		return output.String(), nil
-	}
-}
-
-func renderSubpageNode(output *strings.Builder, node navigation.Node, basePath string) {
-	output.WriteString(`<li class="subpage-toc-item">`)
-	if node.Page {
-		output.WriteString(`<a class="subpage-toc-link" href="`)
-		output.WriteString(template.HTMLEscapeString(pageURL(basePath, node.Slug)))
-		output.WriteString(`"><span>`)
-		output.WriteString(template.HTMLEscapeString(node.Title))
-		output.WriteString(`</span></a>`)
-	} else {
-		output.WriteString(`<span class="subpage-toc-label"><span>`)
-		output.WriteString(template.HTMLEscapeString(node.Title))
-		output.WriteString(`</span></span>`)
-	}
-
-	if len(node.Children) > 0 {
-		output.WriteString(`<ul class="subpage-toc-list">`)
-		for _, child := range node.Children {
-			renderSubpageNode(output, child, basePath)
-		}
-		output.WriteString(`</ul>`)
-	}
-
-	output.WriteString(`</li>`)
-}
-
+// processRenderedHTML removes the duplicate title, rewrites local URLs, and extracts search text.
 func processRenderedHTML(
 	rendered, sourcePath string,
 	removeTitle bool,
@@ -301,6 +250,7 @@ func processRenderedHTML(
 	return htmlOutput.String(), normalizeSearchText(textFromNodes(nodes)), nil
 }
 
+// removeFirstHeading removes the first top-level heading node from rendered fragments.
 func removeFirstHeading(nodes []*xhtml.Node) []*xhtml.Node {
 	for index, node := range nodes {
 		if node.Type == xhtml.ElementNode && node.Data == "h1" {
@@ -323,6 +273,7 @@ func isRewritableURLAttribute(element, attribute string) bool {
 	}
 }
 
+// rewriteHTMLURLs recursively rewrites navigable local URLs in rendered HTML.
 func rewriteHTMLURLs(node *xhtml.Node, sourcePath string, routesBySource map[string]string, basePath string) error {
 	if node.Type == xhtml.ElementNode {
 		for index := range node.Attr {
@@ -360,6 +311,7 @@ func isRewritableLocalURL(value string, parsed *url.URL) bool {
 	return parsed.Path != ""
 }
 
+// rewriteLocalURL rewrites one local Markdown or asset URL for the generated site.
 func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string, basePath string) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" || strings.HasPrefix(value, "#") {
@@ -401,6 +353,7 @@ func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string,
 	return parsed.String(), nil
 }
 
+// resolveLocalPath resolves one URL path relative to its Markdown source file.
 func resolveLocalPath(value, sourcePath string) string {
 	if strings.HasPrefix(value, "/") {
 		return strings.TrimPrefix(path.Clean(value), "/")
@@ -414,6 +367,7 @@ func resolveLocalPath(value, sourcePath string) string {
 	return resolved
 }
 
+// textFromNodes extracts searchable text from rendered HTML nodes.
 func textFromNodes(nodes []*xhtml.Node) string {
 	var output strings.Builder
 	for _, node := range nodes {
@@ -423,6 +377,7 @@ func textFromNodes(nodes []*xhtml.Node) string {
 	return output.String()
 }
 
+// appendNodeText recursively appends searchable text while skipping scripts and styles.
 func appendNodeText(output *strings.Builder, node *xhtml.Node) {
 	if node.Type == xhtml.TextNode {
 		output.WriteString(node.Data)
@@ -437,6 +392,7 @@ func appendNodeText(output *strings.Builder, node *xhtml.Node) {
 	}
 }
 
+// normalizeSearchText collapses rendered text into a single whitespace-normalized string.
 func normalizeSearchText(value string) string {
 	return strings.Join(strings.Fields(value), " ")
 }

@@ -10,15 +10,8 @@ import (
 )
 
 // Run builds one filesystem-backed static documentation site.
-func Run(
-	ctx context.Context,
-	appFS fs.FS,
-	version, commit string,
-	cfg Config,
-	overrides map[string]any,
-	stdout io.Writer,
-) error {
-	logger := logging.Setup(cfg.LogFormat, false, stdout)
+func Run(ctx context.Context, appFS fs.FS, config Config, overrides map[string]any, stdout io.Writer) error {
+	logger := logging.Setup(config.logFormat, false, stdout)
 	setupLogger := logger.With("component", "setup")
 
 	if len(overrides) > 0 {
@@ -29,12 +22,11 @@ func Run(
 		)
 	}
 
-	result, err := NewBuilder(appFS, version, commit).Build(ctx, cfg)
+	result, err := newBuilder(appFS).build(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(stdout, "Built %d pages into %s\n", result.Pages, result.OutputDir)
-
+	_, _ = fmt.Fprintf(stdout, "Built %d pages into %s\n", result.pages, result.outputDir)
 	return nil
 }

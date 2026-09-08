@@ -69,8 +69,6 @@ func Run(
 		return site.Run(
 			ctx,
 			appFS,
-			version,
-			commit,
 			cfg,
 			build.OverriddenValues(),
 			stdout,

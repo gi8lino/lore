@@ -123,15 +123,12 @@ type RenderedPage struct {
 // SubpagesOptions controls one {{subpages}} invocation.
 type SubpagesOptions = subpages.Options
 
-// SubpagesRenderer renders trusted child-navigation HTML for one invocation.
-type SubpagesRenderer func(SubpagesOptions) (string, error)
-
 // Functions contains trusted dynamic HTML and request-local variable provenance.
 type Functions struct {
 	// Variables preserves the identities of server-expanded values for inspection.
 	Variables []Variable
 	// Subpages renders the generated navigation tree inserted by {{subpages}}.
-	Subpages SubpagesRenderer
+	Subpages func(SubpagesOptions) (string, error)
 }
 
 type subpagesInvocation struct {
@@ -280,8 +277,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	return r.renderPage(source, resolve, options, functions)
 }
 
-// renderPageWithVariables preserves the normal render as the authority. Source
-// annotations are used only when removing them produces that same document.
+// renderPageWithVariables annotates expanded variable origins without changing the rendered document.
 func (r *Renderer) renderPageWithVariables(source string, resolve func(string) string, options Options, functions Functions) (RenderedPage, error) {
 	plain, _ := resolveVariableTokens(source, functions.Variables)
 	normal, err := r.renderPage(plain, resolve, options, functions)
@@ -299,6 +295,7 @@ func (r *Renderer) renderPageWithVariables(source string, resolve func(string) s
 	return normal, nil
 }
 
+// renderPage renders one Markdown page with optional dynamic functions and heading extraction.
 func (r *Renderer) renderPage(source string, resolve func(string) string, options Options, functions Functions) (RenderedPage, error) {
 	source, invocations := preprocessFunctions(source)
 	raw, err := r.renderRawResolved(source, resolve, options)

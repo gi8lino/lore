@@ -116,7 +116,7 @@ func ExportPagePDF(
 
 		settings := applicationSettings.Rendering
 		rendered, err := renderExportHTML(r.Context(), catalogUseCases, knowledgeUseCases,
-			navigationUseCases, mediaUseCases, renderer, views, pageData, settings, overrides)
+			navigationUseCases, mediaUseCases, renderer, pageData, settings, overrides)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)
 			return
@@ -560,9 +560,13 @@ func inlineRenderedMedia(ctx context.Context, mediaUseCases imageContentService,
 // exportMediaError retains the origin of a media failure in a multi-resource export.
 type exportMediaError struct{ cause error }
 
+// Error returns the media export failure message.
 func (e *exportMediaError) Error() string { return fmt.Sprintf("export image: %v", e.cause) }
+
+// Unwrap returns the underlying media lookup failure.
 func (e *exportMediaError) Unwrap() error { return e.cause }
 
+// writeExportProblem translates expected export failures into HTTP problems.
 func writeExportProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	if _, media := errors.AsType[*exportMediaError](err); media {
 		if errors.Is(err, domain.ErrNotFound) {

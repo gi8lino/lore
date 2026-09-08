@@ -2,29 +2,29 @@
 
 Lore can work like a small MkDocs-style generator: write ordinary Markdown files in a directory and build a complete read-only site without PostgreSQL or a running Lore instance.
 
-This repository's own documentation is configured by `docs/site.toml`; `lore build` still uses the optional `lore-site.toml` filename by default for standalone sites.
+This repository's own documentation is configured by `docs/site.toml`; the published Markdown lives under `docs/content/`.
 
 ## Build
 
-A built Lore binary already contains the read-only browser assets needed by the generator. A standalone site can use the optional default `lore-site.toml` file directly:
+A built Lore binary already contains the read-only browser assets needed by the generator, so it can build a site directly:
 
 ```sh
 lore build
 ```
 
-This repository keeps its site configuration at `docs/site.toml`, so the equivalent direct command is `lore build --config docs/site.toml`. The source-repository convenience target builds the frontend first and then runs that configured build:
+From the source repository the convenience target builds the frontend first and then runs the generator:
 
 ```sh
 make site
 ```
 
-The default configuration file is optional. Without it, Lore uses `docs` as the source directory and `site` as the output directory. Command-line flags can override the configuration.
+The default `lore-site.toml` configuration file is optional. Without it, Lore uses `Documentation` as the site name, `docs` as the source directory, and `site` as the output directory. Command-line flags can override the configuration.
 
 ## Configuration
 
 ```toml
-site_name = "Lore"
-site_url = "https://gi8lino.github.io/lore/"
+site_name = "My Docs"
+site_url = "https://docs.example.com/"
 source_dir = "docs"
 output_dir = "site"
 theme = "Light"
@@ -32,7 +32,7 @@ language = "en"
 mermaid = true
 ```
 
-`site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where Lore may be hosted below `/lore/` rather than at the domain root.
+`site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
 
 ## Filesystem routes
 
@@ -63,44 +63,43 @@ Lore wiki links use the same Lore renderer and are rewritten to static routes. U
 
 ## Logos, favicons, and extra assets
 
-Optional settings select your site's branding and an extra asset directory:
+Branding is entirely opt-in. The builder does not copy Lore logos or favicons into a generated site.
 
 ```toml
-# Branding and asset paths are relative to this configuration file.
+# These paths are relative to the configuration file.
 logo = "assets/logo.svg"
-favicon = "assets/favicon.svg"
-favicon_ico = "assets/favicon.ico"
+favicon = "content/assets/favicon.svg"
+favicon_ico = "content/favicon.ico"
 assets_dir = "assets"
 ```
 
-Absolute paths are also accepted. These four paths resolve relative to the configuration file; the existing `source_dir` and `output_dir` settings remain relative to the working directory.
+Absolute paths are also accepted. `logo`, `favicon`, `favicon_ico`, and `assets_dir` resolve relative to the configuration file; `source_dir` and `output_dir` remain relative to the process working directory so command-line overrides behave predictably.
 
-| Setting       | Generated result                                                                                                                                        |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `logo`        | Header image using its natural published path. Files under `source_dir` keep their source-relative path; files under `assets_dir` live under `assets/`. |
-| `favicon`     | Browser icon using the same path rules as `logo`.                                                                                                       |
-| `favicon_ico` | ICO fallback using the same path rules as `logo`; put it in the source root when you want `/favicon.ico`.                                               |
-| `assets_dir`  | Non-Markdown files copied recursively under `assets/`, preserving subdirectories and skipping hidden directories.                                       |
+Configured branding files keep a natural public path instead of being renamed:
 
-Logo and favicon images support SVG, PNG, JPEG, WebP, GIF, and ICO. `favicon_ico` must point to an actual ICO image: Lore copies images without converting them. Missing configured paths, incorrect file/directory types, and paths overlapping the output directory fail validation before the output is cleared.
+- a file below `source_dir` keeps its path relative to `source_dir`;
+- a file below `assets_dir` is published below `assets/` with the same relative path;
+- a branding file outside both trees is published below `assets/` using its own filename;
+- `assets_dir` itself is copied recursively below `assets/`, preserving subdirectories and skipping hidden directories.
 
-Omit `logo` or `favicon` to retain Lore's default branding. Omit `favicon_ico` to omit the fallback link, or `assets_dir` when all your assets already live under `source_dir`. Generated logo and favicon links include the `site_url` path prefix, including on search and error pages.
+This repository opts into Lore branding explicitly: `docs/site.toml` points `logo` and `favicon` at `../web/src/lore.svg` and `../web/src/favicon.svg`. Because those files are outside both published source trees, they are copied to `assets/lore.svg` and `assets/favicon.svg`. A configured `content/favicon.ico` would instead resolve below `docs/content` and publish as `favicon.ico` at the site root.
 
-For example, with the configuration at `docs/site.toml`, `logo = "assets/logo.svg"` reads `docs/assets/logo.svg`. A file `docs/assets/images/example.png` from that asset directory becomes `assets/images/example.png` in the generated site.
+Logo and favicon images support SVG, PNG, JPEG, WebP, GIF, and ICO. `favicon_ico` must point to an ICO file; Lore copies images without converting them. Missing paths, incorrect file/directory types, and paths overlapping `output_dir` fail validation before existing output is cleared.
 
-Extra assets are copied first, followed by Lore's bundled assets, files from `source_dir`, and explicitly configured branding images. Later copies take precedence. Avoid using Lore's `assets/js/` and `assets/css/` paths for your own files. The older `source_dir/assets/favicon.svg` override still works when `favicon` is omitted.
+When `logo` is omitted, the header displays `site_name` as text. When `favicon` or `favicon_ico` is omitted, the corresponding icon link is omitted. There is no implicit Lore branding fallback.
 
-For images used inside Markdown, you can continue placing them under `source_dir` and linking with relative paths, such as `![Logo](images/logo.svg)` from the root `index.md`. Do not edit files directly in the output directory: each build deletes and recreates it.
+Build assets are copied in this order: configured `assets_dir`, the static browser runtime, non-Markdown files from `source_dir`, and explicit branding files. Later copies take precedence. Avoid placing user files at the runtime-owned `assets/js/` and `assets/css/` paths.
 
-Some browsers request `/favicon.ico` even when an icon is declared. If you want that root fallback, place `favicon_ico` in the root of `source_dir`; the generated link still includes the configured `site_url` prefix. On a project site under `/never/`, an unsolicited request to `/favicon.ico` belongs to the host's root.
+For images used inside Markdown, you can continue placing them under `source_dir` and linking with relative paths, such as `![Logo](images/logo.svg)` from the root `index.md`. Do not edit files directly in `output_dir`: each build deletes and recreates it.
 
 ## What the build contains
 
 A static build includes:
 
 - generated HTML pages and a `404.html` page;
-- Lore's CSS and the selected theme data;
+- the static-site CSS runtime and selected theme data;
 - only the read-only TypeScript modules needed for navigation, page contents, Markdown enhancements, and static search;
+- no built-in logo, mark, or favicon files unless the user explicitly configures them;
 - `search-index.json` for browser-side search;
 - source assets such as images;
 - `.nojekyll` for GitHub Pages;

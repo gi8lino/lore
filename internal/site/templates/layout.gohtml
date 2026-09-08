@@ -5,9 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="generator" content="Lore {{ .Version }}" />
     <title>{{ .Title }} · {{ .SiteName }}</title>
-    <link rel="icon" href="{{ .FaviconURL }}" />
+    {{ if .FaviconURL }}<link rel="icon" href="{{ .FaviconURL }}" />{{ end }}
     {{ if .FaviconICOURL }}<link rel="alternate icon" href="{{ .FaviconICOURL }}" type="image/x-icon" />{{ end }}
     <link rel="stylesheet" href="{{ asseturl "css/app.css" }}" />
     <script id="lore-themes" type="application/json">{{ .ThemeData }}</script>
@@ -35,7 +34,7 @@
       >
         {{ icon "menu" 20 }}
       </button>
-      <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ if .LogoURL }}<img class="lore-logo" src="{{ .LogoURL }}" alt="{{ .SiteName }}" />{{ else }}{{ logo }}{{ end }}</a>
+      <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ if .LogoURL }}<img class="lore-logo" src="{{ .LogoURL }}" alt="{{ .SiteName }}" />{{ else }}<span>{{ .SiteName }}</span>{{ end }}</a>
       <form class="global-search" action="{{ searchurl }}" data-static-search>
         <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
         <input
@@ -119,7 +118,9 @@
         {{ template "content" . }}
       </main>
     </div>
-    <footer>{{ .SiteName }} · Built with Lore {{ .Version }}</footer>
+    <footer>{{ .SiteName }}</footer>
   </body>
 </html>
 {{ end }}
+
+

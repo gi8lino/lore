@@ -21,7 +21,7 @@ func TestPublishConfiguredFile(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
 		require.NoError(t, os.WriteFile(filename, []byte("favicon"), 0o644))
 
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.SourceDir = contentDir
 		config.OutputDir = filepath.Join(root, "site")
 
@@ -40,7 +40,7 @@ func TestPublishConfiguredFile(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
 		require.NoError(t, os.WriteFile(filename, []byte("logo"), 0o644))
 
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.AssetsDir = assetsDir
 		config.OutputDir = filepath.Join(root, "site")
 
@@ -58,7 +58,7 @@ func TestPublishConfiguredFile(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
 		require.NoError(t, os.WriteFile(filename, []byte("logo"), 0o644))
 
-		config := DefaultConfig()
+		config := defaultConfig()
 		config.SourceDir = filepath.Join(root, "content")
 		config.OutputDir = filepath.Join(root, "site")
 		require.NoError(t, os.MkdirAll(config.SourceDir, 0o755))

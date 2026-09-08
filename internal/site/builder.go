@@ -10,23 +10,23 @@ import (
 
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/subpages"
 	"github.com/gi8lino/lore/themes"
 )
 
-// Builder converts Markdown files into a read-only Lore site.
-type Builder struct {
+// builder converts Markdown files into one read-only static site.
+type builder struct {
 	appFS    fs.FS
-	version  string
-	commit   string
 	renderer *md.Renderer
 }
 
-// Result summarizes one completed static build.
-type Result struct {
-	Pages     int
-	OutputDir string
+// buildResult summarizes one completed static build.
+type buildResult struct {
+	pages     int
+	outputDir string
 }
 
+// sourcePage contains one discovered Markdown page and its generated data.
 type sourcePage struct {
 	SourcePath      string
 	Route           string
@@ -38,12 +38,14 @@ type sourcePage struct {
 	SearchText      string
 }
 
+// searchEntry is one browser-side static search document.
 type searchEntry struct {
 	Title string `json:"title"`
 	URL   string `json:"url"`
 	Text  string `json:"text"`
 }
 
+// viewData contains the shared data rendered by static site templates.
 type viewData struct {
 	LogoURL       string
 	FaviconURL    string
@@ -55,8 +57,6 @@ type viewData struct {
 	Title         string
 	ActiveTheme   string
 	ThemeData     template.JS
-	Version       string
-	Commit        string
 	CurrentRoute  string
 	Navigation    []navigation.Node
 	HTML          template.HTML
@@ -64,6 +64,7 @@ type viewData struct {
 	RenderMermaid bool
 }
 
+// buildPlan contains validated and precomputed state shared by one build.
 type buildPlan struct {
 	config          Config
 	basePath        string
@@ -76,41 +77,47 @@ type buildPlan struct {
 	templates       siteTemplates
 }
 
-// NewBuilder constructs a filesystem-backed site builder using embedded Lore assets.
-func NewBuilder(appFS fs.FS, version, commit string) *Builder {
-	return &Builder{
+// renderedPage contains one processed page body plus search and contents data.
+type renderedPage struct {
+	html       string
+	searchText string
+	contents   []md.Heading
+}
+
+// newBuilder constructs the filesystem-backed static site builder.
+func newBuilder(appFS fs.FS) *builder {
+	return &builder{
 		appFS:    appFS,
-		version:  version,
-		commit:   commit,
 		renderer: md.New(),
 	}
 }
 
-// Build renders all Markdown files from SourceDir into OutputDir.
-func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
+// build renders all configured Markdown files into the configured output directory.
+func (b *builder) build(ctx context.Context, config Config) (buildResult, error) {
 	plan, err := b.planBuild(config)
 	if err != nil {
-		return Result{}, err
+		return buildResult{}, err
 	}
 
 	branding, err := b.prepareOutput(plan.config, plan.basePath)
 	if err != nil {
-		return Result{}, err
+		return buildResult{}, err
 	}
 
-	common := b.commonViewData(plan, branding)
+	common := commonViewData(plan, branding)
 	searchIndex, err := b.renderPages(ctx, plan, common)
 	if err != nil {
-		return Result{}, err
+		return buildResult{}, err
 	}
 	if err := b.writeSupportFiles(plan, common, searchIndex); err != nil {
-		return Result{}, err
+		return buildResult{}, err
 	}
 
-	return Result{Pages: len(plan.pages), OutputDir: plan.config.OutputDir}, nil
+	return buildResult{pages: len(plan.pages), outputDir: plan.config.OutputDir}, nil
 }
 
-func (b *Builder) planBuild(config Config) (buildPlan, error) {
+// planBuild validates configuration and prepares immutable state used by rendering.
+func (b *builder) planBuild(config Config) (buildPlan, error) {
 	if err := config.validate(); err != nil {
 		return buildPlan{}, err
 	}
@@ -156,6 +163,7 @@ func (b *Builder) planBuild(config Config) (buildPlan, error) {
 	}, nil
 }
 
+// loadThemeData validates the selected theme and serializes the available theme catalog.
 func loadThemeData(theme string) (template.JS, error) {
 	availableThemes, err := themes.Load("")
 	if err != nil {
@@ -173,6 +181,7 @@ func loadThemeData(theme string) (template.JS, error) {
 	return template.JS(data), nil
 }
 
+// buildNavigationPages converts discovered source pages into navigation inputs.
 func buildNavigationPages(pages []sourcePage) []navigation.Page {
 	navigationPages := make([]navigation.Page, 0, len(pages))
 	for _, page := range pages {
@@ -185,7 +194,8 @@ func buildNavigationPages(pages []sourcePage) []navigation.Page {
 	return navigationPages
 }
 
-func (b *Builder) commonViewData(plan buildPlan, branding brandingData) viewData {
+// commonViewData assembles template data shared by every generated page.
+func commonViewData(plan buildPlan, branding brandingData) viewData {
 	return viewData{
 		LogoURL:       branding.LogoURL,
 		FaviconURL:    branding.FaviconURL,
@@ -196,13 +206,12 @@ func (b *Builder) commonViewData(plan buildPlan, branding brandingData) viewData
 		Language:      plan.config.Language,
 		ActiveTheme:   plan.config.Theme,
 		ThemeData:     plan.themeData,
-		Version:       b.version,
-		Commit:        b.commit,
 		RenderMermaid: plan.config.Mermaid,
 	}
 }
 
-func (b *Builder) renderPages(ctx context.Context, plan buildPlan, common viewData) ([]searchEntry, error) {
+// renderPages renders each discovered source page and builds the static search index.
+func (b *builder) renderPages(ctx context.Context, plan buildPlan, common viewData) ([]searchEntry, error) {
 	searchIndex := make([]searchEntry, 0, len(plan.pages))
 	for index := range plan.pages {
 		if err := ctx.Err(); err != nil {
@@ -223,11 +232,7 @@ func (b *Builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 		page.Contents = rendered.contents
 
 		data := pageViewData(common, *page, plan.navigationPages)
-		if err := writeTemplate(
-			plan.templates.page,
-			outputFilename(plan.config.OutputDir, page.Route),
-			data,
-		); err != nil {
+		if err := writeTemplate(plan.templates.page, outputFilename(plan.config.OutputDir, page.Route), data); err != nil {
 			return nil, err
 		}
 
@@ -241,13 +246,8 @@ func (b *Builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 	return searchIndex, nil
 }
 
-type renderedPage struct {
-	html       string
-	searchText string
-	contents   []md.Heading
-}
-
-func (b *Builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, error) {
+// renderPage renders one source page with shared Markdown functions and static URL rewriting.
+func (b *builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, error) {
 	options := md.DefaultOptions()
 	options.WikiLinkPrefix = plan.basePath
 	resolveWiki := func(target string) string {
@@ -255,15 +255,21 @@ func (b *Builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, err
 		if route, found := plan.wikiTargets[normalized]; found {
 			return routeSuffix(route)
 		}
-
 		return routeSuffix(normalized)
 	}
 
+	children := plan.navigationTree
+	if page.Route != "" {
+		children = navigation.Children(plan.navigationTree, page.Route)
+	}
+	renderSubpages := subpages.NewRenderer(children, func(slug string) string {
+		return pageURL(plan.basePath, slug)
+	})
 	rendered, err := b.renderer.RenderPageResolvedWithFunctions(
 		page.Markdown,
 		resolveWiki,
 		options,
-		md.Functions{Subpages: subpagesRenderer(plan.navigationTree, page.Route, plan.basePath)},
+		md.Functions{Subpages: renderSubpages},
 	)
 	if err != nil {
 		return renderedPage{}, fmt.Errorf("render %s: %w", page.SourcePath, err)
@@ -288,6 +294,7 @@ func (b *Builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, err
 	return renderedPage{html: html, searchText: searchText, contents: contents}, nil
 }
 
+// pageViewData adds page-specific values to the shared static template data.
 func pageViewData(common viewData, page sourcePage, navigationPages []navigation.Page) viewData {
 	data := common
 	data.Title = page.Title
@@ -298,38 +305,36 @@ func pageViewData(common viewData, page sourcePage, navigationPages []navigation
 	})
 	data.HTML = page.HTML
 	data.PageContents = page.Contents
-
 	return data
 }
 
-func (b *Builder) writeSupportFiles(plan buildPlan, common viewData, searchIndex []searchEntry) error {
+// writeSupportFiles writes the static search page, error page, search index, and sitemap.
+func (b *builder) writeSupportFiles(plan buildPlan, common viewData, searchIndex []searchEntry) error {
 	slices.SortFunc(searchIndex, compareSearchEntries)
 	if err := writeJSON(outputFile(plan.config.OutputDir, "search-index.json"), searchIndex); err != nil {
 		return err
 	}
-
 	if err := writeSearchPage(plan, common); err != nil {
 		return err
 	}
 	if err := writeNotFoundPage(plan, common); err != nil {
 		return err
 	}
-
 	return writeSitemap(plan.config, plan.pages)
 }
 
+// writeSearchPage renders the browser-side static search page.
 func writeSearchPage(plan buildPlan, common viewData) error {
 	data := common
 	data.Title = "Search"
 	data.Navigation = navigation.Build(plan.navigationPages, navigation.Options{})
-
 	return writeTemplate(plan.templates.search, outputFile(plan.config.OutputDir, "search", "index.html"), data)
 }
 
+// writeNotFoundPage renders the static 404 page.
 func writeNotFoundPage(plan buildPlan, common viewData) error {
 	data := common
 	data.Title = "Page not found"
 	data.Navigation = navigation.Build(plan.navigationPages, navigation.Options{})
-
 	return writeTemplate(plan.templates.notFound, outputFile(plan.config.OutputDir, "404.html"), data)
 }

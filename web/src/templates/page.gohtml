@@ -1,40 +1,3 @@
-{{ define "subpage-entry" }}
-  <li class="subpage-toc-item">
-    {{ if .Page }}
-      <a class="subpage-toc-link" href="/pages/{{ .Slug }}">
-        {{ if .Icon }}<span class="subpage-toc-node-icon" aria-hidden="true">{{ icon .Icon 17 }}</span>{{ end }}
-        <span>{{ .Title }}</span>
-      </a>
-    {{ else }}
-      <span class="subpage-toc-label">
-        {{ if .Icon }}<span class="subpage-toc-node-icon" aria-hidden="true">{{ icon .Icon 17 }}</span>{{ end }}
-        <span>{{ .Title }}</span>
-      </span>
-    {{ end }}
-    {{ if .Children }}
-      <ul class="subpage-toc-list">
-        {{ range .Children }}{{ template "subpage-entry" . }}{{ end }}
-      </ul>
-    {{ end }}
-  </li>
-{{ end }}
-
-{{ define "subpage-toc" }}
-  {{ if .Subpages }}
-    <nav class="subpage-toc" aria-label="Pages in this section">
-      {{ if .ShowSubpagesTitle }}
-        <div class="subpage-toc-heading">
-          <span aria-hidden="true">{{ icon "list-tree" 18 }}</span>
-          <h2>{{ .SubpagesTitle }}</h2>
-        </div>
-      {{ end }}
-      <ul class="subpage-toc-list subpage-toc-root">
-        {{ range .Subpages }}{{ template "subpage-entry" . }}{{ end }}
-      </ul>
-    </nav>
-  {{ end }}
-{{ end }}
-
 {{ define "content" }}
   <article class="page" data-page-layout>
     <div class="page-heading">
@@ -542,3 +505,5 @@
     </dialog>
   {{ end }}
 {{ end }}
+
+

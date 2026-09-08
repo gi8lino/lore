@@ -1,4 +1,4 @@
-// Package subpages parses the configurable {{subpages}} page function.
+// Package subpages parses and renders the configurable {{subpages}} page function.
 package subpages
 
 import (

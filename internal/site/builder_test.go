@@ -17,11 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestStaticBrowserAssetsExcludeBranding(t *testing.T) {
+	t.Parallel()
+
+	assert.NotContains(t, staticBrowserAssets, "favicon.svg")
+	assert.NotContains(t, staticBrowserAssets, "lore-mark.svg")
+	assert.NotContains(t, staticBrowserAssets, "lore.svg")
+}
+
 func TestStaticBrowserAssetsIncludeModuleDependencies(t *testing.T) {
 	t.Parallel()
 
 	output := t.TempDir()
-	require.NoError(t, NewBuilder(web.Assets, "test", "test").copyBrowserAssets(output))
+	require.NoError(t, newBuilder(web.Assets).copyBrowserAssets(output))
 	exported := os.DirFS(filepath.Join(output, "assets"))
 	// Inspect the actual emitted modules, including side-effect and dynamic imports.
 	imports := regexp.MustCompile(`(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"']+)["']`)
@@ -149,7 +157,7 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(source, "images"), 0o755))
 	require.NoError(t, os.WriteFile(
 		filepath.Join(source, "index.md"),
-		[]byte("# Home\n\n[Guide](guide.md)\n\n[[Guide]]\n\n![Logo](images/logo.png)\n\n{{subpages}}\n"),
+		[]byte("# Home\n\n[Guide](guide.md)\n\n[[Guide]]\n\n![Logo](images/logo.png)\n\n{{subpages title=\"Related pages\"}}\n"),
 		0o644,
 	))
 	require.NoError(t, os.WriteFile(
@@ -165,17 +173,15 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 		assets[name] = &fstest.MapFile{Data: []byte("asset")}
 	}
 
-	assets["lore.svg"] = &fstest.MapFile{Data: []byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)}
-
-	config := DefaultConfig()
+	config := defaultConfig()
 	config.SiteURL = "https://example.com/docs/"
 	config.SourceDir = source
 	config.OutputDir = output
 
-	result, err := NewBuilder(assets, "test", "deadbeef").Build(context.Background(), config)
+	result, err := newBuilder(assets).build(context.Background(), config)
 
 	require.NoError(t, err)
-	assert.Equal(t, 2, result.Pages)
+	assert.Equal(t, 2, result.pages)
 
 	home, err := os.ReadFile(filepath.Join(output, "index.html"))
 
@@ -185,6 +191,11 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	assert.Contains(t, string(home), "Read-only static site")
 	assert.NotContains(t, string(home), "/edit/")
 	assert.NotContains(t, string(home), "/auth/")
+	assert.Contains(t, string(home), "Related pages")
+	assert.Contains(t, string(home), ">Documentation</span>")
+	assert.NotContains(t, string(home), `<link rel="icon"`)
+	assert.NotContains(t, string(home), "lore.svg")
+	assert.NotContains(t, string(home), "lore-mark.svg")
 
 	guide, err := os.ReadFile(filepath.Join(output, "guide", "index.html"))
 
@@ -220,6 +231,13 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	t.Run("images/logo.png", func(t *testing.T) {
 		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("images/logo.png")))
 		assert.NoError(t, err)
+	})
+
+	t.Run("does not publish bundled branding", func(t *testing.T) {
+		for _, name := range []string{"favicon.svg", "lore-mark.svg", "lore.svg"} {
+			_, err := os.Stat(filepath.Join(output, "assets", name))
+			assert.ErrorIs(t, err, os.ErrNotExist)
+		}
 	})
 
 	t.Run("assets/js/static.js", func(t *testing.T) {
@@ -264,9 +282,9 @@ assets_dir = "assets"
 `, contentDir, outputDir)
 	require.NoError(t, os.WriteFile(configFile, []byte(configSource), 0o644))
 
-	config, err := LoadConfig(configFile, true)
+	config, err := loadConfig(configFile, true)
 	require.NoError(t, err)
-	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	_, err = newBuilder(web.Assets).build(context.Background(), config)
 	require.NoError(t, err)
 
 	t.Run("home branding", func(t *testing.T) {
@@ -319,7 +337,7 @@ assets_dir = "assets"
 
 	// Invalid branding must not erase the previously generated site.
 	config.Logo = filepath.Join(root, "missing.svg")
-	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	_, err = newBuilder(web.Assets).build(context.Background(), config)
 	require.ErrorContains(t, err, "logo")
 	_, err = os.Stat(filepath.Join(config.OutputDir, "index.html"))
 	require.NoError(t, err)

@@ -6,4 +6,6 @@ theme = "Light"
 language = "en"
 mermaid = true
 
+logo = "../web/src/lore.svg"
+favicon = "../web/src/favicon.svg"
 assets_dir = "assets"
