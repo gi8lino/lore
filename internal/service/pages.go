@@ -130,6 +130,9 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 	input.PreviousSlug = strings.TrimSpace(input.PreviousSlug)
 	input.Slug = md.Slug(input.Slug)
 	input.Title = strings.TrimSpace(input.Title)
+	if input.Slug == "" && input.PreviousSlug == "" {
+		input.Slug = md.Slug(input.Title)
+	}
 	input.Icon = strings.TrimSpace(input.Icon)
 	input.Language = strings.TrimSpace(input.Language)
 	input.DeprecatedTarget = md.Slug(input.DeprecatedTarget)

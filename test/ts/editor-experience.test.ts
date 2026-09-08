@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   editorWordStats,
+  resolvedEditorPath,
   slugifyEditorPath,
 } from "../../web/src/ts/features/editor/experience.ts";
 import { replaceAllPlainText } from "../../web/src/ts/features/editor/search.ts";
@@ -15,6 +16,17 @@ test("editor path preview follows Lore slug rules", () => {
     "infrastructure/postgres-restore",
   );
   assert.equal(slugifyEditorPath("  API & Database  "), "api-database");
+});
+
+test("editor path uses the title when a new page path is empty", () => {
+  assert.equal(resolvedEditorPath("Postgres Restore", ""), "postgres-restore");
+});
+
+test("editor path keeps an explicitly entered path", () => {
+  assert.equal(
+    resolvedEditorPath("Postgres Restore", "operations/database"),
+    "operations/database",
+  );
 });
 
 test("editor word statistics handle empty and multiline Markdown", () => {

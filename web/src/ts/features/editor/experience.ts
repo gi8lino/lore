@@ -52,6 +52,10 @@ function isDraftValues(value: unknown): value is DraftValues {
 
 export { slugifyEditorPath };
 
+export function resolvedEditorPath(title: string, slug: string): string {
+  return slug.trim() || slugifyEditorPath(title);
+}
+
 // Calculates word, character, and line counts.
 export function editorWordStats(value: string): {
   words: number;
@@ -474,7 +478,7 @@ function setupPathPreview(form: HTMLFormElement): void {
   const pathPreview = preview;
 
   function update(): void {
-    const path = slugField.value.trim() || slugifyEditorPath(titleField.value);
+    const path = resolvedEditorPath(titleField.value, slugField.value);
 
     pathPreview.textContent = path
       ? `Pages / ${path.split("/").join(" / ")}`
@@ -486,6 +490,11 @@ function setupPathPreview(form: HTMLFormElement): void {
 
   titleField.addEventListener("input", update);
   slugField.addEventListener("input", update);
+  form.addEventListener("submit", () => {
+    if (form.dataset.editorNew === "true" && !slugField.value.trim()) {
+      slugField.value = resolvedEditorPath(titleField.value, slugField.value);
+    }
+  });
   update();
 }
 

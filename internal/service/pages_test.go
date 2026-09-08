@@ -10,6 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type pageSaveRepositoryStub struct {
+	pageRepository
+	slug string
+}
+
+func (r *pageSaveRepositoryStub) SavePage(
+	_ context.Context,
+	_, slug, title, _, _, _, _ string,
+	_, _ []string,
+	_ []int64,
+	_ domain.PageMetadata,
+	_ map[string]string,
+	_ domain.User,
+) (domain.Page, error) {
+	r.slug = slug
+
+	return domain.Page{Slug: slug, Title: title}, nil
+}
+
 func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 	t.Parallel()
 
@@ -46,30 +65,61 @@ func TestMoveValidatesDestinationBeforePersistence(t *testing.T) {
 	assert.Equal(t, "slug", validation.Fields[0].Field)
 }
 
-func TestSaveRequiresExplicitSlugAndStatus(t *testing.T) {
+func TestSaveSlugResolution(t *testing.T) {
 	t.Parallel()
 
-	t.Run("slug is not derived from title", func(t *testing.T) {
+	t.Run("derives path from title for a new page", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{Title: "Explicit title", Status: "verified"})
+		repository := &pageSaveRepositoryStub{}
+		_, err := NewPages(repository).save(context.Background(), PageSaveInput{
+			Title:  "Generated Page Path",
+			Status: "verified",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "generated-page-path", repository.slug)
+	})
+
+	t.Run("keeps an explicit path for a new page", func(t *testing.T) {
+		t.Parallel()
+
+		repository := &pageSaveRepositoryStub{}
+		_, err := NewPages(repository).save(context.Background(), PageSaveInput{
+			Slug:   "custom/path",
+			Title:  "Generated Page Path",
+			Status: "verified",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "custom/path", repository.slug)
+	})
+
+	t.Run("requires an explicit path when editing an existing page", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+			PreviousSlug: "existing-page",
+			Title:        "Renamed title",
+			Status:       "verified",
+		})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
 		require.Len(t, validation.Fields, 1)
 		assert.Equal(t, "slug", validation.Fields[0].Field)
 	})
+}
 
-	t.Run("status has no default", func(t *testing.T) {
-		t.Parallel()
+func TestSaveRequiresExplicitStatus(t *testing.T) {
+	t.Parallel()
 
-		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{Slug: "explicit-path", Title: "Explicit title"})
-		validation, ok := errors.AsType[*ValidationError](err)
+	_, err := NewPages(nil).Save(context.Background(), PageSaveInput{Slug: "explicit-path", Title: "Explicit title"})
+	validation, ok := errors.AsType[*ValidationError](err)
 
-		require.True(t, ok)
-		require.Len(t, validation.Fields, 1)
-		assert.Equal(t, "status", validation.Fields[0].Field)
-	})
+	require.True(t, ok)
+	require.Len(t, validation.Fields, 1)
+	assert.Equal(t, "status", validation.Fields[0].Field)
 }
 
 func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
