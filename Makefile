@@ -34,7 +34,7 @@ BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 
 ## Site Configuration
-SITE_CONFIG ?= docs/lore-site.toml
+SITE_CONFIG ?= docs/site.toml
 SITE_PORT ?= 8081
 SCREENSHOT_SCRIPT := scripts/screenshots/run.sh
 SCREENSHOT_BROWSER_CHANNEL ?= chrome

@@ -2,17 +2,17 @@
 
 Lore can work like a small MkDocs-style generator: write ordinary Markdown files in a directory and build a complete read-only site without PostgreSQL or a running Lore instance.
 
-This repository's own documentation is configured by `lore-site.toml` and lives under `docs/`.
+This repository's own documentation is configured by `docs/site.toml`; `lore build` still uses the optional `lore-site.toml` filename by default for standalone sites.
 
 ## Build
 
-A built Lore binary already contains the read-only browser assets needed by the generator, so it can build a site directly:
+A built Lore binary already contains the read-only browser assets needed by the generator. A standalone site can use the optional default `lore-site.toml` file directly:
 
 ```sh
 lore build
 ```
 
-From the source repository the convenience target builds the frontend first and then runs the generator:
+This repository keeps its site configuration at `docs/site.toml`, so the equivalent direct command is `lore build --config docs/site.toml`. The source-repository convenience target builds the frontend first and then runs that configured build:
 
 ```sh
 make site
@@ -66,7 +66,7 @@ Lore wiki links use the same Lore renderer and are rewritten to static routes. U
 Optional settings select your site's branding and an extra asset directory:
 
 ```toml
-# Paths are relative to this lore-site.toml file.
+# Branding and asset paths are relative to this configuration file.
 logo = "assets/logo.svg"
 favicon = "assets/favicon.svg"
 favicon_ico = "assets/favicon.ico"
@@ -75,24 +75,24 @@ assets_dir = "assets"
 
 Absolute paths are also accepted. These four paths resolve relative to the configuration file; the existing `source_dir` and `output_dir` settings remain relative to the working directory.
 
-| Setting       | Generated result                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `logo`        | Header image at `assets/site-logo.<extension>`, with the site name as alternative text.                           |
-| `favicon`     | Browser icon at `assets/site-favicon.<extension>`.                                                                |
-| `favicon_ico` | ICO fallback at `favicon.ico` in the output root, also linked from each page.                                     |
-| `assets_dir`  | Non-Markdown files copied recursively under `assets/`, preserving subdirectories and skipping hidden directories. |
+| Setting       | Generated result                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logo`        | Header image using its natural published path. Files under `source_dir` keep their source-relative path; files under `assets_dir` live under `assets/`. |
+| `favicon`     | Browser icon using the same path rules as `logo`.                                                                                                       |
+| `favicon_ico` | ICO fallback using the same path rules as `logo`; put it in the source root when you want `/favicon.ico`.                                               |
+| `assets_dir`  | Non-Markdown files copied recursively under `assets/`, preserving subdirectories and skipping hidden directories.                                       |
 
 Logo and favicon images support SVG, PNG, JPEG, WebP, GIF, and ICO. `favicon_ico` must point to an actual ICO image: Lore copies images without converting them. Missing configured paths, incorrect file/directory types, and paths overlapping the output directory fail validation before the output is cleared.
 
 Omit `logo` or `favicon` to retain Lore's default branding. Omit `favicon_ico` to omit the fallback link, or `assets_dir` when all your assets already live under `source_dir`. Generated logo and favicon links include the `site_url` path prefix, including on search and error pages.
 
-For example, with the configuration at `docs/lore-site.toml`, `logo = "assets/logo.svg"` reads `docs/assets/logo.svg`. A file `docs/assets/images/example.png` from that asset directory becomes `assets/images/example.png` in the generated site.
+For example, with the configuration at `docs/site.toml`, `logo = "assets/logo.svg"` reads `docs/assets/logo.svg`. A file `docs/assets/images/example.png` from that asset directory becomes `assets/images/example.png` in the generated site.
 
 Extra assets are copied first, followed by Lore's bundled assets, files from `source_dir`, and explicitly configured branding images. Later copies take precedence. Avoid using Lore's `assets/js/` and `assets/css/` paths for your own files. The older `source_dir/assets/favicon.svg` override still works when `favicon` is omitted.
 
 For images used inside Markdown, you can continue placing them under `source_dir` and linking with relative paths, such as `![Logo](images/logo.svg)` from the root `index.md`. Do not edit files directly in the output directory: each build deletes and recreates it.
 
-Some browsers request `/favicon.ico` even when an icon is declared. The fallback file handles this when the site is served at the domain root. On a project site under `/never/`, an unsolicited request to `/favicon.ico` belongs to the host's root; the generated icon links correctly use `/never/`.
+Some browsers request `/favicon.ico` even when an icon is declared. If you want that root fallback, place `favicon_ico` in the root of `source_dir`; the generated link still includes the configured `site_url` prefix. On a project site under `/never/`, an unsolicited request to `/favicon.ico` belongs to the host's root.
 
 ## What the build contains
 

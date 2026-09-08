@@ -1,51 +1,17 @@
 package site
 
 import (
-	"bytes"
-	"cmp"
 	"context"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"io/fs"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
 	"slices"
-	"strings"
-	"unicode"
 
-	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/themes"
-	xhtml "golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 )
-
-//go:embed templates/*.gohtml
-var templateFiles embed.FS
-
-var staticBrowserAssets = []string{
-	"css/app.css",
-	"favicon.svg",
-	"lore-mark.svg",
-	"lore.svg",
-	"js/static.js",
-	"js/theme-init.js",
-	"js/core/clipboard.js",
-	"js/core/dom.js",
-	"js/core/guards.js",
-	"js/core/http.js",
-	"js/core/theme.js",
-	"js/features/markdown.js",
-	"js/features/static-layout.js",
-	"js/features/static-page.js",
-	"js/features/static-search.js",
-}
 
 // Builder converts Markdown files into a read-only Lore site.
 type Builder struct {
@@ -98,6 +64,18 @@ type viewData struct {
 	RenderMermaid bool
 }
 
+type buildPlan struct {
+	config          Config
+	basePath        string
+	pages           []sourcePage
+	routesBySource  map[string]string
+	wikiTargets     map[string]string
+	navigationPages []navigation.Page
+	navigationTree  []navigation.Node
+	themeData       template.JS
+	templates       siteTemplates
+}
+
 // NewBuilder constructs a filesystem-backed site builder using embedded Lore assets.
 func NewBuilder(appFS fs.FS, version, commit string) *Builder {
 	return &Builder{
@@ -110,883 +88,248 @@ func NewBuilder(appFS fs.FS, version, commit string) *Builder {
 
 // Build renders all Markdown files from SourceDir into OutputDir.
 func (b *Builder) Build(ctx context.Context, config Config) (Result, error) {
+	plan, err := b.planBuild(config)
+	if err != nil {
+		return Result{}, err
+	}
+
+	branding, err := b.prepareOutput(plan.config, plan.basePath)
+	if err != nil {
+		return Result{}, err
+	}
+
+	common := b.commonViewData(plan, branding)
+	searchIndex, err := b.renderPages(ctx, plan, common)
+	if err != nil {
+		return Result{}, err
+	}
+	if err := b.writeSupportFiles(plan, common, searchIndex); err != nil {
+		return Result{}, err
+	}
+
+	return Result{Pages: len(plan.pages), OutputDir: plan.config.OutputDir}, nil
+}
+
+func (b *Builder) planBuild(config Config) (buildPlan, error) {
 	if err := config.validate(); err != nil {
-		return Result{}, err
+		return buildPlan{}, err
 	}
 
-	availableThemes, err := themes.Load("")
+	themeData, err := loadThemeData(config.Theme)
 	if err != nil {
-		return Result{}, err
-	}
-	if _, found := themes.Find(availableThemes, config.Theme); !found {
-		return Result{}, fmt.Errorf("unknown theme %q", config.Theme)
-	}
-
-	themeJSON, err := json.Marshal(availableThemes)
-	if err != nil {
-		return Result{}, err
+		return buildPlan{}, err
 	}
 
 	pages, err := discoverPages(config.SourceDir)
 	if err != nil {
-		return Result{}, err
+		return buildPlan{}, err
 	}
 	if len(pages) == 0 {
-		return Result{}, fmt.Errorf("no Markdown files found in %s", config.SourceDir)
+		return buildPlan{}, fmt.Errorf("no Markdown files found in %s", config.SourceDir)
 	}
 	if !hasHomePage(pages) {
-		return Result{}, fmt.Errorf("%s must contain index.md for the site home page", config.SourceDir)
+		return buildPlan{}, fmt.Errorf("%s must contain index.md for the site home page", config.SourceDir)
 	}
 
 	basePath, err := staticBasePath(config.SiteURL)
 	if err != nil {
-		return Result{}, err
+		return buildPlan{}, err
 	}
 
-	routesBySource := make(map[string]string, len(pages))
-	wikiTargets := make(map[string]string, len(pages)*2)
-	ambiguousWikiTargets := make(map[string]bool)
-
-	for index := range pages {
-		page := &pages[index]
-		routesBySource[page.SourcePath] = page.Route
-
-		registerWikiTarget(wikiTargets, ambiguousWikiTargets, md.Slug(page.Route), page.Route)
-		registerWikiTarget(wikiTargets, ambiguousWikiTargets, md.Slug(page.Title), page.Route)
-	}
-	for target := range ambiguousWikiTargets {
-		delete(wikiTargets, target)
-	}
-
-	if err := os.RemoveAll(config.OutputDir); err != nil {
-		return Result{}, err
-	}
-	if err := os.MkdirAll(config.OutputDir, 0o755); err != nil {
-		return Result{}, err
-	}
-	if config.AssetsDir != "" {
-		if err := copySourceAssets(config.AssetsDir, filepath.Join(config.OutputDir, "assets")); err != nil {
-			return Result{}, fmt.Errorf("copy assets_dir: %w", err)
-		}
-	}
-	if err := b.copyBrowserAssets(config.OutputDir); err != nil {
-		return Result{}, err
-	}
-	if err := copySourceAssets(config.SourceDir, config.OutputDir); err != nil {
-		return Result{}, err
-	}
-	branding, err := copyBranding(config, basePath)
+	routesBySource, wikiTargets := indexPages(pages)
+	navigationPages := buildNavigationPages(pages)
+	templates, err := b.parseTemplates(basePath)
 	if err != nil {
-		return Result{}, err
-	}
-	if err := os.WriteFile(filepath.Join(config.OutputDir, ".nojekyll"), nil, 0o644); err != nil {
-		return Result{}, err
+		return buildPlan{}, err
 	}
 
-	baseNavigationPages := make([]navigation.Page, 0, len(pages))
+	return buildPlan{
+		config:          config,
+		basePath:        basePath,
+		pages:           pages,
+		routesBySource:  routesBySource,
+		wikiTargets:     wikiTargets,
+		navigationPages: navigationPages,
+		navigationTree:  navigation.Build(navigationPages, navigation.Options{}),
+		themeData:       themeData,
+		templates:       templates,
+	}, nil
+}
 
+func loadThemeData(theme string) (template.JS, error) {
+	availableThemes, err := themes.Load("")
+	if err != nil {
+		return "", err
+	}
+	if _, found := themes.Find(availableThemes, theme); !found {
+		return "", fmt.Errorf("unknown theme %q", theme)
+	}
+
+	data, err := json.Marshal(availableThemes)
+	if err != nil {
+		return "", err
+	}
+
+	return template.JS(data), nil
+}
+
+func buildNavigationPages(pages []sourcePage) []navigation.Page {
+	navigationPages := make([]navigation.Page, 0, len(pages))
 	for _, page := range pages {
 		if page.Route == "" {
 			continue
 		}
-		baseNavigationPages = append(baseNavigationPages, navigation.Page{Slug: page.Route, Title: page.Title})
+		navigationPages = append(navigationPages, navigation.Page{Slug: page.Route, Title: page.Title})
 	}
 
-	baseTree := navigation.Build(baseNavigationPages, navigation.Options{})
+	return navigationPages
+}
 
-	pageTemplate, err := b.parseTemplate("page.gohtml", basePath)
-	if err != nil {
-		return Result{}, err
-	}
-
-	searchTemplate, err := b.parseTemplate("search.gohtml", basePath)
-	if err != nil {
-		return Result{}, err
-	}
-
-	notFoundTemplate, err := b.parseTemplate("not_found.gohtml", basePath)
-	if err != nil {
-		return Result{}, err
-	}
-
-	common := viewData{
+func (b *Builder) commonViewData(plan buildPlan, branding brandingData) viewData {
+	return viewData{
 		LogoURL:       branding.LogoURL,
 		FaviconURL:    branding.FaviconURL,
 		FaviconICOURL: branding.FaviconICOURL,
-		SiteName:      config.SiteName,
-		SiteURL:       config.SiteURL,
-		BasePath:      basePath,
-		Language:      config.Language,
-		ActiveTheme:   config.Theme,
-		ThemeData:     template.JS(string(themeJSON)),
+		SiteName:      plan.config.SiteName,
+		SiteURL:       plan.config.SiteURL,
+		BasePath:      plan.basePath,
+		Language:      plan.config.Language,
+		ActiveTheme:   plan.config.Theme,
+		ThemeData:     plan.themeData,
 		Version:       b.version,
 		Commit:        b.commit,
-		RenderMermaid: config.Mermaid,
+		RenderMermaid: plan.config.Mermaid,
 	}
+}
 
-	searchIndex := make([]searchEntry, 0, len(pages))
-	options := md.DefaultOptions()
-	options.WikiLinkPrefix = basePath
-
-	for index := range pages {
+func (b *Builder) renderPages(ctx context.Context, plan buildPlan, common viewData) ([]searchEntry, error) {
+	searchIndex := make([]searchEntry, 0, len(plan.pages))
+	for index := range plan.pages {
 		if err := ctx.Err(); err != nil {
-			return Result{}, err
+			return nil, err
 		}
 
-		page := &pages[index]
-		if err := validateWikiLinks(*page, wikiTargets); err != nil {
-			return Result{}, err
+		page := &plan.pages[index]
+		if err := validateWikiLinks(*page, plan.wikiTargets); err != nil {
+			return nil, err
 		}
 
-		resolveWiki := func(target string) string {
-			normalized := md.Slug(target)
-			if route, found := wikiTargets[normalized]; found {
-				return routeSuffix(route)
-			}
-
-			return routeSuffix(normalized)
-		}
-		renderSubpagesForPage := func(options md.SubpagesOptions) (string, error) {
-			return renderSubpages(baseTree, page.Route, basePath, options), nil
-		}
-		rendered, err := b.renderer.RenderPageResolvedWithFunctions(
-			page.Markdown,
-			resolveWiki,
-			options,
-			md.Functions{Subpages: renderSubpagesForPage},
-		)
+		rendered, err := b.renderPage(*page, plan)
 		if err != nil {
-			return Result{}, fmt.Errorf("render %s: %w", page.SourcePath, err)
+			return nil, err
 		}
+		page.HTML = template.HTML(rendered.html)
+		page.SearchText = rendered.searchText
+		page.Contents = rendered.contents
 
-		processedHTML, searchText, err := processRenderedHTML(
-			rendered.HTML,
-			page.SourcePath,
-			page.HasTitleHeading,
-			routesBySource,
-			basePath,
-		)
-		if err != nil {
-			return Result{}, fmt.Errorf("rewrite %s: %w", page.SourcePath, err)
-		}
-
-		page.HTML = template.HTML(processedHTML)
-		page.SearchText = searchText
-		page.Contents = rendered.Contents
-
-		if page.HasTitleHeading && len(page.Contents) > 0 && page.Contents[0].Level == 1 {
-			page.Contents = page.Contents[1:]
-		}
-
-		data := common
-		data.Title = page.Title
-		data.CurrentRoute = page.Route
-		data.Navigation = navigation.Build(baseNavigationPages, navigation.Options{
-			ActiveSlug: page.Route,
-			Expanded:   expandedPrefixes(page.Route),
-		})
-		data.HTML = page.HTML
-		data.PageContents = page.Contents
+		data := pageViewData(common, *page, plan.navigationPages)
 		if err := writeTemplate(
-			pageTemplate,
-			filepath.Join(config.OutputDir, outputPath(page.Route)),
+			plan.templates.page,
+			outputFilename(plan.config.OutputDir, page.Route),
 			data,
 		); err != nil {
-			return Result{}, err
+			return nil, err
 		}
 
 		searchIndex = append(searchIndex, searchEntry{
 			Title: page.Title,
-			URL:   pageURL(basePath, page.Route),
+			URL:   pageURL(plan.basePath, page.Route),
 			Text:  page.SearchText,
 		})
 	}
 
-	slices.SortFunc(searchIndex, compareSearchEntries)
-	if err := writeJSON(filepath.Join(config.OutputDir, "search-index.json"), searchIndex); err != nil {
-		return Result{}, err
-	}
-
-	searchData := common
-	searchData.Title = "Search"
-	searchData.Navigation = navigation.Build(baseNavigationPages, navigation.Options{})
-	if err := writeTemplate(
-		searchTemplate,
-		filepath.Join(config.OutputDir, "search", "index.html"),
-		searchData,
-	); err != nil {
-		return Result{}, err
-	}
-
-	notFoundData := common
-	notFoundData.Title = "Page not found"
-	notFoundData.Navigation = navigation.Build(baseNavigationPages, navigation.Options{})
-	if err := writeTemplate(
-		notFoundTemplate,
-		filepath.Join(config.OutputDir, "404.html"),
-		notFoundData,
-	); err != nil {
-		return Result{}, err
-	}
-
-	if err := writeSitemap(config, pages); err != nil {
-		return Result{}, err
-	}
-
-	return Result{Pages: len(pages), OutputDir: config.OutputDir}, nil
+	return searchIndex, nil
 }
 
-func (b *Builder) parseTemplate(pageTemplate, basePath string) (*template.Template, error) {
-	logoSVG, err := fs.ReadFile(b.appFS, "lore.svg")
-	if err != nil {
-		return nil, err
+type renderedPage struct {
+	html       string
+	searchText string
+	contents   []md.Heading
+}
+
+func (b *Builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, error) {
+	options := md.DefaultOptions()
+	options.WikiLinkPrefix = plan.basePath
+	resolveWiki := func(target string) string {
+		normalized := md.Slug(target)
+		if route, found := plan.wikiTargets[normalized]; found {
+			return routeSuffix(route)
+		}
+
+		return routeSuffix(normalized)
 	}
 
-	funcs := template.FuncMap{
-		"icon": icons.SVG,
-		"logo": func() template.HTML {
-			return template.HTML(logoSVG)
-		},
-		"pageurl": func(route string) string {
-			return pageURL(basePath, route)
-		},
-		"asseturl": func(name string) string {
-			return basePath + "assets/" + strings.TrimPrefix(name, "/")
-		},
-		"searchurl": func() string {
-			return basePath + "search/"
-		},
-	}
-
-	return template.New("static").Funcs(funcs).ParseFS(
-		templateFiles,
-		"templates/layout.gohtml",
-		"templates/navigation.gohtml",
-		"templates/"+pageTemplate,
+	rendered, err := b.renderer.RenderPageResolvedWithFunctions(
+		page.Markdown,
+		resolveWiki,
+		options,
+		md.Functions{Subpages: subpagesRenderer(plan.navigationTree, page.Route, plan.basePath)},
 	)
-}
-
-type pageDiscovery struct {
-	sourceDir string
-	pages     []sourcePage
-	routes    map[string]string
-}
-
-func discoverPages(sourceDir string) ([]sourcePage, error) {
-	discovery := pageDiscovery{
-		sourceDir: sourceDir,
-		routes:    make(map[string]string),
-	}
-
-	if err := filepath.WalkDir(sourceDir, discovery.visit); err != nil {
-		return nil, err
-	}
-
-	slices.SortFunc(discovery.pages, compareSourcePages)
-
-	return discovery.pages, nil
-}
-
-func (d *pageDiscovery) visit(filename string, entry fs.DirEntry, walkErr error) error {
-	if walkErr != nil {
-		return walkErr
-	}
-	if filename == d.sourceDir {
-		return nil
-	}
-	if entry.IsDir() {
-		if strings.HasPrefix(entry.Name(), ".") {
-			return filepath.SkipDir
-		}
-
-		return nil
-	}
-	if !strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
-		return nil
-	}
-
-	relative, err := filepath.Rel(d.sourceDir, filename)
 	if err != nil {
-		return err
+		return renderedPage{}, fmt.Errorf("render %s: %w", page.SourcePath, err)
 	}
 
-	relative = filepath.ToSlash(relative)
-	data, err := os.ReadFile(filename)
+	html, searchText, err := processRenderedHTML(
+		rendered.HTML,
+		page.SourcePath,
+		page.HasTitleHeading,
+		plan.routesBySource,
+		plan.basePath,
+	)
 	if err != nil {
-		return err
+		return renderedPage{}, fmt.Errorf("rewrite %s: %w", page.SourcePath, err)
 	}
 
-	route := markdownFileRoute(relative)
-	if existing, found := d.routes[route]; found {
-		return fmt.Errorf("markdown files %s and %s map to the same route %q", existing, relative, route)
+	contents := rendered.Contents
+	if page.HasTitleHeading && len(contents) > 0 && contents[0].Level == 1 {
+		contents = contents[1:]
 	}
 
-	d.routes[route] = relative
-	title, hasTitle := markdownTitle(string(data), route)
-	d.pages = append(d.pages, sourcePage{
-		SourcePath:      relative,
-		Route:           route,
-		Title:           title,
-		Markdown:        string(data),
-		HasTitleHeading: hasTitle,
+	return renderedPage{html: html, searchText: searchText, contents: contents}, nil
+}
+
+func pageViewData(common viewData, page sourcePage, navigationPages []navigation.Page) viewData {
+	data := common
+	data.Title = page.Title
+	data.CurrentRoute = page.Route
+	data.Navigation = navigation.Build(navigationPages, navigation.Options{
+		ActiveSlug: page.Route,
+		Expanded:   expandedPrefixes(page.Route),
 	})
+	data.HTML = page.HTML
+	data.PageContents = page.Contents
 
-	return nil
+	return data
 }
 
-func compareSourcePages(left, right sourcePage) int {
-	return cmp.Compare(left.SourcePath, right.SourcePath)
-}
-
-func hasHomePage(pages []sourcePage) bool {
-	for _, page := range pages {
-		if page.Route == "" {
-			return true
-		}
-	}
-	return false
-}
-
-func markdownFileRoute(filename string) string {
-	clean := strings.TrimPrefix(path.Clean("/"+filepath.ToSlash(filename)), "/")
-	clean = strings.TrimSuffix(clean, path.Ext(clean))
-
-	if path.Base(clean) == "index" {
-		clean = path.Dir(clean)
-		if clean == "." {
-			clean = ""
-		}
-	}
-
-	return strings.Trim(clean, "/")
-}
-
-func markdownTitle(source, route string) (title string, hasTitle bool) {
-	lines := strings.Split(strings.TrimPrefix(source, "\ufeff"), "\n")
-	fence := ""
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
-			marker := trimmed[:3]
-
-			if fence == "" {
-				fence = marker
-			} else if marker == fence {
-				fence = ""
-			}
-			continue
-		}
-
-		if fence == "" && strings.HasPrefix(trimmed, "# ") {
-			title := strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
-			if title != "" {
-				return title, true
-			}
-		}
-	}
-
-	if route == "" {
-		return "Home", false
-	}
-
-	segment := path.Base(route)
-	segment = strings.NewReplacer("-", " ", "_", " ").Replace(segment)
-	words := strings.Fields(segment)
-
-	for index, word := range words {
-		runes := []rune(word)
-		if len(runes) > 0 {
-			runes[0] = unicode.ToUpper(runes[0])
-			words[index] = string(runes)
-		}
-	}
-
-	return strings.Join(words, " "), false
-}
-
-func staticBasePath(siteURL string) (string, error) {
-	if strings.TrimSpace(siteURL) == "" {
-		return "/", nil
-	}
-
-	parsed, err := url.Parse(strings.TrimSpace(siteURL))
-	if err != nil {
-		return "", fmt.Errorf("parse site_url: %w", err)
-	}
-
-	base := parsed.Path
-
-	if base == "" {
-		base = "/"
-	}
-	if !strings.HasPrefix(base, "/") {
-		base = "/" + base
-	}
-	if !strings.HasSuffix(base, "/") {
-		base += "/"
-	}
-
-	cleaned := path.Clean(base)
-	if cleaned == "/" {
-		return "/", nil
-	}
-
-	return strings.TrimSuffix(cleaned, "/") + "/", nil
-}
-
-func pageURL(basePath, route string) string {
-	basePath = ensureBasePath(basePath)
-	route = strings.Trim(route, "/")
-	if route == "" {
-		return basePath
-	}
-
-	return basePath + route + "/"
-}
-
-func ensureBasePath(basePath string) string {
-	if basePath == "" || basePath == "." {
-		return "/"
-	}
-
-	basePath = "/" + strings.Trim(basePath, "/")
-	if basePath == "/" {
-		return basePath
-	}
-
-	return basePath + "/"
-}
-
-func routeSuffix(route string) string {
-	route = strings.Trim(route, "/")
-	if route == "" {
-		return ""
-	}
-
-	return route + "/"
-}
-
-func outputPath(route string) string {
-	if strings.Trim(route, "/") == "" {
-		return "index.html"
-	}
-	return filepath.Join(filepath.FromSlash(strings.Trim(route, "/")), "index.html")
-}
-
-func registerWikiTarget(targets map[string]string, ambiguous map[string]bool, target, route string) {
-	target = strings.Trim(target, "/")
-	if target == "" && route != "" {
-		return
-	}
-	if existing, found := targets[target]; found && existing != route {
-		ambiguous[target] = true
-		return
-	}
-
-	targets[target] = route
-}
-
-func validateWikiLinks(page sourcePage, targets map[string]string) error {
-	for _, target := range md.Links(page.Markdown) {
-		if _, found := targets[target]; !found {
-			return fmt.Errorf("%s contains unresolved wiki link %q", page.SourcePath, target)
-		}
-	}
-	return nil
-}
-
-func expandedPrefixes(route string) []string {
-	parts := strings.Split(strings.Trim(route, "/"), "/")
-	if len(parts) <= 1 {
-		return nil
-	}
-
-	expanded := make([]string, 0, len(parts)-1)
-
-	for index := 1; index < len(parts); index++ {
-		expanded = append(expanded, strings.Join(parts[:index], "/"))
-	}
-
-	return expanded
-}
-
-func renderSubpages(tree []navigation.Node, route, basePath string, options md.SubpagesOptions) string {
-	children := tree
-
-	if strings.Trim(route, "/") != "" {
-		children = navigation.Children(tree, route)
-	}
-
-	if len(children) == 0 {
-		return ""
-	}
-
-	var output strings.Builder
-
-	output.WriteString(`<nav class="subpage-toc" aria-label="Pages in this section">`)
-	if options.ShowTitle {
-		output.WriteString(`<div class="subpage-toc-heading"><h2>`)
-		output.WriteString(template.HTMLEscapeString(options.Title))
-		output.WriteString(`</h2></div>`)
-	}
-	output.WriteString(`<ul class="subpage-toc-list subpage-toc-root">`)
-
-	for _, child := range children {
-		renderSubpageNode(&output, child, basePath)
-	}
-
-	output.WriteString(`</ul></nav>`)
-	return output.String()
-}
-
-func renderSubpageNode(output *strings.Builder, node navigation.Node, basePath string) {
-	output.WriteString(`<li class="subpage-toc-item">`)
-
-	if node.Page {
-		output.WriteString(`<a class="subpage-toc-link" href="`)
-		output.WriteString(template.HTMLEscapeString(pageURL(basePath, node.Slug)))
-		output.WriteString(`"><span>`)
-		output.WriteString(template.HTMLEscapeString(node.Title))
-		output.WriteString(`</span></a>`)
-	} else {
-		output.WriteString(`<span class="subpage-toc-label"><span>`)
-		output.WriteString(template.HTMLEscapeString(node.Title))
-		output.WriteString(`</span></span>`)
-	}
-	if len(node.Children) > 0 {
-		output.WriteString(`<ul class="subpage-toc-list">`)
-
-		for _, child := range node.Children {
-			renderSubpageNode(output, child, basePath)
-		}
-
-		output.WriteString(`</ul>`)
-	}
-
-	output.WriteString(`</li>`)
-}
-
-func processRenderedHTML(
-	rendered, sourcePath string,
-	removeTitle bool,
-	routesBySource map[string]string,
-	basePath string,
-) (renderedHTML string, searchText string, err error) {
-	contextNode := &xhtml.Node{Type: xhtml.ElementNode, DataAtom: atom.Div, Data: "div"}
-	nodes, err := xhtml.ParseFragment(strings.NewReader(rendered), contextNode)
-	if err != nil {
-		return "", "", err
-	}
-
-	if removeTitle {
-		for index, node := range nodes {
-			if node.Type == xhtml.ElementNode && node.Data == "h1" {
-				nodes = append(nodes[:index], nodes[index+1:]...)
-				break
-			}
-		}
-	}
-	for _, node := range nodes {
-		if err := rewriteHTMLURLs(node, sourcePath, routesBySource, basePath); err != nil {
-			return "", "", err
-		}
-	}
-
-	var htmlOutput bytes.Buffer
-
-	for _, node := range nodes {
-		if err := xhtml.Render(&htmlOutput, node); err != nil {
-			return "", "", err
-		}
-	}
-
-	return htmlOutput.String(), normalizeSearchText(textFromNodes(nodes)), nil
-}
-
-// isRewritableURLAttribute reports whether a static-page attribute contains a navigable local URL.
-func isRewritableURLAttribute(element, attribute string) bool {
-	switch element {
-	case "a":
-		return attribute == "href"
-	case "img":
-		return attribute == "src"
-	default:
-		return false
-	}
-}
-
-func rewriteHTMLURLs(node *xhtml.Node, sourcePath string, routesBySource map[string]string, basePath string) error {
-	if node.Type == xhtml.ElementNode {
-		for index := range node.Attr {
-			attribute := &node.Attr[index]
-			if !isRewritableURLAttribute(node.Data, attribute.Key) {
-				continue
-			}
-
-			rewritten, err := rewriteLocalURL(attribute.Val, sourcePath, routesBySource, basePath)
-			if err != nil {
-				return err
-			}
-
-			attribute.Val = rewritten
-		}
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		if err := rewriteHTMLURLs(child, sourcePath, routesBySource, basePath); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// isRewritableLocalURL reports whether a parsed URL refers to a non-empty path inside the generated site.
-func isRewritableLocalURL(value string, parsed *url.URL) bool {
-	if parsed.IsAbs() || parsed.Host != "" {
-		return false
-	}
-	if strings.HasPrefix(value, "//") {
-		return false
-	}
-
-	return parsed.Path != ""
-}
-
-func rewriteLocalURL(value, sourcePath string, routesBySource map[string]string, basePath string) (string, error) {
-	value = strings.TrimSpace(value)
-	if value == "" || strings.HasPrefix(value, "#") {
-		return value, nil
-	}
-
-	parsed, err := url.Parse(value)
-	if err != nil {
-		return "", err
-	}
-	if !isRewritableLocalURL(value, parsed) {
-		return value, nil
-	}
-
-	basePath = ensureBasePath(basePath)
-	if basePath != "/" && strings.HasPrefix(parsed.Path, basePath) {
-		return value, nil
-	}
-
-	trailingSlash := strings.HasSuffix(parsed.Path, "/")
-	var resolved string
-
-	if strings.HasPrefix(parsed.Path, "/") {
-		resolved = strings.TrimPrefix(path.Clean(parsed.Path), "/")
-	} else {
-		resolved = path.Clean(path.Join(path.Dir(sourcePath), parsed.Path))
-	}
-	if resolved == "." {
-		resolved = ""
-	}
-
-	if resolved == ".." || strings.HasPrefix(resolved, "../") {
-		return "", fmt.Errorf("link %q escapes the documentation source", value)
-	}
-
-	if strings.EqualFold(path.Ext(resolved), ".md") {
-		route, found := routesBySource[resolved]
-		if !found {
-			return "", fmt.Errorf("markdown link %q points to missing file %s", value, resolved)
-		}
-
-		parsed.Path = pageURL(basePath, route)
-	} else {
-		parsed.Path = basePath + strings.TrimPrefix(resolved, "/")
-		if trailingSlash && !strings.HasSuffix(parsed.Path, "/") {
-			parsed.Path += "/"
-		}
-	}
-
-	return parsed.String(), nil
-}
-
-func textFromNodes(nodes []*xhtml.Node) string {
-	var output strings.Builder
-
-	for _, node := range nodes {
-		appendNodeText(&output, node)
-	}
-
-	return output.String()
-}
-
-func appendNodeText(output *strings.Builder, node *xhtml.Node) {
-	if node.Type == xhtml.TextNode {
-		output.WriteString(node.Data)
-		output.WriteByte(' ')
-	}
-
-	if node.Type == xhtml.ElementNode && (node.Data == "script" || node.Data == "style") {
-		return
-	}
-
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		appendNodeText(output, child)
-	}
-}
-
-func normalizeSearchText(value string) string {
-	return strings.Join(strings.Fields(value), " ")
-}
-
-func (b *Builder) copyBrowserAssets(outputDir string) error {
-	for _, name := range staticBrowserAssets {
-		data, err := fs.ReadFile(b.appFS, name)
-		if err != nil {
-			return fmt.Errorf("read browser asset %s: %w", name, err)
-		}
-
-		destination := filepath.Join(outputDir, "assets", filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(destination, data, 0o644); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func copySourceAssets(sourceDir, outputDir string) error {
-	return filepath.WalkDir(sourceDir, func(filename string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if filename == sourceDir {
-			return nil
-		}
-		if entry.IsDir() {
-			if strings.HasPrefix(entry.Name(), ".") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
-			return nil
-		}
-
-		relative, err := filepath.Rel(sourceDir, filename)
-		if err != nil {
-			return err
-		}
-
-		destination := filepath.Join(outputDir, relative)
-		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return err
-		}
-
-		input, err := os.Open(filename)
-		if err != nil {
-			return err
-		}
-
-		output, err := os.Create(destination)
-		if err != nil {
-			_ = input.Close()
-			return err
-		}
-
-		_, copyErr := io.Copy(output, input)
-		inputCloseErr := input.Close()
-		outputCloseErr := output.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		if inputCloseErr != nil {
-			return inputCloseErr
-		}
-
-		return outputCloseErr
-	})
-}
-
-func writeTemplate(tmpl *template.Template, filename string, data viewData) error {
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+func (b *Builder) writeSupportFiles(plan buildPlan, common viewData, searchIndex []searchEntry) error {
+	slices.SortFunc(searchIndex, compareSearchEntries)
+	if err := writeJSON(outputFile(plan.config.OutputDir, "search-index.json"), searchIndex); err != nil {
 		return err
 	}
 
-	var output bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&output, "layout", data); err != nil {
+	if err := writeSearchPage(plan, common); err != nil {
+		return err
+	}
+	if err := writeNotFoundPage(plan, common); err != nil {
 		return err
 	}
 
-	return os.WriteFile(filename, output.Bytes(), 0o644)
+	return writeSitemap(plan.config, plan.pages)
 }
 
-func writeJSON(filename string, value any) error {
-	data, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
+func writeSearchPage(plan buildPlan, common viewData) error {
+	data := common
+	data.Title = "Search"
+	data.Navigation = navigation.Build(plan.navigationPages, navigation.Options{})
 
-	data = append(data, '\n')
-
-	return os.WriteFile(filename, data, 0o644)
+	return writeTemplate(plan.templates.search, outputFile(plan.config.OutputDir, "search", "index.html"), data)
 }
 
-func writeSitemap(config Config, pages []sourcePage) error {
-	if strings.TrimSpace(config.SiteURL) == "" {
-		return nil
-	}
+func writeNotFoundPage(plan buildPlan, common viewData) error {
+	data := common
+	data.Title = "Page not found"
+	data.Navigation = navigation.Build(plan.navigationPages, navigation.Options{})
 
-	parsed, err := url.Parse(config.SiteURL)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return nil
-	}
-
-	basePath, err := staticBasePath(config.SiteURL)
-	if err != nil {
-		return err
-	}
-
-	origin := parsed.Scheme + "://" + parsed.Host
-	var output strings.Builder
-
-	output.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-	output.WriteString("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n")
-
-	for _, page := range pages {
-		output.WriteString("  <url><loc>")
-		output.WriteString(template.HTMLEscapeString(origin + pageURL(basePath, page.Route)))
-		output.WriteString("</loc></url>\n")
-	}
-
-	output.WriteString("</urlset>\n")
-	return os.WriteFile(filepath.Join(config.OutputDir, "sitemap.xml"), []byte(output.String()), 0o644)
-}
-
-// compareSearchEntries orders search results by case-insensitive page title.
-func compareSearchEntries(left, right searchEntry) int {
-	return cmp.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
-}
-
-// copyBranding gives explicitly configured images precedence over copied assets.
-func copyBranding(config Config, basePath string) (viewData, error) {
-	data := viewData{FaviconURL: basePath + "assets/favicon.svg"}
-	for _, asset := range []struct {
-		source, destination string
-		target              *string
-	}{
-		{config.Logo, "assets/site-logo" + strings.ToLower(filepath.Ext(config.Logo)), &data.LogoURL},
-		{config.Favicon, "assets/site-favicon" + strings.ToLower(filepath.Ext(config.Favicon)), &data.FaviconURL},
-		{config.FaviconICO, "favicon.ico", &data.FaviconICOURL},
-	} {
-		if asset.source == "" {
-			continue
-		}
-		contents, err := os.ReadFile(asset.source)
-		if err != nil {
-			return viewData{}, fmt.Errorf("read branding image: %w", err)
-		}
-		if err := os.WriteFile(filepath.Join(config.OutputDir, filepath.FromSlash(asset.destination)), contents, 0o644); err != nil {
-			return viewData{}, err
-		}
-		*asset.target = basePath + asset.destination
-	}
-	return data, nil
+	return writeTemplate(plan.templates.notFound, outputFile(plan.config.OutputDir, "404.html"), data)
 }

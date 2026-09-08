@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"net"
 
 	"github.com/containeroo/tinyflags"
@@ -124,16 +124,23 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Value()
 	flags.StringVar(&cfg.SessionSecret, "session-secret", "", "Secret used to sign OIDC login sessions").
 		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
-		Validate(validateSessionSecret).
+		Validate(func(s string) error {
+			if s == "" {
+				return nil
+			}
+			if len(s) < 32 {
+				return errors.New("session secret must be at least 32 characters")
+			}
+
+			return nil
+		}).
 		Value()
 
 	// Logging
-	logFormat := flags.String("log-format", "json", "Log output format").
-		Choices(string(logging.LogFormatText), string(logging.LogFormatJSON)).
+	logFormat := tinyflags.Enum(flags, "log-format", logging.LogFormatJSON, "Log output format", logging.LogFormatText, logging.LogFormatJSON).
 		Short("l").
 		Placeholder("FORMAT").
 		Value()
-
 	flags.BoolVar(&cfg.Debug, "debug", false, "Enable verbose diagnostic logging").
 		Short("d").
 		Value()
@@ -148,20 +155,8 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		}
 
 		resolved.ListenAddress = (*listen).String()
-		resolved.LogFormat = logging.LogFormat(*logFormat)
+		resolved.LogFormat = *logFormat
 
 		return resolved
 	}
-}
-
-// validateSessionSecret accepts an unset secret and enforces the OIDC signing minimum otherwise.
-func validateSessionSecret(value string) error {
-	if value == "" {
-		return nil
-	}
-	if len(value) < 32 {
-		return fmt.Errorf("session secret must be at least 32 characters")
-	}
-
-	return nil
 }

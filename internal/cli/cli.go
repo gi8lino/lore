@@ -58,7 +58,7 @@ func Run(
 	})
 
 	build := root.Command("build", "Build a read-only static documentation site")
-	buildConfig := bindBuildFlags(build.FlagSet)
+	buildConfig := site.BindFlags(build.FlagSet)
 
 	build.Run(func(ctx context.Context) error {
 		cfg, err := buildConfig()
@@ -66,7 +66,7 @@ func Run(
 			return err
 		}
 
-		return site.Build(
+		return site.Run(
 			ctx,
 			appFS,
 			version,
@@ -78,7 +78,6 @@ func Run(
 	})
 
 	runner, err := root.ParseRunner(args)
-
 	if err != nil {
 		switch {
 		case tinyflags.IsHelpRequested(err), tinyflags.IsVersionRequested(err):
@@ -95,55 +94,4 @@ func Run(
 	}
 
 	return runner.Run(ctx)
-}
-
-func bindBuildFlags(flags *tinyflags.FlagSet) func() (site.Config, error) {
-	defaults := site.DefaultConfig()
-
-	configPath := flags.String("config", site.DefaultConfigPath, "TOML site configuration file").
-		Placeholder("FILE")
-	siteName := flags.String("site-name", defaults.SiteName, "Site title").
-		Placeholder("NAME")
-	siteURL := flags.String("site-url", defaults.SiteURL, "Published site URL").
-		Placeholder("URL")
-	source := flags.String("source", defaults.SourceDir, "Markdown source directory").
-		Placeholder("DIR")
-	output := flags.String("output", defaults.OutputDir, "Generated site directory").
-		Placeholder("DIR")
-	theme := flags.String("theme", defaults.Theme, "Lore theme").
-		Placeholder("THEME")
-	language := flags.String("language", defaults.Language, "HTML content language").
-		Placeholder("LANG")
-	mermaid := flags.Bool("mermaid", defaults.Mermaid, "Enable Mermaid rendering").Strict()
-
-	return func() (site.Config, error) {
-		cfg, err := site.LoadConfig(*configPath.Value(), configPath.Changed())
-		if err != nil {
-			return site.Config{}, err
-		}
-
-		if siteName.Changed() {
-			cfg.SiteName = *siteName.Value()
-		}
-		if siteURL.Changed() {
-			cfg.SiteURL = *siteURL.Value()
-		}
-		if source.Changed() {
-			cfg.SourceDir = *source.Value()
-		}
-		if output.Changed() {
-			cfg.OutputDir = *output.Value()
-		}
-		if theme.Changed() {
-			cfg.Theme = *theme.Value()
-		}
-		if language.Changed() {
-			cfg.Language = *language.Value()
-		}
-		if mermaid.Changed() {
-			cfg.Mermaid = *mermaid.Value()
-		}
-
-		return cfg, nil
-	}
 }

@@ -24,4 +24,4 @@ The normal server can load additional theme files from `LORE__THEME_DIRECTORY`. 
 
 Every theme must provide the complete semantic palette: application surfaces, primary and secondary text, borders, accents, success/warning/error colors, and text-selection colors.
 
-Static site mode uses the theme named in `docs/lore-site.toml`. The generated page embeds the theme catalog and uses the same Lore CSS, so Markdown tables, callouts, code, and navigation retain theme-aware styling.
+Static site mode uses the theme named in `docs/site.toml`. The generated page embeds the theme catalog and uses the same Lore CSS, so Markdown tables, callouts, code, and navigation retain theme-aware styling.

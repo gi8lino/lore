@@ -2,6 +2,7 @@ package site
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -11,8 +12,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,31 +139,6 @@ func TestHasHomePage(t *testing.T) {
 	assert.False(t, hasHomePage([]sourcePage{{Route: "guide"}}))
 }
 
-func TestRenderSubpagesTitle(t *testing.T) {
-	t.Parallel()
-
-	tree := []navigation.Node{{Slug: "guide", Title: "Guide", Page: true}}
-
-	t.Run("renders configured title", func(t *testing.T) {
-		t.Parallel()
-
-		html := renderSubpages(tree, "", "/docs/", md.SubpagesOptions{Title: "Related & useful", ShowTitle: true})
-
-		assert.Contains(t, html, "<h2>Related &amp; useful</h2>")
-		assert.Contains(t, html, `href="/docs/guide/"`)
-	})
-
-	t.Run("hides an empty title", func(t *testing.T) {
-		t.Parallel()
-
-		html := renderSubpages(tree, "", "/docs/", md.SubpagesOptions{})
-
-		assert.NotContains(t, html, "subpage-toc-heading")
-		assert.NotContains(t, html, "<h2>")
-		assert.Contains(t, html, `href="/docs/guide/"`)
-	})
-}
-
 func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	t.Parallel()
 
@@ -266,69 +240,83 @@ func TestValidateWikiLinksRejectsMissingTarget(t *testing.T) {
 
 func TestBuildConfiguredBranding(t *testing.T) {
 	t.Parallel()
+
 	root := t.TempDir()
-	config := DefaultConfig()
-	config.SourceDir = filepath.Join(root, "content")
-	config.OutputDir = filepath.Join(root, "site")
-	config.AssetsDir = filepath.Join(root, "images")
-	config.SiteURL = "https://example.com/never/"
-	require.NoError(t, os.MkdirAll(config.SourceDir, 0o755))
-	require.NoError(t, os.MkdirAll(config.AssetsDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(config.SourceDir, "index.md"), []byte("# Home"), 0o644))
-	config.Logo = filepath.Join(config.AssetsDir, "logo.svg")
-	config.Favicon = filepath.Join(config.AssetsDir, "icon.png")
-	config.FaviconICO = filepath.Join(config.AssetsDir, "fallback.ico")
-	for _, name := range []string{config.Logo, config.Favicon, config.FaviconICO, filepath.Join(config.AssetsDir, "extra.txt")} {
-		require.NoError(t, os.WriteFile(name, []byte("custom image"), 0o644))
-	}
-	_, err := NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	contentDir := filepath.Join(root, "content")
+	assetsDir := filepath.Join(root, "assets")
+	outputDir := filepath.Join(root, "site")
+	require.NoError(t, os.MkdirAll(filepath.Join(contentDir, "assets"), 0o755))
+	require.NoError(t, os.MkdirAll(assetsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(contentDir, "index.md"), []byte("# Home"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(assetsDir, "never.svg"), []byte("custom logo"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(contentDir, "assets", "favicon.svg"), []byte("custom favicon"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(contentDir, "favicon.ico"), []byte("custom ico"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(assetsDir, "extra.txt"), []byte("custom asset"), 0o644))
+
+	configFile := filepath.Join(root, "lore-site.toml")
+	configSource := fmt.Sprintf(`site_url = "https://example.com/never/"
+source_dir = %q
+output_dir = %q
+logo = "assets/never.svg"
+favicon = "content/assets/favicon.svg"
+favicon_ico = "content/favicon.ico"
+assets_dir = "assets"
+`, contentDir, outputDir)
+	require.NoError(t, os.WriteFile(configFile, []byte(configSource), 0o644))
+
+	config, err := LoadConfig(configFile, true)
 	require.NoError(t, err)
+	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
+	require.NoError(t, err)
+
 	t.Run("home branding", func(t *testing.T) {
 		html, err := os.ReadFile(filepath.Join(config.OutputDir, "index.html"))
 		require.NoError(t, err)
-		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
-		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `src="/never/assets/never.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/favicon.svg"`)
 		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
 	})
 
 	t.Run("search branding", func(t *testing.T) {
-		html, err := os.ReadFile(filepath.Join(config.OutputDir, "search/index.html"))
+		html, err := os.ReadFile(filepath.Join(config.OutputDir, "search", "index.html"))
 		require.NoError(t, err)
-		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
-		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `src="/never/assets/never.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/favicon.svg"`)
 		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
 	})
 
 	t.Run("not found branding", func(t *testing.T) {
 		html, err := os.ReadFile(filepath.Join(config.OutputDir, "404.html"))
 		require.NoError(t, err)
-		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
-		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `src="/never/assets/never.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/favicon.svg"`)
 		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
 	})
+
 	t.Run("logo copied", func(t *testing.T) {
-		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/site-logo.svg"))
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets", "never.svg"))
 		require.NoError(t, err)
-		assert.Equal(t, "custom image", string(data))
+		assert.Equal(t, "custom logo", string(data))
 	})
 
 	t.Run("favicon copied", func(t *testing.T) {
-		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/site-favicon.png"))
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets", "favicon.svg"))
 		require.NoError(t, err)
-		assert.Equal(t, "custom image", string(data))
+		assert.Equal(t, "custom favicon", string(data))
 	})
 
 	t.Run("ICO fallback copied", func(t *testing.T) {
 		data, err := os.ReadFile(filepath.Join(config.OutputDir, "favicon.ico"))
 		require.NoError(t, err)
-		assert.Equal(t, "custom image", string(data))
+		assert.Equal(t, "custom ico", string(data))
 	})
 
-	t.Run("extra asset copied", func(t *testing.T) {
-		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/extra.txt"))
+	t.Run("assets directory copied", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets", "extra.txt"))
 		require.NoError(t, err)
-		assert.Equal(t, "custom image", string(data))
+		assert.Equal(t, "custom asset", string(data))
 	})
+
 	// Invalid branding must not erase the previously generated site.
 	config.Logo = filepath.Join(root, "missing.svg")
 	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)

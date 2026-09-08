@@ -9,16 +9,17 @@ import (
 	"github.com/gi8lino/lore/internal/logging"
 )
 
-// Build generates one filesystem-backed static documentation site.
-func Build(
+// Run builds one filesystem-backed static documentation site.
+func Run(
 	ctx context.Context,
 	appFS fs.FS,
 	version, commit string,
-	config Config,
+	cfg Config,
 	overrides map[string]any,
 	stdout io.Writer,
 ) error {
-	setupLogger := logging.Setup(logging.LogFormatText, false, stdout).With("component", "setup")
+	logger := logging.Setup(cfg.LogFormat, false, stdout)
+	setupLogger := logger.With("component", "setup")
 
 	if len(overrides) > 0 {
 		setupLogger.Info(
@@ -28,7 +29,7 @@ func Build(
 		)
 	}
 
-	result, err := NewBuilder(appFS, version, commit).Build(ctx, config)
+	result, err := NewBuilder(appFS, version, commit).Build(ctx, cfg)
 	if err != nil {
 		return err
 	}

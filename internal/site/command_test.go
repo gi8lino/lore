@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildLogsOverrides(t *testing.T) {
+func TestRunLogsOverrides(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -35,7 +35,7 @@ func TestBuildLogsOverrides(t *testing.T) {
 	config.OutputDir = output
 
 	var stdout bytes.Buffer
-	err := Build(
+	err := Run(
 		context.Background(),
 		assets,
 		"test",
