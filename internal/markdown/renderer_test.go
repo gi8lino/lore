@@ -408,6 +408,25 @@ Term
 	assert.Contains(t, got, `<dl>`)
 }
 
+func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
+	t.Parallel()
+
+	renderer := New()
+	options := DefaultOptions()
+	options.CodingLigatures = true
+
+	got, err := renderer.RenderResolvedWithOptions(
+		`"quoted" --> -> << >> ...`,
+		Slug,
+		options,
+	)
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `“quoted”`)
+	assert.Contains(t, got, `--&gt; -&gt; &lt;&lt; &gt;&gt;`)
+	assert.Contains(t, got, `…`)
+}
+
 // TestSyntaxHighlightingEmitsChromaClasses verifies highlighted code exposes stable token classes for theme-aware CSS.
 func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	t.Parallel()
