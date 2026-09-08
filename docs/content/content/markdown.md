@@ -2,6 +2,19 @@
 
 Lore uses Goldmark with optional extensions controlled by administrators. The default renderer enables wiki links, callouts, tabs, details, tables, table styling/sorting/filtering, strikethrough, task lists, autolinks, syntax highlighting, footnotes, definition lists, and typographic substitutions.
 
+## Images
+
+Use ordinary Markdown image syntax, optionally followed immediately by a width:
+
+```markdown
+![Diagram](images/diagram.png){width=640}
+![Diagram](images/diagram.png){width=50%}
+```
+
+Widths may be whole pixels (with an optional `px` suffix) or a percentage of the
+containing content area. Height scales proportionally. See [Image sizing](media.md#image-sizing)
+for limits, reference-style images, and export behavior.
+
 ## Wiki links
 
 ```markdown
@@ -23,7 +36,7 @@ Supported presentation kinds include `info`, `success`, `warning`, and `danger`.
 
 ## Tabs
 
-```markdown
+````markdown
 === "Linux"
 
     ```bash
@@ -35,7 +48,7 @@ Supported presentation kinds include `info`, `success`, `warning`, and `danger`.
     ```bash
     brew install postgresql
     ```
-```
+````
 
 ## Collapsible details
 

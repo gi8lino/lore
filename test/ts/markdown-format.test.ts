@@ -92,3 +92,23 @@ test("formatting is idempotent", () => {
 
   assert.equal(formatMarkdownDocument(once), once);
 });
+
+test("preserves image widths in ordinary, linked and reference images", () => {
+  const source = [
+    "# Images",
+    "",
+    '![Diagram](/media/42/diagram.png "Overview"){width=640px}',
+    "",
+    "[![Diagram](/media/42/diagram.png){width=50%}](/media/42/diagram.png)",
+    "",
+    "![Diagram][image]{width=50%}",
+    "",
+    "[image]: /media/42/diagram.png",
+    "",
+    "`![Example](example.png){width=50%}`",
+    "",
+  ].join("\n");
+
+  assert.equal(formatMarkdownDocument(source), source);
+  assert.equal(formatMarkdownDocument(formatMarkdownDocument(source)), source);
+});

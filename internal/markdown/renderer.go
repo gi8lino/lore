@@ -13,6 +13,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	goldhtml "github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -142,6 +143,11 @@ func New() *Renderer {
 	policy.AllowAttrs("type", "aria-selected").OnElements("button")
 	policy.AllowAttrs("open").OnElements("details")
 	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
+	// UGCPolicy's Paragraph filter rejects ordinary image text such as '&' and
+	// '{width=50%}'. Keep alt/title as text; the sanitizer still escapes their
+	// values and filters URLs, event handlers and styles separately.
+	policy.AllowAttrs("alt", "title").OnElements("img")
+	policy.AllowStyles("width").MatchingHandler(validImageWidthStyle).OnElements("img")
 
 	return &Renderer{sanitizer: policy}
 }
@@ -180,7 +186,10 @@ func engine(options Options) goldmark.Markdown {
 
 	return goldmark.New(
 		goldmark.WithExtensions(extensions...),
-		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+			parser.WithASTTransformers(util.Prioritized(imageWidthTransformer{}, 100)),
+		),
 		goldmark.WithRendererOptions(goldhtml.WithUnsafe()),
 	)
 }
