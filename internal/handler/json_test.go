@@ -4,6 +4,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecodeRequestContract(t *testing.T) {
@@ -11,43 +14,118 @@ func TestDecodeRequestContract(t *testing.T) {
 	type request struct {
 		Title string `json:"title"`
 	}
-	for _, tt := range []struct {
-		name, body string
-		valid      bool
-	}{
-		{"object", `{"title":"Example"}`, true},
-		{"trailing whitespace", "{\"title\":\"Example\"} \n\t", true},
-		{"empty body", "", false},
-		{"null", "null", false},
-		{"array", "[]", false},
-		{"unknown field", `{"unknown":1}`, false},
-		{"wrong field type", `{"title":42}`, false},
-		{"second object", `{"title":"Example"}{}`, false},
-		{"second null", `{"title":"Example"} null`, false},
-		{"trailing junk", `{"title":"Example"}oops`, false},
-		{"oversized value", `{"title":"` + strings.Repeat("a", 2<<20) + `"}`, false},
-		{"oversized trailing whitespace", `{}` + strings.Repeat(" ", 2<<20), false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(tt.body)))
-			if (err == nil) != tt.valid {
-				t.Fatalf("decode error = %v, want valid = %t", err, tt.valid)
-			}
-			if tt.valid && result.Title != "Example" {
-				t.Fatalf("decoded title = %q", result.Title)
-			}
-		})
-	}
+	t.Run("object", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"Example"}`)))
+
+		require.NoError(t, err)
+		assert.Equal(t, "Example", result.Title)
+	})
+
+	t.Run("trailing whitespace", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader("{\"title\":\"Example\"} \n\t")))
+
+		require.NoError(t, err)
+		assert.Equal(t, "Example", result.Title)
+	})
+
+	t.Run("empty body", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader("")))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("null", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader("null")))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("array", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader("[]")))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"unknown":1}`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("wrong field type", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":42}`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("second object", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"Example"}{}`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("second null", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"Example"} null`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("trailing junk", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"Example"}oops`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("oversized value", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"`+strings.Repeat("a", 2<<20)+`"}`)))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("oversized trailing whitespace", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{}`+strings.Repeat(" ", 2<<20))))
+
+		assert.Error(t, err)
+	})
 }
 
 func TestJSONSlice(t *testing.T) {
 	t.Parallel()
-	if got := jsonSlice[string](nil); got == nil || len(got) != 0 {
-		t.Fatalf("nil collection became %#v", got)
-	}
-	values := []string{"one"}
-	if got := jsonSlice(values); len(got) != 1 || got[0] != "one" {
-		t.Fatalf("nonempty collection became %#v", got)
-	}
+
+	t.Run("nil becomes an empty array", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, []string{}, jsonSlice[string](nil))
+	})
+
+	t.Run("nonempty collection is preserved", func(t *testing.T) {
+		t.Parallel()
+
+		values := []string{"one"}
+		assert.Equal(t, values, jsonSlice(values))
+	})
 }

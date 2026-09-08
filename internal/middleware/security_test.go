@@ -68,7 +68,7 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 		t.Parallel()
 
 		handler := RejectCrossSiteWrites(discardLogger())(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodPost, "/pages/example", nil)
 
@@ -86,7 +86,7 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 		t.Parallel()
 
 		handler := RejectCrossSiteWrites(discardLogger())(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodDelete, "/api/pages/example", nil)
 
@@ -110,7 +110,7 @@ func TestRejectCrossSiteWrites(t *testing.T) {
 		var output bytes.Buffer
 		logger := slog.New(slog.NewTextHandler(&output, nil))
 		handler := RejectCrossSiteWrites(logger)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		request := httptest.NewRequest(http.MethodPatch, "/api/pages/example", nil)
 

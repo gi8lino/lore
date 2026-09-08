@@ -51,7 +51,10 @@ func TestRenderPostsToExactConfiguredEndpoint(t *testing.T) {
 
 		body, err := io.ReadAll(r.Body)
 
-		require.NoError(t, err)
+		if !assert.NoError(t, err) {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		assert.Contains(t, string(body), `<html lang="de-CH">`)
 		assert.Contains(t, string(body), `Title &lt;test&gt;`)
 		assert.Contains(t, string(body), `data:image/png;base64,AAAA`)
@@ -82,63 +85,173 @@ func TestRenderPostsToExactConfiguredEndpoint(t *testing.T) {
 
 func TestRenderRejectsBadResponses(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct {
-		name                      string
-		status                    int
-		contentType, body, length string
-	}{
-		{"upstream error", 500, "text/plain", "internal error", ""},
-		{"redirect", 307, "application/pdf", "%PDF-1.7", ""},
-		{"HTML response", 200, "text/html", "<html>error</html>", ""},
-		{"invalid bytes", 200, "application/pdf", "not a pdf", ""},
-		{"empty response", 200, "application/pdf", "", ""},
-		{"oversized response", 200, "application/pdf", "%PDF-1.7", strconv.Itoa(maxPDFBytes + 1)},
-		{"truncated response", 200, "application/pdf", "%PDF-1.7", "100"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/render" {
-					t.Error("redirect must not be followed")
-				}
+	t.Run("upstream error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
 
-				w.Header().Set("Location", "/unexpected")
-				w.Header().Set("Content-Type", tc.contentType)
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "text/plain")
 
-				if tc.length != "" {
-					w.Header().Set("Content-Length", tc.length)
-				}
+			w.WriteHeader(500)
 
-				w.WriteHeader(tc.status)
+			_, _ = io.WriteString(w, "internal error")
+		}))
+		defer server.Close()
 
-				_, _ = io.WriteString(w, tc.body)
-			}))
-			defer server.Close()
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
 
-			file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
 
-			cleanup()
-			require.Error(t, err)
-			assert.Nil(t, file)
-		})
-	}
+	t.Run("redirect", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "application/pdf")
+
+			w.WriteHeader(307)
+
+			_, _ = io.WriteString(w, "%PDF-1.7")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
+
+	t.Run("HTML response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "text/html")
+
+			w.WriteHeader(200)
+
+			_, _ = io.WriteString(w, "<html>error</html>")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
+
+	t.Run("invalid bytes", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "application/pdf")
+
+			w.WriteHeader(200)
+
+			_, _ = io.WriteString(w, "not a pdf")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
+
+	t.Run("empty response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "application/pdf")
+
+			w.WriteHeader(200)
+
+			_, _ = io.WriteString(w, "")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
+
+	t.Run("oversized response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "application/pdf")
+
+			if strconv.Itoa(maxPDFBytes+1) != "" {
+				w.Header().Set("Content-Length", strconv.Itoa(maxPDFBytes+1))
+			}
+
+			w.WriteHeader(200)
+
+			_, _ = io.WriteString(w, "%PDF-1.7")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
+
+	t.Run("truncated response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/render", r.URL.Path, "redirect must not be followed")
+
+			w.Header().Set("Location", "/unexpected")
+			w.Header().Set("Content-Type", "application/pdf")
+
+			w.Header().Set("Content-Length", "100")
+
+			w.WriteHeader(200)
+
+			_, _ = io.WriteString(w, "%PDF-1.7")
+		}))
+		defer server.Close()
+
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+
+		cleanup()
+		require.Error(t, err)
+		assert.Nil(t, file)
+	})
 }
 
 func TestRenderCanceledAndUnconfigured(t *testing.T) {
 	t.Parallel()
 
-	_, cleanup, err := Render(context.Background(), "", "", "", "")
+	t.Run("unconfigured service", func(t *testing.T) {
+		t.Parallel()
 
-	cleanup()
-	assert.ErrorIs(t, err, ErrNotConfigured)
+		_, cleanup, err := Render(context.Background(), "", "", "", "")
+		cleanup()
+		assert.ErrorIs(t, err, ErrNotConfigured)
+	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	t.Run("canceled context", func(t *testing.T) {
+		t.Parallel()
 
-	cancel()
-
-	_, cleanup, err = Render(ctx, "http://127.0.0.1:1/render", "", "", "")
-
-	cleanup()
-	assert.ErrorIs(t, err, context.Canceled)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, cleanup, err := Render(ctx, "http://127.0.0.1:1/render", "", "", "")
+		cleanup()
+		assert.ErrorIs(t, err, context.Canceled)
+	})
 }
 
 func TestRenderBoundsUnknownLengthResponse(t *testing.T) {

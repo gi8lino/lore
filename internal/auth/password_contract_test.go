@@ -4,34 +4,131 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLocalPasswordSharedContract(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("../../test/contracts/passwords.json")
-	if err != nil {
-		t.Fatal(err)
+	require.NoError(t, err)
+
+	type sharedFixture struct{ Name, Password, Problem string }
+	var fixtures []sharedFixture
+	require.NoError(t, json.Unmarshal(data, &fixtures))
+
+	fixturesByName := make(map[string]sharedFixture, len(fixtures))
+	for _, fixture := range fixtures {
+		require.NotContains(t, fixturesByName, fixture.Name, "shared fixture names must be unique")
+		fixturesByName[fixture.Name] = fixture
 	}
-	var cases []struct{ Name, Password, Problem string }
-	if err := json.Unmarshal(data, &cases); err != nil {
-		t.Fatal(err)
-	}
-	for _, tt := range cases {
-		t.Run(tt.Name, func(t *testing.T) {
-			t.Parallel()
-			if got := LocalPasswordProblem(tt.Password); got != tt.Problem {
-				t.Fatalf("problem = %q, want %q", got, tt.Problem)
-			}
-			if ValidLocalPassword(tt.Password) != (tt.Problem == "") {
-				t.Fatal("validation predicate disagrees with problem")
-			}
-		})
-	}
+	// Fail when the shared contract grows without a corresponding explicit subtest.
+	require.Len(t, fixturesByName, 10)
+
+	t.Run("short", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["short"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("minimum", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["minimum"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("ascii-limit", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["ascii-limit"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("ascii-too-long", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["ascii-too-long"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("six-emoji", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["six-emoji"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("twelve-emoji", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["twelve-emoji"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("emoji-limit", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["emoji-limit"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("emoji-too-long", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["emoji-too-long"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("accent-limit", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["accent-limit"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
+
+	t.Run("accent-too-long", func(t *testing.T) {
+		t.Parallel()
+
+		fixture, ok := fixturesByName["accent-too-long"]
+		require.True(t, ok, "shared fixture is missing")
+
+		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
+		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
+	})
 }
 
 func TestLocalPasswordRejectsInvalidUTF8(t *testing.T) {
 	t.Parallel()
-	if ValidLocalPassword("valid-length-" + string([]byte{0xff})) {
-		t.Fatal("invalid UTF-8 was accepted")
-	}
+
+	assert.False(t, ValidLocalPassword("valid-length-"+string([]byte{0xff})))
 }

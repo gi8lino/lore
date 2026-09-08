@@ -11,70 +11,147 @@ import (
 func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range []struct {
-		name, alt, title string
-	}{
-		{"ampersands", "A & B", "Overview & details"},
-		{"literal width syntax", "Outer Inner{width=50%}", "Example {width=640}"},
-		{"punctuation", "A: B; C? D=E | F + G @ H", "50% / $20 #1 ~ result"},
-		{"quotes and angle brackets", `"Quoted" <diagram> & 'label'`, `<title> "quoted" & 'single'`},
-		{"unicode", "Gr\u00f6sse \u2192 50% \U0001f4f7", "\u6982\u8981 & \u8a73\u7d30"},
-		{"empty text", "", ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("ampersands", func(t *testing.T) {
+		t.Parallel()
 
-			// Isolate the sanitizer from Goldmark to catch restrictive attribute
-			// policies even when the Markdown parser already emits correct HTML.
-			source := `<img src="diagram.png" alt="` + html.EscapeString(test.alt) +
-				`" title="` + html.EscapeString(test.title) + `">`
-			got := New().sanitizer.Sanitize(source)
-			images := renderedImageAttributes(t, got)
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString("A & B") +
+			`" title="` + html.EscapeString("Overview & details") + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
 
-			require.Len(t, images, 1)
-			assert.Equal(t, map[string]string{
-				"src": "diagram.png", "alt": test.alt, "title": test.title,
-			}, images[0])
-		})
-	}
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": "A & B", "title": "Overview & details",
+		}, images[0])
+	})
+
+	t.Run("literal width syntax", func(t *testing.T) {
+		t.Parallel()
+
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString("Outer Inner{width=50%}") +
+			`" title="` + html.EscapeString("Example {width=640}") + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": "Outer Inner{width=50%}", "title": "Example {width=640}",
+		}, images[0])
+	})
+
+	t.Run("punctuation", func(t *testing.T) {
+		t.Parallel()
+
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString("A: B; C? D=E | F + G @ H") +
+			`" title="` + html.EscapeString("50% / $20 #1 ~ result") + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": "A: B; C? D=E | F + G @ H", "title": "50% / $20 #1 ~ result",
+		}, images[0])
+	})
+
+	t.Run("quotes and angle brackets", func(t *testing.T) {
+		t.Parallel()
+
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString(`"Quoted" <diagram> & 'label'`) +
+			`" title="` + html.EscapeString(`<title> "quoted" & 'single'`) + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": `"Quoted" <diagram> & 'label'`, "title": `<title> "quoted" & 'single'`,
+		}, images[0])
+	})
+
+	t.Run("unicode", func(t *testing.T) {
+		t.Parallel()
+
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString("Gr\u00f6sse \u2192 50% \U0001f4f7") +
+			`" title="` + html.EscapeString("\u6982\u8981 & \u8a73\u7d30") + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": "Gr\u00f6sse \u2192 50% \U0001f4f7", "title": "\u6982\u8981 & \u8a73\u7d30",
+		}, images[0])
+	})
+
+	t.Run("empty text", func(t *testing.T) {
+		t.Parallel()
+
+		// Isolate the sanitizer from Goldmark to catch restrictive attribute
+		// policies even when the Markdown parser already emits correct HTML.
+		source := `<img src="diagram.png" alt="` + html.EscapeString("") +
+			`" title="` + html.EscapeString("") + `">`
+		got := New().sanitizer.Sanitize(source)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, map[string]string{
+			"src": "diagram.png", "alt": "", "title": "",
+		}, images[0])
+	})
 }
 
 func TestImageTextAttributesWithAndWithoutWidths(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range []struct {
-		name, source, alt, width string
-	}{
-		{
-			"unsized image",
-			`![A & B](diagram.png "Overview & details")`,
-			"A & B", "",
-		},
-		{
-			"sized image",
-			`![A & B](diagram.png "Overview & details"){width=640}`,
-			"A & B", "width:640px",
-		},
-		{
-			"width-like alt text",
-			`![Diagram {width=50%}](diagram.png "Overview & details"){width=640}`,
-			"Diagram {width=50%}", "width:640px",
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("unsized image", func(t *testing.T) {
+		t.Parallel()
 
-			got, err := New().Render(test.source)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
+		got, err := New().Render(`![A & B](diagram.png "Overview & details")`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
 
-			require.Len(t, images, 1)
-			assert.Equal(t, "diagram.png", images[0]["src"])
-			assert.Equal(t, test.alt, images[0]["alt"])
-			assert.Equal(t, "Overview & details", images[0]["title"])
-			assert.Equal(t, test.width, normalizedImageStyle(images[0]["style"]))
-		})
-	}
+		require.Len(t, images, 1)
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "A & B", images[0]["alt"])
+		assert.Equal(t, "Overview & details", images[0]["title"])
+		assert.Equal(t, "", normalizedImageStyle(images[0]["style"]))
+	})
+
+	t.Run("sized image", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`![A & B](diagram.png "Overview & details"){width=640}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "A & B", images[0]["alt"])
+		assert.Equal(t, "Overview & details", images[0]["title"])
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+	})
+
+	t.Run("width-like alt text", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`![Diagram {width=50%}](diagram.png "Overview & details"){width=640}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+
+		require.Len(t, images, 1)
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram {width=50%}", images[0]["alt"])
+		assert.Equal(t, "Overview & details", images[0]["title"])
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+	})
 }
 
 func TestImageTextAttributesCannotInjectMarkup(t *testing.T) {

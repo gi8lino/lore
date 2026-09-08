@@ -34,7 +34,7 @@ func TestRequireRole(t *testing.T) {
 		t.Parallel()
 
 		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		request := auth.WithUser(
 			httptest.NewRequest(http.MethodGet, "/admin", nil),
@@ -52,7 +52,7 @@ func TestRequireRole(t *testing.T) {
 		t.Parallel()
 
 		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		request := auth.WithUser(
 			httptest.NewRequest(http.MethodDelete, "/api/pages/example", nil),
@@ -74,7 +74,7 @@ func TestRequireRole(t *testing.T) {
 		t.Parallel()
 
 		handler := RequireRole("admin")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}))
 		response := httptest.NewRecorder()
 

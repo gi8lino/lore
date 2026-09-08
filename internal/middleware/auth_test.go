@@ -102,7 +102,7 @@ func TestAuthenticateAPIReturnsServerErrorForUnexpectedAuthFailure(t *testing.T)
 		authenticatorStub{err: errors.New("boom")},
 	)(
 		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}),
 	)
 
@@ -128,7 +128,7 @@ func TestAuthenticateAPILogsDeniedRequests(t *testing.T) {
 		authenticatorStub{err: auth.ErrInvalidCredentials},
 	)(
 		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}),
 	)
 
@@ -158,7 +158,7 @@ func TestAuthenticateAPILogsMissingCredentials(t *testing.T) {
 		authenticatorStub{err: auth.ErrUnauthenticated},
 	)(
 		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-			t.Fatal("handler must not run")
+			assert.Fail(t, "handler must not run")
 		}),
 	)
 
@@ -177,22 +177,51 @@ func TestAuthenticateAPILogsMissingCredentials(t *testing.T) {
 }
 
 func TestBrowserUnauthorizedReturnsToReadablePage(t *testing.T) {
-	for _, tc := range []struct{ method, path, next string }{
-		{"POST", "/admin/oidc/pending/42/reopen", "/admin/users"},
-		{"POST", "/admin/users/7", "/admin/users"},
-		{"POST", "/admin/settings", "/"},
-		{"GET", "/admin/users?filter=all", "/admin/users?filter=all"},
-	} {
-		t.Run(tc.method+tc.path, func(t *testing.T) {
-			response := httptest.NewRecorder()
+	t.Run("POST/admin/oidc/pending/42/reopen", func(t *testing.T) {
+		response := httptest.NewRecorder()
 
-			browserUnauthorized(response, httptest.NewRequest(tc.method, tc.path, nil), unauthorizedCredentialsRequired)
-			require.Equal(t, http.StatusFound, response.Code)
+		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), unauthorizedCredentialsRequired)
+		require.Equal(t, http.StatusFound, response.Code)
 
-			location, err := url.Parse(response.Header().Get("Location"))
+		location, err := url.Parse(response.Header().Get("Location"))
 
-			require.NoError(t, err)
-			assert.Equal(t, tc.next, location.Query().Get("next"))
-		})
-	}
+		require.NoError(t, err)
+		assert.Equal(t, "/admin/users", location.Query().Get("next"))
+	})
+
+	t.Run("POST/admin/users/7", func(t *testing.T) {
+		response := httptest.NewRecorder()
+
+		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/users/7", nil), unauthorizedCredentialsRequired)
+		require.Equal(t, http.StatusFound, response.Code)
+
+		location, err := url.Parse(response.Header().Get("Location"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "/admin/users", location.Query().Get("next"))
+	})
+
+	t.Run("POST/admin/settings", func(t *testing.T) {
+		response := httptest.NewRecorder()
+
+		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/settings", nil), unauthorizedCredentialsRequired)
+		require.Equal(t, http.StatusFound, response.Code)
+
+		location, err := url.Parse(response.Header().Get("Location"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "/", location.Query().Get("next"))
+	})
+
+	t.Run("GET/admin/users?filter=all", func(t *testing.T) {
+		response := httptest.NewRecorder()
+
+		browserUnauthorized(response, httptest.NewRequest("GET", "/admin/users?filter=all", nil), unauthorizedCredentialsRequired)
+		require.Equal(t, http.StatusFound, response.Code)
+
+		location, err := url.Parse(response.Header().Get("Location"))
+
+		require.NoError(t, err)
+		assert.Equal(t, "/admin/users?filter=all", location.Query().Get("next"))
+	})
 }

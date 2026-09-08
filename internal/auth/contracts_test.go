@@ -2,13 +2,14 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Keep every implementation of the shared authentication boundary checked.
@@ -30,62 +31,101 @@ type authenticationContractRepository struct {
 func (s authenticationContractRepository) UserByToken(context.Context, string) (domain.User, error) {
 	return s.user, nil
 }
+
 func (s authenticationContractRepository) LocalUserBySession(context.Context, string) (domain.User, error) {
 	return s.user, nil
 }
+
 func (s authenticationContractRepository) LocalCredential(context.Context, string) (domain.User, string, error) {
 	return s.user, "", nil
 }
+
 func (s authenticationContractRepository) OIDCUser(context.Context, string, string) (domain.User, error) {
 	return s.user, nil
 }
 
 func TestAuthenticationEnabledAccountContract(t *testing.T) {
 	t.Parallel()
-	for _, enabled := range []bool{false, true} {
-		name := "disabled"
-		if enabled {
-			name = "enabled"
-		}
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			repository := authenticationContractRepository{user: domain.User{ID: 7, Enabled: enabled, SessionVersion: 1}}
-			local := NewLocal(repository, "https://example.test")
-			oidc := &OIDC{repository: repository, issuer: "https://identity.example.test", secret: []byte("0123456789abcdef0123456789abcdef")}
-			request := httptest.NewRequest("GET", "/", nil)
-			request.Header.Set("Authorization", "Bearer token")
-			request.AddCookie(&http.Cookie{Name: localSessionCookie, Value: "token"})
-			recorder := httptest.NewRecorder()
-			oidc.setCookie(recorder, "lore_session", session{Issuer: oidc.issuer, Subject: "subject", Version: 1, Expires: time.Now().Add(time.Hour).Unix()}, 3600)
-			request.AddCookie(recorder.Result().Cookies()[0])
-			for _, tt := range []struct {
-				name          string
-				authenticator Authenticator
-				denied        error
-			}{
-				{"bearer", NewBearer(repository), ErrInvalidCredentials},
-				{"local", local, ErrUnauthenticated},
-				{"oidc", oidc, ErrUnauthenticated},
-			} {
-				t.Run(tt.name, func(t *testing.T) {
-					user, err := tt.authenticator.Authenticate(request)
-					if enabled {
-						if err != nil || user.ID != 7 {
-							t.Fatalf("enabled user = %#v, error = %v", user, err)
-						}
-					} else if user.ID != 0 || !errors.Is(err, tt.denied) {
-						t.Fatalf("disabled user = %#v, error = %v; want %v", user, err, tt.denied)
-					}
-				})
-			}
-			if !enabled {
-				if _, _, err := local.SignIn(context.Background(), "example", "password"); !errors.Is(err, ErrInvalidCredentials) {
-					t.Fatalf("disabled sign-in error = %v", err)
-				}
-				if _, err := local.ChangePassword(context.Background(), 7, "example", "current", "new"); !errors.Is(err, ErrInvalidCredentials) {
-					t.Fatalf("disabled password-change error = %v", err)
-				}
-			}
+
+	t.Run("disabled", func(t *testing.T) {
+		t.Parallel()
+
+		repository := authenticationContractRepository{user: domain.User{ID: 7, Enabled: false, SessionVersion: 1}}
+		local := NewLocal(repository, "https://example.test")
+		oidc := &OIDC{repository: repository, issuer: "https://identity.example.test", secret: []byte("0123456789abcdef0123456789abcdef")}
+		request := httptest.NewRequest("GET", "/", nil)
+		request.Header.Set("Authorization", "Bearer token")
+		request.AddCookie(&http.Cookie{Name: localSessionCookie, Value: "token"})
+		recorder := httptest.NewRecorder()
+		oidc.setCookie(recorder, "lore_session", session{Issuer: oidc.issuer, Subject: "subject", Version: 1, Expires: time.Now().Add(time.Hour).Unix()}, 3600)
+		cookies := recorder.Result().Cookies()
+		require.Len(t, cookies, 1)
+		request.AddCookie(cookies[0])
+		t.Run("bearer", func(t *testing.T) {
+			user, err := NewBearer(repository).Authenticate(request)
+
+			assert.ErrorIs(t, err, ErrInvalidCredentials)
+			assert.Zero(t, user.ID)
 		})
-	}
+
+		t.Run("local", func(t *testing.T) {
+			user, err := local.Authenticate(request)
+
+			assert.ErrorIs(t, err, ErrUnauthenticated)
+			assert.Zero(t, user.ID)
+		})
+
+		t.Run("oidc", func(t *testing.T) {
+			user, err := oidc.Authenticate(request)
+
+			assert.ErrorIs(t, err, ErrUnauthenticated)
+			assert.Zero(t, user.ID)
+		})
+
+		t.Run("local sign-in", func(t *testing.T) {
+			_, _, err := local.SignIn(context.Background(), "example", "password")
+			assert.ErrorIs(t, err, ErrInvalidCredentials)
+		})
+
+		t.Run("local password change", func(t *testing.T) {
+			_, err := local.ChangePassword(context.Background(), 7, "example", "current", "new")
+			assert.ErrorIs(t, err, ErrInvalidCredentials)
+		})
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		t.Parallel()
+
+		repository := authenticationContractRepository{user: domain.User{ID: 7, Enabled: true, SessionVersion: 1}}
+		local := NewLocal(repository, "https://example.test")
+		oidc := &OIDC{repository: repository, issuer: "https://identity.example.test", secret: []byte("0123456789abcdef0123456789abcdef")}
+		request := httptest.NewRequest("GET", "/", nil)
+		request.Header.Set("Authorization", "Bearer token")
+		request.AddCookie(&http.Cookie{Name: localSessionCookie, Value: "token"})
+		recorder := httptest.NewRecorder()
+		oidc.setCookie(recorder, "lore_session", session{Issuer: oidc.issuer, Subject: "subject", Version: 1, Expires: time.Now().Add(time.Hour).Unix()}, 3600)
+		cookies := recorder.Result().Cookies()
+		require.Len(t, cookies, 1)
+		request.AddCookie(cookies[0])
+		t.Run("bearer", func(t *testing.T) {
+			user, err := NewBearer(repository).Authenticate(request)
+
+			require.NoError(t, err)
+			assert.Equal(t, int64(7), user.ID)
+		})
+
+		t.Run("local", func(t *testing.T) {
+			user, err := local.Authenticate(request)
+
+			require.NoError(t, err)
+			assert.Equal(t, int64(7), user.ID)
+		})
+
+		t.Run("oidc", func(t *testing.T) {
+			user, err := oidc.Authenticate(request)
+
+			require.NoError(t, err)
+			assert.Equal(t, int64(7), user.ID)
+		})
+	})
 }

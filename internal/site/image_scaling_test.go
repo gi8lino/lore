@@ -12,19 +12,31 @@ import (
 func TestStaticHTMLPreservesImageWidthsWhenRewritingURLs(t *testing.T) {
 	t.Parallel()
 
-	for _, width := range []string{"640px", "50%"} {
-		t.Run(width, func(t *testing.T) {
-			t.Parallel()
-			rendered, err := markdown.New().Render("![Diagram](images/diagram.png){width=" + width + "}")
-			require.NoError(t, err)
+	t.Run("640px", func(t *testing.T) {
+		t.Parallel()
+		rendered, err := markdown.New().Render("![Diagram](images/diagram.png){width=640px}")
+		require.NoError(t, err)
 
-			got, searchText, err := processRenderedHTML(rendered, "guide/page.md", false, nil, "/lore/")
+		got, searchText, err := processRenderedHTML(rendered, "guide/page.md", false, nil, "/lore/")
 
-			require.NoError(t, err)
-			assert.Contains(t, got, `src="/lore/guide/images/diagram.png"`)
-			assert.Contains(t, strings.ReplaceAll(got, " ", ""), `style="width:`+width+`"`)
-			assert.NotContains(t, got, "{width=")
-			assert.NotContains(t, searchText, "{width=")
-		})
-	}
+		require.NoError(t, err)
+		assert.Contains(t, got, `src="/lore/guide/images/diagram.png"`)
+		assert.Contains(t, strings.ReplaceAll(got, " ", ""), "style=\"width:640px\"")
+		assert.NotContains(t, got, "{width=")
+		assert.NotContains(t, searchText, "{width=")
+	})
+
+	t.Run("50%", func(t *testing.T) {
+		t.Parallel()
+		rendered, err := markdown.New().Render("![Diagram](images/diagram.png){width=50%}")
+		require.NoError(t, err)
+
+		got, searchText, err := processRenderedHTML(rendered, "guide/page.md", false, nil, "/lore/")
+
+		require.NoError(t, err)
+		assert.Contains(t, got, `src="/lore/guide/images/diagram.png"`)
+		assert.Contains(t, strings.ReplaceAll(got, " ", ""), "style=\"width:50%\"")
+		assert.NotContains(t, got, "{width=")
+		assert.NotContains(t, searchText, "{width=")
+	})
 }

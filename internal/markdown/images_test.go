@@ -13,37 +13,187 @@ import (
 func TestImageWidthsRenderInMarkdown(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range []struct {
-		name, source, width string
-	}{
-		{"bare pixels", `![Diagram](diagram.png){width=640}`, "640px"},
-		{"explicit pixels", `![Diagram](diagram.png){width=640px}`, "640px"},
-		{"percentage", `![Diagram](diagram.png){width=50%}`, "50%"},
-		{"linked image", `[![Diagram](diagram.png){width=50%}](full.png)`, "50%"},
-		{"reference image", "![Diagram][image]{width=50%}\n\n[image]: diagram.png", "50%"},
-		{"collapsed reference", "![Diagram][]{width=640}\n\n[Diagram]: diagram.png", "640px"},
-		{"shortcut reference", "![Diagram]{width=640}\n\n[Diagram]: diagram.png", "640px"},
-		{"emphasis", `**![Diagram](diagram.png){width=50%}**`, "50%"},
-		{"blockquote", `> ![Diagram](diagram.png){width=50%}`, "50%"},
-		{"list", `- ![Diagram](diagram.png){width=50%}`, "50%"},
-		{"table", "| Diagram |\n| --- |\n| ![Diagram](diagram.png){width=50%} |", "50%"},
-		{"callout", "!!! info\n![Diagram](diagram.png){width=50%}\n", "50%"},
-		{"tab", "=== \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n", "50%"},
-		{"details", "??? \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n", "50%"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("bare pixels", func(t *testing.T) {
+		t.Parallel()
 
-			got, err := New().Render(test.source)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
-			require.Len(t, images, 1)
-			assert.Equal(t, "width:"+test.width, normalizedImageStyle(images[0]["style"]))
-			assert.Equal(t, "diagram.png", images[0]["src"])
-			assert.Equal(t, "Diagram", images[0]["alt"])
-			assert.NotContains(t, got, "{width=")
-		})
-	}
+		got, err := New().Render(`![Diagram](diagram.png){width=640}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("explicit pixels", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`![Diagram](diagram.png){width=640px}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("percentage", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`![Diagram](diagram.png){width=50%}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("linked image", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`[![Diagram](diagram.png){width=50%}](full.png)`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("reference image", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("![Diagram][image]{width=50%}\n\n[image]: diagram.png")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("collapsed reference", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("![Diagram][]{width=640}\n\n[Diagram]: diagram.png")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("shortcut reference", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("![Diagram]{width=640}\n\n[Diagram]: diagram.png")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:640px", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("emphasis", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`**![Diagram](diagram.png){width=50%}**`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("blockquote", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`> ![Diagram](diagram.png){width=50%}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render(`- ![Diagram](diagram.png){width=50%}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("table", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("| Diagram |\n| --- |\n| ![Diagram](diagram.png){width=50%} |")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("callout", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("!!! info\n![Diagram](diagram.png){width=50%}\n")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("tab", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("=== \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("details", func(t *testing.T) {
+		t.Parallel()
+
+		got, err := New().Render("??? \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Equal(t, "width:50%", normalizedImageStyle(images[0]["style"]))
+		assert.Equal(t, "diagram.png", images[0]["src"])
+		assert.Equal(t, "Diagram", images[0]["alt"])
+		assert.NotContains(t, got, "{width=")
+	})
 }
 
 func TestImageWidthsKeepTitlesURLsAndFollowingText(t *testing.T) {
@@ -77,98 +227,285 @@ func TestAdjacentImageWidths(t *testing.T) {
 func TestImageWidthPreservesLineBreaks(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range []struct{ name, separator, want string }{
-		{"soft break", "\n", ">\nFollowing"},
-		{"two spaces", "  \n", "<br>\nFollowing"},
-		{"backslash", "\\\n", "<br>\nFollowing"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			got, err := New().Render("![Diagram](diagram.png){width=50%}" + test.separator + "Following")
-			require.NoError(t, err)
-			assert.Contains(t, strings.ReplaceAll(got, "/>", ">"), test.want)
-			assert.NotContains(t, got, "{width=")
-		})
-	}
+	t.Run("soft break", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50%}\nFollowing")
+		require.NoError(t, err)
+		assert.Contains(t, strings.ReplaceAll(got, "/>", ">"), ">\nFollowing")
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("two spaces", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50%}  \nFollowing")
+		require.NoError(t, err)
+		assert.Contains(t, strings.ReplaceAll(got, "/>", ">"), "<br>\nFollowing")
+		assert.NotContains(t, got, "{width=")
+	})
+
+	t.Run("backslash", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50%}\\\nFollowing")
+		require.NoError(t, err)
+		assert.Contains(t, strings.ReplaceAll(got, "/>", ">"), "<br>\nFollowing")
+		assert.NotContains(t, got, "{width=")
+	})
 }
 
 func TestInvalidImageWidthsStayVisible(t *testing.T) {
 	t.Parallel()
 
-	for _, directive := range []string{
-		"{width=0}", "{width=-1}", "{width=101%}", "{width=10001}",
-		"{width=50.5%}", "{width=10em}", "{width=50% height=20}",
-		"{width=50%;position:fixed}", "{height=20}", "{width=50%",
-	} {
-		t.Run(directive, func(t *testing.T) {
-			t.Parallel()
-			got, err := New().Render("![Diagram](diagram.png)" + directive)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
-			require.Len(t, images, 1)
-			assert.Empty(t, images[0]["style"])
-			assert.Contains(t, got, directive)
-		})
-	}
+	t.Run("zero width", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=0}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=0}")
+	})
+
+	t.Run("negative width", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=-1}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=-1}")
+	})
+
+	t.Run("percentage above maximum", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=101%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=101%}")
+	})
+
+	t.Run("pixels above maximum", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=10001}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=10001}")
+	})
+
+	t.Run("fractional percentage", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50.5%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50.5%}")
+	})
+
+	t.Run("unsupported unit", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=10em}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=10em}")
+	})
+
+	t.Run("multiple dimensions", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50% height=20}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50% height=20}")
+	})
+
+	t.Run("extra CSS declaration", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50%;position:fixed}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%;position:fixed}")
+	})
+
+	t.Run("height instead of width", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){height=20}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{height=20}")
+	})
+
+	t.Run("unclosed directive", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png){width=50%")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%")
+	})
 }
 
 func TestImageWidthOnlyConsumesAdjacentUnescapedDirectives(t *testing.T) {
 	t.Parallel()
 
-	for _, suffix := range []string{" {width=50%}", "\n{width=50%}", "\n\n{width=50%}", `\{width=50%}`, "&#123;width=50%}"} {
-		t.Run(suffix, func(t *testing.T) {
-			t.Parallel()
-			got, err := New().Render("![Diagram](diagram.png)" + suffix)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
-			require.Len(t, images, 1)
-			assert.Empty(t, images[0]["style"])
-			assert.Contains(t, got, "{width=50%}")
-		})
-	}
+	t.Run("leading space", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png) {width=50%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("leading newline", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png)\n{width=50%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("separate paragraph", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png)\n\n{width=50%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("escaped opening brace", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png)\\{width=50%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("encoded opening brace", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("![Diagram](diagram.png)&#123;width=50%}")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
 }
 
 func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Parallel()
 
-	for _, source := range []string{
-		"`![Diagram](diagram.png){width=50%}`",
-		"```text\n![Diagram](diagram.png){width=50%}\n```",
-		"~~~text\n![Diagram](diagram.png){width=50%}\n~~~",
-		"    ![Diagram](diagram.png){width=50%}\n",
-		`\![Diagram](diagram.png){width=50%}`,
-		`[Diagram](diagram.png){width=50%}`,
-	} {
-		t.Run(source, func(t *testing.T) {
-			t.Parallel()
-			options := DefaultOptions()
-			options.SyntaxHighlighting = false
-			got, err := New().RenderResolvedWithOptions(source, Slug, options)
-			require.NoError(t, err)
-			assert.Empty(t, renderedImageAttributes(t, got))
-			assert.Contains(t, got, "{width=50%}")
-		})
-	}
+	t.Run("inline code", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions("`![Diagram](diagram.png){width=50%}`", Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("backtick code fence", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions("```text\n![Diagram](diagram.png){width=50%}\n```", Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("tilde code fence", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions("~~~text\n![Diagram](diagram.png){width=50%}\n~~~", Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("indented code", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions("    ![Diagram](diagram.png){width=50%}\n", Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("escaped image", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions(`\![Diagram](diagram.png){width=50%}`, Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("ordinary link", func(t *testing.T) {
+		t.Parallel()
+		options := DefaultOptions()
+		options.SyntaxHighlighting = false
+		got, err := New().RenderResolvedWithOptions(`[Diagram](diagram.png){width=50%}`, Slug, options)
+		require.NoError(t, err)
+		assert.Empty(t, renderedImageAttributes(t, got))
+		assert.Contains(t, got, "{width=50%}")
+	})
 }
 
 func TestImageWidthDoesNotInterpretRawHTMLOrNestedAltText(t *testing.T) {
 	t.Parallel()
 
-	for _, source := range []string{
-		`<img src="diagram.png" alt="Diagram">{width=50%}`,
-		`![Outer ![Inner](inner.png){width=50%}](outer.png)`,
-		`![Diagram {width=50%}](diagram.png)`,
-	} {
-		t.Run(source, func(t *testing.T) {
-			t.Parallel()
-			got, err := New().Render(source)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
-			require.Len(t, images, 1)
-			assert.Empty(t, images[0]["style"])
-			assert.Contains(t, got, "{width=50%}")
-		})
-	}
+	t.Run("raw HTML image", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render(`<img src="diagram.png" alt="Diagram">{width=50%}`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("nested image alt text", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render(`![Outer ![Inner](inner.png){width=50%}](outer.png)`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
+
+	t.Run("literal directive in alt text", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render(`![Diagram {width=50%}](diagram.png)`)
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+		assert.Contains(t, got, "{width=50%}")
+	})
 }
 
 func TestImageWidthDoesNotRequireOptionalRenderingFeatures(t *testing.T) {
@@ -207,16 +544,68 @@ func TestImageWidthSanitizerAllowsOnlyBoundedWidths(t *testing.T) {
 	assert.NotContains(t, got, "height:")
 	assert.Equal(t, 1, strings.Count(got, `style="`), "width styles must not be allowed on spans")
 
-	for _, value := range []string{"0px", "101%", "10001px", "expression(alert(1))", "calc(50% + 1px)", "var(--width)", "url(https://example.test/track)"} {
-		t.Run(value, func(t *testing.T) {
-			t.Parallel()
-			got, err := New().Render(`<img src="diagram.png" style="width:` + value + `">`)
-			require.NoError(t, err)
-			images := renderedImageAttributes(t, got)
-			require.Len(t, images, 1)
-			assert.Empty(t, images[0]["style"])
-		})
-	}
+	t.Run("zero pixels", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:0px\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("percentage above maximum", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:101%\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("pixels above maximum", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:10001px\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("CSS expression", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:expression(alert(1))\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("CSS calculation", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:calc(50% + 1px)\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("CSS variable", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:var(--width)\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
+
+	t.Run("CSS URL", func(t *testing.T) {
+		t.Parallel()
+		got, err := New().Render("<img src=\"diagram.png\" style=\"width:url(https://example.test/track)\">")
+		require.NoError(t, err)
+		images := renderedImageAttributes(t, got)
+		require.Len(t, images, 1)
+		assert.Empty(t, images[0]["style"])
+	})
 }
 
 func TestImageWidthKeepsURLAndAttributeSanitization(t *testing.T) {

@@ -44,23 +44,25 @@ func TestStaticBrowserAssetsIncludeModuleDependencies(t *testing.T) {
 func TestMarkdownFileRoute(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		file string
-		want string
-	}{
-		{name: "root index", file: "index.md", want: ""},
-		{name: "page", file: "getting-started.md", want: "getting-started"},
-		{name: "section index", file: "installation/index.md", want: "installation"},
-		{name: "nested page", file: "installation/docker.md", want: "installation/docker"},
-	}
+	t.Run("root index", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "", markdownFileRoute("index.md"))
+	})
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, test.want, markdownFileRoute(test.file))
-		})
-	}
+	t.Run("page", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "getting-started", markdownFileRoute("getting-started.md"))
+	})
+
+	t.Run("section index", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "installation", markdownFileRoute("installation/index.md"))
+	})
+
+	t.Run("nested page", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "installation/docker", markdownFileRoute("installation/docker.md"))
+	})
 }
 
 func TestStaticBasePath(t *testing.T) {
@@ -189,18 +191,40 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	assert.Contains(t, string(guide), "Static documentation.")
 	assert.NotContains(t, string(guide), ">Guide</h1></div><h1")
 
-	for _, filename := range []string{
-		"404.html",
-		"search/index.html",
-		"search-index.json",
-		".nojekyll",
-		"sitemap.xml",
-		"images/logo.png",
-		"assets/js/static.js",
-	} {
-		_, err := os.Stat(filepath.Join(output, filepath.FromSlash(filename)))
-		require.NoError(t, err, filename)
-	}
+	t.Run("404.html", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("404.html")))
+		assert.NoError(t, err)
+	})
+
+	t.Run("search/index.html", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("search/index.html")))
+		assert.NoError(t, err)
+	})
+
+	t.Run("search-index.json", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("search-index.json")))
+		assert.NoError(t, err)
+	})
+
+	t.Run(".nojekyll", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash(".nojekyll")))
+		assert.NoError(t, err)
+	})
+
+	t.Run("sitemap.xml", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("sitemap.xml")))
+		assert.NoError(t, err)
+	})
+
+	t.Run("images/logo.png", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("images/logo.png")))
+		assert.NoError(t, err)
+	})
+
+	t.Run("assets/js/static.js", func(t *testing.T) {
+		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("assets/js/static.js")))
+		assert.NoError(t, err)
+	})
 }
 
 func TestValidateWikiLinksRejectsMissingTarget(t *testing.T) {
@@ -232,18 +256,52 @@ func TestBuildConfiguredBranding(t *testing.T) {
 	}
 	_, err := NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)
 	require.NoError(t, err)
-	for _, route := range []string{"index.html", "search/index.html", "404.html"} {
-		html, err := os.ReadFile(filepath.Join(config.OutputDir, route))
+	t.Run("home branding", func(t *testing.T) {
+		html, err := os.ReadFile(filepath.Join(config.OutputDir, "index.html"))
 		require.NoError(t, err)
 		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
 		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
 		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
-	}
-	for _, name := range []string{"assets/site-logo.svg", "assets/site-favicon.png", "favicon.ico", "assets/extra.txt"} {
-		data, err := os.ReadFile(filepath.Join(config.OutputDir, name))
+	})
+
+	t.Run("search branding", func(t *testing.T) {
+		html, err := os.ReadFile(filepath.Join(config.OutputDir, "search/index.html"))
+		require.NoError(t, err)
+		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
+	})
+
+	t.Run("not found branding", func(t *testing.T) {
+		html, err := os.ReadFile(filepath.Join(config.OutputDir, "404.html"))
+		require.NoError(t, err)
+		assert.Contains(t, string(html), `src="/never/assets/site-logo.svg"`)
+		assert.Contains(t, string(html), `href="/never/assets/site-favicon.png"`)
+		assert.Contains(t, string(html), `href="/never/favicon.ico"`)
+	})
+	t.Run("logo copied", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/site-logo.svg"))
 		require.NoError(t, err)
 		assert.Equal(t, "custom image", string(data))
-	}
+	})
+
+	t.Run("favicon copied", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/site-favicon.png"))
+		require.NoError(t, err)
+		assert.Equal(t, "custom image", string(data))
+	})
+
+	t.Run("ICO fallback copied", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "favicon.ico"))
+		require.NoError(t, err)
+		assert.Equal(t, "custom image", string(data))
+	})
+
+	t.Run("extra asset copied", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join(config.OutputDir, "assets/extra.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "custom image", string(data))
+	})
 	// Invalid branding must not erase the previously generated site.
 	config.Logo = filepath.Join(root, "missing.svg")
 	_, err = NewBuilder(web.Assets, "test", "test").Build(context.Background(), config)

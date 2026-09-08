@@ -2,12 +2,11 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +14,8 @@ import (
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/service"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type draftContractService struct {
@@ -32,52 +33,43 @@ func (s draftContractService) Save(context.Context, service.PageDraftSaveInput) 
 func TestDraftResponseContract(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("../../test/contracts/draft.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var expected any
-	if err := json.Unmarshal(data, &expected); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	at := time.Date(2026, 9, 6, 12, 0, 0, 0, time.UTC)
 	drafts := draftContractService{draft: domain.PageDraft{ID: 1, Key: "new", CreatedAt: at, UpdatedAt: at}}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	for _, method := range []string{"GET", "PUT"} {
-		t.Run(method, func(t *testing.T) {
-			t.Parallel()
-			request := auth.WithUser(httptest.NewRequest(method, "/api/drafts/new", strings.NewReader(`{"values":{}}`)), domain.User{ID: 7})
-			request.SetPathValue("key", "new")
-			handler := GetPageDraft(drafts, logger)
-			if method == "PUT" {
-				handler = SavePageDraft(drafts, logger)
-			}
-			response := httptest.NewRecorder()
-			handler(response, request)
-			if response.Code != 200 {
-				t.Fatalf("status = %d: %s", response.Code, response.Body.String())
-			}
-			var got any
-			if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(got, expected) {
-				t.Fatalf("response = %#v, want %#v", got, expected)
-			}
-		})
-	}
+	t.Run("GET", func(t *testing.T) {
+		t.Parallel()
+
+		request := auth.WithUser(httptest.NewRequest("GET", "/api/drafts/new", strings.NewReader(`{"values":{}}`)), domain.User{ID: 7})
+		request.SetPathValue("key", "new")
+		response := httptest.NewRecorder()
+
+		GetPageDraft(drafts, logger)(response, request)
+
+		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+		assert.JSONEq(t, string(data), response.Body.String())
+	})
+
+	t.Run("PUT", func(t *testing.T) {
+		t.Parallel()
+
+		request := auth.WithUser(httptest.NewRequest("PUT", "/api/drafts/new", strings.NewReader(`{"values":{}}`)), domain.User{ID: 7})
+		request.SetPathValue("key", "new")
+		response := httptest.NewRecorder()
+
+		SavePageDraft(drafts, logger)(response, request)
+
+		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+		assert.JSONEq(t, string(data), response.Body.String())
+	})
 }
 
 func TestDraftResponseNormalizesEmptySelectionsWithoutMutatingInput(t *testing.T) {
 	t.Parallel()
 	draft := domain.PageDraft{Values: map[string][]string{"group_id": nil, "title": {"Example"}}}
 	got := draftResponse(draft)
-	if got.Values["group_id"] == nil {
-		t.Fatal("empty selection must be an array")
-	}
-	if draft.Values["group_id"] != nil {
-		t.Fatal("response mapping mutated input")
-	}
-	if got.Values["title"][0] != "Example" {
-		t.Fatal("response mapping lost a field")
-	}
+
+	assert.Equal(t, []string{}, got.Values["group_id"], "empty selection must be an array")
+	assert.Nil(t, draft.Values["group_id"], "response mapping must not mutate input")
+	assert.Equal(t, []string{"Example"}, got.Values["title"])
 }

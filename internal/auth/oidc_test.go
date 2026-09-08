@@ -208,9 +208,7 @@ func oidcSessionRequest(t *testing.T, authenticator *OIDC, value any) *http.Requ
 	authenticator.setCookie(response, "lore_session", value, 3600)
 
 	cookies := response.Result().Cookies()
-	if !assert.Len(t, cookies, 1) {
-		return httptest.NewRequest("GET", "/", nil)
-	}
+	require.Len(t, cookies, 1)
 
 	request := httptest.NewRequest("GET", "/", nil)
 
@@ -258,18 +256,59 @@ func TestOIDCGroupValues(t *testing.T) {
 }
 
 func TestOIDCCallbackRejectsInvalidState(t *testing.T) {
-	authenticator := &OIDC{secret: []byte("0123456789abcdef0123456789abcdef")}
-	for _, saved := range []loginState{
-		{Expires: time.Now().Add(time.Minute).Unix()},
-		{State: "state", Expires: time.Now().Add(time.Minute).Unix()},
-		{State: "state", Verifier: "verifier", Expires: time.Now().Unix()},
-	} {
+	t.Parallel()
+
+	t.Run("missing state and verifier", func(t *testing.T) {
+		t.Parallel()
+
+		authenticator := &OIDC{secret: []byte("0123456789abcdef0123456789abcdef")}
+		saved := loginState{Expires: time.Now().Add(time.Minute).Unix()}
 		response := httptest.NewRecorder()
 		authenticator.setCookie(response, "lore_state", saved, 600)
+		cookies := response.Result().Cookies()
+		require.Len(t, cookies, 1)
 		request := httptest.NewRequest("GET", "/auth/callback?state="+saved.State, nil)
-		request.AddCookie(response.Result().Cookies()[0])
+		request.AddCookie(cookies[0])
 		result := httptest.NewRecorder()
+
 		authenticator.Callback().ServeHTTP(result, request)
+
 		assert.Equal(t, http.StatusBadRequest, result.Code)
-	}
+	})
+
+	t.Run("missing verifier", func(t *testing.T) {
+		t.Parallel()
+
+		authenticator := &OIDC{secret: []byte("0123456789abcdef0123456789abcdef")}
+		saved := loginState{State: "state", Expires: time.Now().Add(time.Minute).Unix()}
+		response := httptest.NewRecorder()
+		authenticator.setCookie(response, "lore_state", saved, 600)
+		cookies := response.Result().Cookies()
+		require.Len(t, cookies, 1)
+		request := httptest.NewRequest("GET", "/auth/callback?state="+saved.State, nil)
+		request.AddCookie(cookies[0])
+		result := httptest.NewRecorder()
+
+		authenticator.Callback().ServeHTTP(result, request)
+
+		assert.Equal(t, http.StatusBadRequest, result.Code)
+	})
+
+	t.Run("expired state", func(t *testing.T) {
+		t.Parallel()
+
+		authenticator := &OIDC{secret: []byte("0123456789abcdef0123456789abcdef")}
+		saved := loginState{State: "state", Verifier: "verifier", Expires: time.Now().Unix()}
+		response := httptest.NewRecorder()
+		authenticator.setCookie(response, "lore_state", saved, 600)
+		cookies := response.Result().Cookies()
+		require.Len(t, cookies, 1)
+		request := httptest.NewRequest("GET", "/auth/callback?state="+saved.State, nil)
+		request.AddCookie(cookies[0])
+		result := httptest.NewRecorder()
+
+		authenticator.Callback().ServeHTTP(result, request)
+
+		assert.Equal(t, http.StatusBadRequest, result.Code)
+	})
 }

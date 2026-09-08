@@ -5,23 +5,32 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfigRejectsOverlappingSourceAndOutput(t *testing.T) {
 	t.Parallel()
 
-	root := t.TempDir()
-	config := DefaultConfig()
-	config.SourceDir = filepath.Join(root, "docs")
-	config.OutputDir = filepath.Join(root, "docs", "site")
+	t.Run("output inside source", func(t *testing.T) {
+		t.Parallel()
 
-	require.Error(t, config.validate())
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.SourceDir = filepath.Join(root, "docs")
+		config.OutputDir = filepath.Join(root, "docs", "site")
+		assert.Error(t, config.validate())
+	})
 
-	config.SourceDir = filepath.Join(root, "site", "docs")
-	config.OutputDir = filepath.Join(root, "site")
+	t.Run("source inside output", func(t *testing.T) {
+		t.Parallel()
 
-	require.Error(t, config.validate())
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.SourceDir = filepath.Join(root, "site", "docs")
+		config.OutputDir = filepath.Join(root, "site")
+		assert.Error(t, config.validate())
+	})
 }
 
 func TestBrandingPathsRelativeToConfig(t *testing.T) {
@@ -48,16 +57,56 @@ assets_dir = "assets"
 
 func TestBrandingValidation(t *testing.T) {
 	t.Parallel()
-	root := t.TempDir()
-	for _, field := range []string{"logo", "favicon", "favicon_ico", "assets_dir"} {
-		t.Run(field, func(t *testing.T) {
-			config := DefaultConfig()
-			config.OutputDir = filepath.Join(root, "output")
-			fields := map[string]*string{"logo": &config.Logo, "favicon": &config.Favicon, "favicon_ico": &config.FaviconICO, "assets_dir": &config.AssetsDir}
-			*fields[field] = filepath.Join(root, "missing")
-			require.ErrorContains(t, config.validate(), field)
-			*fields[field] = filepath.Join(config.OutputDir, "image.svg")
-			require.ErrorContains(t, config.validate(), "separate from output_dir")
-		})
-	}
+
+	t.Run("logo", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.OutputDir = filepath.Join(root, "output")
+		config.Logo = filepath.Join(root, "missing")
+		assert.ErrorContains(t, config.validate(), "logo")
+
+		config.Logo = filepath.Join(config.OutputDir, "image.svg")
+		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+	})
+
+	t.Run("favicon", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.OutputDir = filepath.Join(root, "output")
+		config.Favicon = filepath.Join(root, "missing")
+		assert.ErrorContains(t, config.validate(), "favicon")
+
+		config.Favicon = filepath.Join(config.OutputDir, "image.svg")
+		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+	})
+
+	t.Run("favicon_ico", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.OutputDir = filepath.Join(root, "output")
+		config.FaviconICO = filepath.Join(root, "missing")
+		assert.ErrorContains(t, config.validate(), "favicon_ico")
+
+		config.FaviconICO = filepath.Join(config.OutputDir, "image.svg")
+		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+	})
+
+	t.Run("assets_dir", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		config := DefaultConfig()
+		config.OutputDir = filepath.Join(root, "output")
+		config.AssetsDir = filepath.Join(root, "missing")
+		assert.ErrorContains(t, config.validate(), "assets_dir")
+
+		config.AssetsDir = filepath.Join(config.OutputDir, "image.svg")
+		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+	})
 }

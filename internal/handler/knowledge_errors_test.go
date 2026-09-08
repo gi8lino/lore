@@ -85,44 +85,91 @@ func TestKnownServiceErrorsReachHTTPTranslators(t *testing.T) {
 	t.Parallel()
 	missing := fmt.Errorf("repository: %w", domain.ErrNotFound)
 	conflict := fmt.Errorf("repository: %w", domain.ErrAlreadyExists)
-	tests := []struct {
-		name        string
-		handler     func(*slog.Logger) http.HandlerFunc
-		body        string
-		contentType string
-		status      int
-		message     string
-	}{
-		{"create search conflict", func(l *slog.Logger) http.HandlerFunc {
-			return CreateSavedSearch(savedSearchErrorStub{err: conflict}, l)
-		}, "name=test&query=test", "application/x-www-form-urlencoded", http.StatusConflict, "Saved search already exists."},
-		{"delete missing search", func(l *slog.Logger) http.HandlerFunc { return DeleteSavedSearch(savedSearchErrorStub{err: missing}, l) }, "", "", http.StatusNotFound, "Saved search not found."},
-		{"add missing membership", func(l *slog.Logger) http.HandlerFunc {
-			return AddAdminGroupMember(membershipErrorStub{err: missing}, nil, l)
-		}, `{"user_id":1}`, "application/json", http.StatusNotFound, "Group or user not found."},
-		{"remove missing membership", func(l *slog.Logger) http.HandlerFunc {
-			return RemoveAdminGroupMember(membershipErrorStub{err: missing}, l)
-		}, "", "", http.StatusNotFound, "Group membership not found."},
-		{"move path conflict", func(l *slog.Logger) http.HandlerFunc { return MovePageForm(moveErrorStub{err: conflict}, l) }, "slug=target", "application/x-www-form-urlencoded", http.StatusConflict, "Page path already exists."},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			var logs bytes.Buffer
-			logger := slog.New(slog.NewTextHandler(&logs, nil))
-			request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(test.body))
-			request.Header.Set("Content-Type", test.contentType)
-			request.SetPathValue("id", "1")
-			request.SetPathValue("userID", "1")
-			request.SetPathValue("slug", "source")
-			request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
-			response := httptest.NewRecorder()
-			test.handler(logger)(response, request)
-			assert.Equal(t, test.status, response.Code)
-			assert.Contains(t, response.Body.String(), test.message)
-			assert.Empty(t, logs.String())
-		})
-	}
+
+	t.Run("create search conflict", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("name=test&query=test"))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.SetPathValue("id", "1")
+		request.SetPathValue("userID", "1")
+		request.SetPathValue("slug", "source")
+		request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
+		response := httptest.NewRecorder()
+		CreateSavedSearch(savedSearchErrorStub{err: conflict}, logger)(response, request)
+		assert.Equal(t, http.StatusConflict, response.Code)
+		assert.Contains(t, response.Body.String(), "Saved search already exists.")
+		assert.Empty(t, logs.String())
+	})
+
+	t.Run("delete missing search", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+		request.Header.Set("Content-Type", "")
+		request.SetPathValue("id", "1")
+		request.SetPathValue("userID", "1")
+		request.SetPathValue("slug", "source")
+		request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
+		response := httptest.NewRecorder()
+		DeleteSavedSearch(savedSearchErrorStub{err: missing}, logger)(response, request)
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Contains(t, response.Body.String(), "Saved search not found.")
+		assert.Empty(t, logs.String())
+	})
+
+	t.Run("add missing membership", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"user_id":1}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.SetPathValue("id", "1")
+		request.SetPathValue("userID", "1")
+		request.SetPathValue("slug", "source")
+		request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
+		response := httptest.NewRecorder()
+		AddAdminGroupMember(membershipErrorStub{err: missing}, nil, logger)(response, request)
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Contains(t, response.Body.String(), "Group or user not found.")
+		assert.Empty(t, logs.String())
+	})
+
+	t.Run("remove missing membership", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+		request.Header.Set("Content-Type", "")
+		request.SetPathValue("id", "1")
+		request.SetPathValue("userID", "1")
+		request.SetPathValue("slug", "source")
+		request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
+		response := httptest.NewRecorder()
+		RemoveAdminGroupMember(membershipErrorStub{err: missing}, logger)(response, request)
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Contains(t, response.Body.String(), "Group membership not found.")
+		assert.Empty(t, logs.String())
+	})
+
+	t.Run("move path conflict", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("slug=target"))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.SetPathValue("id", "1")
+		request.SetPathValue("userID", "1")
+		request.SetPathValue("slug", "source")
+		request = auth.WithUser(request, domain.User{ID: 1, Role: "admin"})
+		response := httptest.NewRecorder()
+		MovePageForm(moveErrorStub{err: conflict}, logger)(response, request)
+		assert.Equal(t, http.StatusConflict, response.Code)
+		assert.Contains(t, response.Body.String(), "Page path already exists.")
+		assert.Empty(t, logs.String())
+	})
 }
 
 type aliasFailureStub struct {
@@ -137,23 +184,35 @@ func (s aliasFailureStub) ResolvePageAlias(context.Context, string) (string, err
 
 func TestAliasFailureIsNotDiscarded(t *testing.T) {
 	t.Parallel()
-	for _, api := range []bool{false, true} {
-		t.Run(fmt.Sprint(api), func(t *testing.T) {
-			t.Parallel()
-			var logs bytes.Buffer
-			logger := slog.New(slog.NewTextHandler(&logs, nil))
-			repository := aliasFailureStub{err: fmt.Errorf("alias database offline")}
-			request := httptest.NewRequest(http.MethodGet, "/pages/missing", nil)
-			request.SetPathValue("slug", "missing")
-			response := httptest.NewRecorder()
-			if api {
-				GetPage(repository, logger)(response, request)
-			} else {
-				ViewPage(nil, repository, nil, nil, nil, &Views{logger: logger})(response, request)
-			}
-			assert.Equal(t, http.StatusInternalServerError, response.Code)
-			assert.Contains(t, logs.String(), "alias database offline")
-			assert.NotContains(t, response.Body.String(), "alias database offline")
-		})
-	}
+	t.Run("page view", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		repository := aliasFailureStub{err: fmt.Errorf("alias database offline")}
+		request := httptest.NewRequest(http.MethodGet, "/pages/missing", nil)
+		request.SetPathValue("slug", "missing")
+		response := httptest.NewRecorder()
+
+		ViewPage(nil, repository, nil, nil, nil, &Views{logger: logger})(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
+		assert.Contains(t, logs.String(), "alias database offline")
+		assert.NotContains(t, response.Body.String(), "alias database offline")
+	})
+
+	t.Run("API", func(t *testing.T) {
+		t.Parallel()
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&logs, nil))
+		repository := aliasFailureStub{err: fmt.Errorf("alias database offline")}
+		request := httptest.NewRequest(http.MethodGet, "/pages/missing", nil)
+		request.SetPathValue("slug", "missing")
+		response := httptest.NewRecorder()
+
+		GetPage(repository, logger)(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
+		assert.Contains(t, logs.String(), "alias database offline")
+		assert.NotContains(t, response.Body.String(), "alias database offline")
+	})
 }

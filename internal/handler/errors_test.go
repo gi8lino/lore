@@ -18,31 +18,47 @@ import (
 func TestWriteMediaUploadProblem(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name   string
-		err    error
-		status int
-	}{
-		{name: "empty", err: service.ErrEmptyFile, status: http.StatusBadRequest},
-		{name: "too large", err: service.ErrFileTooLarge, status: http.StatusRequestEntityTooLarge},
-		{name: "unsupported", err: service.ErrUnsupportedFileType, status: http.StatusUnsupportedMediaType},
-	}
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+		response := httptest.NewRecorder()
+		writeMediaUploadProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			service.ErrEmptyFile,
+			attachmentMedia,
+		)
 
-			response := httptest.NewRecorder()
-			writeMediaUploadProblem(
-				slog.New(slog.NewTextHandler(io.Discard, nil)),
-				response,
-				test.err,
-				attachmentMedia,
-			)
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+	})
 
-			assert.Equal(t, test.status, response.Code)
-		})
-	}
+	t.Run("too large", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+		writeMediaUploadProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			service.ErrFileTooLarge,
+			attachmentMedia,
+		)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, response.Code)
+	})
+
+	t.Run("unsupported", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+		writeMediaUploadProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			service.ErrUnsupportedFileType,
+			attachmentMedia,
+		)
+
+		assert.Equal(t, http.StatusUnsupportedMediaType, response.Code)
+	})
 }
 
 func TestWriteMediaDeleteProblem(t *testing.T) {
@@ -63,71 +79,110 @@ func TestWriteMediaDeleteProblem(t *testing.T) {
 func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name   string
-		err    error
-		status int
-		write  func(*slog.Logger, http.ResponseWriter, error)
-	}{
-		{
-			name:   "untranslated not found",
-			err:    domain.ErrNotFound,
-			status: http.StatusInternalServerError,
-			write:  writeInternalServerError,
-		},
-		{
-			name:   "page not found",
-			err:    domain.ErrNotFound,
-			status: http.StatusNotFound,
-			write:  writePageProblem,
-		},
-		{
-			name:   "page in bin",
-			err:    domain.ErrPageInBin,
-			status: http.StatusConflict,
-			write:  writePageProblem,
-		},
-		{
-			name:   "discussions disabled",
-			err:    service.ErrDiscussionsDisabled,
-			status: http.StatusForbidden,
-			write:  writePageProblem,
-		},
-		{
-			name: "page validation",
-			err: &service.ValidationError{Fields: []service.FieldError{{
+	t.Run("untranslated not found", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+
+		writeInternalServerError(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			domain.ErrNotFound,
+		)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
+
+	t.Run("page not found", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+
+		writePageProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			domain.ErrNotFound,
+		)
+
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
+
+	t.Run("page in bin", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+
+		writePageProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			domain.ErrPageInBin,
+		)
+
+		assert.Equal(t, http.StatusConflict, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
+
+	t.Run("discussions disabled", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+
+		writePageProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			service.ErrDiscussionsDisabled,
+		)
+
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
+
+	t.Run("page validation", func(t *testing.T) {
+		t.Parallel()
+
+		response := httptest.NewRecorder()
+
+		writePageProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			&service.ValidationError{Fields: []service.FieldError{{
 				Field:   "slug",
 				Message: "A page path is required.",
 			}}},
-			status: http.StatusUnprocessableEntity,
-			write:  writePageProblem,
-		},
-		{
-			name:   "page assignment forbidden",
-			err:    domain.ErrForbidden,
-			status: http.StatusForbidden,
-			write:  writePageSaveProblem,
-		},
-	}
+		)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
 
-			response := httptest.NewRecorder()
+	t.Run("page assignment forbidden", func(t *testing.T) {
+		t.Parallel()
 
-			test.write(
-				slog.New(slog.NewTextHandler(io.Discard, nil)),
-				response,
-				test.err,
-			)
+		response := httptest.NewRecorder()
 
-			assert.Equal(t, test.status, response.Code)
-			assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
-			assert.True(t, json.Valid(response.Body.Bytes()))
-			assert.Contains(t, response.Body.String(), `"error"`)
-		})
-	}
+		writePageSaveProblem(
+			slog.New(slog.NewTextHandler(io.Discard, nil)),
+			response,
+			domain.ErrForbidden,
+		)
+
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
+		assert.True(t, json.Valid(response.Body.Bytes()))
+		assert.Contains(t, response.Body.String(), `"error"`)
+	})
 }
 
 func TestWriteAdminProblem(t *testing.T) {
@@ -158,25 +213,38 @@ func TestAdminValidationUsesFieldProblems(t *testing.T) {
 
 func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		err     error
-		status  int
-		message string
-	}{
-		{domain.ErrRevisionNotFound, http.StatusNotFound, "Revision not found."},
-		{domain.ErrCommentNotFound, http.StatusNotFound, "Comment not found."},
-		{&domain.GroupAssignmentError{Field: "owner_group_id"}, http.StatusForbidden, `"owner_group_id"`},
-		{&domain.GroupAssignmentError{Field: "group_ids"}, http.StatusForbidden, `"group_ids"`},
-	}
-	for _, test := range tests {
-		t.Run(test.message, func(t *testing.T) {
-			t.Parallel()
-			response := httptest.NewRecorder()
-			writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", test.err))
-			assert.Equal(t, test.status, response.Code)
-			assert.Contains(t, response.Body.String(), test.message)
-		})
-	}
+
+	t.Run("Revision not found.", func(t *testing.T) {
+		t.Parallel()
+		response := httptest.NewRecorder()
+		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrRevisionNotFound))
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Contains(t, response.Body.String(), "Revision not found.")
+	})
+
+	t.Run("Comment not found.", func(t *testing.T) {
+		t.Parallel()
+		response := httptest.NewRecorder()
+		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrCommentNotFound))
+		assert.Equal(t, http.StatusNotFound, response.Code)
+		assert.Contains(t, response.Body.String(), "Comment not found.")
+	})
+
+	t.Run(`"owner_group_id"`, func(t *testing.T) {
+		t.Parallel()
+		response := httptest.NewRecorder()
+		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "owner_group_id"}))
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.Contains(t, response.Body.String(), `"owner_group_id"`)
+	})
+
+	t.Run(`"group_ids"`, func(t *testing.T) {
+		t.Parallel()
+		response := httptest.NewRecorder()
+		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "group_ids"}))
+		assert.Equal(t, http.StatusForbidden, response.Code)
+		assert.Contains(t, response.Body.String(), `"group_ids"`)
+	})
 }
 
 func TestValidationResponseDoesNotExposeCause(t *testing.T) {

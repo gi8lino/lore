@@ -13,70 +13,187 @@ import (
 func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	tests := []struct {
-		name  string
-		run   func() error
-		field string
-	}{
-		{"saved search name", func() error { return NewKnowledge(nil).SaveSavedSearch(ctx, 1, 0, " ", "query", false) }, "name"},
-		{"saved search query", func() error { return NewKnowledge(nil).SaveSavedSearch(ctx, 1, 0, "name", " ", false) }, "query"},
-		{"snippet kind", func() error {
-			_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "invalid", "name", "", "")
-			return err
-		}, "kind"},
-		{"snippet name", func() error {
-			_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "snippet", " ", "", "")
-			return err
-		}, "name"},
-		{"group name", func() error { _, err := NewGroups(nil).CreateGroup(ctx, " "); return err }, "name"},
-		{"create template name", func() error { _, err := NewTemplates(nil).CreatePageTemplate(ctx, " ", "", ""); return err }, "name"},
-		{"update template name", func() error { return NewTemplates(nil).UpdatePageTemplate(ctx, 1, " ", "", "") }, "name"},
-		{"same move path", func() error {
-			return NewPages(nil).Move(ctx, "/guide/", "guide", domain.MovePageOptions{}, domain.User{})
-		}, "slug"},
-		{"move tree into itself", func() error {
-			return NewPages(nil).Move(ctx, "guide", "guide/child", domain.MovePageOptions{MoveChildren: true}, domain.User{})
-		}, "slug"},
-		{"bulk move same path", func() error {
-			return NewPages(nil).Bulk(ctx, BulkPageInput{Action: "move", Slugs: []string{"guide/child"}, Target: "guide"})
-		}, "target"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			// Nil repositories ensure invalid input is rejected before persistence.
-			validation, ok := errors.AsType[*ValidationError](test.run())
-			require.True(t, ok)
-			require.Len(t, validation.Fields, 1)
-			assert.Equal(t, test.field, validation.Fields[0].Field)
-		})
-	}
+
+	// Nil repositories ensure invalid input is rejected before persistence.
+	t.Run("saved search name", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewKnowledge(nil).SaveSavedSearch(ctx, 1, 0, " ", "query", false)
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("saved search query", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewKnowledge(nil).SaveSavedSearch(ctx, 1, 0, "name", " ", false)
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "query", validation.Fields[0].Field)
+	})
+
+	t.Run("snippet kind", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "invalid", "name", "", "")
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "kind", validation.Fields[0].Field)
+	})
+
+	t.Run("snippet name", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "snippet", " ", "", "")
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("group name", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewGroups(nil).CreateGroup(ctx, " ")
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("create template name", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewTemplates(nil).CreatePageTemplate(ctx, " ", "", "")
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("update template name", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewTemplates(nil).UpdatePageTemplate(ctx, 1, " ", "", "")
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("same move path", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPages(nil).Move(ctx, "/guide/", "guide", domain.MovePageOptions{}, domain.User{})
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "slug", validation.Fields[0].Field)
+	})
+
+	t.Run("move tree into itself", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPages(nil).Move(ctx, "guide", "guide/child", domain.MovePageOptions{MoveChildren: true}, domain.User{})
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "slug", validation.Fields[0].Field)
+	})
+
+	t.Run("bulk move same path", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPages(nil).Bulk(ctx, BulkPageInput{Action: "move", Slugs: []string{"guide/child"}, Target: "guide"})
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "target", validation.Fields[0].Field)
+	})
 }
 
 func TestAdditionalServiceValidationBeforePersistence(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	tests := []struct {
-		name  string
-		run   func() error
-		field string
-	}{
-		{"comment body", func() error { return NewPages(nil).AddComment(ctx, "page", "", " ", domain.User{}) }, "body"},
-		{"user role", func() error { return NewUsers(nil).UpdateUser(ctx, 1, "invalid", true, nil, nil) }, "role"},
-		{"token name", func() error { _, err := NewTokens(nil).CreateToken(ctx, " ", 1, 1, nil); return err }, "name"},
-		{"sidebar width", func() error { return NewPreferences(nil).SetSidebarWidth(ctx, 1, -1) }, "sidebar_width"},
-		{"preference density", func() error {
-			return NewPreferences(nil).SavePreferences(ctx, 1, domain.UserPreferences{NavigationDensity: "invalid"})
-		}, "navigation_density"},
-		{"navigation icon", func() error { return NewNavigation(nil).SetNavigationIcon(ctx, "page", "not-an-icon") }, "icon"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			validation, ok := errors.AsType[*domain.ValidationError](test.run())
-			require.True(t, ok)
-			require.Len(t, validation.Fields, 1)
-			assert.Equal(t, test.field, validation.Fields[0].Field)
-		})
-	}
+
+	// Nil repositories ensure invalid input is rejected before persistence.
+	t.Run("comment body", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPages(nil).AddComment(ctx, "page", "", " ", domain.User{})
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "body", validation.Fields[0].Field)
+	})
+
+	t.Run("user role", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewUsers(nil).UpdateUser(ctx, 1, "invalid", true, nil, nil)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "role", validation.Fields[0].Field)
+	})
+
+	t.Run("token name", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewTokens(nil).CreateToken(ctx, " ", 1, 1, nil)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "name", validation.Fields[0].Field)
+	})
+
+	t.Run("sidebar width", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPreferences(nil).SetSidebarWidth(ctx, 1, -1)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "sidebar_width", validation.Fields[0].Field)
+	})
+
+	t.Run("preference density", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewPreferences(nil).SavePreferences(ctx, 1, domain.UserPreferences{NavigationDensity: "invalid"})
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "navigation_density", validation.Fields[0].Field)
+	})
+
+	t.Run("navigation icon", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewNavigation(nil).SetNavigationIcon(ctx, "page", "not-an-icon")
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "icon", validation.Fields[0].Field)
+	})
 }

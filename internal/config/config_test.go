@@ -112,12 +112,30 @@ func TestPDFURLFromEnvironmentIncludesPath(t *testing.T) {
 }
 
 func TestPDFURLValidation(t *testing.T) {
-	for _, value := range []string{"pdf:8080/render", "http://pdf:8080", "file:///render", "http://pdf/render#fragment", "http://user:password@pdf/render"} {
-		t.Run(value, func(t *testing.T) {
-			_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", value})
-			require.Error(t, err)
-		})
-	}
+	t.Run("missing HTTP scheme", func(t *testing.T) {
+		_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", "pdf:8080/render"})
+		require.Error(t, err)
+	})
+
+	t.Run("missing endpoint path", func(t *testing.T) {
+		_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", "http://pdf:8080"})
+		require.Error(t, err)
+	})
+
+	t.Run("file URL", func(t *testing.T) {
+		_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", "file:///render"})
+		require.Error(t, err)
+	})
+
+	t.Run("URL fragment", func(t *testing.T) {
+		_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", "http://pdf/render#fragment"})
+		require.Error(t, err)
+	})
+
+	t.Run("embedded credentials", func(t *testing.T) {
+		_, err := parseTestConfig([]string{"--database-url", "postgres://example/lore", "--pdf-url", "http://user:password@pdf/render"})
+		require.Error(t, err)
+	})
 
 	cfg, err := parseTestConfig([]string{"--database-url", "postgres://example/lore"})
 
