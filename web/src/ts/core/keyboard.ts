@@ -70,7 +70,12 @@ export function initKeyboardWorkflow(): void {
     }
     if (key === "c" && document.body.dataset.canEdit === "true") {
       event.preventDefault();
-      window.location.assign("/pages/new");
+      const parent = document.body.dataset.currentPage?.trim();
+      window.location.assign(
+        parent
+          ? `/pages/new?parent=${encodeURIComponent(parent)}`
+          : "/pages/new",
+      );
       return;
     }
 

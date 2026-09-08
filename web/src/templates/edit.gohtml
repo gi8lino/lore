@@ -104,13 +104,13 @@
       {{ if .PageTemplates }}
         <div class="editor-template-strip">
           <span class="muted">Start from</span>
-          <a class="editor-template-chip{{ if not .EditorTemplate }}active{{ end }}" href="/pages/new">Blank</a>
+          <a class="editor-template-chip{{ if not .EditorTemplate }}active{{ end }}" href="/pages/new{{ if .EditorInitialSlug }}?slug={{ .EditorInitialSlug | urlquery }}{{ else if .EditorParentPath }}?parent={{ .EditorParentPath | urlquery }}{{ end }}">Blank</a>
           {{ range .PageTemplates }}
             <a
               class="editor-template-chip{{ if $.EditorTemplate }}
                 {{ if eq $.EditorTemplate.ID .ID }}active{{ end }}
               {{ end }}"
-              href="/pages/new?template={{ .ID }}"
+              href="/pages/new?template={{ .ID }}{{ if $.EditorInitialSlug }}&slug={{ $.EditorInitialSlug | urlquery }}{{ else if $.EditorParentPath }}&parent={{ $.EditorParentPath | urlquery }}{{ end }}"
               title="{{ .Description }}"
               >{{ .Name }}</a
             >
@@ -162,16 +162,45 @@
       </summary>
       <div class="editor-page-settings-body">
         <div class="form-grid">
-          <label>
-            Page path <span class="optional">optional</span>
+          <div class="editor-location-field">
+            <label for="editor-page-location">Page location</label>
+            <div class="editor-path-picker" data-editor-path-picker>
+              <div class="editor-path-breadcrumbs" data-editor-path-breadcrumbs aria-label="Selected page location"></div>
+              <input
+                id="editor-page-location"
+                type="text"
+                data-editor-path-input
+                data-error-field="slug"
+                placeholder="Find or create a folder…"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="editor-path-suggestions"
+                aria-expanded="false"
+              />
+              <div
+                id="editor-path-suggestions"
+                class="editor-path-suggestions"
+                data-editor-path-suggestions
+                role="listbox"
+                hidden
+              ></div>
+              <input type="hidden" name="parent_path" value="{{ .EditorParentPath }}" data-editor-parent-path />
+              <div data-editor-path-catalog hidden>
+                {{ range .PagePathOptions }}
+                  <span data-editor-path-option data-slug="{{ .Slug }}" data-label="{{ .Label }}"></span>
+                {{ end }}
+              </div>
+            </div>
             <input
-              name="slug" data-error-label="Path"
+              type="hidden"
+              name="slug"
+              data-error-label="Page location"
+              data-editor-path-segment="{{ .EditorPathSegment }}"
               value="{{ if .Page }}{{ .Page.Slug }}{{ else }}{{ .EditorInitialSlug }}{{ end }}"
-              placeholder="infrastructure/postgres/restore"
-              autocomplete="off"
             />
-            <small>Use slashes to place the page in sidebar folders. The title is used when left empty.</small>
-          </label>
+            <small>Build the location one level at a time. Press Enter to select a match or create a new folder.</small>
+          </div>
           <label>
             Tags
             <span class="tag-editor" data-tag-editor data-tag-source="/api/tags">
@@ -817,6 +846,4 @@
     </div>
   </dialog>
 {{ end }}
-
-
 

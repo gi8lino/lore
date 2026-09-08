@@ -267,9 +267,24 @@ func EditPage(
 		}
 
 		data.KnowledgeSnippets = snippets
+		data.PagePathOptions = pagePathOptions(data.Navigation, "")
 
 		if r.PathValue("slug") == "" {
 			data.EditorInitialSlug = md.Slug(r.URL.Query().Get("slug"))
+			if data.EditorInitialSlug != "" {
+				data.EditorParentPath, data.EditorPathSegment = splitPagePath(data.EditorInitialSlug)
+				if data.EditorParentPath != "" && !hasPagePathOption(data.PagePathOptions, data.EditorParentPath) {
+					data.PagePathOptions = append(data.PagePathOptions, pagePathOption{
+						Slug:  data.EditorParentPath,
+						Label: strings.Join(strings.Split(data.EditorParentPath, "/"), " / "),
+					})
+				}
+			} else {
+				parent := md.Slug(r.URL.Query().Get("parent"))
+				if hasPagePathOption(data.PagePathOptions, parent) {
+					data.EditorParentPath = parent
+				}
+			}
 		}
 
 		if r.PathValue("slug") == "" {
@@ -303,12 +318,23 @@ func EditPage(
 			}
 
 			data.Title, data.Page = "Edit "+page.Title, &page
+			data.EditorInitialSlug = page.Slug
+			data.EditorParentPath, data.EditorPathSegment = splitPagePath(page.Slug)
+			data.PagePathOptions = pagePathOptions(data.Navigation, page.Slug)
 
 			data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 		}
 
 		render(views, w, "edit", data)
 	}
+}
+
+func splitPagePath(slug string) (string, string) {
+	slug = strings.Trim(strings.TrimSpace(slug), "/")
+	if index := strings.LastIndexByte(slug, '/'); index >= 0 {
+		return slug[:index], slug[index+1:]
+	}
+	return "", slug
 }
 
 // SavePageForm creates or updates a wiki page from the browser form.

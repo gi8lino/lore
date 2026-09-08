@@ -28,6 +28,11 @@ function isFormControl(control: unknown): control is FormControl {
 }
 
 function controlFor(form: HTMLFormElement, name: string): FormControl | null {
+  const proxy = [
+    ...form.querySelectorAll<FormControl>("[data-error-field]"),
+  ].find((control) => control.dataset.errorField === name);
+  if (proxy) return proxy;
+
   const control = form.elements.namedItem(name);
   if (isFormControl(control)) return control;
 

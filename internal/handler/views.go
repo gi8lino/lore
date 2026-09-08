@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -250,6 +251,14 @@ type ViewData struct {
 	EditorTemplate *domain.PageTemplate
 	// EditorInitialSlug pre-fills a requested path for a new page.
 	EditorInitialSlug string
+	// EditorParentPath is the selected parent location in the guided page-path picker.
+	EditorParentPath string
+	// EditorPathSegment is the stable final path segment for edits and explicit new-page links.
+	EditorPathSegment string
+	// PagePathOptions contains existing page and folder locations available as parents.
+	PagePathOptions []pagePathOption
+	// NewPageParent is the active page path inherited by contextual new-page actions.
+	NewPageParent string
 	// AdminTags contains tags and page usage counts for administrators.
 	AdminTags []domain.TagInfo
 	// AdminTokens contains all personal access tokens for administrators.
@@ -477,6 +486,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		User:                user,
 		Preferences:         preferences,
 		Navigation:          pageNavigation,
+		NewPageParent:       activeNavigationSlug(r.URL.Path),
 		SidebarPinned:       sidebarPinned,
 		SidebarRecent:       sidebarRecent,
 		SavedSearches:       savedSearches,
@@ -530,10 +540,52 @@ func pagesWithout(pages, excluded []domain.Page, limit int) []domain.Page {
 func activeNavigationSlug(requestPath string) string {
 	for _, prefix := range []string{"/pages/", "/edit/"} {
 		if strings.HasPrefix(requestPath, prefix) {
-			return strings.Trim(strings.TrimPrefix(requestPath, prefix), "/")
+			slug := strings.Trim(strings.TrimPrefix(requestPath, prefix), "/")
+			if slug == "new" {
+				return ""
+			}
+			return slug
 		}
 	}
 	return ""
+}
+
+type pagePathOption struct {
+	Slug  string
+	Label string
+}
+
+func pagePathOptions(tree []navigation.Node, excludedSlug string) []pagePathOption {
+	var options []pagePathOption
+	var appendNodes func([]navigation.Node, []string)
+
+	appendNodes = func(nodes []navigation.Node, ancestors []string) {
+		for _, node := range nodes {
+			if excludedSlug != "" &&
+				(node.Slug == excludedSlug || strings.HasPrefix(node.Slug, excludedSlug+"/")) {
+				continue
+			}
+
+			labels := append(slices.Clone(ancestors), node.Title)
+			options = append(options, pagePathOption{
+				Slug:  node.Slug,
+				Label: strings.Join(labels, " / "),
+			})
+			appendNodes(node.Children, labels)
+		}
+	}
+
+	appendNodes(tree, nil)
+	return options
+}
+
+func hasPagePathOption(options []pagePathOption, slug string) bool {
+	if slug == "" {
+		return true
+	}
+	return slices.ContainsFunc(options, func(option pagePathOption) bool {
+		return option.Slug == slug
+	})
 }
 
 // render executes a page layout into a buffer before writing the HTTP response.

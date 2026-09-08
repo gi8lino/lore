@@ -65,6 +65,13 @@
         </div>
       </div>
     </details>
-    {{ if .CanEdit }}<a class="button primary" href="/pages/new">{{ icon "plus" 16 }}<span>New page</span></a>{{ end }}
+    {{ if .CanEdit }}
+      <a
+        class="button primary"
+        href="/pages/new{{ if .NewPageParent }}?parent={{ .NewPageParent | urlquery }}{{ end }}"
+        aria-label="New page"
+        >{{ icon "plus" 16 }}<span>New page</span></a
+      >
+    {{ end }}
   </header>
 {{ end }}

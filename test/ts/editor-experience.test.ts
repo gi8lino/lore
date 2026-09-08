@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   editorWordStats,
-  resolvedEditorPath,
+  immediateEditorPathOptions,
+  resolvedGuidedEditorPath,
   slugifyEditorPath,
 } from "../../web/src/ts/features/editor/experience.ts";
 import { replaceAllPlainText } from "../../web/src/ts/features/editor/search.ts";
@@ -18,14 +19,42 @@ test("editor path preview follows Lore slug rules", () => {
   assert.equal(slugifyEditorPath("  API & Database  "), "api-database");
 });
 
-test("editor path uses the title when a new page path is empty", () => {
-  assert.equal(resolvedEditorPath("Postgres Restore", ""), "postgres-restore");
+test("guided editor paths combine the selected location and title", () => {
+  assert.equal(
+    resolvedGuidedEditorPath("Postgres Restore", "runbooks/database"),
+    "runbooks/database/postgres-restore",
+  );
+  assert.equal(resolvedGuidedEditorPath("Top Level", ""), "top-level");
 });
 
-test("editor path keeps an explicitly entered path", () => {
+test("guided editor paths keep an existing final segment while moving", () => {
   assert.equal(
-    resolvedEditorPath("Postgres Restore", "operations/database"),
-    "operations/database",
+    resolvedGuidedEditorPath("Renamed title", "runbooks", "database-restore"),
+    "runbooks/database-restore",
+  );
+});
+
+test("guided locations suggest matching children one level at a time", () => {
+  const options = [
+    { slug: "applications", label: "Applications" },
+    { slug: "platforms", label: "Platforms" },
+    { slug: "platforms/containers", label: "Platforms / Containers" },
+    { slug: "platforms/kubernetes", label: "Platforms / Kubernetes" },
+    {
+      slug: "platforms/kubernetes/tools",
+      label: "Platforms / Kubernetes / Tools",
+    },
+  ];
+
+  assert.deepEqual(immediateEditorPathOptions(options, "", "pla"), [
+    { slug: "platforms", label: "Platforms" },
+  ]);
+  assert.deepEqual(immediateEditorPathOptions(options, "platforms", "k"), [
+    { slug: "platforms/kubernetes", label: "Platforms / Kubernetes" },
+  ]);
+  assert.deepEqual(
+    immediateEditorPathOptions(options, "platforms", "tools"),
+    [],
   );
 });
 
