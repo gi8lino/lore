@@ -2,12 +2,12 @@
 
 Every page has one of four lifecycle states:
 
-| Status | Meaning in the interface |
-| --- | --- |
-| `draft` | Persisted documentation that has not been verified yet. |
-| `verified` | Normal active documentation. |
-| `deprecated` | Content retained with an optional replacement target. |
-| `archived` | Content retained for historical context. |
+| Status       | Meaning in the interface                                |
+| ------------ | ------------------------------------------------------- |
+| `draft`      | Persisted documentation that has not been verified yet. |
+| `verified`   | Normal active documentation.                            |
+| `deprecated` | Content retained with an optional replacement target.   |
+| `archived`   | Content retained for historical context.                |
 
 A lifecycle `draft` is a real page and is not the same as a user's private editor draft.
 

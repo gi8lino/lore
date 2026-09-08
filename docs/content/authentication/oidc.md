@@ -43,8 +43,6 @@ Automatically created OIDC accounts do not receive a local password. An administ
 
 Disabling an account in **Administration → Users** revokes its local and OIDC browser sessions and blocks local login, OIDC login, trusted-proxy authentication, and personal API tokens. Re-enabling it does not restore old sessions; the user must authenticate again.
 
-
-
 ## Provider and restart requirements
 
 Register the exact callback URL `<LORE__PUBLIC_URL>/auth/callback` with the provider. The client must support authorization-code login with S256 PKCE and return `preferred_username` in the ID token. Lore requires provider discovery to succeed at startup when OIDC is active, so an unavailable provider can prevent startup even when existing session cookies are valid. Preserve the issuer URL, database, client configuration, and deployment secrets when restarting. Lore sessions do not require an in-memory provider token or a refresh token.

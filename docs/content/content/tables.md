@@ -3,10 +3,10 @@
 Lore renders GitHub-flavored Markdown tables. An optional directive immediately after a table can add theme-aware colors, sorting, and filtering.
 
 ```markdown
-| Service | Status | Owner |
-| --- | --- | --- |
-| API | Healthy | Platform |
-| DB | Warning | Data |
+| Service | Status  | Owner    |
+| ------- | ------- | -------- |
+| API     | Healthy | Platform |
+| DB      | Warning | Data     |
 
 {table header=accent col:2=info row:2=warning cell:2,2=danger sortable filterable}
 ```

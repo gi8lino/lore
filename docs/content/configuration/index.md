@@ -11,5 +11,3 @@ The PDF integration includes a service test that renders a fixed two-page diagno
 - [Runtime configuration](runtime.md)
 - [Authentication](../authentication/index.md)
 - [Themes](../themes.md)
-
-

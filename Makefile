@@ -37,6 +37,9 @@ LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 SITE_CONFIG ?= docs/lore-site.toml
 SITE_PORT ?= 8081
 
+## Formatting
+PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
+
 # Default tag prefix. Override with an empty value for unprefixed tags.
 VERSION_PREFIX ?= v
 
@@ -161,7 +164,7 @@ clean: ## Clean up generated application files.
 ##@ Formatting
 
 .PHONY: fmt
-fmt: fmt-web fmt-go ## Format all supported files.
+fmt: fmt-web fmt-go fmt-md ## Format all supported files.
 
 .PHONY: fmt-web
 fmt-web: $(NODE_MODULES) ## Format CSS and TypeScript source files.
@@ -170,6 +173,9 @@ fmt-web: $(NODE_MODULES) ## Format CSS and TypeScript source files.
 .PHONY: fmt-go
 fmt-go: generate web ## Format Go code.
 	go fmt ./...
+
+fmt-md: ## Format Markdown files with Prettier.
+	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write README.md "docs/**/*.md"
 
 .PHONY: lint
 lint: typecheck check-web lint-go ## Run all linters and formatting checks.
