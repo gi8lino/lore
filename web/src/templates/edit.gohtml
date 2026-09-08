@@ -4,6 +4,8 @@
     action="/pages"
     method="post"
     data-editor-form
+    data-validate-form
+    data-error-title="Could not save page"
     data-preview-url="/api/preview"
     data-draft-key="{{ if .Page }}page:{{ .Page.ID }}{{ else }}new{{ end }}"
     data-draft-url="/api/drafts/{{ if .Page }}page:{{ .Page.ID }}{{ else }}new{{ end }}"
@@ -163,7 +165,7 @@
           <label>
             Page path <span class="optional">optional</span>
             <input
-              name="slug"
+              name="slug" data-error-label="Path"
               value="{{ if .Page }}
                 {{ .Page.Slug }}
               {{ else }}
@@ -809,4 +811,5 @@
     </div>
   </dialog>
 {{ end }}
+
 

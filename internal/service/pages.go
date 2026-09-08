@@ -140,6 +140,13 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 
 	if input.Slug == "" {
 		validation.Fields = append(validation.Fields, FieldError{Field: "slug", Message: "A page path is required."})
+	} else if strings.HasPrefix(input.Slug, "/") ||
+		strings.HasSuffix(input.Slug, "/") ||
+		strings.Contains(input.Slug, "//") {
+		validation.Fields = append(validation.Fields, FieldError{
+			Field:   "slug",
+			Message: "Use a page path without leading, trailing, or repeated slashes.",
+		})
 	}
 	if input.Title == "" {
 		validation.Fields = append(validation.Fields, FieldError{Field: "title", Message: "Title is required."})

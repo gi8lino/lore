@@ -16,6 +16,25 @@
     </div>
   </dialog>
 
+  <dialog class="app-dialog problem-dialog" data-problem-dialog aria-labelledby="problem-dialog-title">
+    <div class="app-dialog-header">
+      <div>
+        <p class="eyebrow problem-dialog-eyebrow">{{ icon "triangle-alert" 14 }} Error</p>
+        <h2 id="problem-dialog-title" data-problem-dialog-title>Something went wrong</h2>
+      </div>
+      <button class="icon-button app-dialog-close" type="button" data-problem-dialog-close aria-label="Close">
+        {{ icon "x" 20 }}
+      </button>
+    </div>
+    <div class="app-dialog-body problem-dialog-body">
+      <p data-problem-dialog-message></p>
+      <dl class="problem-dialog-details" data-problem-dialog-details hidden></dl>
+    </div>
+    <div class="app-dialog-actions">
+      <button class="button primary" type="button" data-problem-dialog-close>Close</button>
+    </div>
+  </dialog>
+
   <dialog class="app-dialog" data-notice-dialog aria-labelledby="notice-dialog-title">
     <div class="app-dialog-header">
       <div>
@@ -125,3 +144,4 @@
     </div>
   </dialog>
 {{ end }}
+

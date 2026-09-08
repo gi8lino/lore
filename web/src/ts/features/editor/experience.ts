@@ -685,15 +685,21 @@ function setupEditorExperience(form: HTMLFormElement): void {
     window.location.assign(url);
   }
 
-  form.addEventListener("input", updateDirty);
-  form.addEventListener("change", updateDirty);
-  form.addEventListener("submit", () => {
+  function markSubmitted(): void {
     submitting = true;
     dirty = false;
     void clearDraft(false);
     initial = formSnapshot(form);
     renderDirty();
+  }
+
+  form.addEventListener("input", updateDirty);
+  form.addEventListener("change", updateDirty);
+  form.addEventListener("submit", (event) => {
+    if (event.defaultPrevented) return;
+    markSubmitted();
   });
+  form.addEventListener("lore:form-submit-success", markSubmitted);
 
   discardButton?.addEventListener("click", async () => {
     if (dirty && !(await confirmDiscardChanges())) return;

@@ -95,6 +95,37 @@ func TestSaveSlugResolution(t *testing.T) {
 		assert.Equal(t, "custom/path", repository.slug)
 	})
 
+	t.Run("rejects a path made only of slashes", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+			Slug:   "/////",
+			Title:  "Invalid path",
+			Status: "verified",
+		})
+		validation, ok := errors.AsType[*ValidationError](err)
+
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "slug", validation.Fields[0].Field)
+		assert.Equal(t, "Use a page path without leading, trailing, or repeated slashes.", validation.Fields[0].Message)
+	})
+
+	t.Run("rejects repeated slashes inside a path", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+			Slug:   "platform//database",
+			Title:  "Invalid path",
+			Status: "verified",
+		})
+		validation, ok := errors.AsType[*ValidationError](err)
+
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "slug", validation.Fields[0].Field)
+	})
+
 	t.Run("requires an explicit path when editing an existing page", func(t *testing.T) {
 		t.Parallel()
 

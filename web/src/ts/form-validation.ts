@@ -1,5 +1,10 @@
 // Reusable client-side validation for server-backed Lore forms.
 
+import {
+  problemFieldLabel,
+  showProblemDialog,
+  type ProblemDialogDetail,
+} from "./core/dialogs.ts";
 import { parseProblemPayload, type ProblemPayload } from "./core/http.ts";
 import { localPasswordProblem } from "./core/password.ts";
 
@@ -184,14 +189,40 @@ function showFormMessage(form: HTMLFormElement, message: string): void {
   form.prepend(error);
 }
 
+function controlLabel(control: FormControl, name: string): string {
+  const explicit = control.dataset.errorLabel?.trim();
+  if (explicit) return explicit;
+
+  const labelled = control.labels?.item(0);
+  if (labelled) {
+    const clone = labelled.cloneNode(true) as HTMLElement;
+    clone
+      .querySelectorAll("small, .hint, .field-validation-error")
+      .forEach((node) => node.remove());
+    const text = clone.textContent?.replace(/\s+/g, " ").trim();
+    if (text) return text;
+  }
+
+  return problemFieldLabel(name);
+}
+
 function showServerProblems(
   form: HTMLFormElement,
   problem: ProblemPayload,
-): boolean {
+): { firstInvalid: FormControl | null; details: ProblemDialogDetail[] } {
   let firstInvalid: FormControl | null = null;
+  const details: ProblemDialogDetail[] = [];
 
   for (const [name, message] of Object.entries(problem.problems || {})) {
+    if (!message.trim()) continue;
+
     const control = controlFor(form, name);
+    details.push({
+      field: name,
+      label: control ? controlLabel(control, name) : problemFieldLabel(name),
+      message,
+    });
+
     if (!control) continue;
 
     clearFieldError(control);
@@ -199,12 +230,7 @@ function showServerProblems(
     firstInvalid ||= control;
   }
 
-  if (firstInvalid) {
-    firstInvalid.focus();
-    return true;
-  }
-
-  return false;
+  return { firstInvalid, details };
 }
 
 function formBody(form: HTMLFormElement): URLSearchParams {
@@ -234,38 +260,54 @@ async function submitForm(form: HTMLFormElement): Promise<void> {
       body: formBody(form),
       credentials: "same-origin",
       headers: { Accept: "application/json" },
+      redirect: "manual",
     });
 
-    if (response.redirected) {
-      window.location.assign(response.url);
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("Location");
+
+      if (!location)
+        throw new Error("Redirect response did not include a location.");
+
+      form.dispatchEvent(new CustomEvent("lore:form-submit-success"));
+      window.location.assign(new URL(location, response.url).href);
       return;
     }
 
     if (response.ok) {
+      form.dispatchEvent(new CustomEvent("lore:form-submit-success"));
       window.location.reload();
       return;
     }
 
     const contentType = response.headers.get("Content-Type") || "";
-    if (!contentType.includes("application/json")) {
-      showFormMessage(form, "The form could not be submitted.");
-      return;
-    }
+    const problem = contentType.includes("application/json")
+      ? parseProblemPayload(await response.json())
+      : { error: "The form could not be submitted." };
+    const { firstInvalid, details } = showServerProblems(form, problem);
+    const shown = await showProblemDialog(problem, {
+      title: form.dataset.errorTitle || "Could not submit form",
+      details,
+    });
 
-    const payload: unknown = await response.json();
-    const problem = parseProblemPayload(payload);
-
-    if (!showServerProblems(form, problem)) {
+    if (!shown && !firstInvalid) {
       showFormMessage(
         form,
         problem.error || "The form could not be submitted.",
       );
     }
+
+    firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
+    firstInvalid?.focus({ preventScroll: true });
   } catch {
-    showFormMessage(
-      form,
-      "The form could not be submitted. Check your connection and try again.",
-    );
+    const problem = {
+      error:
+        "The form could not be submitted. Check your connection and try again.",
+    };
+    const shown = await showProblemDialog(problem, {
+      title: form.dataset.errorTitle || "Could not submit form",
+    });
+    if (!shown) showFormMessage(form, problem.error);
   } finally {
     submitters.forEach((button) => (button.disabled = false));
   }
