@@ -24,7 +24,7 @@ All authored frontend code is TypeScript under `web/src/ts`; frontend tests are 
 
 The production deployment does not need Node.js. Node/npm/TypeScript exist only while building assets.
 
-`make screenshots` starts a disposable PostgreSQL container, imports `docs/content` into a temporary Lore instance, and regenerates the images under `docs/content/assets/screenshots`. It uses Playwright with the locally installed Chrome channel and requires Docker, Chrome, `curl`, and `zip`. Set `SCREENSHOT_BROWSER_CHANNEL` to another Playwright Chromium channel when needed.
+`make screenshots` starts a disposable PostgreSQL container, imports `docs/content` into a temporary Lore instance, and regenerates the images under `docs/assets/screenshots`. It uses Playwright with the locally installed Chrome channel and requires Docker, Chrome, `curl`, and `zip`. Set `SCREENSHOT_BROWSER_CHANNEL` to another Playwright Chromium channel when needed.
 
 CSS remains framework-free and is split by responsibility under `web/src/css`. `scripts/web/build-css.sh` bundles the CSS entrypoint.
 

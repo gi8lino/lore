@@ -15,11 +15,11 @@ The same binary can also publish Markdown as a read-only static documentation si
 
 ### Documentation dashboard
 
-![Lore dashboard populated with the project documentation](docs/content/assets/screenshots/dashboard.png)
+![Lore dashboard populated with the project documentation](docs/assets/screenshots/dashboard.png)
 
 ### Markdown editor
 
-![Lore Markdown editor showing documentation in split view](docs/content/assets/screenshots/editor.png)
+![Lore Markdown editor showing documentation in split view](docs/assets/screenshots/editor.png)
 
 ## Quick start
 

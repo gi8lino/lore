@@ -5,3 +5,5 @@ output_dir = "docs/site"
 theme = "Light"
 language = "en"
 mermaid = true
+
+assets_dir = "assets"

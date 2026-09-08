@@ -53,6 +53,6 @@ done
 
 SCREENSHOT_BASE_URL="$base_url" \
 SCREENSHOT_ARCHIVE="$archive" \
-SCREENSHOT_OUTPUT="$repository/docs/content/assets/screenshots" \
+SCREENSHOT_OUTPUT="$repository/docs/assets/screenshots" \
 SCREENSHOT_BROWSER_CHANNEL="${SCREENSHOT_BROWSER_CHANNEL:-chrome}" \
   node "$repository/scripts/screenshots/capture.mjs"
