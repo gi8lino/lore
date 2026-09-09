@@ -349,13 +349,15 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 
 // markdownTitle returns the first level-one heading in a Markdown document.
 func markdownTitle(markdown string) (title string, err error) {
-	for _, line := range strings.Split(markdown, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "# ") {
-			heading := strings.TrimSpace(strings.TrimPrefix(line, "# "))
-			if heading != "" {
-				return heading, nil
-			}
+	for line := range strings.SplitSeq(markdown, "\n") {
+		heading, ok := strings.CutPrefix(strings.TrimSpace(line), "# ")
+		if !ok {
+			continue
+		}
+
+		heading = strings.TrimSpace(heading)
+		if heading != "" {
+			return heading, nil
 		}
 	}
 	return "", fmt.Errorf("document requires a level-one Markdown heading for its title")

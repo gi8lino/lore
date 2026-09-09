@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cmp"
 	"errors"
 	"net/http"
 	"strings"
@@ -57,12 +58,7 @@ func LocalLogin(
 			_, token, err := browserAuth.Local.SignIn(r.Context(), r.FormValue("username"), r.FormValue("password"))
 			if err == nil {
 				browserAuth.Local.WriteSessionCookie(w, token)
-
-				if next == "" {
-					next = "/"
-				}
-
-				http.Redirect(w, r, next, http.StatusSeeOther)
+				http.Redirect(w, r, cmp.Or(next, "/"), http.StatusSeeOther)
 				return
 			}
 			writeLocalLoginProblem(views, w, err, next)

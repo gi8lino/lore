@@ -79,10 +79,7 @@ func staticBasePath(siteURL string) (string, error) {
 		return "", fmt.Errorf("parse site_url: %w", err)
 	}
 
-	base := parsed.Path
-	if base == "" {
-		base = "/"
-	}
+	base := cmp.Or(parsed.Path, "/")
 	if !strings.HasPrefix(base, "/") {
 		base = "/" + base
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -169,9 +170,7 @@ func expandKnowledgeMacro(
 			return "", err
 		}
 		nextSeen := make(map[string]bool, len(seen)+1)
-		for key, value := range seen {
-			nextSeen[key] = value
-		}
+		maps.Copy(nextSeen, seen)
 		nextSeen[slug] = true
 		expanded, err := expandKnowledgeMarkdown(ctx, content, page.Markdown, nextSeen, depth+1)
 		if err != nil {

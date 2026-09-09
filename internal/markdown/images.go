@@ -54,30 +54,33 @@ func (imageWidthTransformer) Transform(document *ast.Document, reader text.Reade
 // Invalid directives remain visible text instead of silently discarding input.
 func parseImageWidthDirective(value []byte) (width string, consumed int) {
 	const prefix = "{width="
-	if !bytes.HasPrefix(value, []byte(prefix)) {
+	value, ok := bytes.CutPrefix(value, []byte(prefix))
+	if !ok {
 		return "", 0
 	}
-	end := bytes.IndexByte(value[len(prefix):], '}')
+
+	end := bytes.IndexByte(value, '}')
 	if end < 0 {
 		return "", 0
 	}
-	end += len(prefix)
-	width = normalizeImageWidth(string(value[len(prefix):end]))
+
+	width = normalizeImageWidth(string(value[:end]))
 	if width == "" {
 		return "", 0
 	}
-	return width, end + 1
+
+	return width, len(prefix) + end + 1
 }
 
 // normalizeImageWidth returns a bounded CSS width, using pixels for bare numbers.
 // Only whole positive numbers are accepted; arbitrary CSS is never passed through.
 func normalizeImageWidth(value string) string {
 	unit, maximum := "px", maxImageWidthPixels
-	if strings.HasSuffix(value, "%") {
+	if number, ok := strings.CutSuffix(value, "%"); ok {
 		unit, maximum = "%", 100
-		value = strings.TrimSuffix(value, "%")
+		value = number
 	} else {
-		value = strings.TrimSuffix(value, "px")
+		value, _ = strings.CutSuffix(value, "px")
 	}
 	if value == "" {
 		return ""

@@ -266,7 +266,7 @@ func TestRenderBoundsUnknownLengthResponse(t *testing.T) {
 
 		chunk := strings.Repeat("x", 1<<20)
 
-		for i := 0; i < 65; i++ {
+		for range 65 {
 			if _, err := io.WriteString(w, chunk); err != nil {
 				return
 			}

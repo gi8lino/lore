@@ -93,13 +93,9 @@ func compareSourcePages(left, right sourcePage) int {
 
 // hasHomePage reports whether the discovered pages contain the root route.
 func hasHomePage(pages []sourcePage) bool {
-	for _, page := range pages {
-		if page.Route == "" {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(pages, func(page sourcePage) bool {
+		return page.Route == ""
+	})
 }
 
 // indexPages builds source-route and wiki-link lookup indexes.
@@ -137,10 +133,8 @@ func markdownFileRoute(filename string) string {
 
 // markdownTitle extracts the first level-one heading or derives a title from the route.
 func markdownTitle(source, route string) (title string, hasTitle bool) {
-	lines := strings.Split(strings.TrimPrefix(source, "\ufeff"), "\n")
 	fence := ""
-
-	for _, line := range lines {
+	for line := range strings.SplitSeq(strings.TrimPrefix(source, "\ufeff"), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
 			marker := trimmed[:3]
@@ -152,10 +146,10 @@ func markdownTitle(source, route string) (title string, hasTitle bool) {
 			continue
 		}
 
-		if fence == "" && strings.HasPrefix(trimmed, "# ") {
-			title := strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
-			if title != "" {
-				return title, true
+		if fence == "" {
+			title, ok := strings.CutPrefix(trimmed, "# ")
+			if ok && strings.TrimSpace(title) != "" {
+				return strings.TrimSpace(title), true
 			}
 		}
 	}
@@ -254,7 +248,7 @@ func processRenderedHTML(
 func removeFirstHeading(nodes []*xhtml.Node) []*xhtml.Node {
 	for index, node := range nodes {
 		if node.Type == xhtml.ElementNode && node.Data == "h1" {
-			return append(nodes[:index], nodes[index+1:]...)
+			return slices.Delete(nodes, index, index+1)
 		}
 	}
 

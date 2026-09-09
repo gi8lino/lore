@@ -96,11 +96,12 @@ func validPageDraftKey(key string, pageID int64, requireMatch bool) bool {
 	}
 
 	const prefix = "page:"
-	if !strings.HasPrefix(key, prefix) {
+	idText, ok := strings.CutPrefix(key, prefix)
+	if !ok {
 		return false
 	}
 
-	id, err := strconv.ParseInt(strings.TrimPrefix(key, prefix), 10, 64)
+	id, err := strconv.ParseInt(idText, 10, 64)
 	if err != nil || id <= 0 {
 		return false
 	}

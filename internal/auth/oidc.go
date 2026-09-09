@@ -409,13 +409,9 @@ func containsGroup(groups []string, expected string) bool {
 		return false
 	}
 
-	for _, group := range groups {
-		if strings.TrimSpace(group) == expected {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(groups, func(group string) bool {
+		return strings.TrimSpace(group) == expected
+	})
 }
 
 // oidcGroups extracts a configurable top-level string or string-array group claim.

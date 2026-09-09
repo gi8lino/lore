@@ -540,13 +540,16 @@ func pagesWithout(pages, excluded []domain.Page, limit int) []domain.Page {
 // activeNavigationSlug extracts the current page slug from browser page and editor routes.
 func activeNavigationSlug(requestPath string) string {
 	for _, prefix := range []string{"/pages/", "/edit/"} {
-		if strings.HasPrefix(requestPath, prefix) {
-			slug := strings.Trim(strings.TrimPrefix(requestPath, prefix), "/")
-			if slug == "new" {
-				return ""
-			}
-			return slug
+		slug, ok := strings.CutPrefix(requestPath, prefix)
+		if !ok {
+			continue
 		}
+
+		slug = strings.Trim(slug, "/")
+		if slug == "new" {
+			return ""
+		}
+		return slug
 	}
 	return ""
 }

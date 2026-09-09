@@ -36,9 +36,7 @@ func (s *Notifications) Notifications(
 	if limit <= 0 {
 		limit = defaultNotificationListSize
 	}
-	if limit > maxNotificationListSize {
-		limit = maxNotificationListSize
-	}
+	limit = min(limit, maxNotificationListSize)
 
 	return s.repository.Notifications(ctx, userID, limit)
 }

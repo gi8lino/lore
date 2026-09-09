@@ -22,11 +22,15 @@ func Parse(line string) (Options, bool) {
 	if value == "{{subpages}}" {
 		return Options{Title: defaultTitle, ShowTitle: true}, true
 	}
-	if !strings.HasPrefix(value, "{{subpages ") || !strings.HasSuffix(value, "}}") {
+	argument, ok := strings.CutPrefix(value, "{{subpages ")
+	if !ok {
 		return Options{}, false
 	}
-
-	argument := strings.TrimSpace(value[len("{{subpages ") : len(value)-2])
+	argument, ok = strings.CutSuffix(argument, "}}")
+	if !ok {
+		return Options{}, false
+	}
+	argument = strings.TrimSpace(argument)
 	name, encodedTitle, ok := strings.Cut(argument, "=")
 	if !ok || strings.TrimSpace(name) != "title" {
 		return Options{}, false

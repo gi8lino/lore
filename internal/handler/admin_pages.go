@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -97,17 +98,17 @@ func BulkAdminPages(
 
 // uniqueNonEmpty trims, deduplicates, and removes empty strings while preserving order.
 func uniqueNonEmpty(values []string) []string {
-	seen := map[string]bool{}
-	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
 
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" || seen[value] {
-			continue
+	return slices.DeleteFunc(values, func(value string) bool {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return true // delete empty strings
 		}
-		seen[value] = true
-		result = append(result, value)
-	}
-
-	return result
+		if _, exists := seen[trimmed]; exists {
+			return true // delete duplicates
+		}
+		seen[trimmed] = struct{}{}
+		return false // keep non-empty strings
+	})
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -163,8 +164,8 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
-		if strings.HasSuffix(slug, "/raw") {
-			page, err := catalogUseCases.GetPage(r.Context(), strings.TrimSuffix(slug, "/raw"))
+		if rawSlug, ok := strings.CutSuffix(slug, "/raw"); ok {
+			page, err := catalogUseCases.GetPage(r.Context(), rawSlug)
 			if err != nil {
 				writePageProblem(logger, w, err)
 				return
@@ -212,11 +213,7 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 			return
 		}
 
-		slug := r.PathValue("slug")
-
-		if slug == "" {
-			slug = request.Slug
-		}
+		slug := cmp.Or(r.PathValue("slug"), request.Slug)
 
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
 			PreviousSlug:       r.PathValue("slug"),

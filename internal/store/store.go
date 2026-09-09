@@ -762,9 +762,8 @@ ORDER BY f.created_at DESC`,
 // Backlinks returns pages that reference the supplied page slug.
 func (s *Store) Backlinks(ctx context.Context, slug string) ([]domain.Page, error) {
 	base := slug
-
-	if index := strings.LastIndex(slug, "/"); index >= 0 {
-		base = slug[index+1:]
+	if _, segment, ok := strings.CutLast(slug, "/"); ok {
+		base = segment
 	}
 
 	rows, err := s.pool.Query(

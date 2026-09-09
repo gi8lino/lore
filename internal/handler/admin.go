@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -180,12 +181,9 @@ func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
 
 // isRenderingLanguage reports whether a configured content language is exposed by the admin UI.
 func isRenderingLanguage(value string) bool {
-	for _, option := range renderingLanguageOptions {
-		if option.Code == value {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(renderingLanguageOptions, func(option renderingLanguageOption) bool {
+		return option.Code == value
+	})
 }
 
 // AdminDocumentationHealth renders actionable wiki documentation-quality findings.
@@ -785,7 +783,7 @@ func splitHeaderNames(value string) []string {
 	seen := map[string]bool{}
 	headers := make([]string, 0)
 
-	for _, value := range strings.FieldsFunc(value, func(r rune) bool { return r == ',' || r == '\n' }) {
+	for value := range strings.FieldsFuncSeq(value, func(r rune) bool { return r == ',' || r == '\n' }) {
 		header := strings.TrimSpace(value)
 		key := strings.ToLower(header)
 		if header == "" || seen[key] {
@@ -1185,22 +1183,16 @@ func administrationData(
 
 // hasGroup reports whether a group name appears in a user's group list.
 func hasGroup(groups []string, name string) bool {
-	for _, group := range groups {
-		if strings.EqualFold(group, name) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(groups, func(group string) bool {
+		return strings.EqualFold(group, name)
+	})
 }
 
 // hasGroupID reports whether a group identifier appears in a page group list.
 func hasGroupID(groups []domain.Group, id int64) bool {
-	for _, group := range groups {
-		if group.ID == id {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(groups, func(group domain.Group) bool {
+		return group.ID == id
+	})
 }
 
 // writeAdminProblem translates expected administration errors into HTTP problems.

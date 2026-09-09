@@ -142,7 +142,7 @@ func TestVariableOverrideLimits(t *testing.T) {
 	t.Run("rejects too many variables", func(t *testing.T) {
 		t.Parallel()
 		values := map[string]string{}
-		for index := 0; index <= maxExportVariables; index++ {
+		for index := range maxExportVariables + 1 {
 			values[fmt.Sprint(index)] = "x"
 		}
 		assert.ErrorContains(t, validateVariableOverrides(values), "128 variables")
@@ -150,7 +150,7 @@ func TestVariableOverrideLimits(t *testing.T) {
 	t.Run("rejects an oversized total", func(t *testing.T) {
 		t.Parallel()
 		values := map[string]string{}
-		for index := 0; index < 9; index++ {
+		for index := range 9 {
 			values[fmt.Sprint(index)] = strings.Repeat("x", maxExportVariableBytes)
 		}
 		assert.ErrorContains(t, validateVariableOverrides(values), "64 KiB")

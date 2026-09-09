@@ -3,6 +3,7 @@ package markdown
 import (
 	"bytes"
 	stdhtml "html"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -545,11 +546,12 @@ func parseTabTitle(line string) (title string, ok bool) {
 	}
 
 	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "===") {
+	title, ok = strings.CutPrefix(trimmed, "===")
+	if !ok {
 		return "", false
 	}
 
-	return parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, "===")))
+	return parseQuotedTitle(strings.TrimSpace(title))
 }
 
 // parseDetailsTitle parses ??? and ???+ collapsible block declarations.
@@ -559,17 +561,16 @@ func parseDetailsTitle(line string) (title string, open bool, ok bool) {
 	}
 
 	trimmed := strings.TrimSpace(line)
-	open = strings.HasPrefix(trimmed, "???+")
-	prefix := "???"
-
-	if open {
-		prefix = "???+"
-	} else if !strings.HasPrefix(trimmed, prefix) {
-		return "", false, false
+	remaining, open := strings.CutPrefix(trimmed, "???+")
+	if !open {
+		var found bool
+		remaining, found = strings.CutPrefix(trimmed, "???")
+		if !found {
+			return "", false, false
+		}
 	}
 
-	title, ok = parseQuotedTitle(strings.TrimSpace(strings.TrimPrefix(trimmed, prefix)))
-
+	title, ok = parseQuotedTitle(strings.TrimSpace(remaining))
 	return title, open, ok
 }
 
@@ -615,11 +616,11 @@ func indentedBody(lines []string, start int) (body []string, next int) {
 
 // stripBlockIndent removes one tab or four spaces from a custom block body line.
 func stripBlockIndent(line string) (content string, ok bool) {
-	if strings.HasPrefix(line, "\t") {
-		return strings.TrimPrefix(line, "\t"), true
+	if content, ok := strings.CutPrefix(line, "\t"); ok {
+		return content, true
 	}
-	if strings.HasPrefix(line, "    ") {
-		return strings.TrimPrefix(line, "    "), true
+	if content, ok := strings.CutPrefix(line, "    "); ok {
+		return content, true
 	}
 
 	return "", false
@@ -654,10 +655,8 @@ func appendFencedBlock(lines []string, start int, marker string, out *[]string) 
 
 // walkWikiLinks visits wiki links outside fenced code blocks in source order.
 func walkWikiLinks(source string, visit func(target, label string)) {
-	lines := strings.Split(source, "\n")
 	fence := ""
-
-	for _, line := range lines {
+	for line := range strings.SplitSeq(source, "\n") {
 		marker := fenceDelimiter(line)
 		if fence != "" {
 			if marker == fence {
@@ -864,17 +863,22 @@ func previousTableLine(lines []string, index int) bool {
 
 // parseTableDirective parses trusted table colors and optional browser interactions.
 func parseTableDirective(line string) (style tableStyle, ok bool) {
-	if !strings.HasPrefix(line, "{table ") || !strings.HasSuffix(line, "}") {
+	body, ok := strings.CutPrefix(line, "{table ")
+	if !ok {
+		return tableStyle{}, false
+	}
+	body, ok = strings.CutSuffix(body, "}")
+	if !ok {
 		return tableStyle{}, false
 	}
 
 	directive := tableStyle{rows: map[int]string{}, columns: map[int]string{}, cells: map[[2]int]string{}}
-	body := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(line, "{table"), "}"))
+	body = strings.TrimSpace(body)
 	if body == "" {
 		return tableStyle{}, false
 	}
 
-	for _, token := range strings.Fields(body) {
+	for token := range strings.FieldsSeq(body) {
 		switch token {
 		case "sortable":
 			directive.sortable = true
@@ -1145,15 +1149,11 @@ func hasAncestorSection(node *xhtml.Node, section string) bool {
 // addHTMLClass adds a class to one rendered HTML element when it is not already present.
 func addHTMLClass(node *xhtml.Node, className string) {
 	classes := strings.Fields(htmlAttribute(node, "class"))
-
-	for _, existing := range classes {
-		if existing == className {
-			return
-		}
+	if slices.Contains(classes, className) {
+		return
 	}
 
 	classes = append(classes, className)
-
 	setHTMLAttribute(node, "class", strings.Join(classes, " "))
 }
 
@@ -1161,17 +1161,12 @@ func addHTMLClass(node *xhtml.Node, className string) {
 func setTableTone(node *xhtml.Node, tone string) {
 	const prefix = "table-tone-"
 	classes := strings.Fields(htmlAttribute(node, "class"))
-	kept := classes[:0]
+	classes = slices.DeleteFunc(classes, func(className string) bool {
+		return strings.HasPrefix(className, prefix)
+	})
+	classes = append(classes, prefix+tone)
 
-	for _, className := range classes {
-		if !strings.HasPrefix(className, prefix) {
-			kept = append(kept, className)
-		}
-	}
-
-	kept = append(kept, prefix+tone)
-
-	setHTMLAttribute(node, "class", strings.Join(kept, " "))
+	setHTMLAttribute(node, "class", strings.Join(classes, " "))
 }
 
 // setHTMLAttribute sets or appends one HTML node attribute.

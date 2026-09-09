@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -328,8 +329,8 @@ func EditPage(
 // splitPagePath separates a page slug into its parent path and final segment.
 func splitPagePath(slug string) (string, string) {
 	slug = strings.Trim(strings.TrimSpace(slug), "/")
-	if index := strings.LastIndexByte(slug, '/'); index >= 0 {
-		return slug[:index], slug[index+1:]
+	if parent, segment, ok := strings.CutLast(slug, "/"); ok {
+		return parent, segment
 	}
 	return "", slug
 }
@@ -416,12 +417,11 @@ func DeletePageForm(pageUseCases pageWriterService, views *Views) http.HandlerFu
 func FavoritePage(catalogUseCases favoriteService, views *Views) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		value := r.PathValue("slug")
-		if !strings.HasSuffix(value, "/favorite") {
+		slug, ok := strings.CutSuffix(value, "/favorite")
+		if !ok {
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
-
-		slug := strings.TrimSuffix(value, "/favorite")
 		user, _ := auth.User(r)
 		if err := catalogUseCases.SetFavorite(r.Context(), slug, user.ID, r.FormValue("on") != "false"); err != nil {
 			writePageProblem(views.logger, w, err)
@@ -528,15 +528,9 @@ func pagePropertiesFromForm(r *http.Request) map[string]string {
 
 // withoutSlug returns pages excluding the supplied slug.
 func withoutSlug(pages []domain.Page, slug string) []domain.Page {
-	result := pages[:0]
-
-	for _, page := range pages {
-		if page.Slug != slug {
-			result = append(result, page)
-		}
-	}
-
-	return result
+	return slices.DeleteFunc(pages, func(page domain.Page) bool {
+		return page.Slug == slug
+	})
 }
 
 // writePageProblem translates page-domain errors into HTTP problems.

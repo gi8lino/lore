@@ -19,9 +19,7 @@ func Assets(appFS fs.FS) http.Handler {
 		}
 
 		request := r.Clone(r.Context())
-		url := *r.URL
-		url.Path = "/" + path
-		request.URL = &url
+		request.URL.Path = "/" + path
 
 		files.ServeHTTP(w, request)
 	})

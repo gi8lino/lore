@@ -60,9 +60,7 @@ func SearchPage(query string, offset, limit int) (options []Option, hasMore bool
 		return nil, false
 	}
 
-	if offset < 0 {
-		offset = 0
-	}
+	offset = max(offset, 0)
 
 	query = strings.ToLower(strings.TrimSpace(query))
 	options = make([]Option, 0, min(limit+1, len(navigationOptions)))

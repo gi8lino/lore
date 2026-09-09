@@ -71,10 +71,8 @@ func (a *TrustedProxy) Authenticate(r *http.Request) (domain.User, error) {
 
 // splitHeaderValues normalizes a comma-separated trusted group header.
 func splitHeaderValues(value string) []string {
-	parts := strings.Split(value, ",")
-	groups := make([]string, 0, len(parts))
-
-	for _, part := range parts {
+	groups := make([]string, 0)
+	for part := range strings.SplitSeq(value, ",") {
 		if group := strings.TrimSpace(part); group != "" {
 			groups = append(groups, group)
 		}

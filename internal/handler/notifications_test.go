@@ -16,7 +16,6 @@ import (
 )
 
 type notificationServiceStub struct {
-	notificationService
 	list    func(context.Context, int64, int) ([]domain.Notification, int, error)
 	open    func(context.Context, int64, int64) (string, error)
 	mark    func(context.Context, int64, int64) error

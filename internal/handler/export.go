@@ -452,10 +452,11 @@ func nextMediaReference(source string) (reference mediaReference, found bool) {
 
 // mediaImageID validates a local stored-image path and extracts its numeric ID.
 func mediaImageID(value string) (imageID int64, ok bool) {
-	if !strings.HasPrefix(value, "/media/") {
+	value, ok = strings.CutPrefix(value, "/media/")
+	if !ok {
 		return 0, false
 	}
-	rawID, filename, ok := strings.Cut(strings.TrimPrefix(value, "/media/"), "/")
+	rawID, filename, ok := strings.Cut(value, "/")
 	if !ok {
 		return 0, false
 	}

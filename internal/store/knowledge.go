@@ -513,8 +513,7 @@ SELECT EXISTS(SELECT 1 FROM pages WHERE slug=$1 AND id<>ALL($2::bigint[])) OR EX
 	}
 
 	// Update deepest paths first so unique path constraints never collide with descendants.
-	for index := len(moved) - 1; index >= 0; index-- {
-		item := moved[index]
+	for _, item := range slices.Backward(moved) {
 		if _, err := tx.Exec(ctx, `
 UPDATE pages
 SET slug=$2,updated_by=$3,updated_at=now()

@@ -10,7 +10,6 @@ import (
 )
 
 type notificationRepositoryStub struct {
-	notificationRepository
 	limit       int
 	markedID    int64
 	markedAllID int64
