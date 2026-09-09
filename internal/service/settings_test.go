@@ -64,6 +64,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		settings := NewSettings(repository, nil)
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			Rendering: domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
 			ExternalLinks: []domain.ExternalLink{{
 				Label:       " Repository ",
 				URL:         " https://github.com/gi8lino/lore ",
@@ -87,6 +88,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			Rendering:     domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
 			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "javascript:alert(1)"}},
 		}, 7)
 
@@ -102,6 +104,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			Rendering:     domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
 			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}},
 		}, 7)
 
@@ -109,6 +112,20 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "Choose external link icons from the available icon catalog.", validation.UserMessage())
 	})
+}
+
+func TestSaveApplicationSettingsValidatesTypographySize(t *testing.T) {
+	t.Parallel()
+
+	settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
+	err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+		Rendering: domain.RenderingSettings{DefaultTypographySize: "huge"},
+	}, 7)
+
+	validation, ok := errors.AsType[*domain.ValidationError](err)
+	require.True(t, ok)
+	assert.Equal(t, "default_typography_size", validation.Fields[0].Field)
+	assert.Equal(t, "Choose a valid default typography size.", validation.UserMessage())
 }
 
 func TestPDFHeadersMaskSensitiveValues(t *testing.T) {

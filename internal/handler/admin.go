@@ -897,6 +897,9 @@ func applicationSettingsFromForm(r *http.Request) domain.ApplicationSettings {
 		AllowUserRegistration: r.FormValue("allow_user_registration") == "on",
 		DiscussionsEnabled:    r.FormValue("discussions_enabled") == "on",
 		ExternalLinks:         externalLinksFromForm(r),
+		Rendering: domain.RenderingSettings{
+			DefaultTypographySize: strings.TrimSpace(r.FormValue("default_typography_size")),
+		},
 	}
 }
 

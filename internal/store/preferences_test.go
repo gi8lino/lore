@@ -15,6 +15,7 @@ func TestDefaultUserPreferences(t *testing.T) {
 	assert.True(t, preferences.ShowPageContents)
 	assert.Equal(t, domain.NavigationStyleSidebar, preferences.NavigationStyle)
 	assert.Equal(t, domain.NavigationDensityComfortable, preferences.NavigationDensity)
+	assert.Empty(t, preferences.TypographySize)
 	assert.Equal(t, domain.DefaultSidebarWidth, preferences.SidebarWidth)
 	assert.True(t, preferences.ShowNavigationGuides)
 	assert.True(t, preferences.RememberNavigationState)

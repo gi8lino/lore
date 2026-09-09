@@ -78,6 +78,16 @@
             <input type="checkbox" name="discussions_enabled" {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }} />
           </label>
 
+          <label>
+            Default typography size
+            <select name="default_typography_size">
+              <option value="compact" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "compact" }}selected{{ end }}>Compact</option>
+              <option value="standard" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "standard" }}selected{{ end }}>Standard</option>
+              <option value="large" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "large" }}selected{{ end }}>Large</option>
+            </select>
+            <small>Used when a user has not selected a personal typography size. New installations default to Compact.</small>
+          </label>
+
           <div class="external-link-settings" data-external-link-settings>
             <div class="external-link-settings-title">
               <div>

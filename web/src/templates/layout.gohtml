@@ -20,6 +20,7 @@
       data-coding-ligatures="{{ if .ApplicationSettings.Rendering.CodingLigatures }}true{{ else }}false{{ end }}"
       data-navigation-style="{{ .Preferences.NavigationStyle }}"
       data-navigation-density="{{ .Preferences.NavigationDensity }}"
+      data-typography-size="{{ .TypographySize }}"
       data-navigation-guides="{{ if .Preferences.ShowNavigationGuides }}true{{ else }}false{{ end }}"
       data-current-page="{{ if .Page }}{{ .Page.Slug }}{{ end }}"
       data-user-id="{{ .User.ID }}"

@@ -409,7 +409,7 @@
 
   .prose {
     padding: 22px 0;
-    font-size: 16px;
+    font-size: var(--content-font-size);
     overflow-wrap: anywhere;
   }
 

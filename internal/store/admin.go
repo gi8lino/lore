@@ -372,6 +372,7 @@ SELECT
   discussions_enabled,
   pdf_url,
   external_links,
+  default_typography_size,
   auth_mode,
   oidc_issuer,
   oidc_client_id,
@@ -408,6 +409,7 @@ WHERE singleton=true`).Scan(
 		&settings.DiscussionsEnabled,
 		&settings.PDFURL,
 		&externalLinks,
+		&settings.Rendering.DefaultTypographySize,
 		&settings.Authentication.Mode,
 		&settings.Authentication.OIDCIssuer,
 		&settings.Authentication.OIDCClientID,
@@ -458,13 +460,14 @@ func (s *Store) SaveApplicationSettings(ctx context.Context, settings domain.App
 	}
 
 	_, err = s.pool.Exec(ctx, `
-INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,external_links,updated_at)
-VALUES(true,$1,$2,$3::jsonb,now())
+INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,external_links,default_typography_size,updated_at)
+VALUES(true,$1,$2,$3::jsonb,$4,now())
 ON CONFLICT(singleton) DO UPDATE
 SET allow_user_registration=EXCLUDED.allow_user_registration,
     discussions_enabled=EXCLUDED.discussions_enabled,
     external_links=EXCLUDED.external_links,
-    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled, string(externalLinks))
+    default_typography_size=EXCLUDED.default_typography_size,
+    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled, string(externalLinks), settings.Rendering.DefaultTypographySize)
 	return err
 }
 

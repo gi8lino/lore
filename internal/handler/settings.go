@@ -152,6 +152,12 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			return
 		}
 
+		typographySize := r.FormValue("typography_size")
+		if typographySize != "" && !domain.ValidTypographySize(typographySize) {
+			httpresponse.Problem(w, http.StatusBadRequest, "Unknown typography size.")
+			return
+		}
+
 		sidebarWidth, err := strconv.Atoi(r.FormValue("sidebar_width"))
 		if err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, "Sidebar width is out of range.")
@@ -173,6 +179,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 			ShowPageContents:         r.FormValue("show_page_contents") == "on",
 			NavigationStyle:          navigationStyle,
 			NavigationDensity:        density,
+			TypographySize:           typographySize,
 			SidebarWidth:             sidebarWidth,
 			ShowNavigationGuides:     r.FormValue("show_navigation_guides") == "on",
 			RememberNavigationState:  r.FormValue("remember_navigation_state") == "on",

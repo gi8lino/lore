@@ -18,6 +18,7 @@ SELECT
   show_page_contents,
   navigation_style,
   navigation_density,
+  typography_size,
   sidebar_width,
   show_navigation_guides,
   remember_navigation_state,
@@ -31,6 +32,7 @@ WHERE user_id=$1`, userID).Scan(
 		&preferences.ShowPageContents,
 		&preferences.NavigationStyle,
 		&preferences.NavigationDensity,
+		&preferences.TypographySize,
 		&preferences.SidebarWidth,
 		&preferences.ShowNavigationGuides,
 		&preferences.RememberNavigationState,
@@ -55,6 +57,7 @@ INSERT INTO user_preferences(
   show_page_contents,
   navigation_style,
   navigation_density,
+  typography_size,
   sidebar_width,
   show_navigation_guides,
   remember_navigation_state,
@@ -64,12 +67,13 @@ INSERT INTO user_preferences(
   expanded_navigation,
   updated_at
 )
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now())
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,now())
 ON CONFLICT(user_id) DO UPDATE
 SET theme=EXCLUDED.theme,
     show_page_contents=EXCLUDED.show_page_contents,
     navigation_style=EXCLUDED.navigation_style,
     navigation_density=EXCLUDED.navigation_density,
+    typography_size=EXCLUDED.typography_size,
     sidebar_width=EXCLUDED.sidebar_width,
     show_navigation_guides=EXCLUDED.show_navigation_guides,
     remember_navigation_state=EXCLUDED.remember_navigation_state,
@@ -77,7 +81,7 @@ SET theme=EXCLUDED.theme,
     show_recently_viewed=EXCLUDED.show_recently_viewed,
     show_navigation_page_counts=EXCLUDED.show_navigation_page_counts,
     expanded_navigation=EXCLUDED.expanded_navigation,
-    updated_at=now()`, userID, preferences.Theme, preferences.ShowPageContents, preferences.NavigationStyle, preferences.NavigationDensity, preferences.SidebarWidth, preferences.ShowNavigationGuides, preferences.RememberNavigationState, preferences.ShowPinnedPages, preferences.ShowRecentlyViewed, preferences.ShowNavigationPageCounts, normalizeNavigationPaths(preferences.ExpandedNavigation))
+    updated_at=now()`, userID, preferences.Theme, preferences.ShowPageContents, preferences.NavigationStyle, preferences.NavigationDensity, preferences.TypographySize, preferences.SidebarWidth, preferences.ShowNavigationGuides, preferences.RememberNavigationState, preferences.ShowPinnedPages, preferences.ShowRecentlyViewed, preferences.ShowNavigationPageCounts, normalizeNavigationPaths(preferences.ExpandedNavigation))
 	return err
 }
 

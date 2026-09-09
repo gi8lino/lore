@@ -40,6 +40,9 @@ func (s *Preferences) SavePreferences(
 	if !domain.ValidNavigationDensity(preferences.NavigationDensity) {
 		return newValidationError("navigation_density", "Choose a valid navigation density.")
 	}
+	if preferences.TypographySize != "" && !domain.ValidTypographySize(preferences.TypographySize) {
+		return newValidationError("typography_size", "Choose a valid typography size.")
+	}
 	if !domain.ValidSidebarWidth(preferences.SidebarWidth) {
 		return newValidationError("sidebar_width", "Sidebar width is out of range.")
 	}

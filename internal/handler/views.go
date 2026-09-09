@@ -178,6 +178,8 @@ type ViewData struct {
 	User domain.User
 	// Preferences contains the current user's presentation preferences.
 	Preferences domain.UserPreferences
+	// TypographySize is the effective content typography preset after applying the application default.
+	TypographySize string
 	// Page is the current page when one is being viewed or edited.
 	Page *domain.Page
 	// PageFavorite reports whether the current user has pinned the current page.
@@ -473,6 +475,14 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		return ViewData{}, err
 	}
 
+	typographySize := preferences.TypographySize
+	if typographySize == "" {
+		typographySize = applicationSettings.Rendering.DefaultTypographySize
+	}
+	if !domain.ValidTypographySize(typographySize) {
+		typographySize = domain.DefaultTypographySize
+	}
+
 	activeTheme := themes.DefaultTheme
 
 	if selected, ok := themes.Find(views.themes, preferences.Theme); ok {
@@ -500,6 +510,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		Title:               title,
 		User:                user,
 		Preferences:         preferences,
+		TypographySize:      typographySize,
 		Navigation:          pageNavigation,
 		NewPageParent:       activeNavigationSlug(r.URL.Path),
 		SidebarPinned:       sidebarPinned,

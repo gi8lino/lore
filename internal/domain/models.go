@@ -34,6 +34,14 @@ const (
 	NavigationDensityComfortable = "comfortable"
 	// NavigationDensityCompact reduces vertical navigation spacing.
 	NavigationDensityCompact = "compact"
+	// TypographySizeCompact uses the smallest content typography preset.
+	TypographySizeCompact = "compact"
+	// TypographySizeStandard uses the regular content typography preset.
+	TypographySizeStandard = "standard"
+	// TypographySizeLarge uses the largest content typography preset.
+	TypographySizeLarge = "large"
+	// DefaultTypographySize is the application default on new installations.
+	DefaultTypographySize = TypographySizeCompact
 	// DefaultSidebarWidth is the default desktop sidebar width in CSS pixels.
 	DefaultSidebarWidth = 280
 	// MinSidebarWidth is the smallest supported desktop sidebar width.
@@ -134,6 +142,8 @@ type RenderingSettings struct {
 	ContentLanguage string
 	// CodingLigatures enables supported OpenType coding ligatures in rendered text and code.
 	CodingLigatures bool
+	// DefaultTypographySize is used when a user has not selected a personal content size.
+	DefaultTypographySize string
 	// Mermaid enables browser-side Mermaid diagram rendering.
 	Mermaid bool
 	// Footnotes enables Markdown footnotes.
@@ -457,6 +467,8 @@ type UserPreferences struct {
 	NavigationStyle string
 	// NavigationDensity controls vertical spacing in the page tree.
 	NavigationDensity string
+	// TypographySize overrides the application content size; empty inherits the administrator default.
+	TypographySize string
 	// SidebarWidth is the desktop sidebar width in CSS pixels.
 	SidebarWidth int
 	// ShowNavigationGuides controls tree indentation guide lines.
@@ -608,6 +620,16 @@ func ValidNavigationStyle(value string) bool {
 // ValidNavigationDensity reports whether value is a supported navigation density.
 func ValidNavigationDensity(value string) bool {
 	return value == NavigationDensityComfortable || value == NavigationDensityCompact
+}
+
+// ValidTypographySize reports whether value is a supported content typography preset.
+func ValidTypographySize(value string) bool {
+	switch value {
+	case TypographySizeCompact, TypographySizeStandard, TypographySizeLarge:
+		return true
+	default:
+		return false
+	}
 }
 
 // ValidSidebarWidth reports whether width is inside the supported desktop range.

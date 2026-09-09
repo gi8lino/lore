@@ -157,6 +157,10 @@ func (s *Settings) SaveApplicationSettings(
 	settings domain.ApplicationSettings,
 	actorID int64,
 ) error {
+	if !domain.ValidTypographySize(settings.Rendering.DefaultTypographySize) {
+		return domain.NewValidationError("default_typography_size", "Choose a valid default typography size.")
+	}
+
 	externalLinks, err := normalizeExternalLinks(settings.ExternalLinks)
 	if err != nil {
 		return err

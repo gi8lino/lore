@@ -22,6 +22,7 @@
       class="shared-page-body"
       data-render-mermaid="{{ if .RenderMermaid }}true{{ else }}false{{ end }}"
       data-coding-ligatures="{{ if .ApplicationSettings.Rendering.CodingLigatures }}true{{ else }}false{{ end }}"
+      data-typography-size="{{ .ApplicationSettings.Rendering.DefaultTypographySize }}"
     >
       <main class="shared-page-shell">
         <header class="shared-page-header">
@@ -47,3 +48,5 @@
     </body>
   </html>
 {{ end }}
+
+

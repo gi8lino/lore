@@ -79,6 +79,20 @@
             </select>
             <small>Theme changes are previewed immediately and saved to your user account.</small>
           </label>
+          <label>
+            Typography size
+            <select
+              name="typography_size"
+              data-typography-size-setting
+              data-default-typography-size="{{ .ApplicationSettings.Rendering.DefaultTypographySize }}"
+            >
+              <option value="" {{ if eq .Preferences.TypographySize "" }}selected{{ end }}>Application default</option>
+              <option value="compact" {{ if eq .Preferences.TypographySize "compact" }}selected{{ end }}>Compact</option>
+              <option value="standard" {{ if eq .Preferences.TypographySize "standard" }}selected{{ end }}>Standard</option>
+              <option value="large" {{ if eq .Preferences.TypographySize "large" }}selected{{ end }}>Large</option>
+            </select>
+            <small>Controls page titles, Markdown headings, and body text. Application default: {{ .ApplicationSettings.Rendering.DefaultTypographySize }}.</small>
+          </label>
           <label class="toggle-row">
             <span>
               <strong>Show page contents</strong>

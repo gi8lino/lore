@@ -597,6 +597,15 @@ export function initLayout(): void {
   density?.addEventListener("change", () => {
     document.body.dataset.navigationDensity = density.value;
   });
+  const typographySize = document.querySelector<HTMLSelectElement>(
+    "[data-typography-size-setting]",
+  );
+  typographySize?.addEventListener("change", () => {
+    document.body.dataset.typographySize =
+      typographySize.value ||
+      typographySize.dataset.defaultTypographySize ||
+      "compact";
+  });
   document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (
       event.key === "/" &&
