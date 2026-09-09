@@ -107,17 +107,10 @@ func Sitemap(
 			return
 		}
 
-		body, err := xml.MarshalIndent(document, "", "  ")
-		if err != nil {
+		if err := httpresponse.XML(w, http.StatusOK, document); err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
-
-		output := append([]byte(xml.Header), body...)
-		output = append(output, '\n')
-
-		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-		_, _ = w.Write(output)
 	}
 }
 

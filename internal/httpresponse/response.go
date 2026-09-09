@@ -3,6 +3,7 @@ package httpresponse
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 )
 
@@ -28,6 +29,25 @@ func Respond(w http.ResponseWriter, status int, value any) {
 	if value != nil {
 		_ = json.NewEncoder(w).Encode(value)
 	}
+}
+
+// XML writes an indented XML response with an XML declaration.
+func XML(w http.ResponseWriter, status int, value any) error {
+	body, err := xml.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	output := make([]byte, 0, len(xml.Header)+len(body)+1)
+	output = append(output, xml.Header...)
+	output = append(output, body...)
+	output = append(output, '\n')
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(status)
+
+	_, err = w.Write(output)
+	return err
 }
 
 // Problem writes a consistent JSON error response with optional field problems.
