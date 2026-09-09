@@ -28,9 +28,13 @@ type renderNode struct {
 //go:embed template.gohtml
 var templateSource string
 
-var htmlTemplate = template.Must(template.New("subpages").Funcs(template.FuncMap{
-	"icon": icons.SVG,
-}).Parse(templateSource))
+var htmlTemplate = template.Must(
+	template.New("subpages").
+		Funcs(template.FuncMap{
+			"icon": icons.SVG,
+		}).
+		Parse(templateSource),
+)
 
 // NewRenderer returns a renderer for one prepared navigation subtree and URL strategy.
 func NewRenderer(children []navigation.Node, pageURL func(string) string) func(Options) (string, error) {
