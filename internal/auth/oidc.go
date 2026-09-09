@@ -274,32 +274,27 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrIdentityApprovalRequired):
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusForbidden,
 				"Registration is closed. Your verified identity is awaiting administrator approval.",
 			)
 		case errors.Is(err, domain.ErrIdentityRejected):
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusForbidden,
 				"This identity has been rejected by an administrator.",
 			)
 		case errors.Is(err, domain.ErrRegistrationDisabled):
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusForbidden,
 				"User registration is disabled.",
 			)
 		case errors.Is(err, domain.ErrAlreadyExists):
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusConflict,
 				"The preferred username is already used by another account.",
 			)
 		default:
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusInternalServerError,
 				"The request could not be processed.",
 			)
@@ -321,8 +316,7 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 			o.groupMappings,
 			o.groupsAuthoritative,
 		); err != nil {
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusInternalServerError,
 				"The request could not be processed.",
 			)
@@ -339,8 +333,7 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 			"oidc",
 			externalAdmin,
 		); err != nil {
-			httpresponse.Problem(
-				w,
+			httpresponse.Problem(w, 
 				http.StatusInternalServerError,
 				"The request could not be processed.",
 			)

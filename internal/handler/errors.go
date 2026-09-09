@@ -84,8 +84,7 @@ func writeRequestProblem(w http.ResponseWriter, status int, title, defaultField 
 		return true
 	}
 
-	httpresponse.Problem(
-		w,
+	httpresponse.Problem(w, 
 		status,
 		title,
 		httpresponse.NewFieldProblem(field, message),
