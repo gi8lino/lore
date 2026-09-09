@@ -186,7 +186,7 @@ func writeTokenCreateProblem(logger *slog.Logger, w http.ResponseWriter, err err
 	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "User not found.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
@@ -196,6 +196,6 @@ func writeTokenDeleteProblem(logger *slog.Logger, w http.ResponseWriter, err err
 	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Token not found.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }

@@ -24,7 +24,7 @@ func ListAttachments(mediaUseCases attachmentService, logger *slog.Logger) http.
 	return func(w http.ResponseWriter, r *http.Request) {
 		items, err := mediaUseCases.Attachments(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -57,7 +57,7 @@ func UploadAttachment(mediaUseCases attachmentService, logger *slog.Logger) http
 
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxAttachmentBytes+1))
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 

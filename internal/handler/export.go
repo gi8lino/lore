@@ -85,7 +85,7 @@ func ExportPagePDF(
 
 		applicationSettings, err := settingsUseCases.ApplicationSettings(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -166,7 +166,7 @@ func ExportPages(
 
 		slugs, err := exportSlugs(r, navigationUseCases)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if len(slugs) == 0 {
@@ -581,7 +581,7 @@ func writeExportProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 			httpresponse.Problem(w, http.StatusNotFound, "An image referenced by this export was not found.")
 			return
 		}
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 		return
 	}
 	writePageProblem(logger, w, err)

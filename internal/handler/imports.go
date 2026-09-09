@@ -56,7 +56,7 @@ func AdminImport(viewDataUseCases viewDataService, views *Views) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Import", "import")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -82,7 +82,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -94,7 +94,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 			if err != nil {
 				message, ok := userErrorMessage(err)
 				if !ok {
-					writeInternalServerError(logger, w, err)
+					httpresponse.InternalServerError(logger, w, err)
 					return
 				}
 

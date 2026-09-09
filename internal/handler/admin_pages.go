@@ -21,19 +21,19 @@ func AdminPages(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Pages", "pages")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		pages, err := catalogUseCases.PageInventory(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 

@@ -1,6 +1,10 @@
 package handler
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/gi8lino/lore/internal/httpresponse"
+)
 
 // Search executes free-text search plus supported field filters.
 func Search(
@@ -12,13 +16,13 @@ func Search(
 		query := r.URL.Query().Get("q")
 		pages, err := catalogUseCases.Search(r.Context(), query, 50)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, "Search")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 

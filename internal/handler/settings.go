@@ -36,13 +36,13 @@ func Settings(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := viewData(r, viewDataUseCases, views, "Settings")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		data.Groups, err = userUseCases.UserGroups(r.Context(), data.User.ID)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -52,14 +52,14 @@ func Settings(
 
 		data.UserTokens, err = tokenUseCases.UserTokens(r.Context(), data.User.ID)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		if data.CanEdit {
 			images, err := mediaUseCases.ImagesByUser(r.Context(), data.User.ID)
 			if err != nil {
-				writeInternalServerError(views.logger, w, err)
+				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 
@@ -164,7 +164,7 @@ func SavePreferences(preferenceUseCases preferenceService, views *Views) http.Ha
 
 		current, err := preferenceUseCases.Preferences(r.Context(), user.ID)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -212,7 +212,7 @@ func SavePageContentsPreference(preferenceUseCases preferenceService, views *Vie
 		}
 
 		if err := preferenceUseCases.SetShowPageContents(r.Context(), user.ID, show); err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -239,7 +239,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if len(request.Expanded) > 500 {
@@ -251,7 +251,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 			return
 		}
 		if err := preferenceUseCases.SetExpandedNavigation(r.Context(), user.ID, request.Expanded); err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -278,7 +278,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if !domain.ValidSidebarWidth(request.Width) {
@@ -305,7 +305,7 @@ func writePasswordChangeProblem(logger *slog.Logger, w http.ResponseWriter, err 
 		httpresponse.Problem(w, http.StatusUnauthorized, "Password validation failed.",
 			httpresponse.NewFieldProblem("current_password", "The current password is incorrect."))
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
@@ -314,5 +314,5 @@ func writePreferencesProblem(logger *slog.Logger, w http.ResponseWriter, err err
 	if tryWriteValidationProblem(w, err, "Preferences validation failed.") {
 		return
 	}
-	writeInternalServerError(logger, w, err)
+	httpresponse.InternalServerError(logger, w, err)
 }

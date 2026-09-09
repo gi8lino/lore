@@ -22,7 +22,7 @@ func EditorCatalog(
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := navigationUseCases.NavigationPages(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -33,13 +33,13 @@ func EditorCatalog(
 
 		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
 		aliases, err := catalogUseCases.PageAliases(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if aliases == nil {

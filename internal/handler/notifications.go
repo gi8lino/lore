@@ -22,7 +22,7 @@ func NotificationsAPI(notificationUseCases notificationService, logger *slog.Log
 
 		items, unread, err := notificationUseCases.Notifications(r.Context(), user.ID, 30)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -52,7 +52,7 @@ func OpenNotification(notificationUseCases notificationService, logger *slog.Log
 			return
 		}
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if !httpresponse.IsLocalPath(destination) {
@@ -76,7 +76,7 @@ func MarkNotificationRead(notificationUseCases notificationService, logger *slog
 		value := r.PathValue("id")
 		if value == "all" {
 			if err := notificationUseCases.MarkAllNotificationsRead(r.Context(), user.ID); err != nil {
-				writeInternalServerError(logger, w, err)
+				httpresponse.InternalServerError(logger, w, err)
 				return
 			}
 		} else {
@@ -86,7 +86,7 @@ func MarkNotificationRead(notificationUseCases notificationService, logger *slog
 				return
 			}
 			if err := notificationUseCases.MarkNotificationRead(r.Context(), user.ID, id); err != nil {
-				writeInternalServerError(logger, w, err)
+				httpresponse.InternalServerError(logger, w, err)
 				return
 			}
 		}

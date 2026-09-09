@@ -48,13 +48,13 @@ func Administration(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Administration", "overview")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		stats, err := administrationUseCases.Stats(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -75,26 +75,26 @@ func AdminConfiguration(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Configuration", "configuration")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		data.Groups = groups
 		data.ApplicationSettings.Authentication.OIDCGroupMappings, err = userUseCases.OIDCGroupMappings(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		data.PDFHeaders, err = settingsUseCases.PDFHeaders(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -107,13 +107,13 @@ func AdminRendering(viewDataUseCases viewDataService, renderer *md.Renderer, vie
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Rendering", "rendering")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		previews, err := renderingPreviews(renderer)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -203,13 +203,13 @@ func AdminDocumentationHealth(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Documentation health", "health")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		health, err := administrationUseCases.DocumentationHealth(r.Context(), time.Now().AddDate(0, -6, 0))
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -228,13 +228,13 @@ func AdminAudit(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Audit log", "audit")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		events, err := administrationUseCases.AuditEvents(r.Context(), 500)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -254,25 +254,25 @@ func AdminUsers(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Users", "users")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		users, err := userUseCases.Users(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		identities, err := userUseCases.OIDCIdentities(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -287,7 +287,7 @@ func AdminUsers(
 
 		pendingIdentities, err := userUseCases.PendingOIDCIdentities(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -310,13 +310,13 @@ func AdminGroups(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Groups", "groups")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.Groups(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -335,13 +335,13 @@ func AdminPageTemplates(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Page templates", "templates")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		templates, err := templateUseCases.PageTemplates(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -425,13 +425,13 @@ func AdminNavigation(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Navigation", "navigation")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		items, err := navigationUseCases.NavigationItems(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -515,13 +515,13 @@ func AdminTags(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Tags", "tags")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		tags, err := administrationUseCases.TagInfos(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -541,19 +541,19 @@ func AdminTokens(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Access tokens", "tokens")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		users, err := userUseCases.Users(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		tokens, err := tokenUseCases.Tokens(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -573,13 +573,13 @@ func AdminExports(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Exports", "exports")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		pages, err := navigationUseCases.NavigationPages(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -598,13 +598,13 @@ func AdminImages(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Images", "images")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		images, err := mediaUseCases.Images(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -631,7 +631,7 @@ func SaveAdminAuthentication(
 		if views.runtime.AuthModeOverride != "" {
 			current, err := settingsUseCases.ApplicationSettings(r.Context())
 			if err != nil {
-				writeInternalServerError(views.logger, w, err)
+				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 
@@ -1214,7 +1214,7 @@ func writeAdminProblem(logger *slog.Logger, w http.ResponseWriter, err error, ob
 	case errors.Is(err, domain.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, object+" operation is not permitted.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
@@ -1227,13 +1227,13 @@ func AdminBin(
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Recycle bin", "bin")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		pages, err := recycleBinUseCases.DeletedPages(r.Context())
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -1296,7 +1296,7 @@ func SearchAdminUsers(userUseCases userDirectoryService, logger *slog.Logger) ht
 
 		users, err := userUseCases.SearchUsers(r.Context(), query, 20)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -1319,7 +1319,7 @@ func AdminGroupMembers(groupUseCases groupReader, logger *slog.Logger) http.Hand
 
 		members, err := groupUseCases.GroupMembers(r.Context(), groupID)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -1354,7 +1354,7 @@ func AddAdminGroupMember(
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		if request.UserID <= 0 {

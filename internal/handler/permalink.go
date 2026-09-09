@@ -46,6 +46,6 @@ func writePermalinkProblem(logger *slog.Logger, w http.ResponseWriter, err error
 	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }

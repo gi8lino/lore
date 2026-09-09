@@ -40,7 +40,7 @@ func ListImages(mediaUseCases imageService, logger *slog.Logger) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		images, err := mediaUseCases.Images(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -68,7 +68,7 @@ func UploadImage(mediaUseCases imageService, logger *slog.Logger) http.HandlerFu
 
 		data, err := io.ReadAll(io.LimitReader(file, service.MaxImageBytes+1))
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 

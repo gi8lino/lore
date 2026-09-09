@@ -79,6 +79,6 @@ func writeSavedSearchProblem(logger *slog.Logger, w http.ResponseWriter, err err
 	case errors.Is(err, domain.ErrAlreadyExists):
 		httpresponse.Problem(w, http.StatusConflict, "Saved search already exists.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }

@@ -91,7 +91,7 @@ func PreviewPageExport(
 		}
 		application, err := settings.ApplicationSettings(r.Context())
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, page, application.Rendering, overrides)
@@ -113,5 +113,5 @@ func writeRenderedExportProblem(logger *slog.Logger, w http.ResponseWriter, err 
 		writeExportProblem(logger, w, err)
 		return
 	}
-	writeInternalServerError(logger, w, err)
+	httpresponse.InternalServerError(logger, w, err)
 }

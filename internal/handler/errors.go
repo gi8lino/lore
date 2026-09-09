@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 
@@ -107,9 +106,4 @@ func tryWriteValidationProblem(w http.ResponseWriter, err error, title string) b
 
 	httpresponse.Problem(w, http.StatusUnprocessableEntity, title, problems...)
 	return true
-}
-
-// writeInternalServerError reports an unexpected failure through the shared HTTP boundary.
-func writeInternalServerError(logger *slog.Logger, w http.ResponseWriter, err error) {
-	httpresponse.InternalServerError(logger, w, err)
 }

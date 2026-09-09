@@ -75,7 +75,7 @@ func writeMediaUploadProblem(
 			httpresponse.NewFieldProblem("file", text.unsupported),
 		)
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
@@ -100,7 +100,7 @@ func writeMediaDeleteProblem(
 			fmt.Sprintf("%s is still referenced %d time(s).", text.noun, inUse.References),
 		)
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
@@ -110,6 +110,6 @@ func writeMediaReadProblem(logger *slog.Logger, w http.ResponseWriter, err error
 	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }

@@ -153,6 +153,6 @@ func writePublicShareError(logger *slog.Logger, w http.ResponseWriter, err error
 	case errors.Is(err, domain.ErrNotFound):
 		httpresponse.Problem(w, http.StatusNotFound, "Share link not found or no longer available.")
 	default:
-		writeInternalServerError(logger.With("operation", "public_share"), w, err)
+		httpresponse.InternalServerError(logger.With("operation", "public_share"), w, err)
 	}
 }

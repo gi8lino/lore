@@ -2,6 +2,7 @@ package handler
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"html/template"
 	"log/slog"
@@ -29,33 +30,34 @@ func Home(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.User(r)
+
 		favorites, err := catalogUseCases.Favorites(r.Context(), user.ID)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		recent, err := catalogUseCases.ListPages(r.Context(), 8)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		viewed, err := catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		popular, err := catalogUseCases.Popular(r.Context(), 8)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		recentEdits, err := catalogUseCases.RecentEdited(r.Context(), user.ID, 6)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -64,14 +66,14 @@ func Home(
 		if user.Role == "admin" || user.Role == "editor" {
 			drafts, err = draftUseCases.List(r.Context(), user.ID, 6)
 			if err != nil {
-				writeInternalServerError(views.logger, w, err)
+				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, "Home")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -94,25 +96,21 @@ func ViewPage(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
-		page, err := catalogUseCases.GetPage(r.Context(), slug)
 
-		if errors.Is(err, domain.ErrNotFound) {
-			if target, aliasErr := catalogUseCases.ResolvePageAlias(r.Context(), slug); aliasErr == nil {
-				http.Redirect(w, r, "/pages/"+target, http.StatusPermanentRedirect)
-				return
-			} else if !errors.Is(aliasErr, domain.ErrNotFound) {
-				writeInternalServerError(views.logger, w, aliasErr)
-				return
-			}
-		}
-
+		page, alias, err := getPageOrAlias(r.Context(), catalogUseCases, slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
 
+		if alias != "" {
+			http.Redirect(w, r, "/pages/"+alias, http.StatusPermanentRedirect)
+			return
+		}
+
 		user, _ := auth.User(r)
 		_ = catalogUseCases.RecordView(r.Context(), slug, user.ID)
+
 		pageFavorite, err := catalogUseCases.IsFavorite(r.Context(), slug, user.ID)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
@@ -121,7 +119,7 @@ func ViewPage(
 
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -148,14 +146,14 @@ func ViewPage(
 		if len(page.Tags) > 0 {
 			related, err = catalogUseCases.Search(r.Context(), "tag:"+page.Tags[0], 6)
 			if err != nil {
-				writeInternalServerError(views.logger, w, err)
+				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -168,9 +166,13 @@ func ViewPage(
 				return
 			}
 		}
+
 		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
-		renderSubpages := subpages.NewRenderer(navigation.Children(data.Navigation, slug), wikiPageURL)
+		renderSubpages := subpages.NewRenderer(
+			navigation.Children(data.Navigation, slug),
+			wikiPageURL,
+		)
 
 		expanded, err := expandPageKnowledge(
 			r.Context(),
@@ -180,7 +182,7 @@ func ViewPage(
 			true,
 		)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -188,10 +190,13 @@ func ViewPage(
 			expanded.Markdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: renderSubpages, Variables: expanded.Annotations},
+			md.Functions{
+				Subpages:  renderSubpages,
+				Variables: expanded.Annotations,
+			},
 		)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -231,6 +236,28 @@ func ViewPage(
 	}
 }
 
+// getPageOrAlias resolves a page directly or returns the target of a matching alias.
+func getPageOrAlias(
+	ctx context.Context,
+	catalogUseCases pageViewCatalogService,
+	slug string,
+) (domain.Page, string, error) {
+	page, err := catalogUseCases.GetPage(ctx, slug)
+	if err == nil {
+		return page, "", nil
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		return domain.Page{}, "", err
+	}
+
+	target, err := catalogUseCases.ResolvePageAlias(ctx, slug)
+	if err != nil {
+		return domain.Page{}, "", err
+	}
+
+	return domain.Page{}, target, nil
+}
+
 // EditPage renders the page creation or editing form.
 func EditPage(
 	viewDataUseCases viewDataService,
@@ -242,83 +269,49 @@ func EditPage(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
+
 		data, err := viewData(r, viewDataUseCases, views, "New page")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		groups, err := groupUseCases.AssignableGroups(r.Context(), user)
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+
+		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		data.Groups = groups
+		data.KnowledgeSnippets = snippets
 		data.RenderingLanguages = renderingLanguageOptions
 		data.PageStatuses = domain.PageStatuses()
-		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
-		if err != nil {
-			writeInternalServerError(views.logger, w, err)
-			return
-		}
 
-		data.KnowledgeSnippets = snippets
-		data.PagePathOptions = pagePathOptions(data.Navigation, "")
-
-		if r.PathValue("slug") == "" {
-			data.EditorInitialSlug = md.Slug(r.URL.Query().Get("slug"))
-			if data.EditorInitialSlug != "" {
-				data.EditorParentPath, data.EditorPathSegment = splitPagePath(data.EditorInitialSlug)
-				if data.EditorParentPath != "" && !hasPagePathOption(data.PagePathOptions, data.EditorParentPath) {
-					data.PagePathOptions = append(data.PagePathOptions, pagePathOption{
-						Slug:  data.EditorParentPath,
-						Label: strings.ReplaceAll(data.EditorParentPath, "/", " / "),
-					})
-				}
-			} else {
-				parent := md.Slug(r.URL.Query().Get("parent"))
-				if hasPagePathOption(data.PagePathOptions, parent) {
-					data.EditorParentPath = parent
-				}
-			}
-		}
-
-		if r.PathValue("slug") == "" {
-			templates, err := templateUseCases.PageTemplates(r.Context())
-			if err != nil {
-				writeInternalServerError(views.logger, w, err)
+		switch slug := r.PathValue("slug"); slug {
+		case "":
+			if err := prepareNewPageEditor(r, &data, templateUseCases); err != nil {
+				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 
-			data.PageTemplates = templates
-
-			if value := r.URL.Query().Get("template"); value != "" {
-				id, parseErr := strconv.ParseInt(value, 10, 64)
-				if parseErr == nil && id > 0 {
-					selected, templateErr := templateUseCases.PageTemplate(r.Context(), id)
-					if templateErr == nil {
-						data.EditorTemplate = &selected
-					} else if !errors.Is(templateErr, domain.ErrNotFound) {
-						writeInternalServerError(views.logger, w, templateErr)
-						return
-					}
-				}
-			}
-		}
-
-		if slug := r.PathValue("slug"); slug != "" {
+		default:
 			page, err := catalogUseCases.GetPage(r.Context(), slug)
 			if err != nil {
 				writePageProblem(views.logger, w, err)
 				return
 			}
 
-			data.Title, data.Page = "Edit "+page.Title, &page
+			data.Title = "Edit " + page.Title
+			data.Page = &page
 			data.EditorInitialSlug = page.Slug
 			data.EditorParentPath, data.EditorPathSegment = splitPagePath(page.Slug)
 			data.PagePathOptions = pagePathOptions(data.Navigation, page.Slug)
-
 			data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 		}
 
@@ -326,12 +319,85 @@ func EditPage(
 	}
 }
 
+// prepareNewPageEditor initializes editor state used only when creating a page.
+func prepareNewPageEditor(
+	r *http.Request,
+	data *ViewData,
+	templateUseCases templateService,
+) error {
+	data.PagePathOptions = pagePathOptions(data.Navigation, "")
+
+	prefillSlug := md.Slug(r.URL.Query().Get("slug"))
+
+	switch prefillSlug {
+	case "":
+		parent := md.Slug(r.URL.Query().Get("parent"))
+		if hasPagePathOption(data.PagePathOptions, parent) {
+			data.EditorParentPath = parent
+		}
+
+	default:
+		data.EditorInitialSlug = prefillSlug
+		data.EditorParentPath, data.EditorPathSegment = splitPagePath(prefillSlug)
+		data.PagePathOptions = ensurePagePathOption(
+			data.PagePathOptions,
+			data.EditorParentPath,
+		)
+	}
+
+	templates, err := templateUseCases.PageTemplates(r.Context())
+	if err != nil {
+		return err
+	}
+
+	data.PageTemplates = templates
+
+	value := r.URL.Query().Get("template")
+	if value == "" {
+		return nil
+	}
+
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id <= 0 {
+		return nil
+	}
+
+	selected, err := templateUseCases.PageTemplate(r.Context(), id)
+
+	switch {
+	case err == nil:
+		data.EditorTemplate = &selected
+
+	case errors.Is(err, domain.ErrNotFound):
+		return nil
+
+	default:
+		return err
+	}
+
+	return nil
+}
+
+// ensurePagePathOption adds a path option when it does not already exist.
+func ensurePagePathOption(options []pagePathOption, slug string) []pagePathOption {
+	if slug == "" || hasPagePathOption(options, slug) {
+		return options
+	}
+
+	return append(options, pagePathOption{
+		Slug:  slug,
+		Label: strings.ReplaceAll(slug, "/", " / "),
+	})
+}
+
 // splitPagePath separates a page slug into its parent path and final segment.
 func splitPagePath(slug string) (string, string) {
 	slug = strings.Trim(strings.TrimSpace(slug), "/")
+
 	if parent, segment, ok := strings.CutLast(slug, "/"); ok {
 		return parent, segment
 	}
+
 	return "", slug
 }
 
@@ -343,6 +409,7 @@ func SavePageForm(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
+
 		r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 		if err := r.ParseForm(); err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid form.")
@@ -350,17 +417,25 @@ func SavePageForm(
 		}
 
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
+
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
-			if tryWriteRequestProblem(w, http.StatusBadRequest, "Page validation failed.", "", err) {
+			if tryWriteRequestProblem(
+				w,
+				http.StatusBadRequest,
+				"Page validation failed.",
+				"",
+				err,
+			) {
 				return
 			}
 
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
 		properties := pagePropertiesFromForm(r)
+
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
 			PreviousSlug:       originalSlug,
 			Slug:               r.FormValue("slug"),
@@ -389,6 +464,7 @@ func SavePageForm(
 		if originalSlug != "" {
 			draftKey = service.PageDraftKey(page.ID)
 		}
+
 		if err := draftUseCases.Delete(r.Context(), user.ID, draftKey); err != nil {
 			views.logger.Warn(
 				"discard saved page draft",
@@ -404,10 +480,14 @@ func SavePageForm(
 }
 
 // DeletePageForm deletes a page from the browser and returns to the wiki home page.
-func DeletePageForm(pageUseCases pageWriterService, views *Views) http.HandlerFunc {
+func DeletePageForm(
+	pageUseCases pageWriterService,
+	views *Views,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
 		slug := r.PathValue("slug")
+
 		if err := pageUseCases.Delete(r.Context(), slug, user); err != nil {
 			writePageProblem(views.logger, w, err)
 			return
@@ -418,16 +498,27 @@ func DeletePageForm(pageUseCases pageWriterService, views *Views) http.HandlerFu
 }
 
 // FavoritePage updates the current user's favorite status for a page.
-func FavoritePage(catalogUseCases favoriteService, views *Views) http.HandlerFunc {
+func FavoritePage(
+	catalogUseCases favoriteService,
+	views *Views,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		value := r.PathValue("slug")
+
 		slug, ok := strings.CutSuffix(value, "/favorite")
 		if !ok {
 			httpresponse.Problem(w, http.StatusNotFound, "Not found.")
 			return
 		}
+
 		user, _ := auth.User(r)
-		if err := catalogUseCases.SetFavorite(r.Context(), slug, user.ID, r.FormValue("on") != "false"); err != nil {
+
+		if err := catalogUseCases.SetFavorite(
+			r.Context(),
+			slug,
+			user.ID,
+			r.FormValue("on") != "false",
+		); err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
@@ -470,7 +561,11 @@ func parseGroupIDs(values []string) []int64 {
 func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	status := strings.TrimSpace(r.FormValue("status"))
 	if !domain.ValidPageStatus(status) {
-		return domain.PageMetadata{}, newRequestError("status", "Choose a valid page status.", errors.New("invalid page status"))
+		return domain.PageMetadata{}, newRequestError(
+			"status",
+			"Choose a valid page status.",
+			errors.New("invalid page status"),
+		)
 	}
 
 	var ownerGroupID int64
@@ -478,7 +573,11 @@ func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("owner_group_id")); value != "" {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil || parsed <= 0 {
-			return domain.PageMetadata{}, newRequestError("owner_group_id", "Choose a valid owner group.", errors.New("invalid owner group"))
+			return domain.PageMetadata{}, newRequestError(
+				"owner_group_id",
+				"Choose a valid owner group.",
+				errors.New("invalid owner group"),
+			)
 		}
 
 		ownerGroupID = parsed
@@ -489,10 +588,19 @@ func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("review_interval_days")); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil {
-			return domain.PageMetadata{}, newRequestError("review_interval_days", "Choose a valid review interval.", errors.New("invalid review interval"))
+			return domain.PageMetadata{}, newRequestError(
+				"review_interval_days",
+				"Choose a valid review interval.",
+				errors.New("invalid review interval"),
+			)
 		}
+
 		if !domain.ValidReviewIntervalDays(parsed) {
-			return domain.PageMetadata{}, newRequestError("review_interval_days", "Choose a valid review interval.", errors.New("invalid review interval"))
+			return domain.PageMetadata{}, newRequestError(
+				"review_interval_days",
+				"Choose a valid review interval.",
+				errors.New("invalid review interval"),
+			)
 		}
 
 		interval = parsed
@@ -515,6 +623,7 @@ func pagePropertiesFromForm(r *http.Request) map[string]string {
 
 	for index, key := range keys {
 		key = strings.TrimSpace(key)
+
 		if key == "" || index >= len(values) {
 			continue
 		}
@@ -537,29 +646,64 @@ func withoutSlug(pages []domain.Page, slug string) []domain.Page {
 }
 
 // writePageProblem translates page-domain errors into HTTP problems.
-func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
+func writePageProblem(
+	logger *slog.Logger,
+	w http.ResponseWriter,
+	err error,
+) {
 	if assignment, ok := errors.AsType[*domain.GroupAssignmentError](err); ok {
-		httpresponse.Problem(w, http.StatusForbidden, "The selected page groups are not assignable.",
-			httpresponse.NewFieldProblem(assignment.Field, "Choose groups you are allowed to assign."))
+		httpresponse.Problem(w, 
+			http.StatusForbidden,
+			"The selected page groups are not assignable.",
+			httpresponse.NewFieldProblem(
+				assignment.Field,
+				"Choose groups you are allowed to assign.",
+			),
+		)
 		return
 	}
+
 	if tryWriteValidationProblem(w, err, "Page validation failed.") {
 		return
 	}
+
 	switch {
 	case errors.Is(err, domain.ErrRevisionNotFound):
-		httpresponse.Problem(w, http.StatusNotFound, "Revision not found.")
+		httpresponse.Problem(w, 
+			http.StatusNotFound,
+			"Revision not found.",
+		)
+
 	case errors.Is(err, domain.ErrCommentNotFound):
-		httpresponse.Problem(w, http.StatusNotFound, "Comment not found.")
+		httpresponse.Problem(w, 
+			http.StatusNotFound,
+			"Comment not found.",
+		)
+
 	case errors.Is(err, domain.ErrNotFound):
-		httpresponse.Problem(w, http.StatusNotFound, "Page not found.")
+		httpresponse.Problem(w, 
+			http.StatusNotFound,
+			"Page not found.",
+		)
+
 	case errors.Is(err, domain.ErrAlreadyExists):
-		httpresponse.Problem(w, http.StatusConflict, "Page path already exists.",
-			httpresponse.NewFieldProblem("slug", "Choose a different page path."))
+		httpresponse.Problem(w, 
+			http.StatusConflict,
+			"Page path already exists.",
+			httpresponse.NewFieldProblem(
+				"slug",
+				"Choose a different page path.",
+			),
+		)
+
 	case errors.Is(err, domain.ErrForbidden):
-		httpresponse.Problem(w, http.StatusForbidden, "The page operation is not permitted.")
+		httpresponse.Problem(w, 
+			http.StatusForbidden,
+			"The page operation is not permitted.",
+		)
+
 	case errors.Is(err, domain.ErrPageInBin):
-		httpresponse.Problem(w,
+		httpresponse.Problem(w, 
 			http.StatusConflict,
 			"This page path is currently in the recycle bin.",
 			httpresponse.NewFieldProblem(
@@ -567,9 +711,14 @@ func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 				"Restore the deleted page or choose a different path.",
 			),
 		)
+
 	case errors.Is(err, service.ErrDiscussionsDisabled):
-		httpresponse.Problem(w, http.StatusForbidden, "Page discussions are disabled.")
+		httpresponse.Problem(w, 
+			http.StatusForbidden,
+			"Page discussions are disabled.",
+		)
+
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }

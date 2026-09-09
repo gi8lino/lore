@@ -17,6 +17,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
@@ -624,13 +625,13 @@ func renderFragment(views *Views, w http.ResponseWriter, page, name string, data
 func renderTemplate(views *Views, w http.ResponseWriter, page, name string, data ViewData) {
 	pageTemplate, ok := views.templates[page]
 	if !ok {
-		writeInternalServerError(views.logger.With("operation", "render_template", "page", page, "template", name), w, fmt.Errorf("page template %q not found", page))
+		httpresponse.InternalServerError(views.logger.With("operation", "render_template", "page", page, "template", name), w, fmt.Errorf("page template %q not found", page))
 		return
 	}
 
 	var output bytes.Buffer
 	if err := pageTemplate.ExecuteTemplate(&output, name, data); err != nil {
-		writeInternalServerError(views.logger.With("operation", "render_template", "page", page, "template", name), w, err)
+		httpresponse.InternalServerError(views.logger.With("operation", "render_template", "page", page, "template", name), w, err)
 		return
 	}
 

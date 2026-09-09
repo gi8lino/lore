@@ -13,7 +13,7 @@ func KnowledgeGraphPage(viewDataUseCases viewDataService, views *Views) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := viewData(r, viewDataUseCases, views, "Knowledge graph")
 		if err != nil {
-			writeInternalServerError(views.logger, w, err)
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -28,7 +28,7 @@ func KnowledgeGraphAPI(knowledgeUseCases knowledgeGraphService, logger *slog.Log
 	return func(w http.ResponseWriter, r *http.Request) {
 		graph, err := knowledgeUseCases.KnowledgeGraph(r.Context(), 300)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 

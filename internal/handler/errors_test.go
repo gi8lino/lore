@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestWriteInternalServerError(t *testing.T) {
 	response := httptest.NewRecorder()
 	internalErr := errors.New("private persistence detail")
 
-	writeInternalServerError(logger, response, internalErr)
+	httpresponse.InternalServerError(logger, response, internalErr)
 
 	var problem struct {
 		Error string `json:"error"`
@@ -119,7 +120,7 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 
 		response := httptest.NewRecorder()
 
-		writeInternalServerError(
+		httpresponse.InternalServerError(
 			slog.New(slog.NewTextHandler(io.Discard, nil)),
 			response,
 			domain.ErrNotFound,

@@ -72,20 +72,20 @@ func PreviewMarkdown(
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
 		slug := md.Slug(request.Slug)
 		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, slug)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -97,7 +97,7 @@ func PreviewMarkdown(
 			0,
 		)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -108,7 +108,7 @@ func PreviewMarkdown(
 			md.Functions{Subpages: renderSubpages},
 		)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -151,7 +151,7 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 100)
 		if err != nil {
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -185,7 +185,7 @@ func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.Handle
 				w.Header().Set("Content-Location", "/api/pages/"+target)
 				page, err = catalogUseCases.GetPage(r.Context(), target)
 			} else if !errors.Is(aliasErr, domain.ErrNotFound) {
-				writeInternalServerError(logger, w, aliasErr)
+				httpresponse.InternalServerError(logger, w, aliasErr)
 				return
 			}
 		}
@@ -209,7 +209,7 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 

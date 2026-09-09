@@ -42,7 +42,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 				return
 			}
 
-			writeInternalServerError(logger, w, err)
+			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
 
@@ -88,7 +88,7 @@ func writeDraftProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrForbidden):
 		httpresponse.Problem(w, http.StatusForbidden, "The draft operation is not permitted.")
 	default:
-		writeInternalServerError(logger, w, err)
+		httpresponse.InternalServerError(logger, w, err)
 	}
 }
 
