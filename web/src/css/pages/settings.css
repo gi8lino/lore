@@ -459,6 +459,41 @@
 .configuration-application .settings-actions {
   margin-top: 18px;
 }
+.configuration-choice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.configuration-choice-copy {
+  display: block;
+  min-width: 0;
+}
+.configuration-choice-copy strong {
+  display: block;
+  font-size: 13px;
+}
+.configuration-choice-copy small {
+  display: block;
+  max-width: 760px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.configuration-choice-row select {
+  flex: 0 0 210px;
+  width: 210px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 9px 32px 9px 10px;
+  color: var(--text);
+}
 .external-link-settings {
   display: grid;
   gap: 10px;
@@ -489,9 +524,10 @@
 }
 .external-link-settings-row {
   display: grid;
-  grid-template-columns:
-    minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(130px, 0.75fr)
-    auto;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(
+      130px,
+      0.75fr
+    ) auto;
   align-items: end;
   gap: 8px;
   padding: 10px;
@@ -797,6 +833,15 @@
 }
 
 @media (max-width: 560px) {
+  .configuration-choice-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .configuration-choice-row select {
+    flex-basis: auto;
+    width: 100%;
+  }
   .external-link-settings-title {
     align-items: flex-start;
     flex-direction: column;

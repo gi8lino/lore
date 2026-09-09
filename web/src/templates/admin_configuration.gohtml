@@ -78,24 +78,28 @@
             <input type="checkbox" name="discussions_enabled" {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }} />
           </label>
 
-          <label>
-            robots.txt
-            <select name="robots_policy">
+          <label class="configuration-choice-row">
+            <span class="configuration-choice-copy">
+              <strong>robots.txt</strong>
+              <small>Controls public crawler discovery. Allowing crawling also publishes <code>/sitemap.xml</code> with verified and deprecated page paths. Lore defaults to disallowing crawling.</small>
+            </span>
+            <select name="robots_policy" aria-label="robots.txt policy">
               <option value="disallow" {{ if eq .ApplicationSettings.RobotsPolicy "disallow" }}selected{{ end }}>Disallow crawling</option>
               <option value="allow" {{ if eq .ApplicationSettings.RobotsPolicy "allow" }}selected{{ end }}>Allow crawling</option>
               <option value="none" {{ if eq .ApplicationSettings.RobotsPolicy "none" }}selected{{ end }}>Disabled</option>
             </select>
-            <small>Controls public crawler discovery. Allowing crawling also publishes <code>/sitemap.xml</code> with verified and deprecated page paths. Lore defaults to disallowing crawling.</small>
           </label>
 
-          <label>
-            Default typography size
-            <select name="default_typography_size">
+          <label class="configuration-choice-row">
+            <span class="configuration-choice-copy">
+              <strong>Default typography size</strong>
+              <small>Used when a user has not selected a personal typography size. New installations default to Compact.</small>
+            </span>
+            <select name="default_typography_size" aria-label="Default typography size">
               <option value="compact" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "compact" }}selected{{ end }}>Compact</option>
               <option value="standard" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "standard" }}selected{{ end }}>Standard</option>
               <option value="large" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "large" }}selected{{ end }}>Large</option>
             </select>
-            <small>Used when a user has not selected a personal typography size. New installations default to Compact.</small>
           </label>
 
           <div class="external-link-settings" data-external-link-settings>
