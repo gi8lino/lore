@@ -68,11 +68,7 @@ func (b *builder) copyBuildAssets(config Config) error {
 	if err := b.copyBrowserAssets(config.OutputDir); err != nil {
 		return err
 	}
-	if err := copySourceAssets(config.SourceDir, config.OutputDir); err != nil {
-		return err
-	}
-
-	return nil
+	return copySourceAssets(config.SourceDir, config.OutputDir)
 }
 
 // copyConfiguredAssets publishes the optional asset directory below the generated assets path.

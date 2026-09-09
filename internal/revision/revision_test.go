@@ -1,6 +1,7 @@
 package revision
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -47,10 +48,7 @@ func TestAnalyzeFirstRevisionStartsAtDevNull(t *testing.T) {
 }
 
 func hasDiffLine(lines []DiffLine, kind, text string) bool {
-	for _, line := range lines {
-		if line.Kind == kind && strings.Contains(line.Text, text) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(lines, func(line DiffLine) bool {
+		return line.Kind == kind && strings.Contains(line.Text, text)
+	})
 }

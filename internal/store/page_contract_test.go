@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -74,7 +75,7 @@ type propertyContractTx struct {
 
 func (tx *propertyContractTx) Exec(_ context.Context, query string, args ...any) (pgconn.CommandTag, error) {
 	if strings.Contains(query, "INSERT INTO page_properties") {
-		tx.inserted = append(tx.inserted, append([]any(nil), args...))
+		tx.inserted = append(tx.inserted, slices.Clone(args))
 	}
 	return pgconn.CommandTag{}, nil
 }

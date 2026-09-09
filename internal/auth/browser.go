@@ -273,9 +273,7 @@ func (b *browserAuthenticator) authenticatorForSettings(
 // validateSettings checks configuration that does not require contacting an OIDC provider.
 func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSettings) error {
 	switch AuthMode(settings.Mode) {
-	case AuthModeNone:
-		return nil
-	case AuthModeLocal:
+	case AuthModeNone, AuthModeLocal:
 		return nil
 	case AuthModeTrustedProxy:
 		if len(settings.TrustedUsernameHeaders) == 0 {

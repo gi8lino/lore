@@ -325,7 +325,6 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 	}
 
 	slug = strings.TrimSpace(slug)
-	body = strings.TrimSpace(body)
 	if _, err := s.repository.AddPageComment(ctx, slug, actor.ID, anchor, body); err != nil {
 		return err
 	}

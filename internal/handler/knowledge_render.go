@@ -169,8 +169,7 @@ func expandKnowledgeMacro(
 			}
 			return "", err
 		}
-		nextSeen := make(map[string]bool, len(seen)+1)
-		maps.Copy(nextSeen, seen)
+		nextSeen := maps.Clone(seen)
 		nextSeen[slug] = true
 		expanded, err := expandKnowledgeMarkdown(ctx, content, page.Markdown, nextSeen, depth+1)
 		if err != nil {

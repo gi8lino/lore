@@ -85,7 +85,7 @@ func pdfPageCount(file *os.File) (int, error) {
 // Compressed object streams may contain literal /Type /Page bytes by chance, and
 // those objects are counted separately after the stream has been decoded.
 func withoutPDFStreamBodies(data []byte) []byte {
-	stripped := append([]byte(nil), data...)
+	stripped := bytes.Clone(data)
 	offset := 0
 
 	for offset < len(data) {

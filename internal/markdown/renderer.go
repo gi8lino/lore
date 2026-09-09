@@ -711,10 +711,9 @@ func parseWikiLink(value string) (target string, label string, ok bool) {
 		return "", "", false
 	}
 
-	if !hasLabel || strings.TrimSpace(label) == "" {
+	label = strings.TrimSpace(label)
+	if !hasLabel || label == "" {
 		label = target
-	} else {
-		label = strings.TrimSpace(label)
 	}
 
 	return target, label, true
@@ -848,17 +847,15 @@ func preprocessTableDirectives(source string, options Options) string {
 
 // previousTableLine reports whether a directive immediately follows a Markdown table row.
 func previousTableLine(lines []string, index int) bool {
-	if index == 0 {
-		return false
+	for _, line := range slices.Backward(lines[:index]) {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		return strings.Contains(line, "|")
 	}
 
-	previous := index - 1
-
-	for previous >= 0 && strings.TrimSpace(lines[previous]) == "" {
-		previous--
-	}
-
-	return previous >= 0 && strings.Contains(lines[previous], "|")
+	return false
 }
 
 // parseTableDirective parses trusted table colors and optional browser interactions.

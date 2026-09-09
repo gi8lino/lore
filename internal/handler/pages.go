@@ -273,7 +273,7 @@ func EditPage(
 				if data.EditorParentPath != "" && !hasPagePathOption(data.PagePathOptions, data.EditorParentPath) {
 					data.PagePathOptions = append(data.PagePathOptions, pagePathOption{
 						Slug:  data.EditorParentPath,
-						Label: strings.Join(strings.Split(data.EditorParentPath, "/"), " / "),
+						Label: strings.ReplaceAll(data.EditorParentPath, "/", " / "),
 					})
 				}
 			} else {
@@ -434,10 +434,9 @@ func FavoritePage(catalogUseCases favoriteService, views *Views) http.HandlerFun
 
 // splitTags normalizes a comma-separated tag list.
 func splitTags(value string) []string {
-	parts := strings.Split(value, ",")
-	result := parts[:0]
+	result := make([]string, 0)
 
-	for _, part := range parts {
+	for part := range strings.SplitSeq(value, ",") {
 		if part = strings.TrimSpace(part); part != "" {
 			result = append(result, part)
 		}

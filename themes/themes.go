@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"slices"
@@ -159,15 +160,7 @@ func merge(base, overlays []Theme) []Theme {
 		byName[strings.ToLower(theme.Title)] = theme
 	}
 
-	merged := make([]Theme, 0, len(byName))
-
-	for _, theme := range byName {
-		merged = append(merged, theme)
-	}
-
-	sortThemes(merged)
-
-	return merged
+	return slices.SortedFunc(maps.Values(byName), compareThemes)
 }
 
 // sortThemes sorts themes case-insensitively by their filename-derived title.

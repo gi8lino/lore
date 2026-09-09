@@ -33,11 +33,8 @@ func Respond(w http.ResponseWriter, status int, value any) {
 // Problem writes a consistent JSON error response with optional field problems.
 func Problem(w http.ResponseWriter, status int, message string, problems ...FieldProblem) {
 	fields := make(map[string]string, len(problems))
-
-	if len(problems) > 0 {
-		for _, problem := range problems {
-			fields[problem.Field] = problem.Message
-		}
+	for _, problem := range problems {
+		fields[problem.Field] = problem.Message
 	}
 
 	Respond(w, status, map[string]any{

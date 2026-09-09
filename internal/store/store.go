@@ -140,7 +140,8 @@ VALUES($1)`, v)
 
 // migrationVersion parses the numeric prefix of an embedded migration filename.
 func migrationVersion(name string) (version int, err error) {
-	return strconv.Atoi(strings.SplitN(name, "_", 2)[0])
+	prefix, _, _ := strings.Cut(name, "_")
+	return strconv.Atoi(prefix)
 }
 
 // compareMigrationEntries orders migrations by their numeric filename prefix.
