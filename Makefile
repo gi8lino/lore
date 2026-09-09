@@ -38,7 +38,10 @@ COMPOSE_PROJECT   ?= $(notdir $(CURDIR))
 COMPOSE_FILE      := deploy/compose.yaml
 DB_CONTAINER_NAME ?= postgres
 PDF_CONTAINER_NAME ?= html2pdf
-ASSIGNED_PORT := $(shell jot -r 1 5000 6000) # automatically find a random free port on the host machine
+# Pick random host ports for local development.
+LORE_ASSIGNED_PORT := $(shell jot -r 1 5000 6000)
+DB_ASSIGNED_PORT := $(shell jot -r 1 5000 6000)
+PDF_ASSIGNED_PORT := $(shell jot -r 1 4000 4999)
 
 ## Site Configuration
 SITE_CONFIG ?= docs/site.toml
@@ -134,24 +137,25 @@ download: $(NODE_MODULES) ## Download Go and frontend dependencies.
 
 .PHONY: postgres
 postgres:  ## Run postgres locally.
-	@echo "Starting Postgres on dynamic host port: $(ASSIGNED_PORT)"
-	@LORE_POSTGRES_PORT=$(ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(DB_CONTAINER_NAME)
+	@echo "Starting Postgres on dynamic host port: $(DB_ASSIGNED_PORT)"
+	@LORE_POSTGRES_PORT=$(DB_ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d --wait --wait-timeout 60 $(DB_CONTAINER_NAME)
 
 .PHONY: html-pdf
 html-pdf:  ## Run html2pdf locally.
-	@docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(PDF_CONTAINER_NAME)
+	@LORE_PDF_PORT=$(PDF_ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(PDF_CONTAINER_NAME)
 
 .PHONY: run
-run: generate web html-pdf postgres ## Run Lore locally.
-	@echo "Waiting 3 seconds for Postgres to be ready on port $(ASSIGNED_PORT)..."
-	@sleep 3
+run: generate web html-pdf postgres ## Run Lore locally and open the browser.
 	@echo "Starting Lore application..."
-	@LORE_POSTGRES_PORT=$(ASSIGNED_PORT) go run $(COMMAND) serve \
+	@open "http://localhost:$(LORE_ASSIGNED_PORT)/"
+	@LORE_POSTGRES_PORT=$(DB_ASSIGNED_PORT) go run $(COMMAND) serve \
 		--debug \
 		--access-log \
+		--listen-address="127.0.0.1:$(LORE_ASSIGNED_PORT)" \
 		--log-format text \
-		$(RUN_ARGS) \
-		--database-url="postgres://lore:lore@localhost:$(ASSIGNED_PORT)/lore?sslmode=disable"
+		--pdf-url="http://localhost:$(PDF_ASSIGNED_PORT)/render" \
+		--database-url="postgres://lore:lore@localhost:$(DB_ASSIGNED_PORT)/lore?sslmode=disable" \
+  	$(RUN_ARGS)
 
 .PHONY: build
 build: generate web ## Build the Lore binary.

@@ -20,7 +20,7 @@ services:
     image: ghcr.io/gi8lino/html2pdf:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:${LORE_PDF_PORT:-8081}:8080"
     read_only: true
     tmpfs:
       - /tmp:size=128m,mode=1777
