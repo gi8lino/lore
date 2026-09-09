@@ -45,6 +45,7 @@ var pageTemplateNames = []string{
 	"shared_page",
 	"home",
 	"page",
+	"not_found",
 	"edit",
 	"search",
 	"settings",
@@ -622,6 +623,11 @@ func render(views *Views, w http.ResponseWriter, page string, data ViewData) {
 	renderTemplate(views, w, page, "layout", data)
 }
 
+// renderStatus executes a page layout with an explicit HTTP status.
+func renderStatus(views *Views, w http.ResponseWriter, status int, page string, data ViewData) {
+	renderTemplateStatus(views, w, status, page, "layout", data)
+}
+
 // renderPublic executes the minimal unauthenticated page layout.
 func renderPublic(views *Views, w http.ResponseWriter, page string, data ViewData) {
 	renderTemplate(views, w, page, "public-layout", data)
@@ -632,8 +638,13 @@ func renderFragment(views *Views, w http.ResponseWriter, page, name string, data
 	renderTemplate(views, w, page, name, data)
 }
 
-// renderTemplate executes a named template into a buffer before writing the HTTP response.
+// renderTemplate executes a named template with a successful HTTP status.
 func renderTemplate(views *Views, w http.ResponseWriter, page, name string, data ViewData) {
+	renderTemplateStatus(views, w, http.StatusOK, page, name, data)
+}
+
+// renderTemplateStatus executes a named template into a buffer before writing the HTTP response.
+func renderTemplateStatus(views *Views, w http.ResponseWriter, status int, page, name string, data ViewData) {
 	pageTemplate, ok := views.templates[page]
 	if !ok {
 		httpresponse.InternalServerError(views.logger.With("operation", "render_template", "page", page, "template", name), w, fmt.Errorf("page template %q not found", page))
@@ -647,6 +658,7 @@ func renderTemplate(views *Views, w http.ResponseWriter, page, name string, data
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 
 	if _, err := w.Write(output.Bytes()); err != nil {
 		views.logger.Error(

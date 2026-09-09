@@ -43,15 +43,3 @@
   font-size: 13px;
   line-height: 1.5;
 }
-
-.static-not-found {
-  max-width: 620px;
-  margin: 80px auto;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.static-not-found .button {
-  margin-top: 8px;
-}

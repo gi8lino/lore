@@ -98,6 +98,10 @@ func ViewPage(
 		slug := r.PathValue("slug")
 
 		page, alias, err := getPageOrAlias(r.Context(), catalogUseCases, slug)
+		if errors.Is(err, domain.ErrNotFound) {
+			renderNotFoundPage(w, r, viewDataUseCases, views)
+			return
+		}
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
@@ -302,6 +306,10 @@ func EditPage(
 
 		default:
 			page, err := catalogUseCases.GetPage(r.Context(), slug)
+			if errors.Is(err, domain.ErrNotFound) {
+				renderNotFoundPage(w, r, viewDataUseCases, views)
+				return
+			}
 			if err != nil {
 				writePageProblem(views.logger, w, err)
 				return

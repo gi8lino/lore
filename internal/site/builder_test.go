@@ -214,8 +214,12 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	assert.NotContains(t, string(guide), ">Guide</h1></div><h1")
 
 	t.Run("404.html", func(t *testing.T) {
-		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("404.html")))
-		assert.NoError(t, err)
+		html, err := os.ReadFile(filepath.Join(output, filepath.FromSlash("404.html")))
+
+		require.NoError(t, err)
+		assert.Contains(t, string(html), `class="not-found-page"`)
+		assert.Contains(t, string(html), "Page not found")
+		assert.Contains(t, string(html), "Search documentation")
 	})
 
 	t.Run("search/index.html", func(t *testing.T) {

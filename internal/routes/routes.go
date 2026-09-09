@@ -7,6 +7,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/handler"
+	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/middleware"
 	"github.com/gi8lino/lore/internal/service"
@@ -378,4 +379,10 @@ func addRoutes(
 		"POST /api/admin/export",
 		apiAuthn(adminAuthz(handler.ExportPages(catalogUseCases, navigationUseCases, mediaUseCases, logger))),
 	)
+
+	// Keep unknown API paths machine-readable while browser navigation gets the themed 404 page.
+	mux.HandleFunc("GET /api/", func(w http.ResponseWriter, _ *http.Request) {
+		httpresponse.Problem(w, http.StatusNotFound, "Not found.")
+	})
+	mux.Handle("GET /", browserAuthn(handler.NotFound(viewDataUseCases, views)))
 }

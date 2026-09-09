@@ -524,10 +524,9 @@
 }
 .external-link-settings-row {
   display: grid;
-  grid-template-columns: minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(
-      130px,
-      0.75fr
-    ) auto;
+  grid-template-columns:
+    minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(130px, 0.75fr)
+    auto;
   align-items: end;
   gap: 8px;
   padding: 10px;
