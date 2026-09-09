@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -76,6 +77,9 @@ func TestBrowserValidationStillRequiresLocalAdministratorAfterSetup(t *testing.T
 
 	err := browser.validate(context.Background(), domain.AuthenticationSettings{Mode: string(AuthModeLocal)})
 
-	assert.EqualError(t, err, "local authentication requires an administrator with a local password")
+	validation, ok := errors.AsType[*domain.ValidationError](err)
+	require.True(t, ok)
+	assert.Equal(t, "auth_mode", validation.Fields[0].Field)
+	assert.Equal(t, "Local authentication requires an administrator with a local password.", validation.UserMessage())
 	assert.True(t, repository.localCredentialChecked)
 }

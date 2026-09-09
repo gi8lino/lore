@@ -68,11 +68,11 @@ func PreviewMarkdown(
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, err := decode[previewRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"Invalid JSON request.",
-				httpresponse.NewFieldProblem("request", "Provide a valid JSON request body."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid JSON request.", "request", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -205,11 +205,11 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 		user := currentUser(r)
 		request, err := decode[pageRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"Invalid JSON request.",
-				httpresponse.NewFieldProblem("request", "Provide a valid JSON request body."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid JSON request.", "request", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 

@@ -16,12 +16,19 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	if len(e.Fields) == 0 {
-		return "validation failed"
-	}
 	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Fields[0].Message, e.Cause)
+		return fmt.Sprintf("validation failed: %v", e.Cause)
 	}
+
+	return "validation failed"
+}
+
+// UserMessage returns the first explicitly safe field message, when present.
+func (e *ValidationError) UserMessage() string {
+	if len(e.Fields) == 0 {
+		return ""
+	}
+
 	return e.Fields[0].Message
 }
 

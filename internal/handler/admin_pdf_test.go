@@ -58,22 +58,6 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 	assert.Equal(t, int64(7), settings.actorID)
 }
 
-func TestSaveAdminPDFSettingsUsesUserFacingURLProblem(t *testing.T) {
-	t.Parallel()
-
-	form := url.Values{"pdf_url": {"ftp://example.test/render"}}
-	request := httptest.NewRequest(http.MethodPost, "/admin/pdf", strings.NewReader(form.Encode()))
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
-	response := httptest.NewRecorder()
-
-	SaveAdminPDFSettings(&pdfSettingsStub{}, slog.Default())(response, request)
-
-	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
-	assert.Contains(t, response.Body.String(), pdfURLFieldProblem)
-	assert.NotContains(t, response.Body.String(), "pdf URL must")
-}
-
 func TestTestAdminPDFService(t *testing.T) {
 	t.Parallel()
 
@@ -121,4 +105,42 @@ endobj
 	assert.Equal(t, "2", response.Header().Get("X-Lore-PDF-Pages"))
 	assert.Equal(t, strconv.Itoa(len(payload)), response.Header().Get("X-Lore-PDF-Size"))
 	assert.Equal(t, payload, response.Body.String())
+}
+
+func TestSaveAdminPDFSettingsUsesTypedValidationMessage(t *testing.T) {
+	t.Parallel()
+
+	settings := &pdfSettingsStub{}
+	form := url.Values{"pdf_url": {"ftp://example.test/render"}}
+	request := httptest.NewRequest(http.MethodPost, "/admin/pdf", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
+	response := httptest.NewRecorder()
+
+	SaveAdminPDFSettings(settings, slog.New(slog.NewTextHandler(io.Discard, nil)))(response, request)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Contains(t, response.Body.String(), "PDF URL must be an HTTP(S) endpoint")
+	assert.NotContains(t, response.Body.String(), "validate PDF URL: invalid endpoint")
+	assert.Empty(t, settings.url)
+}
+
+func TestAdminPDFServiceDoesNotExposeRendererError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	form := url.Values{"pdf_url": {server.URL + "/render"}}
+	request := httptest.NewRequest(http.MethodPost, "/admin/pdf/test", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+
+	TestAdminPDFService(slog.New(slog.NewTextHandler(io.Discard, nil)))(response, request)
+
+	assert.Equal(t, http.StatusBadGateway, response.Code)
+	assert.Contains(t, response.Body.String(), "The PDF service could not complete the test.")
+	assert.NotContains(t, response.Body.String(), "render PDF: service returned HTTP 500")
 }

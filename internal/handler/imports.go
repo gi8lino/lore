@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -42,7 +43,11 @@ func parseImportFormat(value string) (importFormat, error) {
 	case markdownImport, wikiJSImport, confluenceImport:
 		return format, nil
 	default:
-		return "", fmt.Errorf("choose a source format")
+		return "", newRequestError(
+			"format",
+			"Choose a source format.",
+			fmt.Errorf("invalid import source format %q", value),
+		)
 	}
 }
 
@@ -73,7 +78,11 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 
 		format, err := parseImportFormat(r.FormValue("format"))
 		if err != nil {
-			httpresponse.Problem(w, http.StatusBadRequest, "Choose a source format.")
+			if writeRequestProblem(w, http.StatusBadRequest, "Import validation failed.", "format", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 
@@ -83,16 +92,17 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 		for _, header := range r.MultipartForm.File["files"] {
 			items, err := importCandidatesFromFile(header, format, &remaining)
 			if err != nil {
-				logger.Warn(
-					"import file rejected",
-					"event", "import_file_rejected",
-					"file", header.Filename,
-					"error", err,
-				)
+				message, ok := userErrorMessage(err)
+				if !ok {
+					writeInternalServerError(logger, w, err)
+					return
+				}
+
 				httpresponse.Problem(
 					w,
 					http.StatusBadRequest,
-					fmt.Sprintf("Import %q could not be processed. Check the selected source format and file contents.", header.Filename),
+					"Import validation failed.",
+					httpresponse.NewFieldProblem("files", header.Filename+": "+message),
 				)
 				return
 			}
@@ -142,7 +152,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 		return nil, closeErr
 	}
 	if len(data) > maxImportBytes {
-		return nil, fmt.Errorf("file exceeds 100 MiB")
+		return nil, newRequestError("files", "File exceeds 100 MiB.", errors.New("file exceeds 100 MiB"))
 	}
 
 	name := strings.TrimPrefix(strings.ReplaceAll(header.Filename, "\\", "/"), "./")
@@ -150,7 +160,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 
 	if ext != ".zip" {
 		if int64(len(data)) > *remaining {
-			return nil, fmt.Errorf("import contents exceed 100 MiB")
+			return nil, newRequestError("files", "Import contents exceed 100 MiB.", errors.New("import contents exceed 100 MiB"))
 		}
 		*remaining -= int64(len(data))
 	}
@@ -161,7 +171,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 			if ext == ".zip" {
 				return importZIP(data, format, remaining)
 			}
-			return nil, fmt.Errorf("markdown imports require .md, .markdown, or .zip files")
+			return nil, newRequestError("files", "Markdown imports require .md, .markdown, or .zip files.", errors.New("markdown import has unsupported file type"))
 		}
 
 		title, err := markdownTitle(string(data))
@@ -177,7 +187,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 			return importZIP(data, format, remaining)
 		}
 		if ext != ".json" {
-			return nil, fmt.Errorf("imports from Wiki.js require .json or .zip files")
+			return nil, newRequestError("files", "Imports from Wiki.js require .json or .zip files.", errors.New("validate Wiki.js import: unsupported file type"))
 		}
 
 		return importWikiJSON(data)
@@ -186,7 +196,7 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 			return importZIP(data, format, remaining)
 		}
 		if ext != ".html" && ext != ".htm" {
-			return nil, fmt.Errorf("imports from Confluence require .html, .htm, or .zip files")
+			return nil, newRequestError("files", "Imports from Confluence require .html, .htm, or .zip files.", errors.New("validate Confluence import: unsupported file type"))
 		}
 
 		markdown, err := htmlToMarkdown(data)
@@ -213,7 +223,11 @@ func importCandidatesFromFile(header *multipart.FileHeader, format importFormat,
 func importZIP(data []byte, format importFormat, remaining *int64) ([]importCandidate, error) {
 	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, err
+		return nil, newRequestError(
+			"files",
+			"The ZIP archive is invalid.",
+			fmt.Errorf("open ZIP archive: %w", err),
+		)
 	}
 
 	var result []importCandidate
@@ -229,7 +243,7 @@ func importZIP(data []byte, format importFormat, remaining *int64) ([]importCand
 			continue
 		}
 		if entry.UncompressedSize64 > uint64(*remaining) {
-			return nil, fmt.Errorf("archive contents exceed 100 MiB")
+			return nil, newRequestError("files", "Archive contents exceed 100 MiB.", errors.New("archive contents exceed 100 MiB"))
 		}
 
 		file, err := entry.Open()
@@ -239,7 +253,7 @@ func importZIP(data []byte, format importFormat, remaining *int64) ([]importCand
 
 		content, err := readImportArchiveEntry(file, *remaining)
 		if err != nil {
-			return nil, err
+			return nil, wrapImportEntryError(name, err)
 		}
 
 		*remaining -= int64(len(content))
@@ -248,7 +262,7 @@ func importZIP(data []byte, format importFormat, remaining *int64) ([]importCand
 		case markdownImport:
 			title, err := markdownTitle(string(content))
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", name, err)
+				return nil, wrapImportEntryError(name, err)
 			}
 
 			slug := strings.TrimSuffix(name, ext)
@@ -261,19 +275,19 @@ func importZIP(data []byte, format importFormat, remaining *int64) ([]importCand
 		case wikiJSImport:
 			items, err := importWikiJSON(content)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", name, err)
+				return nil, wrapImportEntryError(name, err)
 			}
 
 			result = append(result, items...)
 		case confluenceImport:
 			markdown, err := htmlToMarkdown(content)
 			if err != nil {
-				return nil, err
+				return nil, wrapImportEntryError(name, err)
 			}
 
 			title, err := markdownTitle(markdown)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", name, err)
+				return nil, wrapImportEntryError(name, err)
 			}
 
 			slug := strings.TrimSuffix(name, ext)
@@ -287,6 +301,18 @@ func importZIP(data []byte, format importFormat, remaining *int64) ([]importCand
 	}
 
 	return result, nil
+}
+
+// wrapImportEntryError preserves an archive entry name in safe and diagnostic import errors.
+func wrapImportEntryError(name string, err error) error {
+	diagnostic := fmt.Errorf("%s: %w", name, err)
+
+	message, ok := userErrorMessage(err)
+	if !ok {
+		return diagnostic
+	}
+
+	return newRequestError("files", name+": "+message, diagnostic)
 }
 
 // supportedImportExtension reports whether a file extension belongs to a selected import format.
@@ -314,7 +340,7 @@ func readImportArchiveEntry(file io.ReadCloser, remaining int64) ([]byte, error)
 		return nil, closeErr
 	}
 	if int64(len(content)) > remaining {
-		return nil, fmt.Errorf("archive contents exceed 100 MiB")
+		return nil, newRequestError("files", "Archive contents exceed 100 MiB.", errors.New("archive contents exceed 100 MiB"))
 	}
 
 	return content, nil
@@ -328,10 +354,14 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 		Content string `json:"content"`
 	}
 	if err := json.Unmarshal(data, &pages); err != nil {
-		return nil, err
+		return nil, newRequestError(
+			"files",
+			"The Wiki.js export contains invalid JSON.",
+			fmt.Errorf("decode Wiki.js import: %w", err),
+		)
 	}
 	if len(pages) == 0 {
-		return nil, fmt.Errorf("export from Wiki.js must contain at least one page")
+		return nil, newRequestError("files", "The Wiki.js export must contain at least one page.", errors.New("validate Wiki.js export: no pages"))
 	}
 
 	result := make([]importCandidate, 0, len(pages))
@@ -340,13 +370,13 @@ func importWikiJSON(data []byte) ([]importCandidate, error) {
 		page.Path = strings.TrimSpace(page.Path)
 		page.Title = strings.TrimSpace(page.Title)
 		if page.Path == "" {
-			return nil, fmt.Errorf("page %d from Wiki.js has no path", index+1)
+			return nil, newRequestError("files", fmt.Sprintf("Page %d from Wiki.js has no path.", index+1), fmt.Errorf("validate Wiki.js page %d: missing path", index+1))
 		}
 		if page.Title == "" {
-			return nil, fmt.Errorf("page %d from Wiki.js has no title", index+1)
+			return nil, newRequestError("files", fmt.Sprintf("Page %d from Wiki.js has no title.", index+1), fmt.Errorf("validate Wiki.js page %d: missing title", index+1))
 		}
 		if page.Content == "" {
-			return nil, fmt.Errorf("page %d from Wiki.js has no content", index+1)
+			return nil, newRequestError("files", fmt.Sprintf("Page %d from Wiki.js has no content.", index+1), fmt.Errorf("validate Wiki.js page %d: missing content", index+1))
 		}
 
 		result = append(result, importCandidate{
@@ -370,7 +400,7 @@ func markdownTitle(markdown string) (title string, err error) {
 			return heading, nil
 		}
 	}
-	return "", fmt.Errorf("document requires a level-one Markdown heading for its title")
+	return "", newRequestError("files", "Document requires a level-one Markdown heading for its title.", errors.New("document requires a level-one Markdown heading for its title"))
 }
 
 // htmlMarkdownWriter converts the supported Confluence HTML subset into Markdown.
@@ -382,7 +412,11 @@ type htmlMarkdownWriter struct {
 func htmlToMarkdown(data []byte) (markdown string, err error) {
 	root, err := xhtml.Parse(bytes.NewReader(data))
 	if err != nil {
-		return "", err
+		return "", newRequestError(
+			"files",
+			"The Confluence HTML could not be parsed.",
+			fmt.Errorf("parse Confluence HTML: %w", err),
+		)
 	}
 
 	writer := htmlMarkdownWriter{}

@@ -439,7 +439,7 @@ func oidcGroupValues(raw json.RawMessage) ([]string, error) {
 	if err := json.Unmarshal(raw, &groups); err != nil {
 		var group string
 		if stringErr := json.Unmarshal(raw, &group); stringErr != nil {
-			return nil, errors.New("oidc group claim must be a string or string array")
+			return nil, errors.New("decode OIDC group claim: expected a string or string array")
 		}
 
 		groups = []string{group}

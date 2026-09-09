@@ -127,5 +127,9 @@ func TestImportZIPBudgetSharedAcrossFiles(t *testing.T) {
 	require.Len(t, items, 1)
 	require.Equal(t, int64(3), remaining)
 	_, err = importZIP(archive.Bytes(), markdownImport, &remaining)
-	require.EqualError(t, err, "archive contents exceed 100 MiB")
+	require.ErrorContains(t, err, "archive contents exceed 100 MiB")
+
+	message, ok := userErrorMessage(err)
+	require.True(t, ok)
+	assert.Equal(t, "Archive contents exceed 100 MiB.", message)
 }

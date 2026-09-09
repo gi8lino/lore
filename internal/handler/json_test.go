@@ -113,6 +113,36 @@ func TestDecodeRequestContract(t *testing.T) {
 	})
 }
 
+func TestDecodeReturnsSafeUserMessages(t *testing.T) {
+	t.Parallel()
+
+	type request struct {
+		Title string `json:"title"`
+	}
+
+	t.Run("unknown field", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"unknown":1}`)))
+
+		message, ok := userErrorMessage(err)
+		require.True(t, ok)
+		assert.Equal(t, "Request body contains an unknown field.", message)
+		assert.Equal(t, `invalid JSON request: json: unknown field "unknown"`, err.Error())
+		assert.NotContains(t, message, `"unknown"`)
+	})
+
+	t.Run("oversized body", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := decode[request](httptest.NewRecorder(), httptest.NewRequest("POST", "/", strings.NewReader(`{"title":"`+strings.Repeat("a", 2<<20)+`"}`)))
+
+		message, ok := userErrorMessage(err)
+		require.True(t, ok)
+		assert.Equal(t, "Request body must not exceed 2 MiB.", message)
+	})
+}
+
 func TestJSONSlice(t *testing.T) {
 	t.Parallel()
 

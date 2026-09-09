@@ -627,6 +627,10 @@ func SaveAdminAuthentication(
 		}
 
 		if err := browserAuth.Validate(r.Context(), settings); err != nil {
+			if writeValidationProblem(w, err, "Authentication validation failed.") {
+				return
+			}
+
 			views.logger.Warn(
 				"authentication settings rejected",
 				"event", "authentication_settings_rejected",
@@ -1344,11 +1348,11 @@ func AddAdminGroupMember(
 
 		request, err := decode[groupMemberRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"Invalid member request.",
-				httpresponse.NewFieldProblem("request", "Provide a valid member request body."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid member request.", "request", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 		if request.UserID <= 0 {

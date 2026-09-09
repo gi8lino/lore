@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -107,8 +108,9 @@ func TestPageVariables(t *testing.T) {
 	t.Run("does not list fenced-only variables", func(t *testing.T) {
 		t.Parallel()
 		_, err := expandPageKnowledge(context.Background(), variableTestContent(), "~~~\n{{var:environment}}\n~~~", map[string]string{"environment": "staging"}, false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Only variables used")
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Contains(t, validation.UserMessage(), "Only variables used")
 	})
 	t.Run("creates provenance tokens only for actual macros", func(t *testing.T) {
 		t.Parallel()
@@ -137,7 +139,10 @@ func TestVariableOverrideLimits(t *testing.T) {
 	})
 	t.Run("rejects an oversized UTF-8 value by bytes", func(t *testing.T) {
 		t.Parallel()
-		assert.ErrorContains(t, validateVariableOverrides(map[string]string{"name": strings.Repeat("\u00e4", maxExportVariableBytes/2+1)}), "8 KiB")
+		err := validateVariableOverrides(map[string]string{"name": strings.Repeat("\u00e4", maxExportVariableBytes/2+1)})
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Contains(t, validation.UserMessage(), "8 KiB")
 	})
 	t.Run("rejects too many variables", func(t *testing.T) {
 		t.Parallel()
@@ -145,7 +150,10 @@ func TestVariableOverrideLimits(t *testing.T) {
 		for index := range maxExportVariables + 1 {
 			values[fmt.Sprint(index)] = "x"
 		}
-		assert.ErrorContains(t, validateVariableOverrides(values), "128 variables")
+		err := validateVariableOverrides(values)
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Contains(t, validation.UserMessage(), "128 variables")
 	})
 	t.Run("rejects an oversized total", func(t *testing.T) {
 		t.Parallel()
@@ -153,11 +161,17 @@ func TestVariableOverrideLimits(t *testing.T) {
 		for index := range 9 {
 			values[fmt.Sprint(index)] = strings.Repeat("x", maxExportVariableBytes)
 		}
-		assert.ErrorContains(t, validateVariableOverrides(values), "64 KiB")
+		err := validateVariableOverrides(values)
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Contains(t, validation.UserMessage(), "64 KiB")
 	})
 	t.Run("rejects null characters", func(t *testing.T) {
 		t.Parallel()
-		assert.ErrorContains(t, validateVariableOverrides(map[string]string{"name": "hello\x00world"}), "null characters")
+		err := validateVariableOverrides(map[string]string{"name": "hello\x00world"})
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Contains(t, validation.UserMessage(), "null characters")
 	})
 	t.Run("rejects invalid UTF-8", func(t *testing.T) {
 		t.Parallel()

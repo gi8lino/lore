@@ -22,9 +22,22 @@ const (
 
 var (
 	// ErrNotConfigured indicates PDF exports have no configured rendering endpoint.
-	ErrNotConfigured = errors.New("pdf service is not configured")
-	errInvalidURL    = errors.New("pdf URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://html2pdf:8080/render)")
+	ErrNotConfigured = errors.New("render PDF: service is not configured")
+	errInvalidURL    = &urlValidationError{}
 )
+
+// urlValidationError marks PDF endpoint validation text as safe for user presentation.
+type urlValidationError struct{}
+
+// Error returns the internal diagnostic error text.
+func (*urlValidationError) Error() string {
+	return "validate PDF URL: invalid endpoint"
+}
+
+// UserMessage returns the message explicitly approved for presentation to a user.
+func (*urlValidationError) UserMessage() string {
+	return "PDF URL must be an HTTP(S) endpoint including its path, without credentials or a fragment (for example http://html2pdf:8080/render)."
+}
 
 var renderClient = &http.Client{
 	Timeout: 60 * time.Second,
@@ -77,7 +90,7 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 
 	content := Document(title, language, rendered)
 	if len(content) > maxHTMLBytes {
-		return nil, noop, errors.New("pdf document exceeds the 32 MiB request limit")
+		return nil, noop, errors.New("render PDF: document exceeds the 32 MiB request limit")
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(content))
@@ -96,20 +109,20 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 	defer response.Body.Close() // nolint:errcheck
 
 	if response.StatusCode != http.StatusOK {
-		return nil, noop, fmt.Errorf("pdf service returned HTTP %d", response.StatusCode)
+		return nil, noop, fmt.Errorf("render PDF: service returned HTTP %d", response.StatusCode)
 	}
 
 	contentType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if err != nil || contentType != "application/pdf" {
-		return nil, noop, errors.New("pdf service returned an unexpected content type")
+		return nil, noop, errors.New("render PDF: service returned an unexpected content type")
 	}
 	if response.ContentLength > maxPDFBytes {
-		return nil, noop, errors.New("pdf service response exceeds the 64 MiB limit")
+		return nil, noop, errors.New("render PDF: service response exceeds the 64 MiB limit")
 	}
 
 	prefix := make([]byte, 5)
 	if _, err := io.ReadFull(response.Body, prefix); err != nil || string(prefix) != "%PDF-" {
-		return nil, noop, errors.New("pdf service returned an invalid PDF")
+		return nil, noop, errors.New("render PDF: service returned an invalid PDF")
 	}
 
 	file, err = os.CreateTemp("", "lore-pdf-*.pdf")
@@ -125,7 +138,7 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 	}
 	if size > maxPDFBytes {
 		cleanup()
-		return nil, noop, errors.New("pdf service response exceeds the 64 MiB limit")
+		return nil, noop, errors.New("render PDF: service response exceeds the 64 MiB limit")
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		cleanup()

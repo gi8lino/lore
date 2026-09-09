@@ -189,7 +189,10 @@ func (b *browserAuthenticator) validate(ctx context.Context, settings domain.Aut
 			return err
 		}
 		if !configured {
-			return errors.New("local authentication requires an administrator with a local password")
+			return domain.NewValidationError(
+				"auth_mode",
+				"Local authentication requires an administrator with a local password.",
+			)
 		}
 	}
 
@@ -277,26 +280,43 @@ func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSe
 		return nil
 	case AuthModeTrustedProxy:
 		if len(settings.TrustedUsernameHeaders) == 0 {
-			return errors.New("trusted-proxy authentication requires at least one username header")
+			return domain.NewValidationError(
+				"trusted_username_headers",
+				"Configure at least one username header.",
+			)
 		}
 		if strings.TrimSpace(settings.TrustedAdminGroup) != "" && len(settings.TrustedGroupHeaders) == 0 {
-			return errors.New("trusted-proxy administrator elevation requires a group header")
+			return domain.NewValidationError(
+				"trusted_group_headers",
+				"Configure at least one group header for external administrator elevation.",
+			)
 		}
+
 		return nil
 	case AuthModeOIDC:
-		issuer := strings.TrimSpace(settings.OIDCIssuer)
-		clientID := strings.TrimSpace(settings.OIDCClientID)
-		if issuer == "" || clientID == "" {
-			return errors.New("oidc authentication requires an issuer and client ID")
+		if strings.TrimSpace(settings.OIDCIssuer) == "" {
+			return domain.NewValidationError("oidc_issuer", "OIDC issuer is required.")
+		}
+		if strings.TrimSpace(settings.OIDCClientID) == "" {
+			return domain.NewValidationError("oidc_client_id", "OIDC client ID is required.")
 		}
 		if (settings.OIDCGroupSync || strings.TrimSpace(settings.OIDCAdminGroup) != "") && strings.TrimSpace(settings.OIDCGroupClaim) == "" {
-			return errors.New("oidc group synchronization and administrator elevation require a group claim")
+			return domain.NewValidationError(
+				"oidc_group_claim",
+				"Configure the OIDC claim containing group memberships.",
+			)
 		}
 		if b.oidcConfig.ClientSecret == "" {
-			return errors.New("oidc client secret is not configured")
+			return domain.NewValidationError(
+				"oidc_client_secret",
+				"Configure LORE__OIDC_CLIENT_SECRET before enabling OIDC.",
+			)
 		}
 		if len(b.oidcConfig.SessionSecret) < 32 {
-			return errors.New("oidc session secret must be at least 32 characters")
+			return domain.NewValidationError(
+				"session_secret",
+				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
+			)
 		}
 
 		return nil

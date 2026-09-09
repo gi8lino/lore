@@ -38,12 +38,11 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, err := decode[pageDraftRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(
-				w,
-				http.StatusBadRequest,
-				"Invalid draft request.",
-				httpresponse.NewFieldProblem("request", "Provide a valid draft request body."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid draft request.", "request", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 

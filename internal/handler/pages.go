@@ -352,7 +352,11 @@ func SavePageForm(
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
-			httpresponse.Problem(w, http.StatusBadRequest, "Invalid page metadata.")
+			if writeRequestProblem(w, http.StatusBadRequest, "Page validation failed.", "", err) {
+				return
+			}
+
+			writeInternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -466,7 +470,7 @@ func parseGroupIDs(values []string) []int64 {
 func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	status := strings.TrimSpace(r.FormValue("status"))
 	if !domain.ValidPageStatus(status) {
-		return domain.PageMetadata{}, errors.New("invalid page status")
+		return domain.PageMetadata{}, newRequestError("status", "Choose a valid page status.", errors.New("invalid page status"))
 	}
 
 	var ownerGroupID int64
@@ -474,7 +478,7 @@ func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("owner_group_id")); value != "" {
 		parsed, err := strconv.ParseInt(value, 10, 64)
 		if err != nil || parsed <= 0 {
-			return domain.PageMetadata{}, errors.New("invalid owner group")
+			return domain.PageMetadata{}, newRequestError("owner_group_id", "Choose a valid owner group.", errors.New("invalid owner group"))
 		}
 
 		ownerGroupID = parsed
@@ -485,10 +489,10 @@ func pageMetadataFromForm(r *http.Request) (domain.PageMetadata, error) {
 	if value := strings.TrimSpace(r.FormValue("review_interval_days")); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil {
-			return domain.PageMetadata{}, errors.New("invalid review interval")
+			return domain.PageMetadata{}, newRequestError("review_interval_days", "Choose a valid review interval.", errors.New("invalid review interval"))
 		}
 		if !domain.ValidReviewIntervalDays(parsed) {
-			return domain.PageMetadata{}, errors.New("invalid review interval")
+			return domain.PageMetadata{}, newRequestError("review_interval_days", "Choose a valid review interval.", errors.New("invalid review interval"))
 		}
 
 		interval = parsed

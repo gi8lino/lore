@@ -236,11 +236,11 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 
 		request, err := decode[navigationStateRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"Invalid navigation state.",
-				httpresponse.NewFieldProblem("expanded", "Provide a valid navigation state."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid navigation state.", "expanded", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 		if len(request.Expanded) > 500 {
@@ -275,11 +275,11 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 
 		request, err := decode[sidebarWidthRequest](w, r)
 		if err != nil {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"Invalid sidebar width.",
-				httpresponse.NewFieldProblem("width", "Provide a valid sidebar width."),
-			)
+			if writeRequestProblem(w, http.StatusBadRequest, "Invalid sidebar width.", "width", err) {
+				return
+			}
+
+			writeInternalServerError(logger, w, err)
 			return
 		}
 		if !domain.ValidSidebarWidth(request.Width) {

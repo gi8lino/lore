@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -84,11 +85,17 @@ func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 	}
 	browser := &browserAuthenticator{}
 
-	assert.EqualError(t, browser.validateSettings(settings), "oidc client secret is not configured")
+	validation, ok := errors.AsType[*domain.ValidationError](browser.validateSettings(settings))
+	require.True(t, ok)
+	assert.Equal(t, "oidc_client_secret", validation.Fields[0].Field)
+	assert.Equal(t, "Configure LORE__OIDC_CLIENT_SECRET before enabling OIDC.", validation.UserMessage())
 
 	browser.oidcConfig.ClientSecret = "client-secret"
 
-	assert.EqualError(t, browser.validateSettings(settings), "oidc session secret must be at least 32 characters")
+	validation, ok = errors.AsType[*domain.ValidationError](browser.validateSettings(settings))
+	require.True(t, ok)
+	assert.Equal(t, "session_secret", validation.Fields[0].Field)
+	assert.Equal(t, "Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.", validation.UserMessage())
 }
 
 func TestBrowserValidationRequiresAdministratorGroupSources(t *testing.T) {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -119,17 +120,6 @@ func DeleteAdminToken(tokenUseCases tokenService, logger *slog.Logger) http.Hand
 	}
 }
 
-// tokenFormError describes one invalid shared token form field.
-type tokenFormError struct {
-	field   string
-	message string
-}
-
-// Error returns the user-facing token form validation message.
-func (e *tokenFormError) Error() string {
-	return e.message
-}
-
 // parseTokenForm validates the shared token name and optional expiration date fields.
 func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err error) {
 	if err := r.ParseForm(); err != nil {
@@ -138,10 +128,18 @@ func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err er
 
 	name = strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
-		return "", nil, &tokenFormError{field: "name", message: "Token name is required."}
+		return "", nil, newRequestError(
+			"name",
+			"Token name is required.",
+			errors.New("invalid token name: empty"),
+		)
 	}
 	if len(name) > 120 {
-		return "", nil, &tokenFormError{field: "name", message: "Token name is too long."}
+		return "", nil, newRequestError(
+			"name",
+			"Token name is too long.",
+			errors.New("invalid token name: exceeds 120 characters"),
+		)
 	}
 
 	value := strings.TrimSpace(r.FormValue("expires"))
@@ -151,12 +149,20 @@ func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err er
 
 	date, err := time.Parse("2006-01-02", value)
 	if err != nil {
-		return "", nil, &tokenFormError{field: "expires", message: "Enter a valid expiration date."}
+		return "", nil, newRequestError(
+			"expires",
+			"Enter a valid expiration date.",
+			fmt.Errorf("parse token expiration date: %w", err),
+		)
 	}
 
 	expiresAt := date.AddDate(0, 0, 1).Add(-time.Nanosecond)
 	if !expiresAt.After(time.Now().UTC()) {
-		return "", nil, &tokenFormError{field: "expires", message: "Expiration date must be in the future."}
+		return "", nil, newRequestError(
+			"expires",
+			"Expiration date must be in the future.",
+			errors.New("invalid token expiration date: not in the future"),
+		)
 	}
 
 	return name, &expiresAt, nil
@@ -164,14 +170,10 @@ func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err er
 
 // writeTokenFormError writes browser-facing token form parsing and validation errors.
 func writeTokenFormError(w http.ResponseWriter, err error) {
-	if validation, ok := errors.AsType[*tokenFormError](err); ok {
-		httpresponse.Problem(w,
-			http.StatusBadRequest,
-			"Token validation failed.",
-			httpresponse.NewFieldProblem(validation.field, validation.message),
-		)
+	if writeRequestProblem(w, http.StatusBadRequest, "Token validation failed.", "", err) {
 		return
 	}
+
 	httpresponse.Problem(w, http.StatusBadRequest, "Invalid token form.")
 }
 

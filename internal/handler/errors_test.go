@@ -259,3 +259,32 @@ func TestValidationResponseDoesNotExposeCause(t *testing.T) {
 	assert.NotContains(t, response.Body.String(), cause.Error())
 	assert.ErrorIs(t, err, cause)
 }
+
+func TestUserErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns explicitly safe message", func(t *testing.T) {
+		t.Parallel()
+
+		err := newRequestError(
+			"name",
+			"A name is required.",
+			errors.New("invalid request name: empty"),
+		)
+
+		message, ok := userErrorMessage(err)
+
+		assert.True(t, ok)
+		assert.Equal(t, "A name is required.", message)
+		assert.EqualError(t, err, "invalid request name: empty")
+	})
+
+	t.Run("rejects untyped internal error", func(t *testing.T) {
+		t.Parallel()
+
+		message, ok := userErrorMessage(errors.New("private persistence detail"))
+
+		assert.False(t, ok)
+		assert.Empty(t, message)
+	})
+}

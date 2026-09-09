@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +28,15 @@ func TestLocalPasswordHash(t *testing.T) {
 	assert.Error(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("wrong-password")))
 }
 
-func TestLocalPasswordHashRejectsInvalidPasswordWithInternalError(t *testing.T) {
+func TestLocalPasswordHashRejectsInvalidPassword(t *testing.T) {
 	t.Parallel()
 
 	_, err := localPasswordHash("short")
 
-	assert.EqualError(t, err, "invalid local password")
+	validation, ok := errors.AsType[*domain.ValidationError](err)
+	require.True(t, ok)
+	assert.Equal(t, "Use at least 12 characters.", validation.UserMessage())
+	assert.Equal(t, "validation failed", validation.Error())
 }
 
 func TestLocalSessionHash(t *testing.T) {
