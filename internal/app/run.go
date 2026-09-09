@@ -105,7 +105,7 @@ func Run(
 	notificationUseCases := service.NewNotifications(database)
 	mediaUseCases := service.NewMedia(database)
 	navigationUseCases := service.NewNavigation(database)
-	pageUseCases := service.NewPages(database)
+	pageUseCases := service.NewPages(database, logger)
 	preferenceUseCases := service.NewPreferences(database)
 	recycleBinUseCases := service.NewRecycleBin(database)
 	settingsUseCases := service.NewSettings(database, secretCipher)

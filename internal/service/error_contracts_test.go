@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -117,7 +118,7 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Run("same move path", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Move(ctx, "/guide/", "guide", domain.MovePageOptions{}, domain.User{})
+		err := NewPages(nil, slog.Default()).Move(ctx, "/guide/", "guide", domain.MovePageOptions{}, domain.User{})
 
 		validation, ok := errors.AsType[*ValidationError](err)
 		require.True(t, ok)
@@ -128,7 +129,7 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Run("move tree into itself", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Move(ctx, "guide", "guide/child", domain.MovePageOptions{MoveChildren: true}, domain.User{})
+		err := NewPages(nil, slog.Default()).Move(ctx, "guide", "guide/child", domain.MovePageOptions{MoveChildren: true}, domain.User{})
 
 		validation, ok := errors.AsType[*ValidationError](err)
 		require.True(t, ok)
@@ -139,7 +140,7 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Run("bulk move same path", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(ctx, BulkPageInput{Action: "move", Slugs: []string{"guide/child"}, Target: "guide"})
+		err := NewPages(nil, slog.Default()).Bulk(ctx, BulkPageInput{Action: "move", Slugs: []string{"guide/child"}, Target: "guide"})
 
 		validation, ok := errors.AsType[*ValidationError](err)
 		require.True(t, ok)
@@ -156,7 +157,7 @@ func TestAdditionalServiceValidationBeforePersistence(t *testing.T) {
 	t.Run("comment body", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).AddComment(ctx, "page", "", " ", domain.User{})
+		err := NewPages(nil, slog.Default()).AddComment(ctx, "page", "", " ", domain.User{})
 
 		validation, ok := errors.AsType[*domain.ValidationError](err)
 		require.True(t, ok)

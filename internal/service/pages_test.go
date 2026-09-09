@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -32,7 +33,7 @@ func (r *pageSaveRepositoryStub) SavePage(
 func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 	t.Parallel()
 
-	pages := NewPages(nil)
+	pages := NewPages(nil, slog.Default())
 	_, err := pages.Save(context.Background(), PageSaveInput{
 		Icon:               "not-a-lucide-icon",
 		Language:           "klingon",
@@ -56,7 +57,7 @@ func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 func TestMoveValidatesDestinationBeforePersistence(t *testing.T) {
 	t.Parallel()
 
-	pages := NewPages(nil)
+	pages := NewPages(nil, slog.Default())
 	err := pages.Move(context.Background(), "guide", "", domain.MovePageOptions{}, domain.User{})
 
 	validation, ok := errors.AsType[*ValidationError](err)
@@ -72,7 +73,7 @@ func TestSaveSlugResolution(t *testing.T) {
 		t.Parallel()
 
 		repository := &pageSaveRepositoryStub{}
-		_, err := NewPages(repository).save(context.Background(), PageSaveInput{
+		_, err := NewPages(repository, slog.Default()).save(context.Background(), PageSaveInput{
 			Title:  "Generated Page Path",
 			Status: "verified",
 		})
@@ -85,7 +86,7 @@ func TestSaveSlugResolution(t *testing.T) {
 		t.Parallel()
 
 		repository := &pageSaveRepositoryStub{}
-		_, err := NewPages(repository).save(context.Background(), PageSaveInput{
+		_, err := NewPages(repository, slog.Default()).save(context.Background(), PageSaveInput{
 			Slug:   "custom/path",
 			Title:  "Generated Page Path",
 			Status: "verified",
@@ -98,7 +99,7 @@ func TestSaveSlugResolution(t *testing.T) {
 	t.Run("rejects a path made only of slashes", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+		_, err := NewPages(nil, slog.Default()).Save(context.Background(), PageSaveInput{
 			Slug:   "/////",
 			Title:  "Invalid path",
 			Status: "verified",
@@ -114,7 +115,7 @@ func TestSaveSlugResolution(t *testing.T) {
 	t.Run("rejects repeated slashes inside a path", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+		_, err := NewPages(nil, slog.Default()).Save(context.Background(), PageSaveInput{
 			Slug:   "platform//database",
 			Title:  "Invalid path",
 			Status: "verified",
@@ -129,7 +130,7 @@ func TestSaveSlugResolution(t *testing.T) {
 	t.Run("requires an explicit path when editing an existing page", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := NewPages(nil).Save(context.Background(), PageSaveInput{
+		_, err := NewPages(nil, slog.Default()).Save(context.Background(), PageSaveInput{
 			PreviousSlug: "existing-page",
 			Title:        "Renamed title",
 			Status:       "verified",
@@ -145,7 +146,7 @@ func TestSaveSlugResolution(t *testing.T) {
 func TestSaveRequiresExplicitStatus(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewPages(nil).Save(context.Background(), PageSaveInput{Slug: "explicit-path", Title: "Explicit title"})
+	_, err := NewPages(nil, slog.Default()).Save(context.Background(), PageSaveInput{Slug: "explicit-path", Title: "Explicit title"})
 	validation, ok := errors.AsType[*ValidationError](err)
 
 	require.True(t, ok)
@@ -159,7 +160,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("pages", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
@@ -169,7 +170,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("group", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{Action: "group", Slugs: []string{"guide"}})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{Action: "group", Slugs: []string{"guide"}})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
@@ -179,7 +180,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("status", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{Action: "status", Slugs: []string{"guide"}, Status: "invalid"})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{Action: "status", Slugs: []string{"guide"}, Status: "invalid"})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
@@ -189,7 +190,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("tag", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{Action: "tag", Slugs: []string{"guide"}})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{Action: "tag", Slugs: []string{"guide"}})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
@@ -199,7 +200,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("move target", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{Action: "move", Slugs: []string{"guide"}})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{Action: "move", Slugs: []string{"guide"}})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)
@@ -209,7 +210,7 @@ func TestBulkValidatesInputsBeforePersistence(t *testing.T) {
 	t.Run("action", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewPages(nil).Bulk(context.Background(), BulkPageInput{Action: "invalid", Slugs: []string{"guide"}})
+		err := NewPages(nil, slog.Default()).Bulk(context.Background(), BulkPageInput{Action: "invalid", Slugs: []string{"guide"}})
 		validation, ok := errors.AsType[*ValidationError](err)
 
 		require.True(t, ok)

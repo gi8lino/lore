@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"slices"
 	"strings"
@@ -78,11 +79,12 @@ type pageRepository interface {
 // Pages coordinates page mutations and their application-level side effects.
 type Pages struct {
 	repository pageRepository
+	logger     *slog.Logger
 }
 
 // NewPages constructs the page application service.
-func NewPages(repository pageRepository) *Pages {
-	return &Pages{repository: repository}
+func NewPages(repository pageRepository, logger *slog.Logger) *Pages {
+	return &Pages{repository: repository, logger: logger}
 }
 
 // Save validates and persists a page, then records audit and mention side effects.
@@ -101,8 +103,8 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (domain.Page, err
 		action = "page.renamed"
 	}
 
-	_ = s.repository.LogAudit(ctx, input.Actor.ID, action, "page", page.Slug, page.Title)
-	_ = s.repository.NotifyMentions(
+	s.recordAudit(ctx, input.Actor.ID, action, "page", page.Slug, page.Title)
+	s.notifyMentions(
 		ctx,
 		input.Actor.ID,
 		input.Markdown,
@@ -205,7 +207,7 @@ func (s *Pages) Delete(ctx context.Context, slug string, actor domain.User) erro
 		return err
 	}
 
-	_ = s.repository.LogAudit(ctx, actor.ID, "page.deleted", "page", slug, "Moved page to recycle bin")
+	s.recordAudit(ctx, actor.ID, "page.deleted", "page", slug, "Moved page to recycle bin")
 
 	return nil
 }
@@ -232,7 +234,7 @@ func (s *Pages) Move(
 		return err
 	}
 
-	_ = s.repository.LogAudit(ctx, actor.ID, "page.moved", "page", newSlug, oldSlug+" → "+newSlug)
+	s.recordAudit(ctx, actor.ID, "page.moved", "page", newSlug, oldSlug+" → "+newSlug)
 
 	return nil
 }
@@ -244,7 +246,7 @@ func (s *Pages) Review(ctx context.Context, slug string, actor domain.User) erro
 		return err
 	}
 
-	_ = s.repository.LogAudit(ctx, actor.ID, "page.reviewed", "page", slug, "Documentation review completed")
+	s.recordAudit(ctx, actor.ID, "page.reviewed", "page", slug, "Documentation review completed")
 
 	return nil
 }
@@ -298,7 +300,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 		return domain.Page{}, err
 	}
 
-	_ = s.repository.LogAudit(
+	s.recordAudit(
 		ctx,
 		actor.ID,
 		"page.revision_restored",
@@ -329,7 +331,7 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 		return err
 	}
 
-	_ = s.repository.NotifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
+	s.notifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
 
 	return nil
 }
@@ -359,7 +361,7 @@ func (s *Pages) Import(ctx context.Context, candidates []ImportedPage, format st
 		}
 	}
 
-	_ = s.repository.LogAudit(
+	s.recordAudit(
 		ctx,
 		actor.ID,
 		"pages.imported",
@@ -450,7 +452,7 @@ func (s *Pages) Bulk(ctx context.Context, input BulkPageInput) error {
 		return err
 	}
 
-	_ = s.repository.LogAudit(
+	s.recordAudit(
 		ctx,
 		input.Actor.ID,
 		"page.bulk_"+input.Action,
