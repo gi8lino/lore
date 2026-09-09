@@ -10,10 +10,10 @@ import (
 func TestValidationErrorSeparatesDiagnosticAndUserMessages(t *testing.T) {
 	t.Parallel()
 
-	err := NewValidationError("icon", "Choose an icon from the available Lucide icons.")
+	err := NewValidationError("icon", "Choose an icon from the available icon catalog.")
 
 	assert.Equal(t, "validation failed", err.Error())
-	assert.Equal(t, "Choose an icon from the available Lucide icons.", err.UserMessage())
+	assert.Equal(t, "Choose an icon from the available icon catalog.", err.UserMessage())
 }
 
 func TestValidationErrorPreservesCauseWithoutExposingItAsUserMessage(t *testing.T) {

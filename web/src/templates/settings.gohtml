@@ -223,13 +223,13 @@
             ><span><strong>Pin to sidebar</strong></span
             ><input type="checkbox" name="pinned" checked
           /></label>
-          <button class="button primary" type="submit">{{ icon "bookmark-plus" 15 }}<span>Save search</span></button>
+          <button class="button primary" type="submit">{{ icon "bookmark-plus-lucide" 15 }}<span>Save search</span></button>
         </form>
         <div class="saved-search-list">
           {{ range .SavedSearches }}
             <article>
               <a href="/search?q={{ .Query }}"
-                ><span>{{ icon "search" 15 }}</span
+                ><span>{{ icon "search-lucide" 15 }}</span
                 ><span><strong>{{ .Name }}</strong><small>{{ .Query }}</small></span></a
               >
               <form action="/settings/saved-searches/{{ .ID }}/delete" method="post">
@@ -239,7 +239,7 @@
                   data-confirm="Delete saved search {{ .Name }}?"
                   aria-label="Delete saved search"
                 >
-                  {{ icon "trash-2" 15 }}
+                  {{ icon "trash-2-lucide" 15 }}
                 </button>
               </form>
             </article>

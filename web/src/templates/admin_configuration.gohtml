@@ -84,7 +84,7 @@
                 <strong>External links</strong>
                 <small>Add links beside search. The optional description can show secondary information such as a version.</small>
               </div>
-              <button class="button compact" type="button" data-external-link-add>{{ icon "plus" 14 }}<span>Add link</span></button>
+              <button class="button compact" type="button" data-external-link-add>{{ icon "plus-lucide" 14 }}<span>Add link</span></button>
             </div>
 
             <div class="external-link-settings-list" data-external-link-list>
@@ -105,10 +105,10 @@
                   <div class="external-link-settings-actions">
                     <input type="hidden" name="external_link_icon" value="{{ .Icon }}" data-icon-picker-value />
                     <button class="button compact external-link-icon-button" type="button" data-icon-picker-open>
-                      <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ if .Icon }}{{ icon .Icon 18 }}{{ else }}{{ icon "plus" 18 }}{{ end }}</span>
+                      <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ if .Icon }}{{ icon .Icon 18 }}{{ else }}{{ icon "plus-lucide" 18 }}{{ end }}</span>
                       <span data-icon-picker-label>{{ if .Icon }}{{ .Icon }}{{ else }}No icon{{ end }}</span>
                     </button>
-                    <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2" 15 }}</button>
+                    <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2-lucide" 15 }}</button>
                   </div>
                 </div>
               {{ end }}
@@ -131,10 +131,10 @@
                 <div class="external-link-settings-actions">
                   <input type="hidden" name="external_link_icon" data-icon-picker-value />
                   <button class="button compact external-link-icon-button" type="button" data-icon-picker-open>
-                    <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ icon "plus" 18 }}</span>
+                    <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ icon "plus-lucide" 18 }}</span>
                     <span data-icon-picker-label>No icon</span>
                   </button>
-                  <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2" 15 }}</button>
+                  <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2-lucide" 15 }}</button>
                 </div>
               </div>
             </template>
@@ -197,7 +197,7 @@
                 <strong>Request headers</strong>
                 <small>Add headers sent with every PDF render and service-test request.</small>
               </div>
-              <button class="button compact" type="button" data-pdf-header-add>{{ icon "plus" 14 }}<span>Add header</span></button>
+              <button class="button compact" type="button" data-pdf-header-add>{{ icon "plus-lucide" 14 }}<span>Add header</span></button>
             </div>
 
             {{ if .Runtime.EncryptionKeyConfigured }}
@@ -242,7 +242,7 @@
                         data-pdf-header-sensitive
                         aria-label="Encrypt this header value at rest"
                       />
-                      <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round" 14 }}</span>
+                      <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round-lucide" 14 }}</span>
                     </label>
                     {{ if and .Sensitive .Configured }}
                       <button
@@ -254,7 +254,7 @@
                       >Reveal</button>
                     {{ end }}
                     <button class="icon-button" type="button" data-pdf-header-remove aria-label="Remove PDF request header">
-                      {{ icon "trash-2" 15 }}
+                      {{ icon "trash-2-lucide" 15 }}
                     </button>
                   </div>
                 </div>
@@ -276,10 +276,10 @@
                 <div class="pdf-header-actions">
                   <label class="pdf-header-sensitive" title="Sensitive: encrypt this header value at rest">
                     <input type="checkbox" data-pdf-header-sensitive aria-label="Encrypt this header value at rest" />
-                    <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round" 14 }}</span>
+                    <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round-lucide" 14 }}</span>
                   </label>
                   <button class="icon-button" type="button" data-pdf-header-remove aria-label="Remove PDF request header">
-                    {{ icon "trash-2" 15 }}
+                    {{ icon "trash-2-lucide" 15 }}
                   </button>
                 </div>
               </div>
@@ -287,7 +287,7 @@
           </div>
 
           <div class="pdf-settings-actions">
-            <button class="button" type="button" data-pdf-test>{{ icon "activity" 15 }}<span>Test endpoint</span></button>
+            <button class="button" type="button" data-pdf-test>{{ icon "activity-lucide" 15 }}<span>Test endpoint</span></button>
             <button class="button primary" type="submit">Save PDF settings</button>
           </div>
           <p class="pdf-test-status" data-pdf-test-status aria-live="polite"></p>
@@ -300,7 +300,7 @@
               <h2 id="pdf-test-dialog-title">PDF service test</h2>
             </div>
             <button class="icon-button app-dialog-close" type="button" data-pdf-test-close aria-label="Close">
-              {{ icon "x" 18 }}
+              {{ icon "x-lucide" 18 }}
             </button>
           </div>
 
@@ -598,7 +598,7 @@
                           {{ end }}
                         </select>
                         <button class="icon-button" type="button" data-oidc-group-mapping-remove aria-label="Remove group mapping">
-                          {{ icon "x" 16 }}
+                          {{ icon "x-lucide" 16 }}
                         </button>
                       </div>
                     {{ end }}
@@ -606,7 +606,7 @@
 
                   {{ if .Groups }}
                     <button class="button compact" type="button" data-oidc-group-mapping-add>
-                      {{ icon "plus" 15 }}<span>Add mapping</span>
+                      {{ icon "plus-lucide" 15 }}<span>Add mapping</span>
                     </button>
                     <template data-oidc-group-mapping-template>
                       <div class="auth-group-mapping-row" data-oidc-group-mapping-row>
@@ -622,7 +622,7 @@
                           {{ range .Groups }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
                         </select>
                         <button class="icon-button" type="button" data-oidc-group-mapping-remove aria-label="Remove group mapping">
-                          {{ icon "x" 16 }}
+                          {{ icon "x-lucide" 16 }}
                         </button>
                       </div>
                     </template>
@@ -672,15 +672,15 @@
   >
     <div class="app-dialog-header">
       <div>
-        <p class="eyebrow">Lucide</p>
+        <p class="eyebrow">Icons</p>
         <h2 id="external-link-icon-picker-title">Choose external link icon</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-icon-picker-close aria-label="Close icon picker">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="icon-picker-search">
-      {{ icon "search" 17 }}
+      {{ icon "search-lucide" 17 }}
       <input type="search" placeholder="Search icons…" autocomplete="off" data-icon-picker-search aria-label="Search icons" />
     </div>
     <div class="icon-picker-grid" data-icon-picker-grid></div>

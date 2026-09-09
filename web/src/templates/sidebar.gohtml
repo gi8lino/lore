@@ -16,7 +16,7 @@
           <p class="nav-label" id="sidebar-pinned-label">Pinned</p>
           {{ range .SidebarPinned }}
             <a class="sidebar-shortcut-link" href="/pages/{{ .Slug }}" title="{{ .Title }}"
-              >{{ icon "star" 14 }}<span>{{ .Title }}</span></a
+              >{{ icon "star-lucide" 14 }}<span>{{ .Title }}</span></a
             >
           {{ end }}
         </section>
@@ -27,7 +27,7 @@
           <p class="nav-label" id="sidebar-recent-label">Recently viewed</p>
           {{ range .SidebarRecent }}
             <a class="sidebar-shortcut-link" href="/pages/{{ .Slug }}" title="{{ .Title }}"
-              >{{ icon "history" 14 }}<span>{{ .Title }}</span></a
+              >{{ icon "history-lucide" 14 }}<span>{{ .Title }}</span></a
             >
           {{ end }}
         </section>
@@ -39,7 +39,7 @@
           {{ range .SavedSearches }}
             {{ if .Pinned }}
               <a class="sidebar-shortcut-link" href="/search?q={{ .Query }}" title="{{ .Query }}"
-                >{{ icon "search" 14 }}<span>{{ .Name }}</span></a
+                >{{ icon "search-lucide" 14 }}<span>{{ .Name }}</span></a
               >
             {{ end }}
           {{ end }}
@@ -57,7 +57,7 @@
               title="Collapse all folders"
               aria-label="Collapse all folders"
             >
-              {{ icon "chevrons-up" 14 }}
+              {{ icon "chevrons-up-lucide" 14 }}
             </button>
             <button
               class="nav-tree-action"
@@ -66,7 +66,7 @@
               title="Expand all folders"
               aria-label="Expand all folders"
             >
-              {{ icon "chevrons-down" 14 }}
+              {{ icon "chevrons-down-lucide" 14 }}
             </button>
           </div>
         </div>
@@ -88,3 +88,5 @@
     <span data-navigation-scroll-ready hidden></span>
   </aside>
 {{ end }}
+
+

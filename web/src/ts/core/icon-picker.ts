@@ -1,4 +1,4 @@
-// Reusable Lucide icon picker behavior.
+// Reusable icon picker behavior.
 
 import { createDebouncer, createLatestRequest, isAbortError } from "./async.ts";
 import { requiredElement } from "./dom.ts";

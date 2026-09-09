@@ -1,5 +1,6 @@
-/* Lucide icon integration. */
-.lucide-icon {
+/* Shared icon integration. */
+.lucide-icon,
+.simple-icon {
   display: block;
   flex: none;
 }
@@ -24,11 +25,13 @@
   align-items: center;
   gap: 9px;
 }
-.nav-icon .lucide-icon {
+.nav-icon .lucide-icon,
+.nav-icon .simple-icon {
   width: 18px;
   height: 18px;
 }
-.markdown-toolbar .lucide-icon {
+.markdown-toolbar .lucide-icon,
+.markdown-toolbar .simple-icon {
   width: 16px;
   height: 16px;
 }
@@ -41,7 +44,7 @@
   place-items: center;
 }
 
-/* Searchable Lucide navigation icon picker. */
+/* Searchable icon picker. */
 .navigation-current-icon {
   display: grid;
   width: 30px;

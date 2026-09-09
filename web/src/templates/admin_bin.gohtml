@@ -25,7 +25,7 @@
             </span>
             <div class="recycle-bin-actions">
               <form action="/admin/bin/restore/{{ .Slug }}" method="post">
-                <button class="button" type="submit">{{ icon "rotate-ccw" 16 }}<span>Restore</span></button>
+                <button class="button" type="submit">{{ icon "rotate-ccw-lucide" 16 }}<span>Restore</span></button>
               </form>
               <form
                 action="/admin/bin/delete/{{ .Slug }}"
@@ -35,14 +35,14 @@
                 data-confirm-label="Delete permanently"
               >
                 <button class="button danger" type="submit">
-                  {{ icon "trash-2" 16 }}<span>Delete permanently</span>
+                  {{ icon "trash-2-lucide" 16 }}<span>Delete permanently</span>
                 </button>
               </form>
             </div>
           </div>
         {{ else }}
           <div class="empty recycle-bin-empty">
-            {{ icon "trash-2" 24 }}<strong>Recycle bin is empty</strong
+            {{ icon "trash-2-lucide" 24 }}<strong>Recycle bin is empty</strong
             ><span>Deleted pages will appear here and can be restored by an administrator.</span>
           </div>
         {{ end }}
@@ -50,3 +50,5 @@
     </section>
   </section>
 {{ end }}
+
+

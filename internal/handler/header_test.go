@@ -29,7 +29,7 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 		ApplicationSettings: domain.ApplicationSettings{ExternalLinks: []domain.ExternalLink{{
 			Label:       "Repository",
 			URL:         "https://github.com/gi8lino/lore",
-			Icon:        "code",
+			Icon:        "github-simple",
 			Description: "v2.4.1",
 		}}},
 		Notifications: []domain.Notification{{

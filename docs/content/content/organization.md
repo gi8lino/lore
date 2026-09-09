@@ -8,7 +8,7 @@ platform/kubernetes
 platform/kubernetes/ingress
 ```
 
-A path segment can exist as a synthetic navigation folder even when no page exists at that exact path. Administrators can assign Lucide icons to navigation paths.
+A path segment can exist as a synthetic navigation folder even when no page exists at that exact path. Administrators can assign icons to navigation paths.
 
 ## Tags
 

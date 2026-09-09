@@ -7,7 +7,7 @@
       {{ if or .Open .ContainsActive }}open{{ end }}
     >
       <summary class="{{ if .Root }}nav-root-summary{{ else }}nav-branch-summary{{ end }}" title="{{ .Title }}">
-        <span class="nav-chevron" aria-hidden="true">{{ icon "chevron-right" 14 }}</span>
+        <span class="nav-chevron" aria-hidden="true">{{ icon "chevron-right-lucide" 14 }}</span>
         {{ if .Page }}
           <a
             class="nav-node-link{{ if .Active }} active{{ end }}"
@@ -31,3 +31,5 @@
     </a>
   {{ end }}
 {{ end }}
+
+

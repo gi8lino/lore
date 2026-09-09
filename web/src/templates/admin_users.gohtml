@@ -65,7 +65,7 @@
                     data-suggested-user-id="{{ .SuggestedUserID }}"
                     data-suggested-user-name="{{ .SuggestedDisplayName }}"
                   >
-                    {{ icon "link" 15 }}<span>Review</span>
+                    {{ icon "link-lucide" 15 }}<span>Review</span>
                   </button>
                 {{ end }}
               </div>
@@ -101,20 +101,20 @@
                   <strong>{{ .User.DisplayName }}</strong>
                   <small>{{ .User.Username }}{{ if .User.Email }} · {{ .User.Email }}{{ end }}</small>
                   {{ if not .User.Enabled }}
-                    <small class="admin-user-warning">{{ icon "ban" 12 }} Account disabled</small>
+                    <small class="admin-user-warning">{{ icon "ban-lucide" 12 }} Account disabled</small>
                   {{ end }}
                   {{ if and (eq .User.Role "admin") .ExternalAdminObserved (not .ExternalAdmin) }}
-                    <small class="admin-user-warning">{{ icon "triangle-alert" 12 }} External provider no longer grants admin; manual admin remains</small>
+                    <small class="admin-user-warning">{{ icon "triangle-alert-lucide" 12 }} External provider no longer grants admin; manual admin remains</small>
                   {{ end }}
                   {{ if .OIDCIdentities }}
                     <small class="admin-user-identity-state">
-                      {{ icon "key-round" 12 }}
+                      {{ icon "key-round-lucide" 12 }}
                       {{ len .OIDCIdentities }} OIDC {{ if eq (len .OIDCIdentities) 1 }}identity{{ else }}identities{{ end }}
                     </small>
                   {{ end }}
                   {{ if .HasLocalCredential }}
                     <small class="admin-user-identity-state">
-                      {{ icon "key-round" 12 }}
+                      {{ icon "key-round-lucide" 12 }}
                       Local login
                       {{ if .LocalCredentialEnabled }}
                         <span class="admin-local-state enabled">Enabled</span>
@@ -164,7 +164,7 @@
                         {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
                       {{ end }}"
                     >
-                      {{ icon "pencil" 15 }}<span>Edit</span>
+                      {{ icon "pencil-lucide" 15 }}<span>Edit</span>
                     </button>
                     <form
                       action="/admin/users/{{ .User.ID }}/sessions/revoke"
@@ -174,7 +174,7 @@
                       data-confirm-label="Sign out"
                     >
                       <button class="button compact" type="submit" title="Revoke browser sessions">
-                        {{ icon "log-out" 15 }}<span class="sr-only">Sign out</span>
+                        {{ icon "log-out-lucide" 15 }}<span class="sr-only">Sign out</span>
                       </button>
                     </form>
                   </div>
@@ -252,7 +252,7 @@
           <p class="admin-user-dialog-identity" data-admin-user-identity></p>
         </div>
         <button class="icon-button app-dialog-close" type="button" data-admin-user-close aria-label="Close user editor">
-          {{ icon "x" 20 }}
+          {{ icon "x-lucide" 20 }}
         </button>
       </div>
 
@@ -322,7 +322,7 @@
 
       <div class="app-dialog-actions">
         <button class="button" type="button" data-admin-user-close>Cancel</button>
-        <button class="button primary" type="submit">{{ icon "save" 15 }}<span>Save changes</span></button>
+        <button class="button primary" type="submit">{{ icon "save-lucide" 15 }}<span>Save changes</span></button>
       </div>
     </form>
   </dialog>
@@ -335,7 +335,7 @@
         <p class="admin-user-dialog-identity" data-pending-oidc-profile></p>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-pending-oidc-close aria-label="Close identity review">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
 
@@ -358,7 +358,7 @@
             {{ end }}
           </select>
           <p class="admin-identity-match" data-pending-oidc-match hidden></p>
-          <button class="button primary" type="submit">{{ icon "link" 15 }}<span>Link identity</span></button>
+          <button class="button primary" type="submit">{{ icon "link-lucide" 15 }}<span>Link identity</span></button>
         </form>
       </section>
 
@@ -368,7 +368,7 @@
           <small>Approve this verified identity even while automatic user creation is disabled.</small>
         </div>
         <form method="post" data-pending-oidc-approve-form>
-          <button class="button" type="submit">{{ icon "user-plus" 15 }}<span>Create user</span></button>
+          <button class="button" type="submit">{{ icon "user-plus-lucide" 15 }}<span>Create user</span></button>
         </form>
       </section>
 
@@ -388,3 +388,5 @@
     </div>
   </dialog>
 {{ end }}
+
+

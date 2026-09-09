@@ -20,7 +20,7 @@
           {{ end }}
           {{ if .Page.OwnerGroup }}
             <span class="page-owner-badge" title="Documentation owner"
-              >{{ icon "shield-check" 13 }}<span>{{ .Page.OwnerGroup }}</span></span
+              >{{ icon "shield-check-lucide" 13 }}<span>{{ .Page.OwnerGroup }}</span></span
             >
           {{ end }}
         </div>
@@ -39,7 +39,7 @@
         {{ if .PageVariables }}
           <button class="button variables-button" type="button" data-variables-open
             aria-expanded="false" aria-controls="page-variables">
-            {{ icon "braces" 17 }}<span>Variables ({{ len .PageVariables }})</span>
+            {{ icon "braces-lucide" 17 }}<span>Variables ({{ len .PageVariables }})</span>
           </button>
         {{ end }}
         <form action="/pages/{{ .Page.Slug }}/favorite" method="post">
@@ -58,7 +58,7 @@
               Pin page
             {{ end }}"
           >
-            {{ icon "star" 17 }}
+            {{ icon "star-lucide" 17 }}
           </button>
         </form>
         <button
@@ -68,14 +68,14 @@
           aria-label="Share or export page"
           title="Share or export"
         >
-          {{ icon "share-2" 17 }}
+          {{ icon "share-2-lucide" 17 }}
         </button>
         <a
           class="button icon-only"
           href="/graph?slug={{ .Page.Slug }}"
           aria-label="Explore page relationships"
           title="Knowledge graph"
-          >{{ icon "network" 17 }}</a
+          >{{ icon "network-lucide" 17 }}</a
         >
         {{ if .ApplicationSettings.DiscussionsEnabled }}
           <button
@@ -85,15 +85,15 @@
             aria-label="Comment on page"
             title="Comment"
           >
-            {{ icon "message-square-plus" 17 }}
+            {{ icon "message-square-plus-lucide" 17 }}
           </button>
         {{ end }}
         {{ if .CanEdit }}
           <a class="button icon-only" href="/edit/{{ .Page.Slug }}" aria-label="Edit page" title="Edit page"
-            >{{ icon "pencil" 17 }}</a
+            >{{ icon "pencil-lucide" 17 }}</a
           >
           <button class="button icon-only" type="button" data-move-page-open aria-label="Move page" title="Move page">
-            {{ icon "folder-input" 17 }}
+            {{ icon "folder-input-lucide" 17 }}
           </button>
         {{ end }}
         {{ if eq .User.Role "admin" }}
@@ -105,7 +105,7 @@
             data-confirm-label="Move to bin"
           >
             <button class="button icon-only danger" type="submit" aria-label="Delete page" title="Delete page">
-              {{ icon "trash-2" 17 }}
+              {{ icon "trash-2-lucide" 17 }}
             </button>
           </form>
         {{ end }}
@@ -117,7 +117,7 @@
         <div class="variables-panel-heading">
           <div><h2 id="page-variables-title">Variables used on this page</h2>
             <p>Saved values are shown below. Changing a shared value remains an administrator action.</p></div>
-          <button class="icon-button" type="button" data-variables-close aria-label="Close variables">{{ icon "x" 18 }}</button>
+          <button class="icon-button" type="button" data-variables-close aria-label="Close variables">{{ icon "x-lucide" 18 }}</button>
         </div>
         <label class="toggle-row compact variables-highlight-toggle">
           <span><strong>Highlight in page</strong><small>Hover, focus or tap marked text to see its variable.</small></span>
@@ -142,7 +142,7 @@
 
     {{ if eq .Page.Status "deprecated" }}
       <aside class="page-lifecycle-banner deprecated">
-        {{ icon "triangle-alert" 18 }}
+        {{ icon "triangle-alert-lucide" 18 }}
         <div>
           <strong>This page is deprecated.</strong>{{ if .Page.DeprecatedTarget }}
             <span>Use <a href="/pages/{{ .Page.DeprecatedTarget }}">{{ .Page.DeprecatedTarget }}</a> instead.</span>
@@ -153,12 +153,12 @@
       </aside>
     {{ else if eq .Page.Status "draft" }}
       <aside class="page-lifecycle-banner draft">
-        {{ icon "file-pen-line" 18 }}
+        {{ icon "file-pen-line-lucide" 18 }}
         <div><strong>Draft documentation.</strong> <span>This page has not been verified yet.</span></div>
       </aside>
     {{ else if eq .Page.Status "archived" }}
       <aside class="page-lifecycle-banner archived">
-        {{ icon "archive" 18 }}
+        {{ icon "archive-lucide" 18 }}
         <div><strong>Archived documentation.</strong> <span>This page is retained for historical context.</span></div>
       </aside>
     {{ end }}
@@ -181,7 +181,7 @@
           >Updated {{ timeago .Page.UpdatedAt }} by {{ .Page.Author }} · {{ .Page.ViewCount }}
           views{{ if gt .Page.ReviewIntervalDays 0 }}· review every {{ .Page.ReviewIntervalDays }}d{{ end }}</span
         >
-        <span class="page-details-icon" aria-hidden="true">{{ icon "info" 17 }}</span>
+        <span class="page-details-icon" aria-hidden="true">{{ icon "info-lucide" 17 }}</span>
         <span class="sr-only">Show related pages, backlinks, and revision history</span>
       </summary>
       <div class="relations">
@@ -232,7 +232,7 @@
             </p>
             {{ if .CanEdit }}
               <form action="/pages/review/{{ .Page.Slug }}" method="post">
-                <button class="button" type="submit">{{ icon "badge-check" 15 }}<span>Mark reviewed</span></button>
+                <button class="button" type="submit">{{ icon "badge-check-lucide" 15 }}<span>Mark reviewed</span></button>
               </form>
             {{ end }}
           </section>
@@ -248,7 +248,7 @@
                 data-revision-dialog-open
                 data-revision-url="/revisions/{{ .Page.Slug }}"
               >
-                {{ icon "history" 14 }}<span>All {{ .RevisionCount }} revisions</span>{{ icon "chevron-right" 13 }}
+                {{ icon "history-lucide" 14 }}<span>All {{ .RevisionCount }} revisions</span>{{ icon "chevron-right-lucide" 13 }}
               </button>
             {{ end }}
           {{ else }}
@@ -266,7 +266,7 @@
             <p class="muted">Comments can be anchored to selected page text.</p>
           </div>
           <button class="button compact" type="button" data-comment-dialog-open>
-            {{ icon "message-square-plus" 15 }}<span>Comment</span>
+            {{ icon "message-square-plus-lucide" 15 }}<span>Comment</span>
           </button>
         </div>
         <div class="page-comment-list">
@@ -337,7 +337,7 @@
         Show page contents
       {{ end }}"
     >
-      {{ icon "list" 17 }}
+      {{ icon "list-lucide" 17 }}
     </button>
   {{ end }}
 
@@ -349,7 +349,7 @@
         <h2 id="share-dialog-title">Share and export</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-share-dialog-close aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     {{ if .PageVariables }}
@@ -373,26 +373,26 @@
     {{ end }}
     <div class="share-dialog-options">
       <button class="share-option" type="button" data-share-permalink data-url="/p/{{ .Page.ID }}">
-        <span class="share-option-icon">{{ icon "link" 22 }}</span>
+        <span class="share-option-icon">{{ icon "link-lucide" 22 }}</span>
         <span
           ><strong>Copy permalink</strong
           ><small data-share-permalink-status>Stable page link. Lore sign-in is still required.</small></span
         >
       </button>
       <button class="share-option" type="button" data-share-preview>
-        <span class="share-option-icon">{{ icon "eye" 22 }}</span>
+        <span class="share-option-icon">{{ icon "eye-lucide" 22 }}</span>
         <span><strong>Preview print / PDF</strong><small>Check the content with your current export values.</small></span>
       </button>
       <button class="share-option" type="button" data-share-print>
-        <span class="share-option-icon">{{ icon "printer" 22 }}</span>
+        <span class="share-option-icon">{{ icon "printer-lucide" 22 }}</span>
         <span><strong>Print</strong><small>Open the browser print dialog.</small></span>
       </button>
       <button class="share-option" type="button" data-share-pdf data-url="/export/pdf/{{ .Page.Slug }}">
-        <span class="share-option-icon">{{ icon "file-down" 22 }}</span>
+        <span class="share-option-icon">{{ icon "file-down-lucide" 22 }}</span>
         <span><strong>Export PDF</strong><small>Generate a printable PDF on the server.</small></span>
       </button>
       <a class="share-option" href="/export/markdown/{{ .Page.Slug }}" data-share-markdown>
-        <span class="share-option-icon">{{ icon "file-text" 22 }}</span>
+        <span class="share-option-icon">{{ icon "file-text-lucide" 22 }}</span>
         <span
           ><strong>Export Markdown</strong
           ><small>Download .md directly; a ZIP is used only when referenced images must be included.</small></span
@@ -419,7 +419,7 @@
         <h2 id="move-page-title">Move page</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-move-page-close aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <form action="/pages/move/{{ .Page.Slug }}" method="post" class="app-dialog-body stacked-form">
@@ -440,7 +440,7 @@
       /></label>
       <div class="app-dialog-actions">
         <button class="button" type="button" data-move-page-close>Cancel</button
-        ><button class="button primary" type="submit">{{ icon "folder-input" 16 }}<span>Move page</span></button>
+        ><button class="button primary" type="submit">{{ icon "folder-input-lucide" 16 }}<span>Move page</span></button>
       </div>
     </form>
   </dialog>
@@ -453,7 +453,7 @@
           <h2 id="comment-dialog-title">Add comment</h2>
         </div>
         <button class="icon-button app-dialog-close" type="button" data-comment-dialog-close aria-label="Close">
-          {{ icon "x" 20 }}
+          {{ icon "x-lucide" 20 }}
         </button>
       </div>
       <form action="/page-comments/{{ .Page.Slug }}" method="post" class="app-dialog-body stacked-form">
@@ -477,7 +477,7 @@
         </label>
         <div class="app-dialog-actions">
           <button class="button" type="button" data-comment-dialog-close>Cancel</button
-          ><button class="button primary" type="submit">{{ icon "send" 15 }}<span>Add comment</span></button>
+          ><button class="button primary" type="submit">{{ icon "send-lucide" 15 }}<span>Add comment</span></button>
         </div>
       </form>
     </dialog>
@@ -496,7 +496,7 @@
           data-revision-dialog-close
           aria-label="Close revision history"
         >
-          {{ icon "x" 20 }}
+          {{ icon "x-lucide" 20 }}
         </button>
       </div>
       <div class="revision-dialog-body" data-revision-dialog-body>
@@ -505,5 +505,7 @@
     </dialog>
   {{ end }}
 {{ end }}
+
+
 
 

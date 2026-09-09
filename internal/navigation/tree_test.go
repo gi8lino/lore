@@ -82,8 +82,8 @@ func TestBuildUsesIconsAtEveryNavigationDepth(t *testing.T) {
 	t.Parallel()
 
 	tree := Build([]Page{
-		{Slug: "personal", Title: "Personal", Icon: "user"},
-		{Slug: "personal/household/laundry", Title: "Laundry", Icon: "washing-machine"},
+		{Slug: "personal", Title: "Personal", Icon: "user-lucide"},
+		{Slug: "personal/household/laundry", Title: "Laundry", Icon: "washing-machine-lucide"},
 	}, Options{Icons: map[string]string{
 		"personal":           "user",
 		"personal/household": "house",
@@ -97,15 +97,15 @@ func TestBuildUsesIconsAtEveryNavigationDepth(t *testing.T) {
 
 	assert.Equal(t, "house", household.Icon)
 	require.Len(t, household.Children, 1)
-	assert.Equal(t, "washing-machine", household.Children[0].Icon)
+	assert.Equal(t, "washing-machine-lucide", household.Children[0].Icon)
 }
 
 func TestChildrenReturnsTheCompleteSubtree(t *testing.T) {
 	t.Parallel()
 
 	tree := Build([]Page{
-		{Slug: "applications", Title: "Applications", Icon: "boxes"},
-		{Slug: "applications/analytics/matomo", Title: "Matomo", Icon: "chart-no-axes-combined"},
+		{Slug: "applications", Title: "Applications", Icon: "boxes-lucide"},
+		{Slug: "applications/analytics/matomo", Title: "Matomo", Icon: "chart-no-axes-combined-lucide"},
 		{Slug: "applications/analytics/matomo/maintenance", Title: "Matomo maintenance"},
 		{Slug: "applications/automation/jenkins", Title: "Jenkins"},
 	}, Options{})

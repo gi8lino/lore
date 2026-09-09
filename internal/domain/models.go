@@ -395,7 +395,7 @@ type NavigationItem struct {
 	Path string
 	// Title is the page title or the raw path segment for synthetic folders.
 	Title string
-	// Icon is the explicitly selected Lucide icon name.
+	// Icon is the explicitly selected icon identifier.
 	Icon string
 	// Page reports whether the path maps to a real wiki page.
 	Page bool
@@ -508,7 +508,7 @@ type Page struct {
 	Slug string `json:"slug"`
 	// Title is the human-readable page title.
 	Title string `json:"title"`
-	// Icon is the optional Lucide icon displayed with the page title.
+	// Icon is the optional icon displayed with the page title.
 	Icon string `json:"icon,omitempty"`
 	// Language optionally overrides the wiki-wide content language.
 	Language string `json:"language,omitempty"`

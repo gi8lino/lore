@@ -42,8 +42,8 @@ func (s *Navigation) NavigationIcons(ctx context.Context) (map[string]string, er
 // SetNavigationIcon sets or clears the icon for a navigation path.
 func (s *Navigation) SetNavigationIcon(ctx context.Context, path, icon string) error {
 	icon = strings.TrimSpace(icon)
-	if !icons.IsNavigationIcon(icon) {
-		return newValidationError("icon", "Choose an icon from the available Lucide icons.")
+	if !icons.IsIcon(icon) {
+		return newValidationError("icon", "Choose an icon from the available icon catalog.")
 	}
 	return s.repository.SetNavigationIcon(ctx, path, icon)
 }

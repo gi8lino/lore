@@ -9,7 +9,7 @@
   <div class="admin-workspace-grid">
     <section class="panel admin-compact-form">
       <div class="admin-card-heading">
-        <span class="admin-card-icon">{{ icon "braces" 20 }}</span>
+        <span class="admin-card-icon">{{ icon "braces-lucide" 20 }}</span>
         <div>
           <h2>New reusable value</h2>
           <p class="muted">
@@ -35,7 +35,7 @@
           >Content<textarea name="content" rows="8" required placeholder="Shared value or Markdown…"></textarea>
         </label>
         <div class="form-actions">
-          <button class="button primary" type="submit">{{ icon "plus" 16 }}<span>Create</span></button>
+          <button class="button primary" type="submit">{{ icon "plus-lucide" 16 }}<span>Create</span></button>
         </div>
       </form>
     </section>
@@ -53,14 +53,14 @@
             <summary>
               <span class="admin-expand-icon"
                 >{{ if eq .Kind "variable" }}
-                  {{ icon "variable" 17 }}
+                  {{ icon "variable-lucide" 17 }}
                 {{ else }}
-                  {{ icon "braces" 17 }}
+                  {{ icon "braces-lucide" 17 }}
                 {{ end }}</span
               ><span
                 ><strong>{{ .Name }}</strong
                 ><small>{{ .Kind }}{{ if .Description }}· {{ .Description }}{{ end }}</small></span
-              >{{ icon "chevron-down" 15 }}
+              >{{ icon "chevron-down-lucide" 15 }}
             </summary>
             <form action="/admin/snippets/{{ .ID }}" method="post" class="stacked-form admin-expand-body">
               <div class="form-grid">
@@ -74,14 +74,14 @@
               <label>Description<input name="description" value="{{ .Description }}" /></label>
               <label>Content<textarea name="content" rows="8" required>{{ .Content }}</textarea></label>
               <div class="form-actions">
-                <button class="button primary" type="submit">{{ icon "save" 15 }}<span>Save</span></button
+                <button class="button primary" type="submit">{{ icon "save-lucide" 15 }}<span>Save</span></button
                 ><button
                   class="button danger"
                   type="submit"
                   formaction="/admin/snippets/{{ .ID }}/delete"
                   data-confirm="Delete this reusable value?"
                 >
-                  {{ icon "trash-2" 15 }}<span>Delete</span>
+                  {{ icon "trash-2-lucide" 15 }}<span>Delete</span>
                 </button>
               </div>
             </form>

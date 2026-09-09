@@ -35,7 +35,7 @@
           aria-label="Leave editor"
           title="Leave editor"
         >
-          {{ icon "x" 18 }}
+          {{ icon "x-lucide" 18 }}
         </a>
         <div>
           <span class="editor-chrome-context">{{ if .Page }}Editing{{ else }}New page{{ end }}</span>
@@ -53,7 +53,7 @@
         </span>
         <div class="editor-mode-switcher" role="group" aria-label="Editor view">
           <button class="editor-mode-button" type="button" data-editor-mode="write" aria-pressed="true" title="Write">
-            {{ icon "pencil" 16 }}<span>Write</span>
+            {{ icon "pencil-lucide" 16 }}<span>Write</span>
           </button>
           <button
             class="editor-mode-button"
@@ -62,7 +62,7 @@
             aria-pressed="false"
             title="Split view"
           >
-            {{ icon "columns-2" 16 }}<span>Split</span>
+            {{ icon "columns-2-lucide" 16 }}<span>Split</span>
           </button>
           <button
             class="editor-mode-button"
@@ -71,7 +71,7 @@
             aria-pressed="false"
             title="Preview"
           >
-            {{ icon "eye" 16 }}<span>Preview</span>
+            {{ icon "eye-lucide" 16 }}<span>Preview</span>
           </button>
         </div>
         <button
@@ -81,19 +81,19 @@
           aria-pressed="false"
           title="Focus mode"
         >
-          {{ icon "maximize-2" 16 }}<span data-editor-focus-label>Focus</span>
+          {{ icon "maximize-2-lucide" 16 }}<span data-editor-focus-label>Focus</span>
         </button>
         <button class="button editor-discard-button" type="button" data-editor-discard title="Discard changes">
-          {{ icon "undo-2" 16 }}<span>Discard</span>
+          {{ icon "undo-2-lucide" 16 }}<span>Discard</span>
         </button>
         <button class="button primary" type="submit" title="Save page (⌘/Ctrl+S)">
-          {{ icon "save" 16 }}<span>Save page</span>
+          {{ icon "save-lucide" 16 }}<span>Save page</span>
         </button>
       </div>
     </header>
 
     <div class="editor-draft-banner" data-editor-draft-banner hidden>
-      <div>{{ icon "history" 17 }}<span data-editor-draft-message>A newer private draft is available.</span></div>
+      <div>{{ icon "history-lucide" 17 }}<span data-editor-draft-message>A newer private draft is available.</span></div>
       <div>
         <button class="button" type="button" data-editor-draft-discard>Discard</button>
         <button class="button primary" type="button" data-editor-draft-restore>Restore draft</button>
@@ -133,9 +133,9 @@
         >
           <span data-icon-picker-preview data-icon-picker-empty="plus"
             >{{ if .Page }}
-              {{ if .Page.Icon }}{{ icon .Page.Icon 25 }}{{ else }}{{ icon "plus" 25 }}{{ end }}
+              {{ if .Page.Icon }}{{ icon .Page.Icon 25 }}{{ else }}{{ icon "plus-lucide" 25 }}{{ end }}
             {{ else }}
-              {{ icon "plus" 25 }}
+              {{ icon "plus-lucide" 25 }}
             {{ end }}</span
           >
         </button>
@@ -157,8 +157,8 @@
 
     <details class="editor-page-settings" data-editor-page-settings>
       <summary>
-        {{ icon "settings-2" 16 }}<span>Page settings</span
-        ><span class="muted">Path, metadata, ownership and revision</span>{{ icon "chevron-down" 16 }}
+        {{ icon "settings-2-lucide" 16 }}<span>Page settings</span
+        ><span class="muted">Path, metadata, ownership and revision</span>{{ icon "chevron-down-lucide" 16 }}
       </summary>
       <div class="editor-page-settings-body">
         <div class="form-grid">
@@ -344,14 +344,14 @@
                     value="{{ .Value }}"
                     placeholder="Production"
                   /><button class="icon-button" type="button" data-page-property-remove aria-label="Remove property">
-                    {{ icon "x" 15 }}
+                    {{ icon "x-lucide" 15 }}
                   </button>
                 </div>
               {{ end }}
             {{ end }}
           </div>
           <button class="button compact editor-property-add" type="button" data-page-property-add>
-            {{ icon "plus" 14 }}<span>Add property</span>
+            {{ icon "plus-lucide" 14 }}<span>Add property</span>
           </button>
           <small>Search with <code>property:Environment=Production</code>.</small>
         </fieldset>
@@ -375,16 +375,16 @@
         <div class="markdown-toolbar-group" aria-label="Text formatting">
           <span class="markdown-toolbar-group-label"></span>
           <button type="button" data-markdown-action="bold" title="Bold (⌘/Ctrl+B)" aria-label="Bold">
-            {{ icon "bold" 16 }}
+            {{ icon "bold-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="italic" title="Italic (⌘/Ctrl+I)" aria-label="Italic">
-            {{ icon "italic" 16 }}
+            {{ icon "italic-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="strikethrough" title="Strikethrough" aria-label="Strikethrough">
-            {{ icon "strikethrough" 16 }}
+            {{ icon "strikethrough-lucide" 16 }}
           </button>
           <details class="markdown-toolbar-menu">
-            <summary title="Heading" aria-label="Heading">{{ icon "heading" 16 }}{{ icon "chevron-down" 12 }}</summary>
+            <summary title="Heading" aria-label="Heading">{{ icon "heading-lucide" 16 }}{{ icon "chevron-down-lucide" 12 }}</summary>
             <div class="markdown-toolbar-popover">
               <button type="button" data-markdown-action="heading-1">Heading 1</button>
               <button type="button" data-markdown-action="heading-2">Heading 2</button>
@@ -397,22 +397,22 @@
         <div class="markdown-toolbar-group" aria-label="Blocks">
           <span class="markdown-toolbar-group-label"></span>
           <button type="button" data-markdown-action="quote" title="Quote" aria-label="Quote">
-            {{ icon "quote" 16 }}
+            {{ icon "quote-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="inline-code" title="Inline code" aria-label="Inline code">
-            {{ icon "code" 16 }}
+            {{ icon "code-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="code-block" title="Code block" aria-label="Code block">
-            {{ icon "square-code" 16 }}
+            {{ icon "square-code-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="bullet-list" title="Bulleted list" aria-label="Bulleted list">
-            {{ icon "list" 16 }}
+            {{ icon "list-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="ordered-list" title="Numbered list" aria-label="Numbered list">
-            {{ icon "list-ordered" 16 }}
+            {{ icon "list-ordered-lucide" 16 }}
           </button>
           <button type="button" data-markdown-action="task-list" title="Task list" aria-label="Task list">
-            {{ icon "list-checks" 16 }}
+            {{ icon "list-checks-lucide" 16 }}
           </button>
         </div>
 
@@ -420,19 +420,19 @@
           <span class="markdown-toolbar-group-label"></span>
           <details class="markdown-toolbar-menu markdown-toolbar-insert-menu">
             <summary title="Insert" aria-label="Insert">
-              {{ icon "plus" 16 }}<span></span>{{ icon "chevron-down" 12 }}
+              {{ icon "plus-lucide" 16 }}<span></span>{{ icon "chevron-down-lucide" 12 }}
             </summary>
             <div class="markdown-toolbar-popover">
-              <button type="button" data-markdown-action="mention">{{ icon "at-sign" 15 }}<span>Mention</span></button>
-              <button type="button" data-markdown-action="variable">{{ icon "variable" 15 }}<span>Variable</span></button>
+              <button type="button" data-markdown-action="mention">{{ icon "at-sign-lucide" 15 }}<span>Mention</span></button>
+              <button type="button" data-markdown-action="variable">{{ icon "variable-lucide" 15 }}<span>Variable</span></button>
             </div>
           </details>
           <button type="button" data-markdown-action="link" title="Link (⌘/Ctrl+Shift+K)" aria-label="Link">
-            {{ icon "link" 16 }}
+            {{ icon "link-lucide" 16 }}
           </button>
           <details class="markdown-toolbar-menu">
             <summary title="Callout" aria-label="Callout">
-              {{ icon "triangle-alert" 16 }}{{ icon "chevron-down" 12 }}
+              {{ icon "triangle-alert-lucide" 16 }}{{ icon "chevron-down-lucide" 12 }}
             </summary>
             <div class="markdown-toolbar-popover">
               <button type="button" data-markdown-action="callout-note">Note</button>
@@ -444,7 +444,7 @@
             </div>
           </details>
           <button type="button" data-markdown-action="tabs" title="Tabs" aria-label="Tabs">
-            {{ icon "panels-top-left" 16 }}
+            {{ icon "panels-top-left-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -452,7 +452,7 @@
             title="Collapsible details"
             aria-label="Collapsible details"
           >
-            {{ icon "list-collapse" 16 }}
+            {{ icon "list-collapse-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -460,7 +460,7 @@
             title="Sub-page table of contents"
             aria-label="Insert sub-page table of contents"
           >
-            {{ icon "list-tree" 16 }}
+            {{ icon "list-tree-lucide" 16 }}
           </button>
           {{ if .ApplicationSettings.Rendering.Tables }}
             <button
@@ -469,7 +469,7 @@
               title="Insert or format table"
               aria-label="Insert or format table"
             >
-              {{ icon "table-properties" 16 }}
+              {{ icon "table-properties-lucide" 16 }}
             </button>
           {{ else }}
             <button
@@ -478,14 +478,14 @@
               title="Markdown tables are disabled by an administrator"
               aria-label="Table formatting unavailable"
             >
-              {{ icon "table-properties" 16 }}
+              {{ icon "table-properties-lucide" 16 }}
             </button>
           {{ end }}
           <button type="button" data-media-dialog-open title="Insert image" aria-label="Insert image">
-            {{ icon "image" 16 }}
+            {{ icon "image-lucide" 16 }}
           </button>
           <button type="button" data-attachment-dialog-open title="Insert attachment" aria-label="Insert attachment">
-            {{ icon "paperclip" 16 }}
+            {{ icon "paperclip-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -493,7 +493,7 @@
             title="Horizontal rule"
             aria-label="Horizontal rule"
           >
-            {{ icon "minus" 16 }}
+            {{ icon "minus-lucide" 16 }}
           </button>
         </div>
 
@@ -505,7 +505,7 @@
             title="Find and replace (⌘/Ctrl+F)"
             aria-label="Find and replace"
           >
-            {{ icon "search" 16 }}
+            {{ icon "search-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -513,7 +513,7 @@
             title="Document diagnostics"
             aria-label="Document diagnostics"
           >
-            {{ icon "circle-alert" 16 }}
+            {{ icon "circle-alert-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -521,7 +521,7 @@
             title="Document outline"
             aria-label="Document outline"
           >
-            {{ icon "list-tree" 16 }}
+            {{ icon "list-tree-lucide" 16 }}
           </button>
           <button
             type="button"
@@ -529,7 +529,7 @@
             title="Format complete document"
             aria-label="Format complete document"
           >
-            {{ icon "wand-sparkles" 16 }}
+            {{ icon "wand-sparkles-lucide" 16 }}
           </button>
         </div>
       </div>
@@ -543,15 +543,15 @@
         <div class="editor-search-actions">
           <span class="muted" data-editor-find-status>Ready.</span>
           <button class="button" type="button" data-editor-find-previous title="Previous match">
-            {{ icon "chevron-up" 16 }}
+            {{ icon "chevron-up-lucide" 16 }}
           </button>
           <button class="button" type="button" data-editor-find-next title="Next match">
-            {{ icon "chevron-down" 16 }}
+            {{ icon "chevron-down-lucide" 16 }}
           </button>
           <button class="button" type="button" data-editor-replace-one>Replace</button>
           <button class="button" type="button" data-editor-replace-all>Replace all</button>
           <button class="icon-button" type="button" data-editor-find-close aria-label="Close find and replace">
-            {{ icon "x" 18 }}
+            {{ icon "x-lucide" 18 }}
           </button>
         </div>
       </div>
@@ -581,7 +581,7 @@
               >
             </div>
             <div class="editor-drop-overlay" aria-hidden="true">
-              {{ icon "image-plus" 30 }}<strong>Drop image to upload and insert</strong>
+              {{ icon "image-plus-lucide" 30 }}<strong>Drop image to upload and insert</strong>
             </div>
           </div>
           <section class="editor-preview" data-editor-preview hidden aria-label="Markdown preview">
@@ -598,7 +598,7 @@
               <button type="button" data-editor-inspector-tab="outline" role="tab">Outline</button>
             </div>
             <button class="icon-button" type="button" data-editor-inspector-close aria-label="Close document tools">
-              {{ icon "x" 16 }}
+              {{ icon "x-lucide" 16 }}
             </button>
           </div>
           <div class="editor-inspector-body" data-editor-problems role="tabpanel"></div>
@@ -620,7 +620,7 @@
         data-table-format-close
         aria-label="Close table formatting"
       >
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
 
@@ -736,7 +736,7 @@
 
       <div class="app-dialog-actions table-format-actions">
         <button class="button" type="button" data-table-format-clear>
-          {{ icon "eraser" 16 }}<span>Clear table options</span>
+          {{ icon "eraser-lucide" 16 }}<span>Clear table options</span>
         </button>
         <button class="button primary" type="button" data-table-format-close>Done</button>
       </div>
@@ -751,7 +751,7 @@
       <div class="app-dialog-actions">
         <button class="button" type="button" data-table-format-close>Cancel</button>
         <button class="button primary" type="button" data-table-insert-submit>
-          {{ icon "table-2" 16 }}<span>Insert table</span>
+          {{ icon "table-2-lucide" 16 }}<span>Insert table</span>
         </button>
       </div>
     </div>
@@ -765,15 +765,15 @@
   >
     <div class="app-dialog-header">
       <div>
-        <p class="eyebrow">Lucide</p>
+        <p class="eyebrow">Icons</p>
         <h2 id="page-icon-picker-title">Choose page icon</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-icon-picker-close aria-label="Close icon picker">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="icon-picker-search">
-      {{ icon "search" 17 }}
+      {{ icon "search-lucide" 17 }}
       <input
         type="search"
         placeholder="Search icons…"
@@ -804,12 +804,12 @@
         data-attachment-dialog-close
         aria-label="Close attachments"
       >
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="media-upload">
       <label class="button"
-        >{{ icon "upload" 16 }}<span>Upload file</span
+        >{{ icon "upload-lucide" 16 }}<span>Upload file</span
         ><input type="file" accept=".pdf,.txt,.md,.json,.yaml,.yml,.csv,.log,.toml,.zip" data-attachment-upload hidden
       /></label>
       <span class="muted" data-attachment-status>PDF, text, Markdown, JSON, YAML, CSV, TOML or ZIP · max 25 MiB</span>
@@ -831,12 +831,12 @@
         data-media-dialog-close
         aria-label="Close image library"
       >
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="media-upload">
       <label class="button">
-        {{ icon "upload" 16 }}<span>Upload image</span>
+        {{ icon "upload-lucide" 16 }}<span>Upload image</span>
         <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-media-upload-input hidden />
       </label>
       <span class="muted" data-media-upload-status>JPEG, PNG, GIF or WebP · max 10 MiB</span>

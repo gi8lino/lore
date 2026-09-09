@@ -119,8 +119,8 @@ func (c *Config) validateExternalLinks() error {
 		if !validExternalLinkURL(link.URL) {
 			return fmt.Errorf("external_links[%d].url must be an absolute HTTP or HTTPS URL", index)
 		}
-		if link.Icon != "" && !icons.IsNavigationIcon(link.Icon) {
-			return fmt.Errorf("external_links[%d].icon must be an available Lucide icon", index)
+		if link.Icon != "" && !icons.IsIcon(link.Icon) {
+			return fmt.Errorf("external_links[%d].icon must be an available icon", index)
 		}
 	}
 

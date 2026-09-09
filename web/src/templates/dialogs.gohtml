@@ -6,7 +6,7 @@
         <h2 id="confirm-dialog-title" data-confirm-dialog-title>Confirm action</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-confirm-dialog-cancel aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="app-dialog-body"><p data-confirm-dialog-message></p></div>
@@ -19,11 +19,11 @@
   <dialog class="app-dialog problem-dialog" data-problem-dialog aria-labelledby="problem-dialog-title">
     <div class="app-dialog-header">
       <div>
-        <p class="eyebrow problem-dialog-eyebrow">{{ icon "triangle-alert" 14 }} Error</p>
+        <p class="eyebrow problem-dialog-eyebrow">{{ icon "triangle-alert-lucide" 14 }} Error</p>
         <h2 id="problem-dialog-title" data-problem-dialog-title>Something went wrong</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-problem-dialog-close aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="app-dialog-body problem-dialog-body">
@@ -42,7 +42,7 @@
         <h2 id="notice-dialog-title" data-notice-dialog-title>Notice</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-notice-dialog-close aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="app-dialog-body"><p data-notice-dialog-message></p></div>
@@ -53,7 +53,7 @@
 
   <dialog class="app-dialog command-palette" data-command-palette aria-labelledby="command-palette-title">
     <div class="command-palette-search">
-      {{ icon "search" 18 }}
+      {{ icon "search-lucide" 18 }}
       <input
         type="search"
         data-command-palette-input
@@ -67,11 +67,11 @@
     <div class="command-palette-options" role="listbox">
       <div class="command-palette-static">
         <a href="/" class="command-palette-option" data-command-option data-command-static role="option"
-          >{{ icon "house" 17 }}<span><strong>Home</strong><small>Open dashboard</small></span></a
+          >{{ icon "house-lucide" 17 }}<span><strong>Home</strong><small>Open dashboard</small></span></a
         >
         {{ if .CanEdit }}
           <a href="/pages/new{{ if .NewPageParent }}?parent={{ .NewPageParent | urlquery }}{{ end }}" class="command-palette-option" data-command-option data-command-static role="option"
-            >{{ icon "plus" 17 }}<span><strong>New page</strong><small>Create a page</small></span></a
+            >{{ icon "plus-lucide" 17 }}<span><strong>New page</strong><small>Create a page</small></span></a
           >
         {{ end }}
         {{ if .Page }}
@@ -82,7 +82,7 @@
               data-command-option
               data-command-static
               role="option"
-              >{{ icon "pencil" 17 }}<span><strong>Edit current page</strong><small>{{ .Page.Title }}</small></span></a
+              >{{ icon "pencil-lucide" 17 }}<span><strong>Edit current page</strong><small>{{ .Page.Title }}</small></span></a
             >
           {{ end }}
         {{ end }}
@@ -92,7 +92,7 @@
           data-command-option
           data-command-static
           role="option"
-          >{{ icon "network" 17 }}<span
+          >{{ icon "network-lucide" 17 }}<span
             ><strong>Knowledge graph</strong><small>Explore page relationships</small></span
           ></a
         >
@@ -104,16 +104,16 @@
           data-shortcuts-open
           role="option"
         >
-          {{ icon "keyboard" 17 }}<span
+          {{ icon "keyboard-lucide" 17 }}<span
             ><strong>Keyboard shortcuts</strong><small>Show navigation and editor shortcuts</small></span
           >
         </button>
         <a href="/settings" class="command-palette-option" data-command-option data-command-static role="option"
-          >{{ icon "settings" 17 }}<span><strong>Settings</strong><small>Personal preferences</small></span></a
+          >{{ icon "settings-lucide" 17 }}<span><strong>Settings</strong><small>Personal preferences</small></span></a
         >
         {{ if eq .User.Role "admin" }}
           <a href="/admin" class="command-palette-option" data-command-option data-command-static role="option"
-            >{{ icon "shield" 17 }}<span><strong>Administration</strong><small>Manage Lore</small></span></a
+            >{{ icon "shield-lucide" 17 }}<span><strong>Administration</strong><small>Manage Lore</small></span></a
           >
         {{ end }}
       </div>
@@ -129,7 +129,7 @@
         <h2 id="shortcuts-dialog-title">Keyboard shortcuts</h2>
       </div>
       <button class="icon-button app-dialog-close" type="button" data-shortcuts-close aria-label="Close">
-        {{ icon "x" 20 }}
+        {{ icon "x-lucide" 20 }}
       </button>
     </div>
     <div class="app-dialog-body shortcut-grid">

@@ -111,7 +111,7 @@ func TestNewRenderer(t *testing.T) {
 		{
 			Title: "Guide",
 			Slug:  "guide",
-			Icon:  "book-open",
+			Icon:  "book-open-lucide",
 			Page:  true,
 			Children: []navigation.Node{
 				{Title: "Install", Slug: "guide/install", Page: true},

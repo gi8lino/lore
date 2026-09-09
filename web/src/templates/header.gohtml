@@ -8,11 +8,11 @@
       aria-controls="lore-sidebar"
       aria-expanded="false"
     >
-      {{ icon "menu" 20 }}
+      {{ icon "menu-lucide" 20 }}
     </button>
     <a class="brand" href="/" aria-label="Lore home">{{ logo }}</a>
     <form class="global-search" action="/search" data-live-search>
-      <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
+      <span class="global-search-icon" aria-hidden="true">{{ icon "search-lucide" 15 }}</span>
       <input
         type="search"
         name="q"
@@ -45,7 +45,7 @@
     {{ end }}
     <details class="notification-menu" data-notification-menu>
       <summary class="icon-button" aria-label="Notifications" title="Notifications">
-        {{ icon "bell" 18 }}{{ if gt .UnreadNotifications 0 }}
+        {{ icon "bell-lucide" 18 }}{{ if gt .UnreadNotifications 0 }}
           <span class="notification-badge">{{ .UnreadNotifications }}</span>
         {{ end }}
       </summary>
@@ -63,9 +63,9 @@
               data-notification-id="{{ .ID }}"
               ><span class="notification-icon"
                 >{{ if eq .Kind "mention" }}
-                  {{ icon "at-sign" 15 }}
+                  {{ icon "at-sign-lucide" 15 }}
                 {{ else }}
-                  {{ icon "bell" 15 }}
+                  {{ icon "bell-lucide" 15 }}
                 {{ end }}</span
               ><span
                 ><strong>{{ .Title }}</strong>{{ if .Body }}<small>{{ .Body }}</small>{{ end }}<time
@@ -84,7 +84,7 @@
         class="button primary"
         href="/pages/new{{ if .NewPageParent }}?parent={{ .NewPageParent | urlquery }}{{ end }}"
         aria-label="New page"
-        >{{ icon "plus" 16 }}<span>New page</span></a
+        >{{ icon "plus-lucide" 16 }}<span>New page</span></a
       >
     {{ end }}
   </header>

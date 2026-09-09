@@ -11,7 +11,7 @@ The editor opens in your last **Write** or **Split** view. **Preview** is tempor
 A save can include:
 
 - path and title;
-- optional Lucide icon and content-language override;
+- optional icon and content-language override;
 - Markdown body and revision message;
 - tags and collaboration groups;
 - lifecycle status;

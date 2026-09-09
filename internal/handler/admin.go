@@ -441,7 +441,7 @@ func AdminNavigation(
 	}
 }
 
-// SearchIcons serves generated Lucide picker results to page editors and administrators.
+// SearchIcons serves icon picker results to page editors and administrators.
 func SearchIcons() http.HandlerFunc {
 	type result struct {
 		Name  string `json:"name"`
@@ -489,11 +489,11 @@ func SaveAdminNavigationIcon(navigationUseCases navigationService, logger *slog.
 
 		path := strings.TrimSpace(r.FormValue("path"))
 		icon := strings.TrimSpace(r.FormValue("icon"))
-		if !icons.IsNavigationIcon(icon) {
+		if !icons.IsIcon(icon) {
 			httpresponse.Problem(w,
 				http.StatusBadRequest,
 				"Navigation validation failed.",
-				httpresponse.NewFieldProblem("icon", "Choose an icon from the available Lucide icons."),
+				httpresponse.NewFieldProblem("icon", "Choose an icon from the available icon catalog."),
 			)
 			return
 		}

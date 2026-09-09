@@ -153,10 +153,10 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 	if input.Title == "" {
 		validation.Fields = append(validation.Fields, FieldError{Field: "title", Message: "Title is required."})
 	}
-	if !icons.IsNavigationIcon(input.Icon) {
+	if !icons.IsIcon(input.Icon) {
 		validation.Fields = append(validation.Fields, FieldError{
 			Field:   "icon",
-			Message: "Choose an icon from the available Lucide icons.",
+			Message: "Choose an icon from the available icon catalog.",
 		})
 	}
 	if input.Language != "" && !validContentLanguage(input.Language) {

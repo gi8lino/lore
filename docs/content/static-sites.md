@@ -43,7 +43,7 @@ assets_dir = "../assets"
 [[external_links]]
 label = "Repository"
 url = "https://github.com/example/project"
-icon = "code"
+icon = "github-simple"
 description = "v2.4.1"
 ```
 
@@ -51,7 +51,7 @@ description = "v2.4.1"
 
 `site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
 
-`external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional Lucide icon name and `description` is optional secondary text such as a version, environment, or provider name. Multiple entries are rendered in configuration order.
+`external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional icon identifier and `description` is optional secondary text such as a version, environment, or provider name. Icon identifiers explicitly include their source: use `-lucide` for Lucide interface icons and `-simple` for Simple Icons brand logos, for example `book-open-lucide` or `github-simple`. Multiple entries are rendered in configuration order.
 
 ## Filesystem routes
 

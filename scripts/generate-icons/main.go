@@ -24,7 +24,7 @@ const (
 
 package icons
 
-var navigationOptions = []Option{
+var lucideOptions = []Option{
 `
 )
 
@@ -134,7 +134,7 @@ func generateCatalog(names []string) ([]byte, error) {
 		fmt.Fprintf(
 			&output,
 			"\t{Name: %q, Label: %q},\n",
-			name,
+			name+"-lucide",
 			label(name),
 		)
 	}

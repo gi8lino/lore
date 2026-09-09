@@ -27,7 +27,7 @@
     {{ if .Revisions }}
       <div class="revision-list-toolbar">
         <button class="button revision-toggle-all" type="button" data-revision-toggle-all aria-expanded="false">
-          {{ icon "chevrons-down" 14 }}<span>Show all changes</span>
+          {{ icon "chevrons-down-lucide" 14 }}<span>Show all changes</span>
         </button>
       </div>
     {{ end }}
@@ -59,7 +59,7 @@
               Show
             {{ end }} changes"
           >
-            {{ icon "chevron-right" 16 }}
+            {{ icon "chevron-right-lucide" 16 }}
           </button>
           {{ template "revision-item" $revision }}
           {{ if $root.CanEdit }}
@@ -71,7 +71,7 @@
               data-confirm-label="Restore revision"
             >
               <button class="button revision-restore-button" type="submit">
-                {{ icon "history" 14 }}<span>Restore</span>
+                {{ icon "history-lucide" 14 }}<span>Restore</span>
               </button>
             </form>
           {{ end }}
@@ -100,3 +100,5 @@
     {{ end }}
   </div>
 {{ end }}
+
+

@@ -8,7 +8,7 @@
 
     <section class="panel template-create-panel">
       <div class="template-panel-heading">
-        <span class="template-panel-icon">{{ icon "layout-template" 20 }}</span>
+        <span class="template-panel-icon">{{ icon "layout-template-lucide" 20 }}</span>
         <div>
           <h2>New template</h2>
           <p>Create a reusable starting point for common page types.</p>
@@ -39,7 +39,7 @@
 
         <div class="template-form-footer">
           <span class="muted">You can edit or delete the template later.</span>
-          <button class="button primary" type="submit">{{ icon "plus" 16 }}<span>Create template</span></button>
+          <button class="button primary" type="submit">{{ icon "plus-lucide" 16 }}<span>Create template</span></button>
         </div>
       </form>
     </section>
@@ -56,7 +56,7 @@
         <details class="panel template-admin-item">
           <summary>
             <span class="template-summary-main">
-              <span class="template-summary-icon">{{ icon "layout-template" 17 }}</span>
+              <span class="template-summary-icon">{{ icon "layout-template-lucide" 17 }}</span>
               <span class="template-summary-copy">
                 <strong>{{ .Name }}</strong>
                 {{ if .Description }}
@@ -66,7 +66,7 @@
                 {{ end }}
               </span>
             </span>
-            <span class="template-summary-chevron">{{ icon "chevron-down" 16 }}</span>
+            <span class="template-summary-chevron">{{ icon "chevron-down-lucide" 16 }}</span>
           </summary>
 
           <div class="template-admin-body">
@@ -87,7 +87,7 @@
               </label>
               <div class="template-form-footer template-item-actions">
                 <span></span>
-                <button class="button primary" type="submit">{{ icon "save" 16 }}<span>Save changes</span></button>
+                <button class="button primary" type="submit">{{ icon "save-lucide" 16 }}<span>Save changes</span></button>
               </div>
             </form>
             <form
@@ -98,13 +98,13 @@
               data-confirm-title="Delete page template"
               data-confirm-label="Delete template"
             >
-              <button class="button danger" type="submit">{{ icon "trash-2" 16 }}<span>Delete template</span></button>
+              <button class="button danger" type="submit">{{ icon "trash-2-lucide" 16 }}<span>Delete template</span></button>
             </form>
           </div>
         </details>
       {{ else }}
         <div class="panel template-empty">
-          <span class="template-panel-icon">{{ icon "layout-template" 20 }}</span>
+          <span class="template-panel-icon">{{ icon "layout-template-lucide" 20 }}</span>
           <div>
             <strong>No page templates yet</strong>
             <p class="muted">Create your first template above.</p>
@@ -114,3 +114,5 @@
     </div>
   </section>
 {{ end }}
+
+

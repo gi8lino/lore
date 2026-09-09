@@ -199,8 +199,8 @@ func normalizeExternalLinks(links []domain.ExternalLink) ([]domain.ExternalLink,
 		if !validExternalLinkURL(link.URL) {
 			return nil, domain.NewValidationError("external_links", "Enter a valid HTTP or HTTPS URL for every external link.")
 		}
-		if link.Icon != "" && !icons.IsNavigationIcon(link.Icon) {
-			return nil, domain.NewValidationError("external_links", "Choose external link icons from the available Lucide icons.")
+		if link.Icon != "" && !icons.IsIcon(link.Icon) {
+			return nil, domain.NewValidationError("external_links", "Choose external link icons from the available icon catalog.")
 		}
 
 		normalized = append(normalized, link)

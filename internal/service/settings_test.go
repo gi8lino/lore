@@ -67,7 +67,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 			ExternalLinks: []domain.ExternalLink{{
 				Label:       " Repository ",
 				URL:         " https://github.com/gi8lino/lore ",
-				Icon:        " code ",
+				Icon:        " github-simple ",
 				Description: " v2.4.1 ",
 			}},
 		}, 7)
@@ -76,7 +76,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		assert.Equal(t, []domain.ExternalLink{{
 			Label:       "Repository",
 			URL:         "https://github.com/gi8lino/lore",
-			Icon:        "code",
+			Icon:        "github-simple",
 			Description: "v2.4.1",
 		}}, repository.saved.ExternalLinks)
 	})
@@ -107,7 +107,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 
 		validation, ok := errors.AsType[*domain.ValidationError](err)
 		require.True(t, ok)
-		assert.Equal(t, "Choose external link icons from the available Lucide icons.", validation.UserMessage())
+		assert.Equal(t, "Choose external link icons from the available icon catalog.", validation.UserMessage())
 	})
 }
 

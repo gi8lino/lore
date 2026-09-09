@@ -35,7 +35,7 @@ func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 
 	pages := NewPages(nil, slog.Default())
 	_, err := pages.Save(context.Background(), PageSaveInput{
-		Icon:               "not-a-lucide-icon",
+		Icon:               "not-an-icon",
 		Language:           "klingon",
 		Status:             "unknown",
 		OwnerGroupID:       -1,
@@ -48,7 +48,7 @@ func TestSaveValidatesPageBeforePersistence(t *testing.T) {
 	assert.Equal(t, []FieldError{
 		{Field: "slug", Message: "A page path is required."},
 		{Field: "title", Message: "Title is required."},
-		{Field: "icon", Message: "Choose an icon from the available Lucide icons."},
+		{Field: "icon", Message: "Choose an icon from the available icon catalog."},
 		{Field: "language", Message: "Choose a supported content language."},
 		{Field: "status", Message: "Choose valid page workflow settings."},
 	}, validation.Fields)

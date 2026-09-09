@@ -181,7 +181,7 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	config.ExternalLinks = []domain.ExternalLink{{
 		Label:       "Repository",
 		URL:         "https://github.com/gi8lino/lore",
-		Icon:        "code",
+		Icon:        "github-simple",
 		Description: "v2.4.1",
 	}}
 

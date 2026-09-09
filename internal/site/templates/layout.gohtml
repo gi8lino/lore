@@ -32,11 +32,11 @@
         aria-controls="lore-sidebar"
         aria-expanded="false"
       >
-        {{ icon "menu" 20 }}
+        {{ icon "menu-lucide" 20 }}
       </button>
       <a class="brand" href="{{ pageurl "" }}" aria-label="{{ .SiteName }} home">{{ if .LogoURL }}<img class="lore-logo" src="{{ .LogoURL }}" alt="{{ .SiteName }}" />{{ else }}<span>{{ .SiteName }}</span>{{ end }}</a>
       <form class="global-search" action="{{ searchurl }}" data-static-search>
-        <span class="global-search-icon" aria-hidden="true">{{ icon "search" 15 }}</span>
+        <span class="global-search-icon" aria-hidden="true">{{ icon "search-lucide" 15 }}</span>
         <input
           type="search"
           name="q"
@@ -80,7 +80,7 @@
                 title="Collapse all folders"
                 aria-label="Collapse all folders"
               >
-                {{ icon "chevrons-up" 14 }}
+                {{ icon "chevrons-up-lucide" 14 }}
               </button>
               <button
                 class="nav-tree-action"
@@ -89,7 +89,7 @@
                 title="Expand all folders"
                 aria-label="Expand all folders"
               >
-                {{ icon "chevrons-down" 14 }}
+                {{ icon "chevrons-down-lucide" 14 }}
               </button>
             </div>
           </div>
@@ -99,14 +99,14 @@
               href="{{ pageurl "" }}"
               {{ if eq .CurrentRoute "" }}aria-current="page"{{ end }}
             >
-              <span class="nav-icon" aria-hidden="true">{{ icon "house" 18 }}</span>
+              <span class="nav-icon" aria-hidden="true">{{ icon "house-lucide" 18 }}</span>
               <span>Home</span>
             </a>
             {{ range .Navigation }}{{ template "nav-entry" . }}{{ end }}
           </div>
         </nav>
         <div class="static-sidebar-footer">
-          <span>{{ icon "book-open" 14 }}</span>
+          <span>{{ icon "book-open-lucide" 14 }}</span>
           <span>Read-only static site</span>
         </div>
       </aside>
@@ -127,8 +127,8 @@
         aria-label="Hide navigation"
         title="Hide navigation"
       >
-        <span class="sidebar-visibility-hide" aria-hidden="true">{{ icon "panel-left-close" 17 }}</span>
-        <span class="sidebar-visibility-show" aria-hidden="true">{{ icon "panel-left-open" 17 }}</span>
+        <span class="sidebar-visibility-hide" aria-hidden="true">{{ icon "panel-left-close-lucide" 17 }}</span>
+        <span class="sidebar-visibility-show" aria-hidden="true">{{ icon "panel-left-open-lucide" 17 }}</span>
       </button>
 
       <main{{ if .PageContents }} class="with-page-contents"{{ end }}>

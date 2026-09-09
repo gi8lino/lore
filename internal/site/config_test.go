@@ -230,7 +230,7 @@ func TestExternalLinkConfiguration(t *testing.T) {
 [[external_links]]
 label = " Repository "
 url = " https://github.com/gi8lino/lore "
-icon = " code "
+icon = " github-simple "
 description = " v2.4.1 "
 `), 0o600))
 
@@ -240,7 +240,7 @@ description = " v2.4.1 "
 		require.Len(t, config.ExternalLinks, 1)
 		assert.Equal(t, "Repository", config.ExternalLinks[0].Label)
 		assert.Equal(t, "https://github.com/gi8lino/lore", config.ExternalLinks[0].URL)
-		assert.Equal(t, "code", config.ExternalLinks[0].Icon)
+		assert.Equal(t, "github-simple", config.ExternalLinks[0].Icon)
 		assert.Equal(t, "v2.4.1", config.ExternalLinks[0].Description)
 	})
 
@@ -259,6 +259,6 @@ description = " v2.4.1 "
 		config := defaultConfig()
 		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}}
 
-		assert.ErrorContains(t, config.validate(), "available Lucide icon")
+		assert.ErrorContains(t, config.validate(), "available icon")
 	})
 }

@@ -8,6 +8,7 @@ require (
 	github.com/containeroo/tinyflags v0.0.84
 	github.com/containeroo/uuidv7 v0.0.2
 	github.com/coreos/go-oidc/v3 v3.21.0
+	github.com/go-icons/simple-icons v0.1.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kaugesaar/lucide-go v0.26.0

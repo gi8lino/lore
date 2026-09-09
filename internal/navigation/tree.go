@@ -24,7 +24,7 @@ type Options struct {
 	Expanded []string
 	// ShowPageCounts enables descendant page counts in rendered navigation nodes.
 	ShowPageCounts bool
-	// Icons contains explicitly configured Lucide icons keyed by complete navigation path.
+	// Icons contains explicitly configured icons keyed by complete navigation path.
 	Icons map[string]string
 }
 

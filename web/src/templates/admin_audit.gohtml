@@ -9,7 +9,7 @@
       <div class="audit-list">
         {{ range .AuditEvents }}
           <article class="audit-row">
-            <span class="audit-icon" aria-hidden="true">{{ icon "activity" 16 }}</span>
+            <span class="audit-icon" aria-hidden="true">{{ icon "activity-lucide" 16 }}</span>
             <div>
               <strong>{{ .Actor }}</strong> <span>{{ .Action }}</span>{{ if .ObjectKey }}
                 <a href="{{ if eq .ObjectType "page" }}/pages/{{ .ObjectKey }}{{ else }}#{{ end }}">{{ .ObjectKey }}</a>
@@ -24,3 +24,5 @@
     </section>
   </section>
 {{ end }}
+
+

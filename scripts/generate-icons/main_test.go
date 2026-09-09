@@ -72,9 +72,9 @@ func TestGenerateCatalog(t *testing.T) {
 
 package icons
 
-var navigationOptions = []Option{
-	{Name: "arrow-left", Label: "Arrow Left"},
-	{Name: "zap", Label: "Zap"},
+var lucideOptions = []Option{
+	{Name: "arrow-left-lucide", Label: "Arrow Left"},
+	{Name: "zap-lucide", Label: "Zap"},
 }
 `, string(source))
 }

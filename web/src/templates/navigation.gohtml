@@ -21,7 +21,7 @@
       {{ if .Open }}open{{ end }}
     >
       <summary class="{{ if .Root }}nav-root-summary{{ else }}nav-branch-summary{{ end }}" title="{{ .Title }}">
-        <span class="nav-chevron" aria-hidden="true">{{ icon "chevron-right" 14 }}</span>
+        <span class="nav-chevron" aria-hidden="true">{{ icon "chevron-right-lucide" 14 }}</span>
         {{ template "nav-icon" .Icon }}
         {{ if .Page }}
           <a
@@ -56,12 +56,12 @@
 {{ define "top-navigation" }}
   <nav class="desktop-top-navigation" aria-label="Page navigation">
     <div class="desktop-top-navigation-inner">
-      <a class="top-navigation-home" href="/">{{ icon "house" 15 }}<span>Home</span></a>
+      <a class="top-navigation-home" href="/">{{ icon "house-lucide" 15 }}<span>Home</span></a>
       {{ range .Navigation }}
         {{ if .Children }}
           <details class="top-navigation-group">
             <summary{{ if .ContainsActive }} class="contains-active"{{ end }}>
-              {{ template "nav-icon" .Icon }}<span>{{ .Title }}</span>{{ icon "chevron-down" 13 }}
+              {{ template "nav-icon" .Icon }}<span>{{ .Title }}</span>{{ icon "chevron-down-lucide" 13 }}
             </summary>
             <div class="top-navigation-popover">
               {{ if .Page }}
@@ -81,3 +81,5 @@
     </div>
   </nav>
 {{ end }}
+
+

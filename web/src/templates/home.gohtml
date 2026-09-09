@@ -19,7 +19,7 @@
   <div class="dashboard">
     <section class="panel wide continue-working">
       <div class="panel-title">
-        <h2 class="heading-with-icon">{{ icon "pencil-line" 15 }}<span>Continue working</span></h2>
+        <h2 class="heading-with-icon">{{ icon "pencil-line-lucide" 15 }}<span>Continue working</span></h2>
       </div>
       <div class="continue-working-grid">
         <div>
@@ -36,7 +36,7 @@
                 <a
                   class="continue-item"
                   href="{{ if .PageID }}/edit/{{ .PageSlug }}{{ else }}/pages/new{{ end }}"
-                  ><span class="continue-icon">{{ icon "pencil-line" 16 }}</span
+                  ><span class="continue-icon">{{ icon "pencil-line-lucide" 16 }}</span
                   ><span
                     ><strong>{{ if .Title }}{{ .Title }}{{ else }}Untitled{{ end }}</strong
                     ><small
@@ -53,7 +53,7 @@
                   aria-label="Discard draft"
                   title="Discard draft"
                 >
-                  {{ icon "trash-2" 15 }}
+                  {{ icon "trash-2-lucide" 15 }}
                 </button>
               </div>
             {{ else }}
@@ -63,7 +63,7 @@
           <template data-home-draft-template>
             <div class="continue-draft" data-draft-item>
               <a class="continue-item" href="/">
-                <span class="continue-icon">{{ icon "pencil-line" 16 }}</span>
+                <span class="continue-icon">{{ icon "pencil-line-lucide" 16 }}</span>
                 <span><strong></strong><small></small></span>
               </a>
               <button
@@ -73,7 +73,7 @@
                 aria-label="Discard browser draft"
                 title="Discard draft"
               >
-                {{ icon "trash-2" 15 }}
+                {{ icon "trash-2-lucide" 15 }}
               </button>
             </div>
           </template>
@@ -86,7 +86,7 @@
                 >{{ if .Icon }}
                   {{ icon .Icon 16 }}
                 {{ else }}
-                  {{ icon "file-text" 16 }}
+                  {{ icon "file-text-lucide" 16 }}
                 {{ end }}</span
               ><span
                 ><strong>{{ .Title }}</strong
@@ -115,7 +115,7 @@
     </section>
     <section class="panel">
       <div class="panel-title">
-        <h2 class="heading-with-icon">{{ icon "star" 15 }}<span>Favorites</span></h2>
+        <h2 class="heading-with-icon">{{ icon "star-lucide" 15 }}<span>Favorites</span></h2>
       </div>
       {{ range .Favorites }}
         {{ template "compact-row" . }}
@@ -141,3 +141,5 @@
     </section>
   </div>
 {{ end }}
+
+

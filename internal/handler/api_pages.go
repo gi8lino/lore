@@ -30,7 +30,7 @@ type pageRequest struct {
 	Slug string `json:"slug"`
 	// Title is the required page title.
 	Title string `json:"title"`
-	// Icon is the optional Lucide icon displayed with the page title.
+	// Icon is the optional icon displayed with the page title.
 	Icon string `json:"icon"`
 	// Language optionally overrides the default content language.
 	Language string `json:"language"`
