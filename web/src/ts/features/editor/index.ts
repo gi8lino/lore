@@ -10,6 +10,7 @@ import { initEditorSearch } from "./search.ts";
 import { initTags } from "./tags.ts";
 import { initTablePalette } from "./tables.ts";
 import { initTablePaste } from "./paste-table.ts";
+import { initMarkdownListContinuation } from "./lists.ts";
 import { initMarkdownToolbar } from "./toolbar.ts";
 import { initWikiLinkAutocomplete } from "./wikilinks.ts";
 import { initVariableAutocomplete } from "./variables.ts";
@@ -28,6 +29,7 @@ export function initEditor(): void {
   initWikiLinkAutocomplete();
   initVariableAutocomplete();
   initSlashCommands();
+  initMarkdownListContinuation();
   initTablePalette();
   initTablePaste();
   initEditorPreview();

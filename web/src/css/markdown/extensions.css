@@ -93,3 +93,31 @@
 .callout.error {
   border-left-color: var(--danger);
 }
+
+/* GitHub-style task lists. The marker is rendered as an inert span so page
+   Markdown cannot introduce interactive form controls. */
+.prose li:has(> .task-list-checkbox:first-child) {
+  list-style: none;
+}
+
+.task-list-checkbox {
+  display: inline-flex;
+  width: 1em;
+  height: 1em;
+  align-items: center;
+  justify-content: center;
+  margin-left: -1.4em;
+  margin-right: 0.45em;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--background);
+  font-size: 0.82em;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: -0.08em;
+}
+
+.task-list-checkbox.checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
