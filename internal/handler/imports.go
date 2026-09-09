@@ -98,7 +98,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 					return
 				}
 
-				httpresponse.Problem(w, 
+				httpresponse.Problem(w,
 					http.StatusBadRequest,
 					"Import validation failed.",
 					httpresponse.NewFieldProblem("files", header.Filename+": "+message),

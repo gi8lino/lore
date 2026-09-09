@@ -42,7 +42,7 @@ Startup migrations run together in one transaction under a database advisory loc
 
 ### HTTP error contracts
 
-Handlers translate expected service errors into HTTP responses. `writeInternalServerError` logs the original error and always writes a safe 500 response. It is the fallback after expected errors are handled; it does not classify errors itself. Application validation belongs in services; request parsing and transport validation belong in handlers. `httpresponse` only serializes the response.
+Handlers translate expected service errors into HTTP responses. `writeInternalServerError` logs the original error and always writes a safe 500 response with a generated reference. The same reference is written as `error_reference` in the server log so an administrator can correlate a browser error with its diagnostic cause. It is the fallback after expected errors are handled; it does not classify errors itself. Application validation belongs in services; request parsing and transport validation belong in handlers. `httpresponse` only serializes the response.
 
 `domain.ValidationError` carries safe field messages and an optional diagnostic cause; the service aliases use the same type. Persistence validation never depends on HTTP. Known SQL constraints are translated by name and code, preserving their causes for `errors.Is` and `errors.As`. Unknown constraints remain infrastructure failures.
 

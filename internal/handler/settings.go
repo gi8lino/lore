@@ -88,7 +88,7 @@ func ChangeLocalPassword(local *auth.Local, logger *slog.Logger) http.HandlerFun
 
 		currentPassword := r.FormValue("current_password")
 		if currentPassword == "" {
-			httpresponse.Problem(w, 
+			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"Password validation failed.",
 				httpresponse.NewFieldProblem("current_password", "Enter your current password."),

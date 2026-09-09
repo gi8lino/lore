@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,12 +9,46 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestWriteInternalServerError(t *testing.T) {
+	t.Parallel()
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	response := httptest.NewRecorder()
+	internalErr := errors.New("private persistence detail")
+
+	writeInternalServerError(logger, response, internalErr)
+
+	var problem struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &problem))
+
+	const prefix = "The request could not be processed. Reference: "
+	require.True(t, strings.HasPrefix(problem.Error, prefix))
+
+	reference := strings.TrimPrefix(problem.Error, prefix)
+
+	assert.Regexp(
+		t,
+		`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+		reference,
+	)
+
+	assert.Contains(t, logs.String(), "event=request_failed")
+	assert.Contains(t, logs.String(), "error_reference="+reference)
+	assert.Contains(t, logs.String(), internalErr.Error())
+	assert.NotContains(t, response.Body.String(), internalErr.Error())
+}
 
 func TestWriteMediaUploadProblem(t *testing.T) {
 	t.Parallel()

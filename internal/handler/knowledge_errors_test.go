@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type moveErrorStub struct{ err error }
@@ -60,7 +62,24 @@ func TestKnowledgeGraphFailureIsUnexpected(t *testing.T) {
 	KnowledgeGraphAPI(graphErrorStub{err: err}, logger)(response, request)
 
 	assert.Equal(t, http.StatusInternalServerError, response.Code)
-	assert.JSONEq(t, `{"error":"The request could not be processed.","problems":{}}`, response.Body.String())
+
+	var problem struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &problem))
+
+	const prefix = "The request could not be processed. Reference: "
+	require.True(t, strings.HasPrefix(problem.Error, prefix))
+
+	reference := strings.TrimPrefix(problem.Error, prefix)
+
+	assert.Regexp(
+		t,
+		`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+		reference,
+	)
+
+	assert.Contains(t, logs.String(), "error_reference="+reference)
 	assert.Contains(t, logs.String(), err.Error())
 }
 
@@ -71,6 +90,7 @@ type savedSearchErrorStub struct {
 func (s savedSearchErrorStub) SaveSavedSearch(context.Context, int64, int64, string, string, bool) error {
 	return s.err
 }
+
 func (s savedSearchErrorStub) DeleteSavedSearch(context.Context, int64, int64) error { return s.err }
 
 type membershipErrorStub struct {
@@ -180,6 +200,7 @@ type aliasFailureStub struct {
 func (s aliasFailureStub) GetPage(context.Context, string) (domain.Page, error) {
 	return domain.Page{}, domain.ErrNotFound
 }
+
 func (s aliasFailureStub) ResolvePageAlias(context.Context, string) (string, error) { return "", s.err }
 
 func TestAliasFailureIsNotDiscarded(t *testing.T) {
