@@ -8,12 +8,12 @@ Set:
 
 ```text
 LORE__OIDC_CLIENT_SECRET
-LORE__SESSION_SECRET
+LORE__OIDC_SESSION_SECRET
 ```
 
-`LORE__SESSION_SECRET` must contain at least 32 characters. The client secret and session secret are not stored in PostgreSQL.
+`LORE__OIDC_SESSION_SECRET` must contain at least 32 characters. The client secret and OIDC session secret are not stored in PostgreSQL.
 
-OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__SESSION_SECRET` and the PostgreSQL database are preserved. Sessions last 12 hours. Explicit session revocation and account disabling still invalidate existing sessions. Changing the session secret invalidates all OIDC sessions and pending logins; keep the same secret on every replica. Login attempts expire after 10 minutes and can complete after a restart with the same configuration. Upgrading from a version without PKCE requires restarting any pending login, but does not invalidate established sessions.
+OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__OIDC_SESSION_SECRET` and the PostgreSQL database are preserved. Sessions last 12 hours. Explicit session revocation and account disabling still invalidate existing sessions. Changing the session secret invalidates all OIDC sessions and pending logins; keep the same secret on every replica. Login attempts expire after 10 minutes and can complete after a restart with the same configuration. Upgrading from a version without PKCE requires restarting any pending login, but does not invalidate established sessions.
 
 The issuer, client ID, optional group claim, administrator group, and group mappings are managed as non-secret application settings.
 

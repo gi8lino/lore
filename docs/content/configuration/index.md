@@ -6,6 +6,8 @@ Deployment-level values are supplied as flags or `LORE__` environment variables.
 
 Application settings are stored in PostgreSQL and changed through the administration interface. They include browser authentication mode, user registration, discussions, PDF rendering, rendering features, trusted-proxy header mappings, and non-secret OIDC settings. Deployment-level authentication and PDF values can override the persisted settings; the administration UI shows a warning when an override is active.
 
-The PDF integration includes a service test that renders a fixed two-page diagnostic document. Lore verifies that a PDF was returned, reports its page count and size, and shows the generated document so an administrator can judge the visual result.
+The PDF integration supports arbitrary request headers for bearer tokens, API keys, gateways, and other service-specific authentication. Each header can be marked **Sensitive**. Sensitive values are encrypted in PostgreSQL with the deployment-managed `LORE__ENCRYPTION_KEY`, are masked in the normal configuration response, and are returned to the browser only after an administrator explicitly chooses **Reveal**. Lore rejects transport-controlled and renderer-protocol headers such as `Host`, `Content-Length`, `Content-Type`, `Accept`, `Transfer-Encoding`, and `Connection`.
+
+The PDF service test uses the endpoint and headers currently entered in the form, including unsaved replacements. Lore renders a fixed two-page diagnostic document, verifies that a PDF was returned, reports its page count and size, and shows the generated document so an administrator can judge the visual result.
 
 {{subpages}}

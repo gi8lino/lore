@@ -79,7 +79,7 @@ func validRenderEndpoint(endpoint *url.URL) bool {
 
 // Render POSTs HTML to endpoint exactly as configured and returns a temporary PDF.
 // The caller must call cleanup after serving the file.
-func Render(ctx context.Context, endpoint, title, language, rendered string) (file *os.File, cleanup func(), err error) {
+func Render(ctx context.Context, endpoint, title, language, rendered string, headers http.Header) (file *os.File, cleanup func(), err error) {
 	noop := func() {}
 	if endpoint == "" {
 		return nil, noop, ErrNotConfigured
@@ -98,6 +98,13 @@ func Render(ctx context.Context, endpoint, title, language, rendered string) (fi
 		return nil, noop, err
 	}
 
+	for name, values := range headers {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
+	}
+
+	// Lore owns the renderer protocol headers even when custom headers are configured.
 	request.Header.Set("Content-Type", "text/html; charset=utf-8")
 	request.Header.Set("Accept", "application/pdf")
 

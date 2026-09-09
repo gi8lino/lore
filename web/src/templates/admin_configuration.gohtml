@@ -42,6 +42,16 @@
               {{ end }}
             </dd>
           </div>
+          <div>
+            <dt>Application encryption</dt>
+            <dd>
+              {{ if .Runtime.EncryptionKeyConfigured }}
+                Configured
+              {{ else }}
+                Not configured
+              {{ end }}
+            </dd>
+          </div>
         </dl>
       </section>
 
@@ -117,6 +127,102 @@
             />
             <small>Complete <code>POST</code> endpoint including the render path. Leave empty to disable PDF export.</small>
           </label>
+
+          <div class="pdf-header-settings">
+            <div class="pdf-header-settings-title">
+              <div>
+                <strong>Request headers</strong>
+                <small>Add headers sent with every PDF render and service-test request.</small>
+              </div>
+              <button class="button compact" type="button" data-pdf-header-add>{{ icon "plus" 14 }}<span>Add header</span></button>
+            </div>
+
+            {{ if .Runtime.EncryptionKeyConfigured }}
+              <p class="pdf-header-encryption-note">Sensitive values are encrypted at rest with <code>LORE__ENCRYPTION_KEY</code> and hidden until explicitly revealed.</p>
+            {{ else }}
+              <p class="pdf-header-encryption-note warning">Configure <code>LORE__ENCRYPTION_KEY</code> before saving, revealing, or reusing stored sensitive headers. Non-sensitive headers do not require an encryption key.</p>
+            {{ end }}
+
+            <div class="pdf-header-list" data-pdf-header-list>
+              {{ range .PDFHeaders }}
+                <div class="pdf-header-row" data-pdf-header-row data-pdf-header-existing="true">
+                  <input type="hidden" name="pdf_header_row" value="h{{ .ID }}" />
+                  <input type="hidden" name="pdf_header_h{{ .ID }}_id" value="{{ .ID }}" />
+                  <label class="pdf-header-name">
+                    <span>Name</span>
+                    <input
+                      type="text"
+                      name="pdf_header_h{{ .ID }}_name"
+                      value="{{ .Name }}"
+                      autocomplete="off"
+                      placeholder="Authorization"
+                      data-pdf-header-name
+                    />
+                  </label>
+                  <label class="pdf-header-value">
+                    <span>Value</span>
+                    <input
+                      type="{{ if .Sensitive }}password{{ else }}text{{ end }}"
+                      name="pdf_header_h{{ .ID }}_value"
+                      value="{{ if not .Sensitive }}{{ .Value }}{{ end }}"
+                      {{ if and .Sensitive .Configured }}placeholder="•••••••• configured"{{ else }}placeholder="Bearer token"{{ end }}
+                      autocomplete="off"
+                      data-pdf-header-value
+                    />
+                  </label>
+                  <div class="pdf-header-actions">
+                    <label class="pdf-header-sensitive" title="Sensitive: encrypt this header value at rest">
+                      <input
+                        type="checkbox"
+                        name="pdf_header_h{{ .ID }}_sensitive"
+                        {{ if .Sensitive }}checked{{ end }}
+                        data-pdf-header-sensitive
+                        aria-label="Encrypt this header value at rest"
+                      />
+                      <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round" 14 }}</span>
+                    </label>
+                    {{ if and .Sensitive .Configured }}
+                      <button
+                        class="button compact"
+                        type="button"
+                        data-pdf-header-reveal
+                        data-pdf-header-id="{{ .ID }}"
+                        {{ if not $.Runtime.EncryptionKeyConfigured }}disabled{{ end }}
+                      >Reveal</button>
+                    {{ end }}
+                    <button class="icon-button" type="button" data-pdf-header-remove aria-label="Remove PDF request header">
+                      {{ icon "trash-2" 15 }}
+                    </button>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+
+            <template data-pdf-header-template>
+              <div class="pdf-header-row" data-pdf-header-row data-pdf-header-existing="false">
+                <input type="hidden" data-pdf-header-row-key />
+                <input type="hidden" data-pdf-header-id />
+                <label class="pdf-header-name">
+                  <span>Name</span>
+                  <input type="text" autocomplete="off" placeholder="Authorization" data-pdf-header-name />
+                </label>
+                <label class="pdf-header-value">
+                  <span>Value</span>
+                  <input type="text" autocomplete="off" placeholder="Bearer token" data-pdf-header-value />
+                </label>
+                <div class="pdf-header-actions">
+                  <label class="pdf-header-sensitive" title="Sensitive: encrypt this header value at rest">
+                    <input type="checkbox" data-pdf-header-sensitive aria-label="Encrypt this header value at rest" />
+                    <span class="pdf-header-sensitive-icon" aria-hidden="true">{{ icon "key-round" 14 }}</span>
+                  </label>
+                  <button class="icon-button" type="button" data-pdf-header-remove aria-label="Remove PDF request header">
+                    {{ icon "trash-2" 15 }}
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+
           <div class="pdf-settings-actions">
             <button class="button" type="button" data-pdf-test>{{ icon "activity" 15 }}<span>Test endpoint</span></button>
             <button class="button primary" type="submit">Save PDF settings</button>
@@ -454,12 +560,12 @@
               </div>
               <div>
                 <span>Session secret</span>
-                {{ if .Runtime.SessionSecretConfigured }}
+                {{ if .Runtime.OIDCSessionSecretConfigured }}
                   <strong class="config-status configured">Configured</strong>
                 {{ else }}
                   <strong class="config-status missing">Missing</strong>
                 {{ end }}
-                <small><code>LORE__SESSION_SECRET</code>, at least 32 characters</small>
+                <small><code>LORE__OIDC_SESSION_SECRET</code>, at least 32 characters</small>
               </div>
             </div>
           </div>

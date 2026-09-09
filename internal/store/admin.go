@@ -437,14 +437,58 @@ SET allow_user_registration=EXCLUDED.allow_user_registration,
 	return err
 }
 
-// SavePDFSettings updates the persisted HTML-to-PDF rendering endpoint.
-func (s *Store) SavePDFSettings(ctx context.Context, pdfURL string) error {
-	_, err := s.pool.Exec(ctx, `
+// PDFHeaders returns the configured request headers for the external PDF service.
+func (s *Store) PDFHeaders(ctx context.Context) ([]domain.PDFHeader, error) {
+	rows, err := s.pool.Query(ctx, `
+SELECT id,name,value,sensitive
+FROM pdf_headers
+ORDER BY lower(name),id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	headers := make([]domain.PDFHeader, 0)
+	for rows.Next() {
+		var header domain.PDFHeader
+		if err := rows.Scan(&header.ID, &header.Name, &header.Value, &header.Sensitive); err != nil {
+			return nil, err
+		}
+
+		headers = append(headers, header)
+	}
+
+	return headers, rows.Err()
+}
+
+// SavePDFSettings updates the persisted HTML-to-PDF endpoint and request headers atomically.
+func (s *Store) SavePDFSettings(ctx context.Context, pdfURL string, headers []domain.PDFHeader) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `
 UPDATE application_settings
 SET pdf_url=$1,
     updated_at=now()
-WHERE singleton=true`, pdfURL)
-	return err
+WHERE singleton=true`, pdfURL); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM pdf_headers`); err != nil {
+		return err
+	}
+
+	for _, header := range headers {
+		if _, err := tx.Exec(ctx, `
+INSERT INTO pdf_headers(name,value,sensitive)
+VALUES($1,$2,$3)`, header.Name, header.Value, header.Sensitive); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 // SaveAuthenticationSettings updates non-secret browser authentication settings.

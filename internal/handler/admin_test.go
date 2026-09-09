@@ -134,8 +134,8 @@ func TestAuthenticationSettingsProblemsRejectsInvalidGroupMappings(t *testing.T)
 		},
 	}
 	problems := authenticationSettingsProblems(settings, RuntimeInfo{
-		OIDCClientSecretConfigured: true,
-		SessionSecretConfigured:    true,
+		OIDCClientSecretConfigured:  true,
+		OIDCSessionSecretConfigured: true,
 	})
 
 	require.Len(t, problems, 2)
@@ -155,7 +155,7 @@ func TestAuthenticationSettingsProblems(t *testing.T) {
 
 	require.Len(t, problems, 2)
 	assert.Equal(t, "oidc_client_secret", problems[0].Field)
-	assert.Equal(t, "session_secret", problems[1].Field)
+	assert.Equal(t, "oidc_session_secret", problems[1].Field)
 }
 
 func TestPendingOIDCIdentityID(t *testing.T) {

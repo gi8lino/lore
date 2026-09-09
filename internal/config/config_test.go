@@ -20,6 +20,18 @@ func TestEnvironmentPrefix(t *testing.T) {
 	assert.Equal(t, auth.AuthModeTrustedProxy, cfg.AuthModeOverride)
 }
 
+func TestOIDCSessionSecretAndEncryptionKeyFromEnvironment(t *testing.T) {
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__OIDC_SESSION_SECRET", "0123456789abcdef0123456789abcdef")
+	t.Setenv("LORE__ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+
+	cfg, err := parseTestConfig(nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "0123456789abcdef0123456789abcdef", cfg.OIDCSessionSecret)
+	assert.Equal(t, "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=", cfg.EncryptionKey)
+}
+
 func TestAuthModeRejectsUnknownValue(t *testing.T) {
 	t.Parallel()
 
@@ -56,12 +68,12 @@ func TestOIDCSecretsRemainDeploymentConfiguration(t *testing.T) {
 	cfg, err := parseTestConfig([]string{
 		"--database-url", "postgres://example/lore",
 		"--oidc-client-secret", "client-secret",
-		"--session-secret", "0123456789abcdef0123456789abcdef",
+		"--oidc-session-secret", "0123456789abcdef0123456789abcdef",
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, "client-secret", cfg.OIDCClientSecret)
-	assert.Equal(t, "0123456789abcdef0123456789abcdef", cfg.SessionSecret)
+	assert.Equal(t, "0123456789abcdef0123456789abcdef", cfg.OIDCSessionSecret)
 }
 
 func TestOverriddenValuesMaskSecrets(t *testing.T) {
@@ -71,12 +83,14 @@ func TestOverriddenValuesMaskSecrets(t *testing.T) {
 	resolve := BindFlags(flags)
 	databaseURL := "postgres://lore:database-secret@postgres:5432/lore?sslmode=disable"
 	oidcSecret := "oidc-client-secret-value"
-	sessionSecret := "0123456789abcdef0123456789abcdef"
+	oidcSessionSecret := "0123456789abcdef0123456789abcdef"
+	encryptionKey := "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 	require.NoError(t, flags.Parse([]string{
 		"--database-url", databaseURL,
 		"--oidc-client-secret", oidcSecret,
-		"--session-secret", sessionSecret,
+		"--oidc-session-secret", oidcSessionSecret,
+		"--encryption-key", encryptionKey,
 	}))
 
 	_ = resolve()
@@ -85,10 +99,12 @@ func TestOverriddenValuesMaskSecrets(t *testing.T) {
 
 	assert.Contains(t, overrides, "database-url")
 	assert.Contains(t, overrides, "oidc-client-secret")
-	assert.Contains(t, overrides, "session-secret")
+	assert.Contains(t, overrides, "oidc-session-secret")
+	assert.Contains(t, overrides, "encryption-key")
 	assert.NotEqual(t, databaseURL, overrides["database-url"])
 	assert.NotEqual(t, oidcSecret, overrides["oidc-client-secret"])
-	assert.NotEqual(t, sessionSecret, overrides["session-secret"])
+	assert.NotEqual(t, oidcSessionSecret, overrides["oidc-session-secret"])
+	assert.NotEqual(t, encryptionKey, overrides["encryption-key"])
 }
 
 func parseTestConfig(args []string) (Config, error) {
@@ -99,6 +115,17 @@ func parseTestConfig(args []string) (Config, error) {
 	}
 
 	return resolve(), nil
+}
+
+func TestEncryptionKeyRejectsInvalidValue(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseTestConfig([]string{
+		"--database-url", "postgres://example/lore",
+		"--encryption-key", "not-a-32-byte-base64-key",
+	})
+
+	require.Error(t, err)
 }
 
 func TestPDFURLFromEnvironmentIncludesPath(t *testing.T) {

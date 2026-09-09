@@ -240,8 +240,12 @@ type recycleBinService interface {
 
 type settingsService interface {
 	ApplicationSettings(context.Context) (domain.ApplicationSettings, error)
+	PDFHeaders(context.Context) ([]domain.PDFHeader, error)
+	PDFRequestHeaders(context.Context) ([]domain.PDFHeader, error)
+	ResolvePDFRequestHeaders(context.Context, []service.PDFHeaderInput) ([]domain.PDFHeader, error)
+	RevealPDFHeader(context.Context, int64) (string, error)
 	SaveApplicationSettings(context.Context, domain.ApplicationSettings, int64) error
-	SavePDFSettings(context.Context, string, int64) error
+	SavePDFSettings(context.Context, string, []service.PDFHeaderInput, int64) error
 	SaveAuthenticationSettings(context.Context, domain.AuthenticationSettings, int64) error
 	SaveRenderingSettings(context.Context, domain.RenderingSettings, int64) error
 	RecordLocalPasswordUpdated(context.Context, domain.User)

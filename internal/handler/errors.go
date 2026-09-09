@@ -125,7 +125,7 @@ func writeInternalServerError(logger *slog.Logger, w http.ResponseWriter, err er
 			"error", err,
 		)
 
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusInternalServerError,
 			"The request could not be processed.",
 		)
@@ -139,7 +139,7 @@ func writeInternalServerError(logger *slog.Logger, w http.ResponseWriter, err er
 		"error", err,
 	)
 
-	httpresponse.Problem(w, 
+	httpresponse.Problem(w,
 		http.StatusInternalServerError,
 		"The request could not be processed. Reference: "+reference,
 	)

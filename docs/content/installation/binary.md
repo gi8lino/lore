@@ -25,4 +25,4 @@ The Go binary embeds `web/dist`. Run `make web` before compiling manually so Typ
 
 ## PDF support
 
-The Lore binary does not contain a PDF renderer. Configure a compatible HTML-to-PDF `POST` endpoint in **Administration → Configuration**. A deployment can override the persisted endpoint with `LORE__PDF_URL`.
+The Lore binary does not contain a PDF renderer. Configure a compatible HTML-to-PDF `POST` endpoint in **Administration → Configuration**. A deployment can override the persisted endpoint with `LORE__PDF_URL`. If the service requires a bearer token, API key, or other request header, add it there; mark credentials sensitive and configure `LORE__ENCRYPTION_KEY` so Lore encrypts them at rest.

@@ -2,29 +2,151 @@ package service
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/secrets"
+	"golang.org/x/net/http/httpguts"
 )
+
+var reservedPDFHeaderNames = map[string]struct{}{
+	"Accept":            {},
+	"Connection":        {},
+	"Content-Encoding":  {},
+	"Content-Length":    {},
+	"Content-Type":      {},
+	"Host":              {},
+	"Keep-Alive":        {},
+	"Proxy-Connection":  {},
+	"Te":                {},
+	"Trailer":           {},
+	"Transfer-Encoding": {},
+	"Upgrade":           {},
+}
+
+// PDFHeaderInput contains one administrator-supplied PDF request header.
+type PDFHeaderInput struct {
+	ID        int64
+	Name      string
+	Value     string
+	Sensitive bool
+}
 
 // settingsRepository contains persisted application configuration operations.
 type settingsRepository interface {
 	auditRepository
 	ApplicationSettings(context.Context) (domain.ApplicationSettings, error)
+	PDFHeaders(context.Context) ([]domain.PDFHeader, error)
 	SaveApplicationSettings(context.Context, domain.ApplicationSettings) error
-	SavePDFSettings(context.Context, string) error
+	SavePDFSettings(context.Context, string, []domain.PDFHeader) error
 	SaveAuthenticationSettings(context.Context, domain.AuthenticationSettings) error
 	SaveRenderingSettings(context.Context, domain.RenderingSettings) error
 }
 
 // Settings exposes persisted application configuration use cases.
-type Settings struct{ repository settingsRepository }
+type Settings struct {
+	repository settingsRepository
+	secrets    *secrets.Cipher
+}
 
 // NewSettings constructs the application settings service.
-func NewSettings(repository settingsRepository) *Settings { return &Settings{repository: repository} }
+func NewSettings(repository settingsRepository, secretCipher *secrets.Cipher) *Settings {
+	return &Settings{repository: repository, secrets: secretCipher}
+}
 
 // ApplicationSettings returns the current application configuration.
 func (s *Settings) ApplicationSettings(ctx context.Context) (domain.ApplicationSettings, error) {
 	return s.repository.ApplicationSettings(ctx)
+}
+
+// PDFHeaders returns PDF request headers without exposing persisted sensitive values.
+func (s *Settings) PDFHeaders(ctx context.Context) ([]domain.PDFHeader, error) {
+	headers, err := s.repository.PDFHeaders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for index := range headers {
+		if !headers[index].Sensitive {
+			continue
+		}
+
+		headers[index].Configured = headers[index].Value != ""
+		headers[index].Value = ""
+	}
+
+	return headers, nil
+}
+
+// PDFRequestHeaders returns persisted PDF headers with sensitive values decrypted for one outbound request.
+func (s *Settings) PDFRequestHeaders(ctx context.Context) ([]domain.PDFHeader, error) {
+	headers, err := s.repository.PDFHeaders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.decryptPDFHeaders(headers)
+}
+
+// ResolvePDFRequestHeaders resolves unsaved administrator form input for a PDF service test.
+func (s *Settings) ResolvePDFRequestHeaders(ctx context.Context, inputs []PDFHeaderInput) ([]domain.PDFHeader, error) {
+	existing, err := s.repository.PDFHeaders(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	headers, err := s.resolvePDFHeaderInputs(inputs, existing)
+	if err == nil {
+		return headers, nil
+	}
+	if errors.Is(err, secrets.ErrNotConfigured) {
+		return nil, &domain.ValidationError{
+			Fields: []domain.FieldError{{
+				Field:   "pdf_headers",
+				Message: "Configure LORE__ENCRYPTION_KEY before testing stored sensitive PDF headers.",
+			}},
+			Cause: err,
+		}
+	}
+
+	return nil, err
+}
+
+// RevealPDFHeader returns one persisted header value for an explicit administrator reveal action.
+func (s *Settings) RevealPDFHeader(ctx context.Context, id int64) (string, error) {
+	headers, err := s.repository.PDFHeaders(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for _, header := range headers {
+		if header.ID != id {
+			continue
+		}
+		if !header.Sensitive {
+			return header.Value, nil
+		}
+
+		value, err := s.decryptPDFHeader(header)
+		if err == nil {
+			return value, nil
+		}
+		if errors.Is(err, secrets.ErrNotConfigured) {
+			return "", &domain.ValidationError{
+				Fields: []domain.FieldError{{
+					Field:   "pdf_headers",
+					Message: "Configure LORE__ENCRYPTION_KEY before revealing sensitive PDF headers.",
+				}},
+				Cause: err,
+			}
+		}
+
+		return "", err
+	}
+
+	return "", domain.ErrNotFound
 }
 
 // SaveApplicationSettings persists application settings and records the change.
@@ -49,9 +171,60 @@ func (s *Settings) SaveApplicationSettings(
 	return nil
 }
 
-// SavePDFSettings persists the default PDF rendering endpoint and records the change.
-func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID int64) error {
-	if err := s.repository.SavePDFSettings(ctx, pdfURL); err != nil {
+// SavePDFSettings persists the PDF endpoint and request headers and records the change.
+func (s *Settings) SavePDFSettings(
+	ctx context.Context,
+	pdfURL string,
+	inputs []PDFHeaderInput,
+	actorID int64,
+) error {
+	existing, err := s.repository.PDFHeaders(ctx)
+	if err != nil {
+		return err
+	}
+
+	resolved, err := s.resolvePDFHeaderInputs(inputs, existing)
+	if err != nil {
+		if errors.Is(err, secrets.ErrNotConfigured) {
+			return &domain.ValidationError{
+				Fields: []domain.FieldError{{
+					Field:   "pdf_headers",
+					Message: "Configure LORE__ENCRYPTION_KEY before saving sensitive PDF headers.",
+				}},
+				Cause: err,
+			}
+		}
+
+		return err
+	}
+
+	stored := make([]domain.PDFHeader, 0, len(resolved))
+	for _, header := range resolved {
+		if header.Sensitive {
+			value, err := s.secrets.Encrypt(header.Value)
+			if err != nil {
+				if errors.Is(err, secrets.ErrNotConfigured) {
+					return &domain.ValidationError{
+						Fields: []domain.FieldError{{
+							Field:   "pdf_headers",
+							Message: "Configure LORE__ENCRYPTION_KEY before saving sensitive PDF headers.",
+						}},
+						Cause: err,
+					}
+				}
+
+				return err
+			}
+
+			header.Value = value
+		}
+
+		header.ID = 0
+		header.Configured = false
+		stored = append(stored, header)
+	}
+
+	if err := s.repository.SavePDFSettings(ctx, pdfURL, stored); err != nil {
 		return err
 	}
 
@@ -65,6 +238,115 @@ func (s *Settings) SavePDFSettings(ctx context.Context, pdfURL string, actorID i
 	)
 
 	return nil
+}
+
+// resolvePDFHeaderInputs validates request-header form input and resolves masked stored values.
+func (s *Settings) resolvePDFHeaderInputs(inputs []PDFHeaderInput, existing []domain.PDFHeader) ([]domain.PDFHeader, error) {
+	existingByID := make(map[int64]domain.PDFHeader, len(existing))
+	for _, header := range existing {
+		existingByID[header.ID] = header
+	}
+
+	seenNames := make(map[string]struct{}, len(inputs))
+	seenIDs := make(map[int64]struct{}, len(inputs))
+	resolved := make([]domain.PDFHeader, 0, len(inputs))
+
+	for _, input := range inputs {
+		name, err := normalizePDFHeaderName(input.Name)
+		if err != nil {
+			return nil, err
+		}
+		nameKey := strings.ToLower(name)
+		if _, exists := seenNames[nameKey]; exists {
+			return nil, domain.NewValidationError("pdf_headers", "PDF header names must be unique.")
+		}
+		seenNames[nameKey] = struct{}{}
+
+		var previous domain.PDFHeader
+		if input.ID != 0 {
+			if _, exists := seenIDs[input.ID]; exists {
+				return nil, domain.NewValidationError("pdf_headers", "PDF header rows must be unique.")
+			}
+			seenIDs[input.ID] = struct{}{}
+
+			var exists bool
+			previous, exists = existingByID[input.ID]
+			if !exists {
+				return nil, domain.NewValidationError("pdf_headers", "One PDF header no longer exists. Reload the page and try again.")
+			}
+		}
+
+		value := input.Value
+		if strings.TrimSpace(value) == "" && previous.Sensitive {
+			value, err = s.decryptPDFHeader(previous)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if strings.TrimSpace(value) == "" {
+			return nil, domain.NewValidationError("pdf_headers", "Enter a value for every PDF request header.")
+		}
+		if !httpguts.ValidHeaderFieldValue(value) {
+			return nil, domain.NewValidationError("pdf_headers", "PDF header values must be valid HTTP header values.")
+		}
+
+		resolved = append(resolved, domain.PDFHeader{
+			ID:        input.ID,
+			Name:      name,
+			Value:     value,
+			Sensitive: input.Sensitive,
+		})
+	}
+
+	return resolved, nil
+}
+
+// decryptPDFHeaders decrypts sensitive values while leaving ordinary headers unchanged.
+func (s *Settings) decryptPDFHeaders(headers []domain.PDFHeader) ([]domain.PDFHeader, error) {
+	resolved := make([]domain.PDFHeader, 0, len(headers))
+	for _, header := range headers {
+		if header.Sensitive {
+			value, err := s.decryptPDFHeader(header)
+			if err != nil {
+				return nil, err
+			}
+			header.Value = value
+		}
+
+		resolved = append(resolved, header)
+	}
+
+	return resolved, nil
+}
+
+// decryptPDFHeader decrypts one sensitive stored value.
+func (s *Settings) decryptPDFHeader(header domain.PDFHeader) (string, error) {
+	if !header.Sensitive {
+		return header.Value, nil
+	}
+	if s.secrets == nil {
+		return "", secrets.ErrNotConfigured
+	}
+
+	return s.secrets.Decrypt(header.Value)
+}
+
+// normalizePDFHeaderName validates one configurable request-header name while preserving its display casing.
+func normalizePDFHeaderName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", domain.NewValidationError("pdf_headers", "Enter a name for every PDF request header.")
+	}
+	if !httpguts.ValidHeaderFieldName(name) {
+		return "", domain.NewValidationError("pdf_headers", "PDF header names must be valid HTTP header names.")
+	}
+
+	canonicalName := http.CanonicalHeaderKey(name)
+	if _, forbidden := reservedPDFHeaderNames[canonicalName]; forbidden {
+		return "", domain.NewValidationError("pdf_headers", canonicalName+" cannot be configured as a PDF request header.")
+	}
+
+	return name, nil
 }
 
 // SaveAuthenticationSettings persists authentication settings and records the change.

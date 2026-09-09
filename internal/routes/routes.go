@@ -73,7 +73,7 @@ func addRoutes(
 	)
 	mux.Handle(
 		"GET /admin/configuration",
-		browserAuthn(adminAuthz(handler.AdminConfiguration(viewDataUseCases, groupUseCases, userUseCases, views))),
+		browserAuthn(adminAuthz(handler.AdminConfiguration(viewDataUseCases, groupUseCases, userUseCases, settingsUseCases, views))),
 	)
 	mux.Handle(
 		"GET /admin/rendering",
@@ -161,7 +161,8 @@ func addRoutes(
 	)
 	mux.Handle("POST /admin/settings", browserAuthn(adminAuthz(handler.SaveAdminSettings(settingsUseCases, logger))))
 	mux.Handle("POST /admin/pdf", browserAuthn(adminAuthz(handler.SaveAdminPDFSettings(settingsUseCases, logger))))
-	mux.Handle("POST /admin/pdf/test", browserAuthn(adminAuthz(handler.TestAdminPDFService(logger))))
+	mux.Handle("POST /admin/pdf/test", browserAuthn(adminAuthz(handler.TestAdminPDFService(settingsUseCases, logger))))
+	mux.Handle("POST /admin/pdf/headers/{id}/reveal", browserAuthn(adminAuthz(handler.RevealAdminPDFHeader(settingsUseCases, logger))))
 	mux.Handle(
 		"POST /admin/authentication",
 		browserAuthn(adminAuthz(handler.SaveAdminAuthentication(settingsUseCases, browserAuth, views))),

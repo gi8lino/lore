@@ -114,6 +114,13 @@ func ExportPagePDF(
 			return
 		}
 
+		pdfHeaders, err := settingsUseCases.PDFRequestHeaders(r.Context())
+		if err != nil {
+			logger.Error("load PDF request headers", "event", "pdf_headers_load_failed", "error", err)
+			httpresponse.Problem(w, http.StatusServiceUnavailable, "PDF export is temporarily unavailable.")
+			return
+		}
+
 		settings := applicationSettings.Rendering
 		rendered, err := renderExportHTML(r.Context(), catalogUseCases, knowledgeUseCases,
 			navigationUseCases, mediaUseCases, renderer, pageData, settings, overrides)
@@ -124,7 +131,7 @@ func ExportPagePDF(
 
 		language := cmp.Or(pageData.Language, settings.ContentLanguage)
 
-		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered)
+		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered, pdfRequestHeaders(pdfHeaders))
 		if err != nil {
 			logger.Error("generate PDF", "event", "pdf_generation_failed", "slug", slug, "error", err)
 			httpresponse.Problem(w,

@@ -11,6 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/logging"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/routes"
+	"github.com/gi8lino/lore/internal/secrets"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/store"
 	"github.com/gi8lino/lore/themes"
@@ -24,6 +25,7 @@ func Run(
 	databaseURL string,
 	publicURL string,
 	pdfURL string,
+	encryptionKey string,
 	authModeOverride auth.AuthMode,
 	trustedUsernameHeaders []string,
 	trustedEmailHeaders []string,
@@ -31,7 +33,7 @@ func Run(
 	oidcIssuer string,
 	oidcClientID string,
 	oidcClientSecret string,
-	sessionSecret string,
+	oidcSessionSecret string,
 	localLogin bool,
 	themeDirectory string,
 	logFormat logging.LogFormat,
@@ -69,6 +71,16 @@ func Run(
 		return err
 	}
 
+	secretCipher, err := secrets.New(encryptionKey)
+	if err != nil {
+		setupLogger.Error(
+			"configure application encryption",
+			"event", "application_encryption_failed",
+			"error", err,
+		)
+		return err
+	}
+
 	database, err := store.Open(ctx, databaseURL, setupLogger)
 	if err != nil {
 		setupLogger.Error(
@@ -96,7 +108,7 @@ func Run(
 	pageUseCases := service.NewPages(database)
 	preferenceUseCases := service.NewPreferences(database)
 	recycleBinUseCases := service.NewRecycleBin(database)
-	settingsUseCases := service.NewSettings(database)
+	settingsUseCases := service.NewSettings(database, secretCipher)
 	systemUseCases := service.NewSystem(database)
 	templateUseCases := service.NewTemplates(database)
 	tokenUseCases := service.NewTokens(database)
@@ -123,7 +135,7 @@ func Run(
 				ClientID:      oidcClientID,
 				ClientSecret:  oidcClientSecret,
 				Issuer:        oidcIssuer,
-				SessionSecret: sessionSecret,
+				SessionSecret: oidcSessionSecret,
 				PublicURL:     publicURL,
 			},
 			LocalLoginEnabled: localLogin,
@@ -142,14 +154,15 @@ func Run(
 	bearerAuth := auth.NewBearer(database)
 
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
-		ListenAddress:              listenAddress,
-		PublicURL:                  publicURL,
-		PDFURL:                     pdfURL,
-		AuthModeOverride:           string(authModeOverride),
-		OIDCClientSecretConfigured: oidcClientSecret != "",
-		SessionSecretConfigured:    len(sessionSecret) >= 32,
-		LocalLoginEnabled:          localLogin,
-		ThemeDirectory:             themeDirectory,
+		ListenAddress:               listenAddress,
+		PublicURL:                   publicURL,
+		PDFURL:                      pdfURL,
+		AuthModeOverride:            string(authModeOverride),
+		OIDCClientSecretConfigured:  oidcClientSecret != "",
+		OIDCSessionSecretConfigured: len(oidcSessionSecret) >= 32,
+		EncryptionKeyConfigured:     secretCipher.Configured(),
+		LocalLoginEnabled:           localLogin,
+		ThemeDirectory:              themeDirectory,
 	})
 	if err != nil {
 		setupLogger.Error(

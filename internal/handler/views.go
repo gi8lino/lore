@@ -103,8 +103,10 @@ type RuntimeInfo struct {
 	AuthModeOverride string
 	// OIDCClientSecretConfigured reports whether the OIDC client secret is available.
 	OIDCClientSecretConfigured bool
-	// SessionSecretConfigured reports whether a valid OIDC session secret is available.
-	SessionSecretConfigured bool
+	// OIDCSessionSecretConfigured reports whether a valid OIDC session secret is available.
+	OIDCSessionSecretConfigured bool
+	// EncryptionKeyConfigured reports whether sensitive persisted settings can be encrypted.
+	EncryptionKeyConfigured bool
 	// LocalLoginEnabled reports whether the deployment exposes break-glass local login.
 	LocalLoginEnabled bool
 	// ThemeDirectory is the optional external theme directory.
@@ -224,6 +226,8 @@ type ViewData struct {
 	AdminStats domain.AdminStats
 	// ApplicationSettings contains mutable application-wide settings for administrators.
 	ApplicationSettings domain.ApplicationSettings
+	// PDFHeaders contains administrator-safe PDF request-header metadata.
+	PDFHeaders []domain.PDFHeader
 	// RenderingPreviews contains sanitized examples for administrator rendering controls.
 	RenderingPreviews map[string]template.HTML
 	// DocumentationHealth contains actionable wiki quality findings.

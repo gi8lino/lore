@@ -23,10 +23,14 @@ type variableExportStub struct {
 	knowledgeContentStub
 	application     domain.ApplicationSettings
 	navigationPages []domain.Page
+	pdfHeaders      []domain.PDFHeader
 }
 
 func (s variableExportStub) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
 	return s.application, nil
+}
+func (s variableExportStub) PDFRequestHeaders(context.Context) ([]domain.PDFHeader, error) {
+	return s.pdfHeaders, nil
 }
 func (s variableExportStub) NavigationPages(context.Context) ([]domain.Page, error) {
 	return s.navigationPages, nil
@@ -159,7 +163,10 @@ func TestPDFReceivesTemporaryVariables(t *testing.T) {
 		{Slug: "guide/install", Title: "Install"},
 	}
 	sent := make(chan string, 1)
+	stub.pdfHeaders = []domain.PDFHeader{{Name: "Authorization", Value: "Bearer export-token"}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer export-token", r.Header.Get("Authorization"))
+
 		body, err := io.ReadAll(r.Body)
 		if !assert.NoError(t, err) {
 			w.WriteHeader(http.StatusInternalServerError)

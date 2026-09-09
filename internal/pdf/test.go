@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -25,8 +26,8 @@ type TestResult struct {
 }
 
 // RenderTest renders Lore's fixed PDF diagnostic document and returns it for inspection.
-func RenderTest(ctx context.Context, endpoint string) (result TestResult, cleanup func(), err error) {
-	file, cleanup, err := Render(ctx, endpoint, "Lore PDF service test", "en", testBody())
+func RenderTest(ctx context.Context, endpoint string, headers http.Header) (result TestResult, cleanup func(), err error) {
+	file, cleanup, err := Render(ctx, endpoint, "Lore PDF service test", "en", testBody(), headers)
 	if err != nil {
 		return TestResult{}, cleanup, err
 	}

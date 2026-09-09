@@ -8,6 +8,7 @@ import (
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/logging"
 	"github.com/gi8lino/lore/internal/pdf"
+	"github.com/gi8lino/lore/internal/secrets"
 )
 
 var trustedUsernameHeaders = []string{
@@ -52,8 +53,10 @@ type Config struct {
 	OIDCClientID string
 	// OIDCClientSecret is the deployment-managed OIDC client secret.
 	OIDCClientSecret string
-	// SessionSecret signs browser session cookies.
-	SessionSecret string
+	// OIDCSessionSecret signs OIDC login and session cookies.
+	OIDCSessionSecret string
+	// EncryptionKey encrypts sensitive application settings stored in PostgreSQL.
+	EncryptionKey string
 	// LocalLogin enables the local recovery login alongside the configured mode.
 	LocalLogin bool
 	// ThemeDirectory optionally overlays embedded themes with TOML files from disk.
@@ -122,18 +125,22 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 	flags.StringVar(&cfg.OIDCClientSecret, "oidc-client-secret", "", "OIDC client secret used when OIDC is enabled in the administration UI").
 		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
 		Value()
-	flags.StringVar(&cfg.SessionSecret, "session-secret", "", "Secret used to sign OIDC login sessions").
+	flags.StringVar(&cfg.OIDCSessionSecret, "oidc-session-secret", "", "Secret used to sign OIDC login state and session cookies").
 		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
 		Validate(func(s string) error {
 			if s == "" {
 				return nil
 			}
 			if len(s) < 32 {
-				return errors.New("session secret must be at least 32 characters")
+				return errors.New("oidc session secret must be at least 32 characters")
 			}
 
 			return nil
 		}).
+		Value()
+	flags.StringVar(&cfg.EncryptionKey, "encryption-key", "", "Base64-encoded 32-byte key used to encrypt sensitive application settings").
+		OverriddenValueMaskFn(tinyflags.MaskFirstLast).
+		Validate(secrets.ValidateKey).
 		Value()
 
 	// Logging

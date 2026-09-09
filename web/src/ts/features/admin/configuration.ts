@@ -4,6 +4,14 @@ import { requiredElement } from "../../core/dom.ts";
 import { errorMessage, responseProblem } from "../../core/http.ts";
 import { renderMermaid } from "../markdown.ts";
 
+const sensitivePDFHeaderNames = new Set([
+  "authorization",
+  "cookie",
+  "proxy-authorization",
+  "x-api-key",
+  "x-auth-token",
+]);
+
 // Formats one PDF byte size for the administrator test result.
 function formatPDFSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -17,6 +25,7 @@ function formatPDFSize(bytes: number): string {
 }
 
 type PDFTestControls = {
+  form: HTMLFormElement;
   endpoint: HTMLInputElement;
   button: HTMLButtonElement;
   status: HTMLElement;
@@ -77,6 +86,16 @@ function showPDFTestResult(
   controls.dialog.showModal();
 }
 
+// Encodes the current PDF form, including unsaved dynamic request headers.
+function pdfFormBody(form: HTMLFormElement): URLSearchParams {
+  const body = new URLSearchParams();
+  for (const [name, value] of new FormData(form)) {
+    if (typeof value === "string") body.append(name, value);
+  }
+
+  return body;
+}
+
 async function testPDFEndpoint(controls: PDFTestControls): Promise<void> {
   const pdfURL = controls.endpoint.value.trim();
   if (!pdfURL) {
@@ -93,10 +112,9 @@ async function testPDFEndpoint(controls: PDFTestControls): Promise<void> {
   );
 
   try {
-    const body = new URLSearchParams({ pdf_url: pdfURL });
     const response = await fetch("/admin/pdf/test", {
       method: "POST",
-      body,
+      body: pdfFormBody(controls.form),
       credentials: "same-origin",
       headers: { Accept: "application/pdf" },
     });
@@ -131,7 +149,127 @@ async function testPDFEndpoint(controls: PDFTestControls): Promise<void> {
   }
 }
 
-// Wires the PDF integration test to the endpoint currently entered in the form.
+// Assigns server form names to a newly created request-header row.
+function assignPDFHeaderRowNames(row: HTMLElement, token: string): void {
+  const prefix = `pdf_header_${token}_`;
+  const rowKey = requiredElement<HTMLInputElement>(
+    row,
+    "[data-pdf-header-row-key]",
+  );
+  const id = requiredElement<HTMLInputElement>(row, "[data-pdf-header-id]");
+  const name = requiredElement<HTMLInputElement>(row, "[data-pdf-header-name]");
+  const value = requiredElement<HTMLInputElement>(
+    row,
+    "[data-pdf-header-value]",
+  );
+  const sensitive = requiredElement<HTMLInputElement>(
+    row,
+    "[data-pdf-header-sensitive]",
+  );
+
+  rowKey.name = "pdf_header_row";
+  rowKey.value = token;
+  id.name = `${prefix}id`;
+  name.name = `${prefix}name`;
+  value.name = `${prefix}value`;
+  sensitive.name = `${prefix}sensitive`;
+}
+
+async function revealPDFHeader(
+  controls: PDFTestControls,
+  row: HTMLElement,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const id = button.dataset.pdfHeaderId;
+  if (!id) return;
+
+  button.disabled = true;
+  try {
+    const response = await fetch(
+      `/admin/pdf/headers/${encodeURIComponent(id)}/reveal`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      },
+    );
+    if (!response.ok) throw await responseProblem(response);
+
+    const payload = (await response.json()) as { value?: unknown };
+    if (typeof payload.value !== "string") {
+      throw new Error("The server returned an invalid PDF header value.");
+    }
+
+    const value = requiredElement<HTMLInputElement>(
+      row,
+      "[data-pdf-header-value]",
+    );
+    value.type = "text";
+    value.value = payload.value;
+    value.focus();
+    button.textContent = "Revealed";
+    setPDFTestStatus(controls, "", "");
+  } catch (error: unknown) {
+    button.disabled = false;
+    setPDFTestStatus(controls, "error", errorMessage(error));
+  }
+}
+
+// Wires one configurable PDF request-header row.
+function bindPDFHeaderRow(controls: PDFTestControls, row: HTMLElement): void {
+  const name = requiredElement<HTMLInputElement>(row, "[data-pdf-header-name]");
+  const value = requiredElement<HTMLInputElement>(
+    row,
+    "[data-pdf-header-value]",
+  );
+  const sensitive = requiredElement<HTMLInputElement>(
+    row,
+    "[data-pdf-header-sensitive]",
+  );
+  const remove = requiredElement<HTMLButtonElement>(
+    row,
+    "[data-pdf-header-remove]",
+  );
+  const reveal = row.querySelector<HTMLButtonElement>(
+    "[data-pdf-header-reveal]",
+  );
+
+  const refreshSensitiveValue = (): void => {
+    if (!reveal || reveal.textContent !== "Revealed") {
+      value.type = sensitive.checked ? "password" : "text";
+    }
+  };
+
+  sensitive.addEventListener("change", () => {
+    sensitive.dataset.userSet = "true";
+    refreshSensitiveValue();
+    setPDFTestStatus(controls, "", "");
+  });
+
+  name.addEventListener("input", () => {
+    if (
+      row.dataset.pdfHeaderExisting !== "true" &&
+      sensitive.dataset.userSet !== "true"
+    ) {
+      sensitive.checked = sensitivePDFHeaderNames.has(
+        name.value.trim().toLowerCase(),
+      );
+      refreshSensitiveValue();
+    }
+
+    setPDFTestStatus(controls, "", "");
+  });
+  value.addEventListener("input", () => setPDFTestStatus(controls, "", ""));
+  remove.addEventListener("click", () => {
+    row.remove();
+    setPDFTestStatus(controls, "", "");
+  });
+  reveal?.addEventListener("click", () => {
+    void revealPDFHeader(controls, row, reveal);
+  });
+}
+
+// Wires the PDF integration settings, request headers, and endpoint test.
 function setupPDFSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-pdf-settings]");
   if (!form) return;
@@ -165,11 +303,21 @@ function setupPDFSettings(): void {
     ".pdf-test-check-mark",
   );
   const size = requiredElement<HTMLElement>(dialog, "[data-pdf-test-size]");
+  const list = requiredElement<HTMLElement>(form, "[data-pdf-header-list]");
+  const template = requiredElement<HTMLTemplateElement>(
+    form,
+    "[data-pdf-header-template]",
+  );
+  const addHeader = requiredElement<HTMLButtonElement>(
+    form,
+    "[data-pdf-header-add]",
+  );
   const closeButtons = [
     ...dialog.querySelectorAll<HTMLButtonElement>("[data-pdf-test-close]"),
   ];
 
   const controls: PDFTestControls = {
+    form,
     endpoint,
     button,
     status,
@@ -182,6 +330,22 @@ function setupPDFSettings(): void {
     size,
     previewURL: "",
   };
+
+  list
+    .querySelectorAll<HTMLElement>("[data-pdf-header-row]")
+    .forEach((row) => bindPDFHeaderRow(controls, row));
+
+  let nextHeaderRow = 1;
+  addHeader.addEventListener("click", () => {
+    const row = template.content.firstElementChild?.cloneNode(true) as
+      HTMLElement | null | undefined;
+    if (!row) return;
+
+    assignPDFHeaderRowNames(row, `n${nextHeaderRow++}`);
+    list.append(row);
+    bindPDFHeaderRow(controls, row);
+    requiredElement<HTMLInputElement>(row, "[data-pdf-header-name]").focus();
+  });
 
   endpoint.addEventListener("input", () => setPDFTestStatus(controls, "", ""));
   for (const close of closeButtons) {

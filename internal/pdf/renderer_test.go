@@ -48,6 +48,7 @@ func TestRenderPostsToExactConfiguredEndpoint(t *testing.T) {
 		assert.Equal(t, "/custom/pdf/render?profile=wiki", r.URL.RequestURI())
 		assert.Equal(t, "text/html; charset=utf-8", r.Header.Get("Content-Type"))
 		assert.Equal(t, "application/pdf", r.Header.Get("Accept"))
+		assert.Equal(t, "Bearer secret-token", r.Header.Get("Authorization"))
 
 		body, err := io.ReadAll(r.Body)
 
@@ -64,7 +65,14 @@ func TestRenderPostsToExactConfiguredEndpoint(t *testing.T) {
 	}))
 	defer server.Close()
 
-	file, cleanup, err := Render(context.Background(), server.URL+"/custom/pdf/render?profile=wiki", "Title <test>", "de-CH", `<img src="data:image/png;base64,AAAA">`)
+	file, cleanup, err := Render(
+		context.Background(),
+		server.URL+"/custom/pdf/render?profile=wiki",
+		"Title <test>",
+		"de-CH",
+		`<img src="data:image/png;base64,AAAA">`,
+		http.Header{"Authorization": {"Bearer secret-token"}},
+	)
 
 	require.NoError(t, err)
 	defer cleanup()
@@ -98,7 +106,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -118,7 +126,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -138,7 +146,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -158,7 +166,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -178,7 +186,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -202,7 +210,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -224,7 +232,7 @@ func TestRenderRejectsBadResponses(t *testing.T) {
 		}))
 		defer server.Close()
 
-		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+		file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 		cleanup()
 		require.Error(t, err)
@@ -238,7 +246,7 @@ func TestRenderCanceledAndUnconfigured(t *testing.T) {
 	t.Run("unconfigured service", func(t *testing.T) {
 		t.Parallel()
 
-		_, cleanup, err := Render(context.Background(), "", "", "", "")
+		_, cleanup, err := Render(context.Background(), "", "", "", "", nil)
 		cleanup()
 		assert.ErrorIs(t, err, ErrNotConfigured)
 	})
@@ -248,7 +256,7 @@ func TestRenderCanceledAndUnconfigured(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		_, cleanup, err := Render(ctx, "http://127.0.0.1:1/render", "", "", "")
+		_, cleanup, err := Render(ctx, "http://127.0.0.1:1/render", "", "", "", nil)
 		cleanup()
 		assert.ErrorIs(t, err, context.Canceled)
 	})
@@ -274,7 +282,7 @@ func TestRenderBoundsUnknownLengthResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>")
+	file, cleanup, err := Render(context.Background(), server.URL+"/render", "Title", "en", "<p>test</p>", nil)
 
 	cleanup()
 	require.ErrorContains(t, err, "64 MiB")

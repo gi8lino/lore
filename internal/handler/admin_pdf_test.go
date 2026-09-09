@@ -13,21 +13,44 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type pdfSettingsStub struct {
 	settingsService
-	url     string
-	actorID int64
+	url             string
+	actorID         int64
+	savedHeaders    []service.PDFHeaderInput
+	resolvedHeaders []domain.PDFHeader
+	resolvedInputs  []service.PDFHeaderInput
+	revealedValue   string
 }
 
-func (s *pdfSettingsStub) SavePDFSettings(_ context.Context, pdfURL string, actorID int64) error {
+func (s *pdfSettingsStub) SavePDFSettings(
+	_ context.Context,
+	pdfURL string,
+	headers []service.PDFHeaderInput,
+	actorID int64,
+) error {
 	s.url = pdfURL
+	s.savedHeaders = headers
 	s.actorID = actorID
 
 	return nil
+}
+
+func (s *pdfSettingsStub) ResolvePDFRequestHeaders(
+	_ context.Context,
+	headers []service.PDFHeaderInput,
+) ([]domain.PDFHeader, error) {
+	s.resolvedInputs = headers
+	return s.resolvedHeaders, nil
+}
+
+func (s *pdfSettingsStub) RevealPDFHeader(context.Context, int64) (string, error) {
+	return s.revealedValue, nil
 }
 
 func TestEffectivePDFURL(t *testing.T) {
@@ -42,11 +65,15 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 	t.Parallel()
 
 	settings := &pdfSettingsStub{}
-	form := url.Values{"pdf_url": {" http://html2pdf:8080/render "}}
+	form := url.Values{
+		"pdf_url":                 {" http://html2pdf:8080/render "},
+		"pdf_header_row":          {"n1"},
+		"pdf_header_n1_name":      {" X-Tenant "},
+		"pdf_header_n1_value":     {" documentation "},
+		"pdf_header_n1_sensitive": {"on"},
+	}
 	request := httptest.NewRequest(http.MethodPost, "/admin/pdf", strings.NewReader(form.Encode()))
-
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
 	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
 
@@ -56,9 +83,10 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 	assert.Equal(t, "/admin/configuration#pdf-rendering", response.Header().Get("Location"))
 	assert.Equal(t, "http://html2pdf:8080/render", settings.url)
 	assert.Equal(t, int64(7), settings.actorID)
+	assert.Equal(t, []service.PDFHeaderInput{{Name: " X-Tenant ", Value: " documentation ", Sensitive: true}}, settings.savedHeaders)
 }
 
-func TestTestAdminPDFService(t *testing.T) {
+func TestTestAdminPDFServiceUsesCurrentHeaders(t *testing.T) {
 	t.Parallel()
 
 	payload := `%PDF-1.7
@@ -76,9 +104,9 @@ endobj
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/render", r.URL.Path)
+		assert.Equal(t, "Bearer secret-token", r.Header.Get("Authorization"))
 
 		body, err := io.ReadAll(r.Body)
-
 		require.NoError(t, err)
 		assert.Contains(t, string(body), "Lore PDF service test")
 		assert.Contains(t, string(body), "data:image/png;base64,")
@@ -90,14 +118,20 @@ endobj
 	}))
 	defer server.Close()
 
-	form := url.Values{"pdf_url": {server.URL + "/render"}}
+	settings := &pdfSettingsStub{resolvedHeaders: []domain.PDFHeader{{Name: "Authorization", Value: "Bearer secret-token"}}}
+	form := url.Values{
+		"pdf_url":                  {server.URL + "/render"},
+		"pdf_header_row":           {"h12"},
+		"pdf_header_h12_id":        {"12"},
+		"pdf_header_h12_name":      {"Authorization"},
+		"pdf_header_h12_value":     {""},
+		"pdf_header_h12_sensitive": {"on"},
+	}
 	request := httptest.NewRequest(http.MethodPost, "/admin/pdf/test", strings.NewReader(form.Encode()))
-
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
 	response := httptest.NewRecorder()
 
-	TestAdminPDFService(slog.Default())(response, request)
+	TestAdminPDFService(settings, slog.Default())(response, request)
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.Equal(t, "application/pdf", response.Header().Get("Content-Type"))
@@ -105,6 +139,22 @@ endobj
 	assert.Equal(t, "2", response.Header().Get("X-Lore-PDF-Pages"))
 	assert.Equal(t, strconv.Itoa(len(payload)), response.Header().Get("X-Lore-PDF-Size"))
 	assert.Equal(t, payload, response.Body.String())
+	assert.Equal(t, []service.PDFHeaderInput{{ID: 12, Name: "Authorization", Sensitive: true}}, settings.resolvedInputs)
+}
+
+func TestRevealAdminPDFHeader(t *testing.T) {
+	t.Parallel()
+
+	settings := &pdfSettingsStub{revealedValue: "Bearer secret-token"}
+	request := httptest.NewRequest(http.MethodPost, "/admin/pdf/headers/12/reveal", nil)
+	request.SetPathValue("id", "12")
+	response := httptest.NewRecorder()
+
+	RevealAdminPDFHeader(settings, slog.Default())(response, request)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
+	assert.JSONEq(t, `{"value":"Bearer secret-token"}`, response.Body.String())
 }
 
 func TestSaveAdminPDFSettingsUsesTypedValidationMessage(t *testing.T) {
@@ -133,12 +183,13 @@ func TestAdminPDFServiceDoesNotExposeRendererError(t *testing.T) {
 	}))
 	defer server.Close()
 
+	settings := &pdfSettingsStub{}
 	form := url.Values{"pdf_url": {server.URL + "/render"}}
 	request := httptest.NewRequest(http.MethodPost, "/admin/pdf/test", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response := httptest.NewRecorder()
 
-	TestAdminPDFService(slog.New(slog.NewTextHandler(io.Discard, nil)))(response, request)
+	TestAdminPDFService(settings, slog.New(slog.NewTextHandler(io.Discard, nil)))(response, request)
 
 	assert.Equal(t, http.StatusBadGateway, response.Code)
 	assert.Contains(t, response.Body.String(), "The PDF service could not complete the test.")

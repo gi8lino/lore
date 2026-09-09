@@ -94,8 +94,8 @@ func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 
 	validation, ok = errors.AsType[*domain.ValidationError](browser.validateSettings(settings))
 	require.True(t, ok)
-	assert.Equal(t, "session_secret", validation.Fields[0].Field)
-	assert.Equal(t, "Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.", validation.UserMessage())
+	assert.Equal(t, "oidc_session_secret", validation.Fields[0].Field)
+	assert.Equal(t, "Configure LORE__OIDC_SESSION_SECRET with at least 32 characters before enabling OIDC.", validation.UserMessage())
 }
 
 func TestBrowserValidationRequiresAdministratorGroupSources(t *testing.T) {

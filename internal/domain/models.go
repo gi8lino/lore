@@ -174,6 +174,16 @@ type AuthenticationSettings struct {
 	TrustedAdminGroup string
 }
 
+// PDFHeader describes one configurable request header sent to the external PDF service.
+type PDFHeader struct {
+	ID        int64
+	Name      string
+	Value     string
+	Sensitive bool
+	// Configured reports whether a sensitive header has a stored value without exposing it.
+	Configured bool
+}
+
 // ApplicationSettings contains mutable application-wide settings.
 type ApplicationSettings struct {
 	// AllowUserRegistration permits new OIDC and trusted-proxy identities to create wiki accounts.

@@ -314,8 +314,8 @@ func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSe
 		}
 		if len(b.oidcConfig.SessionSecret) < 32 {
 			return domain.NewValidationError(
-				"session_secret",
-				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
+				"oidc_session_secret",
+				"Configure LORE__OIDC_SESSION_SECRET with at least 32 characters before enabling OIDC.",
 			)
 		}
 

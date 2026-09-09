@@ -68,6 +68,7 @@ func AdminConfiguration(
 	viewDataUseCases viewDataService,
 	groupUseCases groupReader,
 	userUseCases oidcIdentityService,
+	settingsUseCases settingsService,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +86,12 @@ func AdminConfiguration(
 
 		data.Groups = groups
 		data.ApplicationSettings.Authentication.OIDCGroupMappings, err = userUseCases.OIDCGroupMappings(r.Context())
+		if err != nil {
+			writeInternalServerError(views.logger, w, err)
+			return
+		}
+
+		data.PDFHeaders, err = settingsUseCases.PDFHeaders(r.Context())
 		if err != nil {
 			writeInternalServerError(views.logger, w, err)
 			return
@@ -727,10 +734,10 @@ func authenticationSettingsProblems(
 				"Configure LORE__OIDC_CLIENT_SECRET before enabling OIDC.",
 			))
 		}
-		if !runtime.SessionSecretConfigured {
+		if !runtime.OIDCSessionSecretConfigured {
 			problems = append(problems, httpresponse.NewFieldProblem(
-				"session_secret",
-				"Configure LORE__SESSION_SECRET with at least 32 characters before enabling OIDC.",
+				"oidc_session_secret",
+				"Configure LORE__OIDC_SESSION_SECRET with at least 32 characters before enabling OIDC.",
 			))
 		}
 		usesOIDCGroups := settings.OIDCGroupSync || settings.OIDCAdminGroup != ""

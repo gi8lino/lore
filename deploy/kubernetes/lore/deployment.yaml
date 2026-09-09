@@ -23,7 +23,7 @@ spec:
             - name: LORE__DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: lore
+                  name: lore-db
                   key: database-url
             - name: LORE__LISTEN_ADDRESS
               value: 0.0.0.0:8080
@@ -35,6 +35,11 @@ spec:
               value: json
             - name: LORE__ACCESS_LOG
               value: "true"
+          envFrom:
+            - secretRef:
+                name: lore-config
+            # - secretRef:
+            #     name: lore-oidc
           ports:
             - name: http
               containerPort: 8080
