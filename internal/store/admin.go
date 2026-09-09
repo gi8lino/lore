@@ -33,7 +33,7 @@ SELECT
 	return stats, err
 }
 
-// Users returns all wiki users with their group memberships.
+// Users returns all users with their group memberships.
 func (s *Store) Users(ctx context.Context) ([]domain.AdminUser, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT

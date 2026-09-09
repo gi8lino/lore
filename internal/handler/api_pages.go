@@ -32,7 +32,7 @@ type pageRequest struct {
 	Title string `json:"title"`
 	// Icon is the optional Lucide icon displayed with the page title.
 	Icon string `json:"icon"`
-	// Language optionally overrides the wiki-wide content language.
+	// Language optionally overrides the default content language.
 	Language string `json:"language"`
 	// Markdown is the page Markdown body.
 	Markdown string `json:"markdown_content"`
@@ -138,15 +138,15 @@ func subpagesRenderer(
 	}
 
 	tree := navigation.Build(items, navigation.Options{Icons: icons})
-	return subpages.NewRenderer(navigation.Children(tree, slug), wikiPageURL), nil
+	return subpages.NewRenderer(navigation.Children(tree, slug), pageURL), nil
 }
 
-// wikiPageURL returns the server route for one wiki page slug.
-func wikiPageURL(slug string) string {
+// pageURL returns the server route for one page slug.
+func pageURL(slug string) string {
 	return "/pages/" + strings.Trim(slug, "/")
 }
 
-// ListPages returns recently updated wiki pages up to the requested limit.
+// ListPages returns recently updated pages up to the requested limit.
 func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 100)
@@ -160,7 +160,7 @@ func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.Handle
 	}
 }
 
-// GetPage returns a wiki page by slug.
+// GetPage returns a page by slug.
 func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
@@ -249,7 +249,7 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 	}
 }
 
-// DeletePage removes a wiki page by slug.
+// DeletePage removes a page by slug.
 func DeletePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)

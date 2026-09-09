@@ -10,7 +10,7 @@ import (
 
 // Bearer authenticates API requests using bearer tokens.
 type Bearer struct {
-	// repository resolves API tokens to wiki users.
+	// repository resolves API tokens to Lore users.
 	repository bearerRepository
 }
 

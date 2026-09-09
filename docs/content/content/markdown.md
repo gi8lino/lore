@@ -81,7 +81,7 @@ The static filesystem builder supports the same `{{subpages}}` title behavior.
 
 ## Server-only knowledge macros
 
-The PostgreSQL-backed wiki can expand reusable knowledge content before Markdown rendering:
+The Lore server can expand reusable knowledge content before Markdown rendering:
 
 ```text
 {{var:name}}

@@ -1,4 +1,4 @@
-// Package icons exposes the Lucide icons used by the wiki interface.
+// Package icons exposes the Lucide icons used by the Lore interface.
 package icons
 
 import (
@@ -12,7 +12,7 @@ import (
 
 //go:generate go run ../../scripts/generate-icons
 
-// Option describes one Lucide icon available to wiki icon pickers.
+// Option describes one Lucide icon available to icon pickers.
 type Option struct {
 	// Name is the persisted Lucide icon identifier.
 	Name string

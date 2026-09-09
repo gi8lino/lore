@@ -14,6 +14,6 @@ The production image is multi-stage. A Node build stage compiles the TypeScript 
 
 ## Persistent data
 
-PostgreSQL owns the persistent wiki data. The Compose deployment uses the `lore-postgres` volume. Lore itself does not require an application data volume for pages or uploads because those are stored in PostgreSQL.
+PostgreSQL owns the persistent Lore data. The Compose deployment uses the `lore-postgres` volume. Lore itself does not require an application data volume for pages or uploads because those are stored in PostgreSQL.
 
 See [Runtime configuration](../configuration/runtime.md) for environment variables.

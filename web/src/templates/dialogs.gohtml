@@ -71,7 +71,7 @@
         >
         {{ if .CanEdit }}
           <a href="/pages/new{{ if .NewPageParent }}?parent={{ .NewPageParent | urlquery }}{{ end }}" class="command-palette-option" data-command-option data-command-static role="option"
-            >{{ icon "plus" 17 }}<span><strong>New page</strong><small>Create a wiki page</small></span></a
+            >{{ icon "plus" 17 }}<span><strong>New page</strong><small>Create a page</small></span></a
           >
         {{ end }}
         {{ if .Page }}

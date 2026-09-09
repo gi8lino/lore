@@ -8,7 +8,7 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 )
 
-// SecurityHeaders adds the wiki security response headers.
+// SecurityHeaders adds Lore security response headers.
 func SecurityHeaders() Middleware {
 	cspDirectives := []string{
 		"default-src 'self'",

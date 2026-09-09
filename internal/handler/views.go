@@ -95,7 +95,7 @@ func publicViewData(views *Views, title string) (ViewData, error) {
 type RuntimeInfo struct {
 	// ListenAddress is the configured HTTP listen address.
 	ListenAddress string
-	// PublicURL is the externally visible wiki URL.
+	// PublicURL is the externally visible Lore URL.
 	PublicURL string
 	// PDFURL is the optional deployment-level PDF endpoint override.
 	PDFURL string
@@ -170,7 +170,7 @@ func NewViewDataLoader(
 	}
 }
 
-// ViewData contains the data shared by server-rendered wiki templates.
+// ViewData contains the data shared by server-rendered Lore templates.
 type ViewData struct {
 	// Title is the page title displayed in the browser chrome.
 	Title string
@@ -178,7 +178,7 @@ type ViewData struct {
 	User domain.User
 	// Preferences contains the current user's presentation preferences.
 	Preferences domain.UserPreferences
-	// Page is the current wiki page when one is being viewed or edited.
+	// Page is the current page when one is being viewed or edited.
 	Page *domain.Page
 	// PageFavorite reports whether the current user has pinned the current page.
 	PageFavorite bool
@@ -240,7 +240,7 @@ type ViewData struct {
 	PDFHeaders []domain.PDFHeader
 	// RenderingPreviews contains sanitized examples for administrator rendering controls.
 	RenderingPreviews map[string]template.HTML
-	// DocumentationHealth contains actionable wiki quality findings.
+	// DocumentationHealth contains actionable documentation quality findings.
 	DocumentationHealth domain.DocumentationHealth
 	// RenderingLanguages lists content languages available to administrators.
 	RenderingLanguages []renderingLanguageOption

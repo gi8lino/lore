@@ -33,7 +33,7 @@ func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger)
 				return
 			}
 
-			httpresponse.Problem(w, 
+			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"PDF settings validation failed.",
 				httpresponse.NewFieldProblem("pdf_url", message),
@@ -69,7 +69,7 @@ func TestAdminPDFService(settingsUseCases settingsService, logger *slog.Logger) 
 
 		pdfURL := strings.TrimSpace(r.FormValue("pdf_url"))
 		if pdfURL == "" {
-			httpresponse.Problem(w, 
+			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"PDF service test failed.",
 				httpresponse.NewFieldProblem("pdf_url", "Enter a PDF service URL to test."),
@@ -83,7 +83,7 @@ func TestAdminPDFService(settingsUseCases settingsService, logger *slog.Logger) 
 				return
 			}
 
-			httpresponse.Problem(w, 
+			httpresponse.Problem(w,
 				http.StatusUnprocessableEntity,
 				"PDF service test failed.",
 				httpresponse.NewFieldProblem("pdf_url", message),
@@ -114,7 +114,7 @@ func TestAdminPDFService(settingsUseCases settingsService, logger *slog.Logger) 
 		result, cleanup, err := pdf.RenderTest(r.Context(), pdfURL, pdfRequestHeaders(headers))
 		if err != nil {
 			logger.Warn("PDF service test failed", "event", "pdf_service_test_failed", "error", err)
-			httpresponse.Problem(w, 
+			httpresponse.Problem(w,
 				http.StatusBadGateway,
 				"PDF service test failed.",
 				httpresponse.NewFieldProblem("pdf_url", "The PDF service could not complete the test. Check the URL and service logs."),

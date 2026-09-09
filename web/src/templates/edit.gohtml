@@ -255,14 +255,14 @@
           <label>
             Content language <span class="optional">optional</span>
             <select name="language">
-              <option value="">Use wiki default ({{ .ApplicationSettings.Rendering.ContentLanguage }})</option>
+              <option value="">Use default ({{ .ApplicationSettings.Rendering.ContentLanguage }})</option>
               {{ range .RenderingLanguages }}
                 <option value="{{ .Code }}" {{ if $.Page }}{{ if eq $.Page.Language .Code }}selected{{ end }}{{ end }}>
                   {{ .Label }}
                 </option>
               {{ end }}
             </select>
-            <small>Override the wiki-wide language for spell checking, accessibility, and PDF export.</small>
+            <small>Override the default content language for spell checking, accessibility, and PDF export.</small>
           </label>
           <label>
             Status
@@ -846,4 +846,3 @@
     </div>
   </dialog>
 {{ end }}
-

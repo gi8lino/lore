@@ -17,7 +17,7 @@ import (
 	"github.com/gi8lino/lore/themes"
 )
 
-// Run configures dependencies and serves the wiki until the context is canceled.
+// Run configures dependencies and serves Lore until the context is canceled.
 func Run(
 	ctx context.Context,
 	appFS fs.FS,

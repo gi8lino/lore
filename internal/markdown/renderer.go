@@ -21,7 +21,7 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-// Renderer converts wiki Markdown into sanitized HTML.
+// Renderer converts Lore Markdown into sanitized HTML.
 type Renderer struct {
 	// sanitizer removes unsafe HTML from rendered output.
 	sanitizer *bluemonday.Policy

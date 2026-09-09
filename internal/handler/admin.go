@@ -194,7 +194,7 @@ func isRenderingLanguage(value string) bool {
 	})
 }
 
-// AdminDocumentationHealth renders actionable wiki documentation-quality findings.
+// AdminDocumentationHealth renders actionable documentation-quality findings.
 func AdminDocumentationHealth(
 	viewDataUseCases viewDataService,
 	administrationUseCases administrationService,

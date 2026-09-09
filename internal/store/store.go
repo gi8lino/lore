@@ -23,7 +23,7 @@ import (
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
-// Store provides PostgreSQL-backed persistence for wiki data.
+// Store provides PostgreSQL-backed persistence for Lore data.
 type Store struct {
 	// pool is the PostgreSQL connection pool used by store operations.
 	pool *pgxpool.Pool
@@ -274,7 +274,7 @@ func scanPage(row pgx.Row) (domain.Page, error) {
 	return p, err
 }
 
-// GetPage returns a wiki page by slug.
+// GetPage returns a page by slug.
 func (s *Store) GetPage(ctx context.Context, slug string) (domain.Page, error) {
 	page, err := scanPage(
 		s.pool.QueryRow(ctx, pageSelect+`
@@ -313,7 +313,7 @@ WHERE p.id=$1`, page.ID).Scan(
 	return page, nil
 }
 
-// ListPages returns recently updated wiki pages up to the requested limit.
+// ListPages returns recently updated pages up to the requested limit.
 func (s *Store) ListPages(ctx context.Context, limit int) ([]domain.Page, error) {
 	rows, err := s.pool.Query(
 		ctx,
@@ -577,7 +577,7 @@ ON CONFLICT DO NOTHING`, id, link); err != nil {
 	return s.GetPage(ctx, slug)
 }
 
-// DeletePage moves a wiki page into the recycle bin.
+// DeletePage moves a page into the recycle bin.
 func (s *Store) DeletePage(ctx context.Context, slug string, userID int64) error {
 	tag, err := s.pool.Exec(
 		ctx,

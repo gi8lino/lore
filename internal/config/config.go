@@ -29,7 +29,7 @@ var trustedDisplayNameHeaders = []string{
 	"X-Authentik-Name",
 }
 
-// Config contains deployment-level runtime configuration for the wiki application.
+// Config contains deployment-level runtime configuration for Lore.
 type Config struct {
 	// ListenAddress is the TCP address used by the HTTP server.
 	ListenAddress string

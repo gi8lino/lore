@@ -32,7 +32,7 @@ type OIDC struct {
 	secret []byte
 	// issuer is the verified provider namespace used with OIDC subjects.
 	issuer string
-	// publicURL is the externally visible wiki base URL.
+	// publicURL is the externally visible Lore base URL.
 	publicURL string
 	// groupClaim is the top-level ID-token claim containing external groups.
 	groupClaim string
@@ -46,7 +46,7 @@ type OIDC struct {
 	adminGroup string
 }
 
-// claims contains the OIDC identity claims used to create a wiki user.
+// claims contains the OIDC identity claims used to create a Lore user.
 type claims struct {
 	// Email is the user email returned by the identity provider.
 	Email string `json:"email"`

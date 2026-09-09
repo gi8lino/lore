@@ -7,7 +7,7 @@ import (
 	"github.com/gi8lino/lore/internal/ascii"
 )
 
-// Slug converts human-readable page text into a canonical wiki slug.
+// Slug converts human-readable page text into a canonical page slug.
 func Slug(value string) string {
 	value = strings.TrimSpace(value)
 	var output strings.Builder
@@ -32,7 +32,7 @@ func Slug(value string) string {
 	return strings.Trim(output.String(), "-")
 }
 
-// isSlugRune reports whether character can be preserved in a canonical wiki slug.
+// isSlugRune reports whether character can be preserved in a canonical page slug.
 func isSlugRune(character rune) bool {
 	return ascii.IsAlphanumeric(character) || character == '/' || character == '_' || character == '-'
 }

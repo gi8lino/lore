@@ -9,7 +9,7 @@ import (
 	"github.com/gi8lino/lore/internal/auth"
 )
 
-// SearchAPI executes a wiki search and returns page summaries as JSON.
+// SearchAPI executes a page search and returns page summaries as JSON.
 func SearchAPI(catalogUseCases pageSearchService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.Search(r.Context(), r.URL.Query().Get("q"), 50)

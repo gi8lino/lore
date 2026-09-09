@@ -32,13 +32,13 @@ type Options struct {
 type Node struct {
 	// Title is the display label for the page or folder.
 	Title string
-	// Slug is the accumulated wiki path for the node.
+	// Slug is the accumulated navigation path for the node.
 	Slug string
 	// Icon is the explicitly configured icon for this navigation path.
 	Icon string
 	// Root reports whether the node is a top-level navigation entry.
 	Root bool
-	// Page reports whether the node maps to a real wiki page.
+	// Page reports whether the node maps to a real page.
 	Page bool
 	// Active reports whether this node is the current page.
 	Active bool
@@ -58,11 +58,11 @@ type Node struct {
 type branch struct {
 	// title is the display label for the branch.
 	title string
-	// slug is the accumulated wiki path for the branch.
+	// slug is the accumulated navigation path for the branch.
 	slug string
 	// icon is the explicitly configured icon for this branch.
 	icon string
-	// page reports whether the branch maps to a real wiki page.
+	// page reports whether the branch maps to a real page.
 	page bool
 	// children indexes nested branches by slug segment.
 	children map[string]*branch

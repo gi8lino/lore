@@ -102,7 +102,7 @@ WHERE lower(username)=lower($1) AND id<>$2`, username, actorID).Scan(&userID)
 		if err != nil {
 			return err
 		}
-		if err := s.AddNotification(ctx, userID, "mention", title, "You were mentioned in wiki content.", url); err != nil {
+		if err := s.AddNotification(ctx, userID, "mention", title, "You were mentioned in page content.", url); err != nil {
 			return err
 		}
 	}

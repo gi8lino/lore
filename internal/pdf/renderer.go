@@ -1,4 +1,4 @@
-// Package pdf sends standalone wiki documents to an external PDF renderer.
+// Package pdf sends standalone page documents to an external PDF renderer.
 package pdf
 
 import (
@@ -41,7 +41,7 @@ func (*urlValidationError) UserMessage() string {
 
 var renderClient = &http.Client{
 	Timeout: 60 * time.Second,
-	// Never forward private wiki content to a redirect target or change POST to GET.
+	// Never forward private page content to a redirect target or change POST to GET.
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
@@ -155,7 +155,7 @@ func Render(ctx context.Context, endpoint, title, language, rendered string, hea
 	return file, cleanup, nil
 }
 
-// Document wraps rendered wiki HTML in a self-contained print-oriented document.
+// Document wraps rendered page HTML in a self-contained print-oriented document.
 // The caller must sanitize rendered HTML before passing it to this function.
 func Document(title, language, rendered string) string {
 	rendered = strings.ReplaceAll(rendered, " markdown-tab-panel-hidden", "")

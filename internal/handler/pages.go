@@ -21,7 +21,7 @@ import (
 	"github.com/gi8lino/lore/internal/subpages"
 )
 
-// Home renders the wiki dashboard for the current user.
+// Home renders the dashboard for the current user.
 func Home(
 	viewDataUseCases viewDataService,
 	catalogUseCases homeCatalogService,
@@ -85,7 +85,7 @@ func Home(
 	}
 }
 
-// ViewPage renders a wiki page with relations and revision history.
+// ViewPage renders a page with relations and revision history.
 func ViewPage(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageViewCatalogService,
@@ -171,7 +171,7 @@ func ViewPage(
 
 		renderSubpages := subpages.NewRenderer(
 			navigation.Children(data.Navigation, slug),
-			wikiPageURL,
+			pageURL,
 		)
 
 		expanded, err := expandPageKnowledge(
@@ -401,7 +401,7 @@ func splitPagePath(slug string) (string, string) {
 	return "", slug
 }
 
-// SavePageForm creates or updates a wiki page from the browser form.
+// SavePageForm creates or updates a page from the browser form.
 func SavePageForm(
 	pageUseCases pageWriterService,
 	draftUseCases draftDiscardService,
@@ -479,7 +479,7 @@ func SavePageForm(
 	}
 }
 
-// DeletePageForm deletes a page from the browser and returns to the wiki home page.
+// DeletePageForm deletes a page from the browser and returns home.
 func DeletePageForm(
 	pageUseCases pageWriterService,
 	views *Views,
@@ -652,7 +652,7 @@ func writePageProblem(
 	err error,
 ) {
 	if assignment, ok := errors.AsType[*domain.GroupAssignmentError](err); ok {
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusForbidden,
 			"The selected page groups are not assignable.",
 			httpresponse.NewFieldProblem(
@@ -669,25 +669,25 @@ func writePageProblem(
 
 	switch {
 	case errors.Is(err, domain.ErrRevisionNotFound):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusNotFound,
 			"Revision not found.",
 		)
 
 	case errors.Is(err, domain.ErrCommentNotFound):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusNotFound,
 			"Comment not found.",
 		)
 
 	case errors.Is(err, domain.ErrNotFound):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusNotFound,
 			"Page not found.",
 		)
 
 	case errors.Is(err, domain.ErrAlreadyExists):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusConflict,
 			"Page path already exists.",
 			httpresponse.NewFieldProblem(
@@ -697,13 +697,13 @@ func writePageProblem(
 		)
 
 	case errors.Is(err, domain.ErrForbidden):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusForbidden,
 			"The page operation is not permitted.",
 		)
 
 	case errors.Is(err, domain.ErrPageInBin):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusConflict,
 			"This page path is currently in the recycle bin.",
 			httpresponse.NewFieldProblem(
@@ -713,7 +713,7 @@ func writePageProblem(
 		)
 
 	case errors.Is(err, service.ErrDiscussionsDisabled):
-		httpresponse.Problem(w, 
+		httpresponse.Problem(w,
 			http.StatusForbidden,
 			"Page discussions are disabled.",
 		)

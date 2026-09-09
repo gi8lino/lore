@@ -20,17 +20,17 @@ var embeddedFiles embed.FS
 // DefaultTheme is the embedded fallback used before a user selects a preference.
 const DefaultTheme = "Light"
 
-// Theme defines one file-backed theme available to the wiki interface.
+// Theme defines one file-backed theme available to the Lore interface.
 type Theme struct {
 	// Title is derived from the theme filename without its extension.
 	Title string `json:"title"        toml:"-"`
 	// ColorScheme controls browser-native light or dark rendering.
 	ColorScheme string `json:"color_scheme" toml:"color_scheme"`
-	// Colors contains the semantic colors consumed by wiki components.
+	// Colors contains the semantic colors consumed by Lore components.
 	Colors Colors `json:"colors"       toml:"colors"`
 }
 
-// Colors defines the semantic color roles understood by the wiki interface.
+// Colors defines the semantic color roles understood by the Lore interface.
 type Colors struct {
 	// Background is the application canvas behind all content.
 	Background string `json:"background"       toml:"background"`
