@@ -33,6 +33,13 @@ BUILD_VERSION ?= dev
 BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 
+# Debugging
+COMPOSE_PROJECT   ?= $(notdir $(CURDIR))
+COMPOSE_FILE      := deploy/compose.yaml
+DB_CONTAINER_NAME ?= postgres
+PDF_CONTAINER_NAME ?= html2pdf
+ASSIGNED_PORT := $(shell jot -r 1 5000 6000) # automatically find a random free port on the host machine
+
 ## Site Configuration
 SITE_CONFIG ?= docs/site.toml
 SITE_PORT ?= 8081
@@ -125,9 +132,26 @@ test-browser: check-web ## Run browser regressions in Chrome (override BROWSER_C
 download: $(NODE_MODULES) ## Download Go and frontend dependencies.
 	go mod download
 
+.PHONY: postgres
+postgres:  ## Run postgres locally.
+	@echo "Starting Postgres on dynamic host port: $(ASSIGNED_PORT)"
+	@LORE_POSTGRES_PORT=$(ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(DB_CONTAINER_NAME)
+
+.PHONY: html-pdf
+html-pdf:  ## Run html2pdf locally.
+	@docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(PDF_CONTAINER_NAME)
+
 .PHONY: run
-run: generate web ## Run Lore locally.
-	go run $(COMMAND) serve --debug --access-log --log-format text $(RUN_ARGS) --database-url="postgres://lore:lore@localhost:5432/lore?sslmode=disable"
+run: generate web html-pdf postgres ## Run Lore locally.
+	@echo "Waiting 3 seconds for Postgres to be ready on port $(ASSIGNED_PORT)..."
+	@sleep 3
+	@echo "Starting Lore application..."
+	@LORE_POSTGRES_PORT=$(ASSIGNED_PORT) go run $(COMMAND) serve \
+		--debug \
+		--access-log \
+		--log-format text \
+		$(RUN_ARGS) \
+		--database-url="postgres://lore:lore@localhost:$(ASSIGNED_PORT)/lore?sslmode=disable"
 
 .PHONY: build
 build: generate web ## Build the Lore binary.
