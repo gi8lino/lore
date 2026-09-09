@@ -224,14 +224,16 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
     activeOwner = null;
   }
 
-  for (const button of document.querySelectorAll<HTMLButtonElement>(
-    "[data-icon-picker-open]",
-  )) {
-    button.addEventListener("click", () => {
-      const owner = button.closest<HTMLElement>("[data-icon-picker-owner]");
-      if (owner) void openPicker(owner);
-    });
-  }
+  document.addEventListener("click", (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const button = target.closest<HTMLButtonElement>("[data-icon-picker-open]");
+    if (!button) return;
+
+    const owner = button.closest<HTMLElement>("[data-icon-picker-owner]");
+    if (owner) void openPicker(owner);
+  });
 
   searchInput.addEventListener("input", () => searchDebouncer.schedule());
   iconGrid.addEventListener("scroll", () => {

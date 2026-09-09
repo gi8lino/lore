@@ -355,6 +355,51 @@ function setupPDFSettings(): void {
   button.addEventListener("click", () => void testPDFEndpoint(controls));
 }
 
+// Wires ordered configurable external-link rows in application settings.
+function setupExternalLinks(): void {
+  const settings = document.querySelector<HTMLElement>(
+    "[data-external-link-settings]",
+  );
+  if (!settings) return;
+
+  const list = requiredElement<HTMLElement>(
+    settings,
+    "[data-external-link-list]",
+  );
+  const template = requiredElement<HTMLTemplateElement>(
+    settings,
+    "[data-external-link-template]",
+  );
+  const add = requiredElement<HTMLButtonElement>(
+    settings,
+    "[data-external-link-add]",
+  );
+
+  const bindRow = (row: HTMLElement): void => {
+    requiredElement<HTMLButtonElement>(
+      row,
+      "[data-external-link-remove]",
+    ).addEventListener("click", () => row.remove());
+  };
+
+  list
+    .querySelectorAll<HTMLElement>("[data-external-link-row]")
+    .forEach(bindRow);
+
+  add.addEventListener("click", () => {
+    const row = template.content.firstElementChild?.cloneNode(true) as
+      HTMLElement | null | undefined;
+    if (!row) return;
+
+    list.append(row);
+    bindRow(row);
+    requiredElement<HTMLInputElement>(
+      row,
+      'input[name="external_link_label"]',
+    ).focus();
+  });
+}
+
 // Shows only the fields used by the selected browser authentication mode.
 function setupAuthenticationSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-auth-settings]");
@@ -436,6 +481,7 @@ function setupMermaidPreview(): void {
 
 // Initializes administrator configuration controls present on the current page.
 export function initAdminConfiguration(): void {
+  setupExternalLinks();
   setupAuthenticationSettings();
   setupPDFSettings();
   setupMermaidPreview();

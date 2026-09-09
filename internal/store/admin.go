@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -33,7 +34,7 @@ SELECT
 	return stats, err
 }
 
-// Users returns all users with their group memberships.
+// Users returns all wiki users with their group memberships.
 func (s *Store) Users(ctx context.Context) ([]domain.AdminUser, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
@@ -364,11 +365,13 @@ func (s *Store) AssignableGroups(ctx context.Context, user domain.User) ([]domai
 // ApplicationSettings returns the persisted application-wide settings.
 func (s *Store) ApplicationSettings(ctx context.Context) (domain.ApplicationSettings, error) {
 	var settings domain.ApplicationSettings
+	var externalLinks json.RawMessage
 	err := s.pool.QueryRow(ctx, `
 SELECT
   allow_user_registration,
   discussions_enabled,
   pdf_url,
+  external_links,
   auth_mode,
   oidc_issuer,
   oidc_client_id,
@@ -404,6 +407,7 @@ WHERE singleton=true`).Scan(
 		&settings.AllowUserRegistration,
 		&settings.DiscussionsEnabled,
 		&settings.PDFURL,
+		&externalLinks,
 		&settings.Authentication.Mode,
 		&settings.Authentication.OIDCIssuer,
 		&settings.Authentication.OIDCClientID,
@@ -436,18 +440,31 @@ WHERE singleton=true`).Scan(
 		&settings.Rendering.Typographer,
 	)
 
-	return settings, err
+	if err != nil {
+		return domain.ApplicationSettings{}, err
+	}
+	if err := json.Unmarshal(externalLinks, &settings.ExternalLinks); err != nil {
+		return domain.ApplicationSettings{}, err
+	}
+
+	return settings, nil
 }
 
 // SaveApplicationSettings updates mutable application-wide settings.
 func (s *Store) SaveApplicationSettings(ctx context.Context, settings domain.ApplicationSettings) error {
-	_, err := s.pool.Exec(ctx, `
-INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,updated_at)
-VALUES(true,$1,$2,now())
+	externalLinks, err := json.Marshal(settings.ExternalLinks)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.pool.Exec(ctx, `
+INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,external_links,updated_at)
+VALUES(true,$1,$2,$3::jsonb,now())
 ON CONFLICT(singleton) DO UPDATE
 SET allow_user_registration=EXCLUDED.allow_user_registration,
     discussions_enabled=EXCLUDED.discussions_enabled,
-    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled)
+    external_links=EXCLUDED.external_links,
+    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled, string(externalLinks))
 	return err
 }
 

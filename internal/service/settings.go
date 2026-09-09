@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/secrets"
 	"golang.org/x/net/http/httpguts"
 )
@@ -155,6 +157,13 @@ func (s *Settings) SaveApplicationSettings(
 	settings domain.ApplicationSettings,
 	actorID int64,
 ) error {
+	externalLinks, err := normalizeExternalLinks(settings.ExternalLinks)
+	if err != nil {
+		return err
+	}
+
+	settings.ExternalLinks = externalLinks
+
 	if err := s.repository.SaveApplicationSettings(ctx, settings); err != nil {
 		return err
 	}
@@ -169,6 +178,45 @@ func (s *Settings) SaveApplicationSettings(
 	)
 
 	return nil
+}
+
+// normalizeExternalLinks validates and normalizes configurable top-bar links.
+func normalizeExternalLinks(links []domain.ExternalLink) ([]domain.ExternalLink, error) {
+	normalized := make([]domain.ExternalLink, 0, len(links))
+
+	for _, link := range links {
+		link.Label = strings.TrimSpace(link.Label)
+		link.URL = strings.TrimSpace(link.URL)
+		link.Icon = strings.TrimSpace(link.Icon)
+		link.Description = strings.TrimSpace(link.Description)
+
+		if link == (domain.ExternalLink{}) {
+			continue
+		}
+		if link.Label == "" {
+			return nil, domain.NewValidationError("external_links", "Enter a label for every external link.")
+		}
+		if !validExternalLinkURL(link.URL) {
+			return nil, domain.NewValidationError("external_links", "Enter a valid HTTP or HTTPS URL for every external link.")
+		}
+		if link.Icon != "" && !icons.IsNavigationIcon(link.Icon) {
+			return nil, domain.NewValidationError("external_links", "Choose external link icons from the available Lucide icons.")
+		}
+
+		normalized = append(normalized, link)
+	}
+
+	return normalized, nil
+}
+
+// validExternalLinkURL reports whether value is an absolute HTTP or HTTPS URL.
+func validExternalLinkURL(value string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+
+	return strings.EqualFold(parsed.Scheme, "http") || strings.EqualFold(parsed.Scheme, "https")
 }
 
 // SavePDFSettings persists the PDF endpoint and request headers and records the change.

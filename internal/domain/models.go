@@ -44,11 +44,11 @@ const (
 
 // AdminStats contains high-level object counts shown on the administration page.
 type AdminStats struct {
-	// Users is the number of users.
+	// Users is the number of wiki users.
 	Users int64
 	// Groups is the number of user groups.
 	Groups int64
-	// Pages is the number of active pages.
+	// Pages is the number of active wiki pages.
 	Pages int64
 	// DeletedPages is the number of pages currently in the recycle bin.
 	DeletedPages int64
@@ -62,7 +62,7 @@ type AdminStats struct {
 
 // AdminUser contains a user and the groups currently assigned to the account.
 type AdminUser struct {
-	// User is the account.
+	// User is the wiki account.
 	User User
 	// HasLocalCredential reports whether the account has a local password.
 	HasLocalCredential bool
@@ -104,7 +104,7 @@ type TagInfo struct {
 	PageCount int64
 }
 
-// RenderingSettings controls content presentation and optional Markdown rendering features.
+// RenderingSettings controls wiki content presentation and optional Markdown rendering features.
 type RenderingSettings struct {
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
@@ -130,7 +130,7 @@ type RenderingSettings struct {
 	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
 	SyntaxHighlighting bool
-	// ContentLanguage is the BCP 47 language tag applied to page content and the editor.
+	// ContentLanguage is the BCP 47 language tag applied to wiki content and the editor.
 	ContentLanguage string
 	// CodingLigatures enables supported OpenType coding ligatures in rendered text and code.
 	CodingLigatures bool
@@ -174,6 +174,14 @@ type AuthenticationSettings struct {
 	TrustedAdminGroup string
 }
 
+// ExternalLink describes one configurable top-bar link.
+type ExternalLink struct {
+	Label       string `json:"label" toml:"label"`
+	URL         string `json:"url" toml:"url"`
+	Icon        string `json:"icon,omitempty" toml:"icon"`
+	Description string `json:"description,omitempty" toml:"description"`
+}
+
 // PDFHeader describes one configurable request header sent to the external PDF service.
 type PDFHeader struct {
 	ID        int64
@@ -186,12 +194,14 @@ type PDFHeader struct {
 
 // ApplicationSettings contains mutable application-wide settings.
 type ApplicationSettings struct {
-	// AllowUserRegistration permits new OIDC and trusted-proxy identities to create Lore accounts.
+	// AllowUserRegistration permits new OIDC and trusted-proxy identities to create wiki accounts.
 	AllowUserRegistration bool
 	// DiscussionsEnabled enables page comments and anchored discussions.
 	DiscussionsEnabled bool
 	// PDFURL is the persisted HTML-to-PDF rendering endpoint.
 	PDFURL string
+	// ExternalLinks contains configurable links rendered beside global search.
+	ExternalLinks []ExternalLink
 	// Authentication contains non-secret browser authentication settings.
 	Authentication AuthenticationSettings
 	// Rendering contains administrator-controlled Markdown rendering features.
@@ -246,7 +256,7 @@ type DocumentationHealth struct {
 	Deprecated    []Page
 }
 
-// Image contains metadata for one uploaded image.
+// Image contains metadata for one uploaded wiki image.
 type Image struct {
 	// ID is the stable identifier used in image URLs.
 	ID int64 `json:"id"`
@@ -331,7 +341,7 @@ type PageComment struct {
 	CreatedAt time.Time  `json:"created_at"`
 }
 
-// GraphNode is one page in the relationship graph.
+// GraphNode is one page in the wiki relationship graph.
 type GraphNode struct {
 	Slug   string `json:"slug"`
 	Title  string `json:"title"`
@@ -387,7 +397,7 @@ type NavigationItem struct {
 	Title string
 	// Icon is the explicitly selected Lucide icon name.
 	Icon string
-	// Page reports whether the path maps to a real page.
+	// Page reports whether the path maps to a real wiki page.
 	Page bool
 }
 
@@ -437,11 +447,11 @@ type PageTemplate struct {
 	Markdown    string
 }
 
-// UserPreferences contains presentation preferences for one user.
+// UserPreferences contains presentation preferences for one wiki user.
 type UserPreferences struct {
 	// Theme is the filename-derived title of the user's selected theme.
 	Theme string
-	// ShowPageContents controls whether pages render a heading table of contents.
+	// ShowPageContents controls whether wiki pages render a heading table of contents.
 	ShowPageContents bool
 	// NavigationStyle controls the desktop navigation layout.
 	NavigationStyle string
@@ -470,7 +480,7 @@ type PageShareLink struct {
 	Title  string
 }
 
-// User represents an authenticated Lore account.
+// User represents an authenticated wiki account.
 type User struct {
 	// ID is the stable identifier.
 	ID int64 `json:"id"`
@@ -490,7 +500,7 @@ type User struct {
 	SessionVersion int64 `json:"-"`
 }
 
-// Page represents the current state of a page.
+// Page represents the current state of a wiki page.
 type Page struct {
 	// ID is the stable identifier.
 	ID int64 `json:"id"`
@@ -500,7 +510,7 @@ type Page struct {
 	Title string `json:"title"`
 	// Icon is the optional Lucide icon displayed with the page title.
 	Icon string `json:"icon,omitempty"`
-	// Language optionally overrides the default content language.
+	// Language optionally overrides the wiki-wide content language.
 	Language string `json:"language,omitempty"`
 	// Markdown is the current Markdown body.
 	Markdown string `json:"markdown_content,omitempty"`

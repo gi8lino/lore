@@ -39,11 +39,19 @@ logo = "../branding/logo.svg"
 favicon = "../branding/favicon.svg"
 favicon_ico = "../branding/favicon.ico"
 assets_dir = "../assets"
+
+[[external_links]]
+label = "Repository"
+url = "https://github.com/example/project"
+icon = "code"
+description = "v2.4.1"
 ```
 
 `logo`, `favicon`, `favicon_ico`, and `assets_dir` are resolved relative to the configuration file. Normal relative paths, including `../`, are supported, so assets may live in a parent directory. Absolute paths are supported too. `source_dir` and `output_dir` are resolved relative to the process working directory.
 
 `site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
+
+`external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional Lucide icon name and `description` is optional secondary text such as a version, environment, or provider name. Multiple entries are rendered in configuration order.
 
 ## Filesystem routes
 

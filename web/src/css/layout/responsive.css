@@ -38,6 +38,12 @@
   .topbar > .button span {
     display: none;
   }
+  .external-link-copy small {
+    display: none;
+  }
+  .external-link {
+    padding-inline: 8px;
+  }
   .sidebar {
     position: fixed;
     z-index: 30;

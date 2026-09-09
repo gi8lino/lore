@@ -25,6 +25,24 @@
       />
       <kbd>/</kbd>
     </form>
+    {{ if .ApplicationSettings.ExternalLinks }}
+      <nav class="external-links" aria-label="External links">
+        {{ range .ApplicationSettings.ExternalLinks }}
+          <a
+            class="external-link{{ if .Icon }} has-icon{{ end }}"
+            href="{{ .URL }}"
+            aria-label="{{ .Label }}{{ if .Description }} — {{ .Description }}{{ end }}"
+            title="{{ .Label }}{{ if .Description }} — {{ .Description }}{{ end }}"
+          >
+            {{ if .Icon }}<span class="external-link-icon" aria-hidden="true">{{ icon .Icon 18 }}</span>{{ end }}
+            <span class="external-link-copy">
+              <strong>{{ .Label }}</strong>
+              {{ if .Description }}<small>{{ .Description }}</small>{{ end }}
+            </span>
+          </a>
+        {{ end }}
+      </nav>
+    {{ end }}
     <details class="notification-menu" data-notification-menu>
       <summary class="icon-button" aria-label="Notifications" title="Notifications">
         {{ icon "bell" 18 }}{{ if gt .UnreadNotifications 0 }}
@@ -71,4 +89,6 @@
     {{ end }}
   </header>
 {{ end }}
+
+
 

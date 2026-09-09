@@ -3,11 +3,14 @@ package site
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/containeroo/tinyflags"
+	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/logging"
 	"github.com/gi8lino/lore/themes"
 	"github.com/pelletier/go-toml/v2"
@@ -17,18 +20,19 @@ const defaultConfigPath = "lore-site.toml"
 
 // Config contains filesystem-backed static site build settings.
 type Config struct {
-	Logo       string `toml:"logo"`
-	Favicon    string `toml:"favicon"`
-	FaviconICO string `toml:"favicon_ico"`
-	AssetsDir  string `toml:"assets_dir"`
-	SiteName   string `toml:"site_name"`
-	SiteURL    string `toml:"site_url"`
-	SourceDir  string `toml:"source_dir"`
-	OutputDir  string `toml:"output_dir"`
-	Theme      string `toml:"theme"`
-	Language   string `toml:"language"`
-	Mermaid    bool   `toml:"mermaid"`
-	logFormat  logging.LogFormat
+	Logo          string                `toml:"logo"`
+	Favicon       string                `toml:"favicon"`
+	FaviconICO    string                `toml:"favicon_ico"`
+	AssetsDir     string                `toml:"assets_dir"`
+	SiteName      string                `toml:"site_name"`
+	SiteURL       string                `toml:"site_url"`
+	SourceDir     string                `toml:"source_dir"`
+	OutputDir     string                `toml:"output_dir"`
+	Theme         string                `toml:"theme"`
+	Language      string                `toml:"language"`
+	Mermaid       bool                  `toml:"mermaid"`
+	ExternalLinks []domain.ExternalLink `toml:"external_links"`
+	logFormat     logging.LogFormat
 }
 
 // defaultConfig returns generic zero-infrastructure static site defaults.
@@ -84,7 +88,7 @@ func resolveRelativePath(baseDir string, filename *string) {
 }
 
 // validate checks all static site configuration invariants before output is modified.
-func (c Config) validate() error {
+func (c *Config) validate() error {
 	if err := c.validateRequiredFields(); err != nil {
 		return err
 	}
@@ -94,7 +98,43 @@ func (c Config) validate() error {
 	if err := c.validateAssetPaths(); err != nil {
 		return err
 	}
-	return c.validateBrandingFormats()
+	if err := c.validateBrandingFormats(); err != nil {
+		return err
+	}
+	return c.validateExternalLinks()
+}
+
+// validateExternalLinks normalizes and validates configurable top-bar links.
+func (c *Config) validateExternalLinks() error {
+	for index := range c.ExternalLinks {
+		link := &c.ExternalLinks[index]
+		link.Label = strings.TrimSpace(link.Label)
+		link.URL = strings.TrimSpace(link.URL)
+		link.Icon = strings.TrimSpace(link.Icon)
+		link.Description = strings.TrimSpace(link.Description)
+
+		if link.Label == "" {
+			return fmt.Errorf("external_links[%d].label is required", index)
+		}
+		if !validExternalLinkURL(link.URL) {
+			return fmt.Errorf("external_links[%d].url must be an absolute HTTP or HTTPS URL", index)
+		}
+		if link.Icon != "" && !icons.IsNavigationIcon(link.Icon) {
+			return fmt.Errorf("external_links[%d].icon must be an available Lucide icon", index)
+		}
+	}
+
+	return nil
+}
+
+// validExternalLinkURL reports whether value is an absolute HTTP or HTTPS URL.
+func validExternalLinkURL(value string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+
+	return strings.EqualFold(parsed.Scheme, "http") || strings.EqualFold(parsed.Scheme, "https")
 }
 
 // validateRequiredFields rejects empty values required to build a complete site.

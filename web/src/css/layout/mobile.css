@@ -51,6 +51,24 @@
     min-width: 0;
   }
 
+  .external-links {
+    gap: 5px;
+  }
+
+  .external-link {
+    max-width: 120px;
+    height: 40px;
+    padding-inline: 8px;
+  }
+
+  .external-link-copy small {
+    display: none;
+  }
+
+  .external-link.has-icon .external-link-copy {
+    display: none;
+  }
+
   .topbar .notification-menu {
     flex: 0 0 auto;
   }

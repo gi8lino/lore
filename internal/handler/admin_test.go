@@ -21,8 +21,12 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 	t.Parallel()
 
 	form := url.Values{
-		"allow_user_registration": {"on"},
-		"discussions_enabled":     {"on"},
+		"allow_user_registration":   {"on"},
+		"discussions_enabled":       {"on"},
+		"external_link_label":       {" Repository ", "Status"},
+		"external_link_url":         {" https://github.com/gi8lino/lore ", "https://status.example.test"},
+		"external_link_icon":        {" github ", ""},
+		"external_link_description": {" v2.4.1 ", ""},
 	}
 	request := httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
 
@@ -33,6 +37,10 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 
 	assert.True(t, settings.AllowUserRegistration)
 	assert.True(t, settings.DiscussionsEnabled)
+	assert.Equal(t, []domain.ExternalLink{
+		{Label: "Repository", URL: "https://github.com/gi8lino/lore", Icon: "code", Description: "v2.4.1"},
+		{Label: "Status", URL: "https://status.example.test"},
+	}, settings.ExternalLinks)
 }
 
 func TestRenderingSettingsFromForm(t *testing.T) {

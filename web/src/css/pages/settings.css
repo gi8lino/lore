@@ -459,6 +459,78 @@
 .configuration-application .settings-actions {
   margin-top: 18px;
 }
+.external-link-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.external-link-settings-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.external-link-settings-title > div {
+  display: grid;
+  gap: 2px;
+}
+.external-link-settings-title strong {
+  font-size: 12px;
+}
+.external-link-settings-title small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.external-link-settings-list {
+  display: grid;
+  gap: 8px;
+}
+.external-link-settings-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(
+      130px,
+      0.75fr
+    ) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+}
+.external-link-settings-row > label {
+  display: grid;
+  gap: 5px;
+}
+.external-link-settings-row > label > span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.external-link-settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 38px;
+}
+.external-link-icon-button {
+  max-width: 150px;
+}
+.external-link-icon-preview {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+.external-link-icon-button [data-icon-picker-label] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pdf-settings-form {
   margin-top: 14px;
 }
@@ -707,6 +779,12 @@
   .configuration-authentication {
     grid-column: auto;
   }
+  .external-link-settings-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .external-link-settings-actions {
+    grid-column: 1 / -1;
+  }
   .pdf-header-row {
     grid-template-columns: 1fr 1fr;
   }
@@ -720,6 +798,16 @@
 }
 
 @media (max-width: 560px) {
+  .external-link-settings-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .external-link-settings-row {
+    grid-template-columns: 1fr;
+  }
+  .external-link-settings-actions {
+    justify-content: flex-start;
+  }
   .pdf-header-settings-title {
     align-items: flex-start;
     flex-direction: column;

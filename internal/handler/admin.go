@@ -194,7 +194,7 @@ func isRenderingLanguage(value string) bool {
 	})
 }
 
-// AdminDocumentationHealth renders actionable documentation-quality findings.
+// AdminDocumentationHealth renders actionable wiki documentation-quality findings.
 func AdminDocumentationHealth(
 	viewDataUseCases viewDataService,
 	administrationUseCases administrationService,
@@ -890,7 +890,43 @@ func applicationSettingsFromForm(r *http.Request) domain.ApplicationSettings {
 	return domain.ApplicationSettings{
 		AllowUserRegistration: r.FormValue("allow_user_registration") == "on",
 		DiscussionsEnabled:    r.FormValue("discussions_enabled") == "on",
+		ExternalLinks:         externalLinksFromForm(r),
 	}
+}
+
+// externalLinksFromForm parses ordered external-link rows from the application settings form.
+func externalLinksFromForm(r *http.Request) []domain.ExternalLink {
+	labels := r.Form["external_link_label"]
+	urls := r.Form["external_link_url"]
+	icons := r.Form["external_link_icon"]
+	descriptions := r.Form["external_link_description"]
+	count := max(len(labels), len(urls), len(icons), len(descriptions))
+	links := make([]domain.ExternalLink, 0, count)
+
+	for index := range count {
+		link := domain.ExternalLink{
+			Label:       formValueAt(labels, index),
+			URL:         formValueAt(urls, index),
+			Icon:        formValueAt(icons, index),
+			Description: formValueAt(descriptions, index),
+		}
+		if link == (domain.ExternalLink{}) {
+			continue
+		}
+
+		links = append(links, link)
+	}
+
+	return links
+}
+
+// formValueAt returns one trimmed repeated-form value when present.
+func formValueAt(values []string, index int) string {
+	if index >= len(values) {
+		return ""
+	}
+
+	return strings.TrimSpace(values[index])
 }
 
 // UpdateAdminUser updates one user's role, group memberships, and optional recovery login state.

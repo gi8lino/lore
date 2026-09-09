@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"slices"
 
+	"github.com/gi8lino/lore/internal/domain"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/subpages"
@@ -61,6 +62,7 @@ type viewData struct {
 	Navigation    []navigation.Node
 	HTML          template.HTML
 	PageContents  []md.Heading
+	ExternalLinks []domain.ExternalLink
 	RenderMermaid bool
 }
 
@@ -206,6 +208,7 @@ func commonViewData(plan buildPlan, branding brandingData) viewData {
 		Language:      plan.config.Language,
 		ActiveTheme:   plan.config.Theme,
 		ThemeData:     plan.themeData,
+		ExternalLinks: slices.Clone(plan.config.ExternalLinks),
 		RenderMermaid: plan.config.Mermaid,
 	}
 }

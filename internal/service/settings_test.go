@@ -37,6 +37,80 @@ func (*pdfSettingsRepositoryStub) LogAudit(context.Context, int64, string, strin
 	return nil
 }
 
+type applicationSettingsRepositoryStub struct {
+	settingsRepository
+	saved domain.ApplicationSettings
+}
+
+func (s *applicationSettingsRepositoryStub) SaveApplicationSettings(
+	_ context.Context,
+	settings domain.ApplicationSettings,
+) error {
+	s.saved = settings
+	return nil
+}
+
+func (*applicationSettingsRepositoryStub) LogAudit(context.Context, int64, string, string, string, string) error {
+	return nil
+}
+
+func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("normalizes links", func(t *testing.T) {
+		t.Parallel()
+
+		repository := &applicationSettingsRepositoryStub{}
+		settings := NewSettings(repository, nil)
+
+		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			ExternalLinks: []domain.ExternalLink{{
+				Label:       " Repository ",
+				URL:         " https://github.com/gi8lino/lore ",
+				Icon:        " code ",
+				Description: " v2.4.1 ",
+			}},
+		}, 7)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.ExternalLink{{
+			Label:       "Repository",
+			URL:         "https://github.com/gi8lino/lore",
+			Icon:        "code",
+			Description: "v2.4.1",
+		}}, repository.saved.ExternalLinks)
+	})
+
+	t.Run("rejects non HTTP URL", func(t *testing.T) {
+		t.Parallel()
+
+		settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
+
+		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "javascript:alert(1)"}},
+		}, 7)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Equal(t, "external_links", validation.Fields[0].Field)
+		assert.Equal(t, "Enter a valid HTTP or HTTPS URL for every external link.", validation.UserMessage())
+	})
+
+	t.Run("rejects unknown icon", func(t *testing.T) {
+		t.Parallel()
+
+		settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
+
+		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}},
+		}, 7)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Equal(t, "Choose external link icons from the available Lucide icons.", validation.UserMessage())
+	})
+}
+
 func TestPDFHeadersMaskSensitiveValues(t *testing.T) {
 	t.Parallel()
 

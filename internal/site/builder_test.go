@@ -12,6 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -177,6 +178,12 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	config.SiteURL = "https://example.com/docs/"
 	config.SourceDir = source
 	config.OutputDir = output
+	config.ExternalLinks = []domain.ExternalLink{{
+		Label:       "Repository",
+		URL:         "https://github.com/gi8lino/lore",
+		Icon:        "code",
+		Description: "v2.4.1",
+	}}
 
 	result, err := newBuilder(assets).build(context.Background(), config)
 
@@ -196,6 +203,9 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	assert.NotContains(t, string(home), `<link rel="icon"`)
 	assert.NotContains(t, string(home), "lore.svg")
 	assert.NotContains(t, string(home), "lore-mark.svg")
+	assert.Contains(t, string(home), `href="https://github.com/gi8lino/lore"`)
+	assert.Contains(t, string(home), ">Repository</strong>")
+	assert.Contains(t, string(home), ">v2.4.1</small>")
 
 	guide, err := os.ReadFile(filepath.Join(output, "guide", "index.html"))
 

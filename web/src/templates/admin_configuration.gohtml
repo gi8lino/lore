@@ -55,14 +55,14 @@
         </dl>
       </section>
 
-      <section class="panel settings-panel configuration-application">
+      <section class="panel settings-panel settings-wide configuration-application">
         <div class="panel-title configuration-panel-title">
           <div>
             <h2>Application</h2>
             <p class="muted">General behavior shared by all Lore users.</p>
           </div>
         </div>
-        <form class="settings-form" action="/admin/settings" method="post">
+        <form class="settings-form" action="/admin/settings" method="post" data-validate-form novalidate>
           <label class="toggle-row">
             <span>
               <strong>Allow new users</strong>
@@ -73,10 +73,73 @@
           <label class="toggle-row">
             <span>
               <strong>Page discussions</strong>
-              <small>Allow users to add anchored comments to pages.</small>
+              <small>Allow users to add anchored comments to wiki pages.</small>
             </span>
             <input type="checkbox" name="discussions_enabled" {{ if .ApplicationSettings.DiscussionsEnabled }}checked{{ end }} />
           </label>
+
+          <div class="external-link-settings" data-external-link-settings>
+            <div class="external-link-settings-title">
+              <div>
+                <strong>External links</strong>
+                <small>Add links beside search. The optional description can show secondary information such as a version.</small>
+              </div>
+              <button class="button compact" type="button" data-external-link-add>{{ icon "plus" 14 }}<span>Add link</span></button>
+            </div>
+
+            <div class="external-link-settings-list" data-external-link-list>
+              {{ range .ApplicationSettings.ExternalLinks }}
+                <div class="external-link-settings-row" data-external-link-row data-icon-picker-owner>
+                  <label>
+                    <span>Label</span>
+                    <input type="text" name="external_link_label" value="{{ .Label }}" placeholder="Repository" data-error-required="Enter a label." required />
+                  </label>
+                  <label>
+                    <span>URL</span>
+                    <input type="url" name="external_link_url" value="{{ .URL }}" placeholder="https://github.com/example/project" data-error-required="Enter a URL." data-error-type="Enter a valid URL." required />
+                  </label>
+                  <label>
+                    <span>Description</span>
+                    <input type="text" name="external_link_description" value="{{ .Description }}" placeholder="v2.4.1" />
+                  </label>
+                  <div class="external-link-settings-actions">
+                    <input type="hidden" name="external_link_icon" value="{{ .Icon }}" data-icon-picker-value />
+                    <button class="button compact external-link-icon-button" type="button" data-icon-picker-open>
+                      <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ if .Icon }}{{ icon .Icon 18 }}{{ else }}{{ icon "plus" 18 }}{{ end }}</span>
+                      <span data-icon-picker-label>{{ if .Icon }}{{ .Icon }}{{ else }}No icon{{ end }}</span>
+                    </button>
+                    <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2" 15 }}</button>
+                  </div>
+                </div>
+              {{ end }}
+            </div>
+
+            <template data-external-link-template>
+              <div class="external-link-settings-row" data-external-link-row data-icon-picker-owner>
+                <label>
+                  <span>Label</span>
+                  <input type="text" name="external_link_label" placeholder="Repository" data-error-required="Enter a label." required />
+                </label>
+                <label>
+                  <span>URL</span>
+                  <input type="url" name="external_link_url" placeholder="https://github.com/example/project" data-error-required="Enter a URL." data-error-type="Enter a valid URL." required />
+                </label>
+                <label>
+                  <span>Description</span>
+                  <input type="text" name="external_link_description" placeholder="v2.4.1" />
+                </label>
+                <div class="external-link-settings-actions">
+                  <input type="hidden" name="external_link_icon" data-icon-picker-value />
+                  <button class="button compact external-link-icon-button" type="button" data-icon-picker-open>
+                    <span class="external-link-icon-preview" data-icon-picker-preview data-icon-picker-empty="plus">{{ icon "plus" 18 }}</span>
+                    <span data-icon-picker-label>No icon</span>
+                  </button>
+                  <button class="icon-button" type="button" data-external-link-remove aria-label="Remove external link">{{ icon "trash-2" 15 }}</button>
+                </div>
+              </div>
+            </template>
+          </div>
+
           <div class="settings-actions">
             <button class="button primary" type="submit">Save application settings</button>
           </div>
@@ -601,4 +664,32 @@
 
     </div>
   </section>
+  <dialog
+    class="icon-picker-dialog"
+    data-icon-picker-dialog
+    data-icons-url="/api/icons"
+    aria-labelledby="external-link-icon-picker-title"
+  >
+    <div class="app-dialog-header">
+      <div>
+        <p class="eyebrow">Lucide</p>
+        <h2 id="external-link-icon-picker-title">Choose external link icon</h2>
+      </div>
+      <button class="icon-button app-dialog-close" type="button" data-icon-picker-close aria-label="Close icon picker">
+        {{ icon "x" 20 }}
+      </button>
+    </div>
+    <div class="icon-picker-search">
+      {{ icon "search" 17 }}
+      <input type="search" placeholder="Search icons…" autocomplete="off" data-icon-picker-search aria-label="Search icons" />
+    </div>
+    <div class="icon-picker-grid" data-icon-picker-grid></div>
+    <p class="icon-picker-empty-state muted" data-icon-picker-empty hidden>No matching icons.</p>
+  </dialog>
 {{ end }}
+
+
+
+
+
+

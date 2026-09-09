@@ -26,6 +26,12 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 	require.NoError(t, err)
 
 	data := ViewData{
+		ApplicationSettings: domain.ApplicationSettings{ExternalLinks: []domain.ExternalLink{{
+			Label:       "Repository",
+			URL:         "https://github.com/gi8lino/lore",
+			Icon:        "code",
+			Description: "v2.4.1",
+		}}},
 		Notifications: []domain.Notification{{
 			ID:        7,
 			Kind:      "mention",
@@ -39,5 +45,8 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 	require.NoError(t, tmpl.ExecuteTemplate(&output, "header", data))
 
 	assert.Contains(t, output.String(), `class="notification-item unread"`)
+	assert.Contains(t, output.String(), `href="https://github.com/gi8lino/lore"`)
+	assert.Contains(t, output.String(), ">Repository</strong>")
+	assert.Contains(t, output.String(), ">v2.4.1</small>")
 	assert.NotContains(t, output.String(), `class="notification-itemunread"`)
 }
