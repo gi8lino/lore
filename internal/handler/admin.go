@@ -14,6 +14,7 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/service"
 	"golang.org/x/net/http/httpguts"
 )
 
@@ -892,21 +893,9 @@ func applicationSettingsFromForm(r *http.Request) domain.ApplicationSettings {
 	}
 }
 
-// isExternalAuthenticationMode reports whether browser identity is asserted outside Lore.
-func isExternalAuthenticationMode(mode string) bool {
-	switch auth.AuthMode(mode) {
-	case auth.AuthModeOIDC, auth.AuthModeTrustedProxy:
-		return true
-	default:
-		return false
-	}
-}
-
 // UpdateAdminUser updates one user's role, group memberships, and optional recovery login state.
 func UpdateAdminUser(
-	userUseCases userManagementService,
-	settingsUseCases settingsService,
-	local *auth.Local,
+	userUseCases userAccountWriter,
 	views *Views,
 	logger *slog.Logger,
 ) http.HandlerFunc {
@@ -927,28 +916,7 @@ func UpdateAdminUser(
 		}
 
 		role := r.FormValue("role")
-		if !domain.ValidUserRole(role) {
-			httpresponse.Problem(w, http.StatusBadRequest, "Invalid user role.")
-			return
-		}
-		if userID == admin.ID && role != "admin" {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"User validation failed.",
-				httpresponse.NewFieldProblem("role", "You cannot remove your own administrator role."),
-			)
-			return
-		}
-
 		enabled := r.FormValue("account_enabled") == "on"
-		if userID == admin.ID && !enabled {
-			httpresponse.Problem(w,
-				http.StatusBadRequest,
-				"User validation failed.",
-				httpresponse.NewFieldProblem("account_enabled", "You cannot disable your own account."),
-			)
-			return
-		}
 
 		groupIDs := make([]int64, 0, len(r.Form["group_id"]))
 
@@ -979,44 +947,14 @@ func UpdateAdminUser(
 			return
 		}
 
-		var localCredentialEnabled *bool
-
-		if updateLocalCredential {
-			settings, err := settingsUseCases.ApplicationSettings(r.Context())
-			if err != nil {
-				writeInternalServerError(logger, w, err)
-				return
-			}
-
-			effectiveMode := settings.Authentication.Mode
-
-			if views.runtime.AuthModeOverride != "" {
-				effectiveMode = views.runtime.AuthModeOverride
-			}
-
-			if !isExternalAuthenticationMode(effectiveMode) {
-				httpresponse.Problem(w,
-					http.StatusBadRequest,
-					"Local login state cannot be changed.",
-					httpresponse.NewFieldProblem("local_credential_enabled", "Local recovery credentials can only be enabled or disabled while external authentication is active."),
-				)
-				return
-			}
-
-			enabled := password != "" || r.FormValue("local_credential_enabled") == "on"
-			localCredentialEnabled = &enabled
-		}
-
-		if err := userUseCases.UpdateUser(r.Context(), userID, role, enabled, groupIDs, localCredentialEnabled); err != nil {
+		if err := userUseCases.UpdateAccount(r.Context(), service.UserUpdateInput{
+			UserID: userID, Actor: admin, Role: role, Enabled: enabled, GroupIDs: groupIDs,
+			Password: password, UpdateLocalCredential: updateLocalCredential,
+			LocalCredentialEnabled: r.FormValue("local_credential_enabled") == "on",
+			AuthModeOverride:       views.runtime.AuthModeOverride,
+		}); err != nil {
 			writeAdminProblem(logger, w, err, "User")
 			return
-		}
-
-		if password != "" {
-			if err := local.SetPassword(r.Context(), userID, password); err != nil {
-				writeAdminProblem(logger, w, err, "Local credential")
-				return
-			}
 		}
 
 		http.Redirect(w, r, "/admin/users", http.StatusSeeOther)

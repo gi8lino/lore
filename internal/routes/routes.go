@@ -193,7 +193,7 @@ func addRoutes(
 	mux.Handle("DELETE /settings/tokens/{id}", browserAuthn(handler.DeletePersonalToken(tokenUseCases, logger)))
 	mux.Handle(
 		"POST /admin/users/{id}",
-		browserAuthn(adminAuthz(handler.UpdateAdminUser(userUseCases, settingsUseCases, browserAuth.Local, views, logger))),
+		browserAuthn(adminAuthz(handler.UpdateAdminUser(userUseCases, views, logger))),
 	)
 	mux.Handle(
 		"POST /admin/users/{id}/sessions/revoke",

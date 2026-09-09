@@ -99,6 +99,14 @@ func (s *Store) UpdateUser(
 	groupIDs []int64,
 	localCredentialEnabled *bool,
 ) error {
+	return s.UpdateUserAccount(ctx, domain.UserAccountUpdate{UserID: userID, Role: role, Enabled: enabled, GroupIDs: groupIDs, LocalCredentialEnabled: localCredentialEnabled})
+}
+
+// UpdateUserAccount commits account, membership, credential, and session changes together.
+func (s *Store) UpdateUserAccount(ctx context.Context, input domain.UserAccountUpdate) error {
+	userID, role, enabled := input.UserID, input.Role, input.Enabled
+	groupIDs, localCredentialEnabled := input.GroupIDs, input.LocalCredentialEnabled
+
 	if !domain.ValidUserRole(role) {
 		return domain.NewValidationError("role", "Choose a valid user role.")
 	}
@@ -157,6 +165,12 @@ WHERE user_id=$1`, userID); err != nil {
 INSERT INTO user_groups(user_id,group_id)
 VALUES($1,$2)
 ON CONFLICT DO NOTHING`, userID, groupID); err != nil {
+			return mutationError(err)
+		}
+	}
+
+	if input.PasswordHash != "" {
+		if err := setLocalCredential(ctx, tx, userID, input.PasswordHash); err != nil {
 			return mutationError(err)
 		}
 	}

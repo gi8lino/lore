@@ -10,6 +10,8 @@ import (
 // userRepository contains account and external identity administration operations.
 type userRepository interface {
 	auditRepository
+	ApplicationSettings(context.Context) (domain.ApplicationSettings, error)
+	UpdateUserAccount(context.Context, domain.UserAccountUpdate) error
 	Users(context.Context) ([]domain.AdminUser, error)
 	User(context.Context, int64) (domain.User, error)
 	UserGroups(context.Context, int64) ([]domain.Group, error)

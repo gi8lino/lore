@@ -119,7 +119,7 @@ func (l *Local) ChangePassword(
 		return "", ErrInvalidCredentials
 	}
 
-	newHash, err := localPasswordHash(newPassword)
+	newHash, err := HashLocalPassword(newPassword)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +150,7 @@ func (l *Local) Setup(
 	ctx context.Context,
 	username, email, displayName, password string,
 ) (user domain.User, token string, err error) {
-	passwordHash, err := localPasswordHash(password)
+	passwordHash, err := HashLocalPassword(password)
 	if err != nil {
 		return domain.User{}, "", err
 	}
@@ -185,7 +185,7 @@ func (l *Local) Setup(
 
 // SetPassword creates or replaces one Lore user's local recovery password.
 func (l *Local) SetPassword(ctx context.Context, userID int64, password string) error {
-	passwordHash, err := localPasswordHash(password)
+	passwordHash, err := HashLocalPassword(password)
 	if err != nil {
 		return err
 	}
@@ -226,8 +226,8 @@ func (l *Local) ClearSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// localPasswordHash hashes a validated local password with bcrypt.
-func localPasswordHash(password string) (string, error) {
+// HashLocalPassword hashes a validated local password with bcrypt.
+func HashLocalPassword(password string) (string, error) {
 	if problem := LocalPasswordProblem(password); problem != "" {
 		return "", domain.NewValidationError("password", problem)
 	}

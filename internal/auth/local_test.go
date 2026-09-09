@@ -14,7 +14,7 @@ import (
 func TestLocalPasswordHash(t *testing.T) {
 	t.Parallel()
 
-	hash, err := localPasswordHash("correct-horse-battery-staple")
+	hash, err := HashLocalPassword("correct-horse-battery-staple")
 
 	require.NoError(t, err)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("correct-horse-battery-staple")))
@@ -24,7 +24,7 @@ func TestLocalPasswordHash(t *testing.T) {
 func TestLocalPasswordHashRejectsInvalidPassword(t *testing.T) {
 	t.Parallel()
 
-	_, err := localPasswordHash("short")
+	_, err := HashLocalPassword("short")
 
 	validation, ok := errors.AsType[*domain.ValidationError](err)
 	require.True(t, ok)

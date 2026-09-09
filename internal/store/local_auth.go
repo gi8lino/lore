@@ -153,6 +153,16 @@ func (s *Store) SetLocalCredential(ctx context.Context, userID int64, passwordHa
 
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := setLocalCredential(ctx, tx, userID, passwordHash); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+// setLocalCredential replaces a credential and revokes its sessions within the caller's transaction.
+func setLocalCredential(ctx context.Context, tx pgx.Tx, userID int64, passwordHash string) error {
+
 	tag, err := tx.Exec(ctx, `
 INSERT INTO local_credentials(user_id,password_hash,enabled,updated_at)
 SELECT id,$2,true,now() FROM users WHERE id=$1
@@ -170,7 +180,7 @@ WHERE user_id=$1`, userID); err != nil {
 		return err
 	}
 
-	return tx.Commit(ctx)
+	return nil
 }
 
 // CreateLocalSession persists a hashed local-login session and records login time.

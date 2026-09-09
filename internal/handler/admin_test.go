@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"github.com/gi8lino/lore/internal/service"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
-	"github.com/gi8lino/lore/internal/store"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -214,38 +214,26 @@ func TestReopenPendingOIDCIdentity(t *testing.T) {
 	assert.False(t, users.rejected)
 }
 
-type passwordUserStub struct{ userManagementService }
+type passwordUserStub struct{ input service.UserUpdateInput }
 
-func (*passwordUserStub) UpdateUser(context.Context, int64, string, bool, []int64, *bool) error {
+func (s *passwordUserStub) UpdateAccount(_ context.Context, input service.UserUpdateInput) error {
+	s.input = input
 	return nil
 }
-
-type passwordRepositoryStub struct {
-	*store.Store
-	id   int64
-	hash string
-}
-
-func (s *passwordRepositoryStub) SetLocalCredential(_ context.Context, id int64, hash string) error {
-	s.id, s.hash = id, hash
-	return nil
-}
-func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) {
-	repository := &passwordRepositoryStub{}
+func TestUpdateAdminUserSubmitsCompleteAccountChange(t *testing.T) {
+	users := &passwordUserStub{}
 	form := url.Values{"role": {"admin"}, "account_enabled": {"on"}, "local_password": {"a-long-password-123"}, "local_password_confirm": {"a-long-password-123"}}
 	request := httptest.NewRequest("POST", "/admin/users/7", strings.NewReader(form.Encode()))
-
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.SetPathValue("id", "7")
-
 	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
 	response := httptest.NewRecorder()
-
-	UpdateAdminUser(&passwordUserStub{}, nil, auth.NewLocal(repository, "http://localhost"), &Views{}, slog.Default())(response, request)
+	UpdateAdminUser(users, &Views{}, slog.Default())(response, request)
 	assert.Equal(t, http.StatusSeeOther, response.Code)
-	assert.Equal(t, int64(7), repository.id)
-	assert.NotEmpty(t, repository.hash)
-	assert.NotEqual(t, form.Get("local_password"), repository.hash)
+	assert.Equal(t, int64(7), users.input.UserID)
+	assert.Equal(t, form.Get("local_password"), users.input.Password)
+	assert.True(t, users.input.Enabled)
+	assert.Equal(t, int64(7), users.input.Actor.ID)
 }
 
 func TestPreserveRuntimeManagedAuthenticationSettings(t *testing.T) {

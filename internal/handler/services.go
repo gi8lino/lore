@@ -307,3 +307,8 @@ type adminUserOverviewService interface {
 	userManagementService
 	oidcIdentityService
 }
+
+// userAccountWriter exposes the complete account mutation without credential or settings capabilities.
+type userAccountWriter interface {
+	UpdateAccount(context.Context, service.UserUpdateInput) error
+}
