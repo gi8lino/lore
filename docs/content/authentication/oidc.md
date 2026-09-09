@@ -11,7 +11,17 @@ LORE__OIDC_CLIENT_SECRET
 LORE__OIDC_SESSION_SECRET
 ```
 
-`LORE__OIDC_SESSION_SECRET` must contain at least 32 characters. The client secret and OIDC session secret are not stored in PostgreSQL.
+Copy `LORE__OIDC_CLIENT_SECRET` from the Lore client configuration in your identity provider.
+
+Generate a separate session secret once during initial setup:
+
+```sh
+openssl rand -base64 32
+```
+
+Save the complete output as `LORE__OIDC_SESSION_SECRET` in your deployment's secret store. This command produces 44 characters, satisfying the minimum of 32 characters. For Kubernetes, paste it directly into the `stringData.LORE__OIDC_SESSION_SECRET` field of Secret `lore-oidc`.
+
+Use a different value from `LORE__ENCRYPTION_KEY`, even though the same command works for both. See [Generate deployment secrets](../configuration/runtime.md#generate-deployment-secrets) for shell and Kubernetes examples. The client secret and OIDC session secret are not stored in PostgreSQL.
 
 OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__OIDC_SESSION_SECRET` and the PostgreSQL database are preserved. Sessions last 12 hours. Explicit session revocation and account disabling still invalidate existing sessions. Changing the session secret invalidates all OIDC sessions and pending logins; keep the same secret on every replica. Login attempts expire after 10 minutes and can complete after a restart with the same configuration. Upgrading from a version without PKCE requires restarting any pending login, but does not invalidate established sessions.
 
