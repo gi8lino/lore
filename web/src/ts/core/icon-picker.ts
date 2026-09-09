@@ -8,6 +8,7 @@ import { requestJSON } from "./http.ts";
 interface IconOption {
   name: string;
   label: string;
+  source: string;
   svg: string;
 }
 
@@ -21,6 +22,7 @@ function isIconOption(value: unknown): value is IconOption {
     isRecord(value) &&
     typeof value.name === "string" &&
     typeof value.label === "string" &&
+    typeof value.source === "string" &&
     typeof value.svg === "string"
   );
 }
@@ -73,8 +75,10 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   }
 
   // Chooses icon.
-  function chooseIcon(name: string, svg: string): void {
+  function chooseIcon(option: IconOption): void {
     if (!activeOwner) return;
+
+    const { name, label: optionLabel, svg } = option;
 
     const value = activeOwner.querySelector<HTMLInputElement>(
       "[data-icon-picker-value]",
@@ -90,7 +94,7 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
       value.value = name;
       value.dispatchEvent(new Event("input", { bubbles: true }));
     }
-    if (label) label.textContent = name || "No icon";
+    if (label) label.textContent = optionLabel || "No icon";
     if (preview) {
       preview.replaceChildren();
       if (svg) preview.insertAdjacentHTML("afterbegin", svg);
@@ -108,7 +112,12 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
   }
 
   // Builds one icon-picker option button.
-  function optionButton({ name, label, svg }: IconOption): HTMLButtonElement {
+  function optionButton({
+    name,
+    label,
+    source,
+    svg,
+  }: IconOption): HTMLButtonElement {
     const button = document.createElement("button");
 
     button.className = "icon-picker-option";
@@ -129,10 +138,12 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
 
     const small = document.createElement("small");
 
-    small.textContent = name || "None";
+    small.textContent = source || "None";
     text.append(strong, small);
     button.append(glyph, text);
-    button.addEventListener("click", () => chooseIcon(name, svg));
+    button.addEventListener("click", () =>
+      chooseIcon({ name, label, source, svg }),
+    );
     return button;
   }
 
@@ -174,7 +185,12 @@ export function setupIconPicker(dialog: HTMLDialogElement): void {
         !append &&
         (!query || "no icon none empty".includes(query.toLocaleLowerCase()))
       ) {
-        options.push({ name: "", label: "No icon", svg: "" });
+        options.push({
+          name: "",
+          label: "No icon",
+          source: "None",
+          svg: "",
+        });
       }
 
       options.push(...value.items);

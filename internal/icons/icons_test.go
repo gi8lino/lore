@@ -87,6 +87,32 @@ func TestSVG(t *testing.T) {
 	})
 }
 
+func TestIconSources(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Lucide", func(t *testing.T) {
+		t.Parallel()
+
+		options := Search("search-lucide", 20)
+		require.NotEmpty(t, options)
+
+		option := findOption(options, "search-lucide")
+		require.NotNil(t, option)
+		assert.Equal(t, "Lucide", option.Source)
+	})
+
+	t.Run("Simple Icons", func(t *testing.T) {
+		t.Parallel()
+
+		options := Search("github-simple", 20)
+		require.NotEmpty(t, options)
+
+		option := findOption(options, "github-simple")
+		require.NotNil(t, option)
+		assert.Equal(t, "Simple Icons", option.Source)
+	})
+}
+
 func TestSimpleLabel(t *testing.T) {
 	t.Parallel()
 
@@ -147,11 +173,15 @@ func TestSearchCatalogPagination(t *testing.T) {
 }
 
 func containsOption(options []Option, name string) bool {
-	for _, option := range options {
-		if option.Name == name {
-			return true
+	return findOption(options, name) != nil
+}
+
+func findOption(options []Option, name string) *Option {
+	for index := range options {
+		if options[index].Name == name {
+			return &options[index]
 		}
 	}
 
-	return false
+	return nil
 }

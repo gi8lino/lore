@@ -444,9 +444,10 @@ func AdminNavigation(
 // SearchIcons serves icon picker results to page editors and administrators.
 func SearchIcons() http.HandlerFunc {
 	type result struct {
-		Name  string `json:"name"`
-		Label string `json:"label"`
-		SVG   string `json:"svg"`
+		Name   string `json:"name"`
+		Label  string `json:"label"`
+		Source string `json:"source"`
+		SVG    string `json:"svg"`
 	}
 	type response struct {
 		Items   []result `json:"items"`
@@ -471,7 +472,12 @@ func SearchIcons() http.HandlerFunc {
 		for _, option := range options {
 			results = append(
 				results,
-				result{Name: option.Name, Label: option.Label, SVG: string(icons.SVG(option.Name, 22))},
+				result{
+					Name:   option.Name,
+					Label:  option.Label,
+					Source: option.Source,
+					SVG:    string(icons.SVG(option.Name, 22)),
+				},
 			)
 		}
 

@@ -133,9 +133,10 @@ func generateCatalog(names []string) ([]byte, error) {
 	for _, name := range names {
 		fmt.Fprintf(
 			&output,
-			"\t{Name: %q, Label: %q},\n",
+			"\t{Name: %q, Label: %q, Source: %q},\n",
 			name+"-lucide",
 			label(name),
+			"Lucide",
 		)
 	}
 

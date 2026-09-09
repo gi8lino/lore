@@ -26,6 +26,8 @@ type Option struct {
 	Name string
 	// Label is the human-readable name shown in the icon picker.
 	Label string
+	// Source is the icon pack shown as secondary picker metadata.
+	Source string
 }
 
 var iconOptions = buildOptions()
@@ -116,8 +118,9 @@ func buildOptions() []Option {
 
 	for _, name := range simpleicons.Names() {
 		options = append(options, Option{
-			Name:  name + simpleSuffix,
-			Label: simpleLabel(name),
+			Name:   name + simpleSuffix,
+			Label:  simpleLabel(name),
+			Source: "Simple Icons",
 		})
 	}
 
