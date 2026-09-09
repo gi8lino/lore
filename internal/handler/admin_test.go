@@ -247,20 +247,117 @@ func TestUpdateAdminUserSetsPasswordWithoutExternalAuthentication(t *testing.T) 
 	assert.NotEmpty(t, repository.hash)
 	assert.NotEqual(t, form.Get("local_password"), repository.hash)
 }
+
+func TestPreserveRuntimeManagedAuthenticationSettings(t *testing.T) {
+	t.Parallel()
+
+	t.Run("OIDC", func(t *testing.T) {
+		t.Parallel()
+
+		current := domain.AuthenticationSettings{
+			Mode:         "local",
+			OIDCIssuer:   "https://stored.example.test",
+			OIDCClientID: "stored-client",
+		}
+		submitted := domain.AuthenticationSettings{
+			Mode:           "none",
+			OIDCIssuer:     "https://changed.example.test",
+			OIDCClientID:   "changed-client",
+			OIDCGroupClaim: "groups",
+		}
+
+		settings := preserveRuntimeManagedAuthenticationSettings(
+			submitted,
+			current,
+			RuntimeInfo{AuthModeOverride: "oidc"},
+		)
+
+		assert.Equal(t, "local", settings.Mode)
+		assert.Equal(t, "https://stored.example.test", settings.OIDCIssuer)
+		assert.Equal(t, "stored-client", settings.OIDCClientID)
+		assert.Equal(t, "groups", settings.OIDCGroupClaim)
+	})
+
+	t.Run("trusted proxy", func(t *testing.T) {
+		t.Parallel()
+
+		current := domain.AuthenticationSettings{
+			Mode:                      "local",
+			TrustedUsernameHeaders:    []string{"Stored-User"},
+			TrustedEmailHeaders:       []string{"Stored-Email"},
+			TrustedDisplayNameHeaders: []string{"Stored-Name"},
+		}
+		submitted := domain.AuthenticationSettings{
+			Mode:                      "none",
+			TrustedUsernameHeaders:    []string{"Changed-User"},
+			TrustedEmailHeaders:       []string{"Changed-Email"},
+			TrustedDisplayNameHeaders: []string{"Changed-Name"},
+			TrustedGroupHeaders:       []string{"X-Groups"},
+		}
+
+		settings := preserveRuntimeManagedAuthenticationSettings(
+			submitted,
+			current,
+			RuntimeInfo{AuthModeOverride: "trusted-proxy"},
+		)
+
+		assert.Equal(t, "local", settings.Mode)
+		assert.Equal(t, []string{"Stored-User"}, settings.TrustedUsernameHeaders)
+		assert.Equal(t, []string{"Stored-Email"}, settings.TrustedEmailHeaders)
+		assert.Equal(t, []string{"Stored-Name"}, settings.TrustedDisplayNameHeaders)
+		assert.Equal(t, []string{"X-Groups"}, settings.TrustedGroupHeaders)
+	})
+}
+
+func TestEffectiveAuthenticationSettings(t *testing.T) {
+	t.Parallel()
+
+	settings := domain.AuthenticationSettings{
+		Mode:           "local",
+		OIDCIssuer:     "https://stored.example.test",
+		OIDCClientID:   "stored-client",
+		OIDCGroupClaim: "groups",
+	}
+
+	effective := effectiveAuthenticationSettings(settings, RuntimeInfo{
+		AuthModeOverride:     "oidc",
+		OIDCIssuerOverride:   "https://runtime.example.test",
+		OIDCClientIDOverride: "runtime-client",
+	})
+
+	assert.Equal(t, "oidc", effective.Mode)
+	assert.Equal(t, "https://runtime.example.test", effective.OIDCIssuer)
+	assert.Equal(t, "runtime-client", effective.OIDCClientID)
+	assert.Equal(t, "groups", effective.OIDCGroupClaim)
+}
+
 func TestAdminAuthenticationTemplates(t *testing.T) {
 	views, err := NewViews(web.Assets, slog.Default(), "test", "test", nil, RuntimeInfo{})
 
 	require.NoError(t, err)
 
-	data := ViewData{Runtime: RuntimeInfo{AuthModeOverride: "oidc"}}
+	data := ViewData{Runtime: RuntimeInfo{
+		AuthModeOverride:     "oidc",
+		OIDCIssuerOverride:   "https://runtime.example.test",
+		OIDCClientIDOverride: "runtime-client",
+	}}
 	data.ApplicationSettings.Authentication.Mode = "none"
 	html, err := renderTemplateHTML(views, "admin_configuration", "content", data)
 
 	require.NoError(t, err)
-	assert.Contains(t, string(html), "Authentication mode (active)")
-	assert.Contains(t, string(html), "<option>OpenID Connect (OIDC)</option>")
-	assert.Contains(t, string(html), "Saved fallback mode")
-	assert.Contains(t, string(html), "Runtime authentication override active")
+	assert.Contains(t, string(html), "Authentication mode")
+	assert.Contains(t, string(html), "OpenID Connect (OIDC)")
+	assert.Contains(t, string(html), "Managed by deployment")
+	assert.Contains(t, string(html), "LORE__AUTH_MODE")
+	assert.Contains(t, string(html), "Remove the runtime setting and restart Lore to manage it here.")
+	assert.Contains(t, string(html), "https://runtime.example.test")
+	assert.Contains(t, string(html), "runtime-client")
+	assert.Contains(t, string(html), "LORE__OIDC_ISSUER")
+	assert.Contains(t, string(html), "LORE__OIDC_CLIENT_ID")
+	assert.Contains(t, string(html), "Save authentication settings")
+	assert.NotContains(t, string(html), "Saved fallback mode")
+	assert.NotContains(t, string(html), "Runtime authentication override active")
+	assert.NotContains(t, string(html), "Save fallback authentication settings")
 	assert.Contains(t, string(html), "PDF rendering")
 	assert.Contains(t, string(html), "Test endpoint")
 	assert.NotContains(t, string(html), "auth-recovery-form")

@@ -360,18 +360,19 @@ function setupAuthenticationSettings(): void {
   const form = document.querySelector<HTMLFormElement>("[data-auth-settings]");
   if (!form) return;
 
-  const mode = requiredElement<HTMLSelectElement>(form, "[data-auth-mode]");
+  const mode = form.querySelector<HTMLSelectElement>("[data-auth-mode]");
   const sections = [
     ...form.querySelectorAll<HTMLElement>("[data-auth-fields]"),
   ];
 
   const refresh = (): void => {
+    const effectiveMode = mode?.value ?? form.dataset.authEffectiveMode ?? "";
     sections.forEach((section) => {
-      section.hidden = section.dataset.authFields !== mode.value;
+      section.hidden = section.dataset.authFields !== effectiveMode;
     });
   };
 
-  mode.addEventListener("change", refresh);
+  mode?.addEventListener("change", refresh);
   refresh();
 
   const groupSync = form.querySelector<HTMLInputElement>(

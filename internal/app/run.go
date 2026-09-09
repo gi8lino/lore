@@ -154,15 +154,20 @@ func Run(
 	bearerAuth := auth.NewBearer(database)
 
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
-		ListenAddress:               listenAddress,
-		PublicURL:                   publicURL,
-		PDFURL:                      pdfURL,
-		AuthModeOverride:            string(authModeOverride),
-		OIDCClientSecretConfigured:  oidcClientSecret != "",
-		OIDCSessionSecretConfigured: len(oidcSessionSecret) >= 32,
-		EncryptionKeyConfigured:     secretCipher.Configured(),
-		LocalLoginEnabled:           localLogin,
-		ThemeDirectory:              themeDirectory,
+		ListenAddress:                     listenAddress,
+		PublicURL:                         publicURL,
+		PDFURL:                            pdfURL,
+		AuthModeOverride:                  string(authModeOverride),
+		OIDCIssuerOverride:                oidcIssuer,
+		OIDCClientIDOverride:              oidcClientID,
+		TrustedUsernameHeadersOverride:    trustedUsernameHeaders,
+		TrustedEmailHeadersOverride:       trustedEmailHeaders,
+		TrustedDisplayNameHeadersOverride: trustedDisplayNameHeaders,
+		OIDCClientSecretConfigured:        oidcClientSecret != "",
+		OIDCSessionSecretConfigured:       len(oidcSessionSecret) >= 32,
+		EncryptionKeyConfigured:           secretCipher.Configured(),
+		LocalLoginEnabled:                 localLogin,
+		ThemeDirectory:                    themeDirectory,
 	})
 	if err != nil {
 		setupLogger.Error(

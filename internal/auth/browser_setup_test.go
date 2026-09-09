@@ -83,3 +83,72 @@ func TestBrowserValidationStillRequiresLocalAdministratorAfterSetup(t *testing.T
 	assert.Equal(t, "Local authentication requires an administrator with a local password.", validation.UserMessage())
 	assert.True(t, repository.localCredentialChecked)
 }
+
+func TestBrowserCurrentSettingsOverlaysRuntimeManagedFields(t *testing.T) {
+	t.Parallel()
+
+	t.Run("OIDC", func(t *testing.T) {
+		t.Parallel()
+
+		repository := &setupBrowserRepository{settings: domain.ApplicationSettings{
+			Authentication: domain.AuthenticationSettings{
+				Mode:           string(AuthModeLocal),
+				OIDCIssuer:     "https://stored.example.test",
+				OIDCClientID:   "stored-client",
+				OIDCGroupClaim: "groups",
+				OIDCAdminGroup: "/admins",
+			},
+		}}
+		browser := &browserAuthenticator{
+			repository:   repository,
+			modeOverride: AuthModeOIDC,
+			oidcConfig: OIDCConfig{
+				Issuer:   "https://runtime.example.test",
+				ClientID: "runtime-client",
+			},
+		}
+
+		settings, err := browser.currentSettings(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, string(AuthModeOIDC), settings.Mode)
+		assert.Equal(t, "https://runtime.example.test", settings.OIDCIssuer)
+		assert.Equal(t, "runtime-client", settings.OIDCClientID)
+		assert.Equal(t, "groups", settings.OIDCGroupClaim)
+		assert.Equal(t, "/admins", settings.OIDCAdminGroup)
+	})
+
+	t.Run("trusted proxy", func(t *testing.T) {
+		t.Parallel()
+
+		repository := &setupBrowserRepository{settings: domain.ApplicationSettings{
+			Authentication: domain.AuthenticationSettings{
+				Mode:                      string(AuthModeLocal),
+				TrustedUsernameHeaders:    []string{"Stored-User"},
+				TrustedEmailHeaders:       []string{"Stored-Email"},
+				TrustedDisplayNameHeaders: []string{"Stored-Name"},
+				TrustedGroupHeaders:       []string{"X-Groups"},
+				TrustedAdminGroup:         "admins",
+			},
+		}}
+		browser := &browserAuthenticator{
+			repository:   repository,
+			modeOverride: AuthModeTrustedProxy,
+			trustedProxy: TrustedProxyHeaders{
+				Username:    []string{"Runtime-User"},
+				Email:       []string{"Runtime-Email"},
+				DisplayName: []string{"Runtime-Name"},
+			},
+		}
+
+		settings, err := browser.currentSettings(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, string(AuthModeTrustedProxy), settings.Mode)
+		assert.Equal(t, []string{"Runtime-User"}, settings.TrustedUsernameHeaders)
+		assert.Equal(t, []string{"Runtime-Email"}, settings.TrustedEmailHeaders)
+		assert.Equal(t, []string{"Runtime-Name"}, settings.TrustedDisplayNameHeaders)
+		assert.Equal(t, []string{"X-Groups"}, settings.TrustedGroupHeaders)
+		assert.Equal(t, "admins", settings.TrustedAdminGroup)
+	})
+}

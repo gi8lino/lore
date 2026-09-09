@@ -284,52 +284,54 @@
             <h2>Authentication</h2>
             <p class="muted">Choose how people sign in and configure provider-specific identity settings.</p>
           </div>
-          {{ if .Runtime.AuthModeOverride }}<span class="config-status warning">Runtime override</span>{{ end }}
         </div>
-        <form class="stacked-form auth-settings-form" action="/admin/authentication" method="post" data-auth-settings>
+        <form
+          class="stacked-form auth-settings-form"
+          action="/admin/authentication"
+          method="post"
+          data-auth-settings
+          data-auth-effective-mode="{{ if .Runtime.AuthModeOverride }}{{ .Runtime.AuthModeOverride }}{{ else }}{{ .ApplicationSettings.Authentication.Mode }}{{ end }}"
+        >
           {{ if .Runtime.AuthModeOverride }}
-            <div class="configuration-override-note">
-              <strong>Runtime authentication override active</strong>
-              <span>
-                A deployment-level <code>--auth-mode</code> / <code>LORE__AUTH_MODE</code> override currently selects <strong>{{ .Runtime.AuthModeOverride }}</strong>. Changes below are saved as the fallback configuration and become active only after the override is removed and Lore is restarted.
-              </span>
+            <div class="auth-mode-field auth-managed-setting">
+              <span class="auth-managed-label">Authentication mode</span>
+              <div class="auth-managed-value">
+                <strong>{{ if eq .Runtime.AuthModeOverride "oidc" }}OpenID Connect (OIDC){{ else if eq .Runtime.AuthModeOverride "local" }}Local account{{ else if eq .Runtime.AuthModeOverride "trusted-proxy" }}Trusted proxy{{ else }}No authentication (development only){{ end }}</strong>
+                <span class="config-status managed">Managed by deployment</span>
+              </div>
+              <small>
+                The authentication mode is configured by <code>LORE__AUTH_MODE</code>.<br />
+                Remove the runtime setting and restart Lore to manage it here.
+              </small>
             </div>
-          {{ end }}
-
-          {{ if .Runtime.AuthModeOverride }}
+          {{ else }}
             <label class="auth-mode-field">
-              Authentication mode (active)
-              <select disabled aria-label="Active authentication mode">
-                <option>{{ if eq .Runtime.AuthModeOverride "oidc" }}OpenID Connect (OIDC){{ else if eq .Runtime.AuthModeOverride "local" }}Local account{{ else if eq .Runtime.AuthModeOverride "trusted-proxy" }}Trusted proxy{{ else }}No authentication (development only){{ end }}</option>
+              Authentication mode
+              <select name="auth_mode" data-auth-mode>
+                <option value="none" {{ if eq .ApplicationSettings.Authentication.Mode "none" }}selected{{ end }}>
+                  No authentication (development only)
+                </option>
+                <option value="local" {{ if eq .ApplicationSettings.Authentication.Mode "local" }}selected{{ end }}>
+                  Local account
+                </option>
+                <option
+                  value="trusted-proxy"
+                  {{ if eq .ApplicationSettings.Authentication.Mode "trusted-proxy" }}selected{{ end }}
+                >
+                  Trusted proxy
+                </option>
+                <option value="oidc" {{ if eq .ApplicationSettings.Authentication.Mode "oidc" }}selected{{ end }}>
+                  OpenID Connect (OIDC)
+                </option>
               </select>
+              <small>Changes take effect immediately after saving.</small>
             </label>
           {{ end }}
-          <label class="auth-mode-field">
-            {{ if .Runtime.AuthModeOverride }}Saved fallback mode{{ else }}Authentication mode{{ end }}
-            <select name="auth_mode" data-auth-mode>
-              <option value="none" {{ if eq .ApplicationSettings.Authentication.Mode "none" }}selected{{ end }}>
-                No authentication (development only)
-              </option>
-              <option value="local" {{ if eq .ApplicationSettings.Authentication.Mode "local" }}selected{{ end }}>
-                Local account
-              </option>
-              <option
-                value="trusted-proxy"
-                {{ if eq .ApplicationSettings.Authentication.Mode "trusted-proxy" }}selected{{ end }}
-              >
-                Trusted proxy
-              </option>
-              <option value="oidc" {{ if eq .ApplicationSettings.Authentication.Mode "oidc" }}selected{{ end }}>
-                OpenID Connect (OIDC)
-              </option>
-            </select>
-            <small>{{ if .Runtime.AuthModeOverride }}Changes are saved but do not replace the active runtime override.{{ else }}Changes take effect immediately after saving.{{ end }}</small>
-          </label>
 
           <div
             class="auth-mode-options"
             data-auth-fields="local"
-            {{ if ne .ApplicationSettings.Authentication.Mode "local" }}hidden{{ end }}
+            {{ if or (and .Runtime.AuthModeOverride (ne .Runtime.AuthModeOverride "local")) (and (not .Runtime.AuthModeOverride) (ne .ApplicationSettings.Authentication.Mode "local")) }}hidden{{ end }}
           >
             <div class="admin-card-heading auth-mode-heading">
               <div>
@@ -343,7 +345,7 @@
           <div
             class="auth-mode-options"
             data-auth-fields="trusted-proxy"
-            {{ if ne .ApplicationSettings.Authentication.Mode "trusted-proxy" }}hidden{{ end }}
+            {{ if or (and .Runtime.AuthModeOverride (ne .Runtime.AuthModeOverride "trusted-proxy")) (and (not .Runtime.AuthModeOverride) (ne .ApplicationSettings.Authentication.Mode "trusted-proxy")) }}hidden{{ end }}
           >
             <div class="admin-card-heading auth-mode-heading">
               <div>
@@ -353,37 +355,49 @@
             </div>
             <div class="form-grid">
               <label>
-                Username headers
+                <span class="auth-managed-label-row">
+                  <span>Username headers</span>
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}<span class="config-status managed">Managed by deployment</span>{{ end }}
+                </span>
                 <input
                   type="text"
-                  name="trusted_username_headers"
-                  value="{{ join .ApplicationSettings.Authentication.TrustedUsernameHeaders ", " }}"
+                  {{ if ne .Runtime.AuthModeOverride "trusted-proxy" }}name="trusted_username_headers"{{ end }}
+                  value="{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}{{ join .Runtime.TrustedUsernameHeadersOverride ", " }}{{ else }}{{ join .ApplicationSettings.Authentication.TrustedUsernameHeaders ", " }}{{ end }}"
                   placeholder="X-Forwarded-User, X-Auth-Request-User"
                   autocomplete="off"
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}readonly aria-readonly="true"{{ end }}
                 />
-                <small>Required. Checked from left to right.</small>
+                <small>{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}Configured by <code>LORE__TRUSTED_USERNAME_HEADERS</code>.{{ else }}Required. Checked from left to right.{{ end }}</small>
               </label>
               <label>
-                Email headers
+                <span class="auth-managed-label-row">
+                  <span>Email headers</span>
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}<span class="config-status managed">Managed by deployment</span>{{ end }}
+                </span>
                 <input
                   type="text"
-                  name="trusted_email_headers"
-                  value="{{ join .ApplicationSettings.Authentication.TrustedEmailHeaders ", " }}"
+                  {{ if ne .Runtime.AuthModeOverride "trusted-proxy" }}name="trusted_email_headers"{{ end }}
+                  value="{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}{{ join .Runtime.TrustedEmailHeadersOverride ", " }}{{ else }}{{ join .ApplicationSettings.Authentication.TrustedEmailHeaders ", " }}{{ end }}"
                   placeholder="X-Forwarded-Email"
                   autocomplete="off"
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}readonly aria-readonly="true"{{ end }}
                 />
-                <small>Optional identity metadata.</small>
+                <small>{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}Configured by <code>LORE__TRUSTED_EMAIL_HEADERS</code>.{{ else }}Optional identity metadata.{{ end }}</small>
               </label>
               <label>
-                Display-name headers
+                <span class="auth-managed-label-row">
+                  <span>Display-name headers</span>
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}<span class="config-status managed">Managed by deployment</span>{{ end }}
+                </span>
                 <input
                   type="text"
-                  name="trusted_display_name_headers"
-                  value="{{ join .ApplicationSettings.Authentication.TrustedDisplayNameHeaders ", " }}"
+                  {{ if ne .Runtime.AuthModeOverride "trusted-proxy" }}name="trusted_display_name_headers"{{ end }}
+                  value="{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}{{ join .Runtime.TrustedDisplayNameHeadersOverride ", " }}{{ else }}{{ join .ApplicationSettings.Authentication.TrustedDisplayNameHeaders ", " }}{{ end }}"
                   placeholder="X-Forwarded-Name"
                   autocomplete="off"
+                  {{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}readonly aria-readonly="true"{{ end }}
                 />
-                <small>Optional identity metadata.</small>
+                <small>{{ if eq .Runtime.AuthModeOverride "trusted-proxy" }}Configured by <code>LORE__TRUSTED_DISPLAY_NAME_HEADERS</code>.{{ else }}Optional identity metadata.{{ end }}</small>
               </label>
               <label>
                 Group headers
@@ -401,7 +415,7 @@
           <div
             class="auth-mode-options"
             data-auth-fields="oidc"
-            {{ if ne .ApplicationSettings.Authentication.Mode "oidc" }}hidden{{ end }}
+            {{ if or (and .Runtime.AuthModeOverride (ne .Runtime.AuthModeOverride "oidc")) (and (not .Runtime.AuthModeOverride) (ne .ApplicationSettings.Authentication.Mode "oidc")) }}hidden{{ end }}
           >
             <div class="admin-card-heading auth-mode-heading">
               <div>
@@ -411,26 +425,34 @@
             </div>
             <div class="form-grid">
               <label>
-                Issuer URL
+                <span class="auth-managed-label-row">
+                  <span>Issuer URL</span>
+                  {{ if eq .Runtime.AuthModeOverride "oidc" }}<span class="config-status managed">Managed by deployment</span>{{ end }}
+                </span>
                 <input
                   type="url"
-                  name="oidc_issuer"
-                  value="{{ .ApplicationSettings.Authentication.OIDCIssuer }}"
+                  {{ if ne .Runtime.AuthModeOverride "oidc" }}name="oidc_issuer"{{ end }}
+                  value="{{ if eq .Runtime.AuthModeOverride "oidc" }}{{ .Runtime.OIDCIssuerOverride }}{{ else }}{{ .ApplicationSettings.Authentication.OIDCIssuer }}{{ end }}"
                   placeholder="https://sso.example.com/realms/lore"
                   autocomplete="off"
+                  {{ if eq .Runtime.AuthModeOverride "oidc" }}readonly aria-readonly="true"{{ end }}
                 />
-                <small>Lore verifies provider discovery before saving.</small>
+                <small>{{ if eq .Runtime.AuthModeOverride "oidc" }}Configured by <code>LORE__OIDC_ISSUER</code>.{{ else }}Lore verifies provider discovery before saving.{{ end }}</small>
               </label>
               <label>
-                Client ID
+                <span class="auth-managed-label-row">
+                  <span>Client ID</span>
+                  {{ if eq .Runtime.AuthModeOverride "oidc" }}<span class="config-status managed">Managed by deployment</span>{{ end }}
+                </span>
                 <input
                   type="text"
-                  name="oidc_client_id"
-                  value="{{ .ApplicationSettings.Authentication.OIDCClientID }}"
+                  {{ if ne .Runtime.AuthModeOverride "oidc" }}name="oidc_client_id"{{ end }}
+                  value="{{ if eq .Runtime.AuthModeOverride "oidc" }}{{ .Runtime.OIDCClientIDOverride }}{{ else }}{{ .ApplicationSettings.Authentication.OIDCClientID }}{{ end }}"
                   placeholder="lore"
                   autocomplete="off"
+                  {{ if eq .Runtime.AuthModeOverride "oidc" }}readonly aria-readonly="true"{{ end }}
                 />
-                <small>The non-secret client identifier registered with the provider.</small>
+                <small>{{ if eq .Runtime.AuthModeOverride "oidc" }}Configured by <code>LORE__OIDC_CLIENT_ID</code>.{{ else }}The non-secret client identifier registered with the provider.{{ end }}</small>
               </label>
               <label>
                 Administrator group
@@ -571,16 +593,16 @@
           </div>
 
           <div class="settings-actions auth-settings-actions">
-            <button class="button primary" type="submit">{{ if .Runtime.AuthModeOverride }}Save fallback authentication settings{{ else }}Save authentication settings{{ end }}</button>
+            <button class="button primary" type="submit">Save authentication settings</button>
           </div>
         </form>
-
-        <p class="settings-note">Manage local passwords in <a href="/admin/users">Users</a>.</p>
 
       </section>
 
     </div>
   </section>
 {{ end }}
+
+
 
 

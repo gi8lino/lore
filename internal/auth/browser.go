@@ -204,27 +204,12 @@ func (b *browserAuthenticator) validate(ctx context.Context, settings domain.Aut
 	return nil
 }
 
-// currentSettings reads database-managed settings and applies the emergency mode override.
+// currentSettings reads database-managed settings and overlays deployment-managed authentication fields.
 func (b *browserAuthenticator) currentSettings(ctx context.Context) (domain.AuthenticationSettings, error) {
-	// Recovery overrides are self-contained and do not depend on stored auth configuration.
+	// None and local overrides need no provider-specific database settings.
 	switch b.modeOverride {
-	case AuthModeNone:
-		return domain.AuthenticationSettings{Mode: string(AuthModeNone)}, nil
-	case AuthModeLocal:
-		return domain.AuthenticationSettings{Mode: string(AuthModeLocal)}, nil
-	case AuthModeTrustedProxy:
-		return domain.AuthenticationSettings{
-			Mode:                      string(AuthModeTrustedProxy),
-			TrustedUsernameHeaders:    b.trustedProxy.Username,
-			TrustedEmailHeaders:       b.trustedProxy.Email,
-			TrustedDisplayNameHeaders: b.trustedProxy.DisplayName,
-		}, nil
-	case AuthModeOIDC:
-		return domain.AuthenticationSettings{
-			Mode:         string(AuthModeOIDC),
-			OIDCIssuer:   b.oidcConfig.Issuer,
-			OIDCClientID: b.oidcConfig.ClientID,
-		}, nil
+	case AuthModeNone, AuthModeLocal:
+		return domain.AuthenticationSettings{Mode: string(b.modeOverride)}, nil
 	}
 
 	settings, err := b.repository.ApplicationSettings(ctx)
@@ -233,6 +218,21 @@ func (b *browserAuthenticator) currentSettings(ctx context.Context) (domain.Auth
 	}
 
 	authentication := settings.Authentication
+
+	switch b.modeOverride {
+	case "":
+	case AuthModeTrustedProxy:
+		authentication.Mode = string(AuthModeTrustedProxy)
+		authentication.TrustedUsernameHeaders = b.trustedProxy.Username
+		authentication.TrustedEmailHeaders = b.trustedProxy.Email
+		authentication.TrustedDisplayNameHeaders = b.trustedProxy.DisplayName
+	case AuthModeOIDC:
+		authentication.Mode = string(AuthModeOIDC)
+		authentication.OIDCIssuer = b.oidcConfig.Issuer
+		authentication.OIDCClientID = b.oidcConfig.ClientID
+	default:
+		return domain.AuthenticationSettings{}, fmt.Errorf("unsupported auth mode %q", b.modeOverride)
+	}
 
 	if authentication.OIDCGroupSync {
 		authentication.OIDCGroupMappings, err = b.repository.OIDCGroupMappings(ctx)

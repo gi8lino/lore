@@ -101,6 +101,16 @@ type RuntimeInfo struct {
 	PDFURL string
 	// AuthModeOverride is the optional deployment-level recovery override.
 	AuthModeOverride string
+	// OIDCIssuerOverride is the deployment-managed issuer used by the OIDC runtime override.
+	OIDCIssuerOverride string
+	// OIDCClientIDOverride is the deployment-managed client ID used by the OIDC runtime override.
+	OIDCClientIDOverride string
+	// TrustedUsernameHeadersOverride contains deployment-managed username headers for the trusted-proxy runtime override.
+	TrustedUsernameHeadersOverride []string
+	// TrustedEmailHeadersOverride contains deployment-managed email headers for the trusted-proxy runtime override.
+	TrustedEmailHeadersOverride []string
+	// TrustedDisplayNameHeadersOverride contains deployment-managed display-name headers for the trusted-proxy runtime override.
+	TrustedDisplayNameHeadersOverride []string
 	// OIDCClientSecretConfigured reports whether the OIDC client secret is available.
 	OIDCClientSecretConfigured bool
 	// OIDCSessionSecretConfigured reports whether a valid OIDC session secret is available.

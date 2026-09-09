@@ -10,7 +10,7 @@ Only use this mode when Lore is reachable exclusively through a proxy that remov
 
 Unknown trusted-proxy identities are subject to Lore's user-registration setting.
 
-Persistent trusted-proxy header lists are managed in **Administration → Configuration**. Deployment-level header flags are primarily useful with the emergency authentication override.
+Persistent trusted-proxy header lists are managed in **Administration → Configuration**. With the trusted-proxy runtime authentication override active, deployment-level username, email, and display-name header lists become read-only in the UI. Group headers and the administrator group remain database-managed.
 
 ## External administrator group
 

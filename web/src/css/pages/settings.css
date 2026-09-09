@@ -746,6 +746,33 @@
 .auth-mode-field {
   max-width: 420px;
 }
+
+.auth-managed-setting {
+  display: grid;
+  gap: 6px;
+}
+.auth-managed-label {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.auth-managed-value,
+.auth-managed-label-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.auth-managed-value strong {
+  font-size: 13px;
+}
+.auth-managed-label-row {
+  justify-content: space-between;
+}
+.auth-settings-form input[readonly] {
+  cursor: default;
+  background: var(--surface-elevated);
+}
 .auth-mode-field small,
 .auth-mode-options small {
   display: block;
@@ -866,6 +893,10 @@
 .config-status.missing {
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   color: var(--warning);
+}
+.config-status.managed {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
 }
 .auth-settings-actions {
   margin-top: 4px;

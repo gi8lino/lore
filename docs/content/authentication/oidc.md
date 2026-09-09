@@ -15,7 +15,7 @@ LORE__OIDC_SESSION_SECRET
 
 OIDC browser sessions remain valid across Lore restarts and version updates until they expire, provided `LORE__OIDC_SESSION_SECRET` and the PostgreSQL database are preserved. Sessions last 12 hours. Explicit session revocation and account disabling still invalidate existing sessions. Changing the session secret invalidates all OIDC sessions and pending logins; keep the same secret on every replica. Login attempts expire after 10 minutes and can complete after a restart with the same configuration. Upgrading from a version without PKCE requires restarting any pending login, but does not invalidate established sessions.
 
-The issuer, client ID, optional group claim, administrator group, and group mappings are managed as non-secret application settings.
+Normally the issuer, client ID, optional group claim, administrator group, and group mappings are managed as non-secret application settings. While `LORE__AUTH_MODE=oidc` is active, the runtime issuer and client ID are deployment-managed and read-only in the administration UI; group claim, administrator group, and group mappings remain database-managed.
 
 ## External administrator group
 

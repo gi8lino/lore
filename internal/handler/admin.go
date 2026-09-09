@@ -627,13 +627,25 @@ func SaveAdminAuthentication(
 		}
 
 		settings := authenticationSettingsFromForm(r)
-		problems := authenticationSettingsProblems(settings, views.runtime)
+		if views.runtime.AuthModeOverride != "" {
+			current, err := settingsUseCases.ApplicationSettings(r.Context())
+			if err != nil {
+				writeInternalServerError(views.logger, w, err)
+				return
+			}
+
+			settings = preserveRuntimeManagedAuthenticationSettings(settings, current.Authentication, views.runtime)
+		}
+
+		effective := effectiveAuthenticationSettings(settings, views.runtime)
+
+		problems := authenticationSettingsProblems(effective, views.runtime)
 		if len(problems) > 0 {
 			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Authentication validation failed.", problems...)
 			return
 		}
 
-		if err := browserAuth.Validate(r.Context(), settings); err != nil {
+		if err := browserAuth.Validate(r.Context(), effective); err != nil {
 			if writeValidationProblem(w, err, "Authentication validation failed.") {
 				return
 			}
@@ -641,14 +653,14 @@ func SaveAdminAuthentication(
 			views.logger.Warn(
 				"authentication settings rejected",
 				"event", "authentication_settings_rejected",
-				"mode", settings.Mode,
+				"mode", effective.Mode,
 				"error", err,
 			)
 
 			field := "auth_mode"
 			message := "The authentication configuration could not be verified."
 
-			if settings.Mode == string(auth.AuthModeOIDC) {
+			if effective.Mode == string(auth.AuthModeOIDC) {
 				field = "oidc_issuer"
 				message = "OIDC provider discovery failed. Check the issuer and server connectivity."
 			}
@@ -668,6 +680,51 @@ func SaveAdminAuthentication(
 
 		http.Redirect(w, r, "/admin/configuration", http.StatusSeeOther)
 	}
+}
+
+// preserveRuntimeManagedAuthenticationSettings keeps persisted values that cannot be changed while deployment overrides are active.
+func preserveRuntimeManagedAuthenticationSettings(
+	settings, current domain.AuthenticationSettings,
+	runtime RuntimeInfo,
+) domain.AuthenticationSettings {
+	if runtime.AuthModeOverride == "" {
+		return settings
+	}
+
+	settings.Mode = current.Mode
+
+	switch auth.AuthMode(runtime.AuthModeOverride) {
+	case auth.AuthModeOIDC:
+		settings.OIDCIssuer = current.OIDCIssuer
+		settings.OIDCClientID = current.OIDCClientID
+	case auth.AuthModeTrustedProxy:
+		settings.TrustedUsernameHeaders = current.TrustedUsernameHeaders
+		settings.TrustedEmailHeaders = current.TrustedEmailHeaders
+		settings.TrustedDisplayNameHeaders = current.TrustedDisplayNameHeaders
+	}
+
+	return settings
+}
+
+// effectiveAuthenticationSettings overlays deployment-managed values for validation and runtime behavior.
+func effectiveAuthenticationSettings(settings domain.AuthenticationSettings, runtime RuntimeInfo) domain.AuthenticationSettings {
+	if runtime.AuthModeOverride == "" {
+		return settings
+	}
+
+	settings.Mode = runtime.AuthModeOverride
+
+	switch auth.AuthMode(runtime.AuthModeOverride) {
+	case auth.AuthModeOIDC:
+		settings.OIDCIssuer = runtime.OIDCIssuerOverride
+		settings.OIDCClientID = runtime.OIDCClientIDOverride
+	case auth.AuthModeTrustedProxy:
+		settings.TrustedUsernameHeaders = runtime.TrustedUsernameHeadersOverride
+		settings.TrustedEmailHeaders = runtime.TrustedEmailHeadersOverride
+		settings.TrustedDisplayNameHeaders = runtime.TrustedDisplayNameHeadersOverride
+	}
+
+	return settings
 }
 
 // authenticationSettingsFromForm parses non-secret browser authentication settings.
