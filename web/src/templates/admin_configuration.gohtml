@@ -85,7 +85,7 @@
               <option value="allow" {{ if eq .ApplicationSettings.RobotsPolicy "allow" }}selected{{ end }}>Allow crawling</option>
               <option value="none" {{ if eq .ApplicationSettings.RobotsPolicy "none" }}selected{{ end }}>Disabled</option>
             </select>
-            <small>Controls the public <code>/robots.txt</code> response. Lore defaults to disallowing crawling.</small>
+            <small>Controls public crawler discovery. Allowing crawling also publishes <code>/sitemap.xml</code> with verified and deprecated page paths. Lore defaults to disallowing crawling.</small>
           </label>
 
           <label>

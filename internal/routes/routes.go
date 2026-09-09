@@ -45,7 +45,8 @@ func addRoutes(
 ) {
 	// Public infrastructure and authentication routes.
 	mux.HandleFunc("GET /healthz", handler.Health(systemUseCases))
-	mux.Handle("GET /robots.txt", handler.Robots(settingsUseCases, logger))
+	mux.Handle("GET /robots.txt", handler.Robots(settingsUseCases, views, logger))
+	mux.Handle("GET /sitemap.xml", handler.Sitemap(settingsUseCases, catalogUseCases, views, logger))
 	mux.Handle("GET /assets/", handler.Assets(appFS))
 	mux.Handle("GET /sw.js", handler.ServiceWorker(appFS))
 	mux.Handle("GET /auth/login", browserAuth.Login)
