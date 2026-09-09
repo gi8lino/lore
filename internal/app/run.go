@@ -90,6 +90,7 @@ func Run(
 	draftUseCases := service.NewDrafts(database)
 	groupUseCases := service.NewGroups(database)
 	knowledgeUseCases := service.NewKnowledge(database)
+	notificationUseCases := service.NewNotifications(database)
 	mediaUseCases := service.NewMedia(database)
 	navigationUseCases := service.NewNavigation(database)
 	pageUseCases := service.NewPages(database)
@@ -106,6 +107,7 @@ func Run(
 		catalogUseCases,
 		settingsUseCases,
 		knowledgeUseCases,
+		notificationUseCases,
 	)
 
 	browserAuth, err := auth.ConfigureBrowserAuth(
@@ -172,6 +174,7 @@ func Run(
 		draftUseCases,
 		groupUseCases,
 		knowledgeUseCases,
+		notificationUseCases,
 		mediaUseCases,
 		navigationUseCases,
 		pageUseCases,

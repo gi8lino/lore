@@ -27,7 +27,7 @@
       style="--sidebar: {{ .Preferences.SidebarWidth }}px"
     >
       {{ template "header" . }}
-      {{ if and (not .AdminSection) (eq .Preferences.NavigationStyle "topbar") }}{{ template "top-navigation" . }}{{ end }}
+      {{ if not .AdminSection }}{{ template "top-navigation" . }}{{ end }}
       <div class="shell{{ if .AdminSection }} admin-shell{{ end }}">
         {{ if .AdminSection }}
           {{ template "admin-sidebar" . }}
@@ -70,5 +70,4 @@
     </body>
   </html>
 {{ end }}
-
 

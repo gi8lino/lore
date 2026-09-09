@@ -39,13 +39,9 @@
         </div>
         <div class="notification-list">
           {{ range .Notifications }}
-            <a
-              href="{{ if .URL }}
-                {{ .URL }}
-              {{ else }}
-                #
-              {{ end }}"
-              class="notification-item{{ if not .ReadAt }}unread{{ end }}"
+            <form action="/notifications/{{ .ID }}/open" method="post">
+            <button type="submit"
+              class="notification-item{{ if not .ReadAt }} unread{{ end }}"
               data-notification-id="{{ .ID }}"
               ><span class="notification-icon"
                 >{{ if eq .Kind "mention" }}
@@ -57,8 +53,8 @@
                 ><strong>{{ .Title }}</strong>{{ if .Body }}<small>{{ .Body }}</small>{{ end }}<time
                   >{{ timeago .CreatedAt }}</time
                 ></span
-              ></a
-            >
+              ></button>
+            </form>
           {{ else }}
             <p class="muted notification-empty">Nothing new.</p>
           {{ end }}
@@ -75,3 +71,4 @@
     {{ end }}
   </header>
 {{ end }}
+

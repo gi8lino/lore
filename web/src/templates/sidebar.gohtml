@@ -1,5 +1,11 @@
 {{ define "sidebar" }}
   <aside class="sidebar" id="lore-sidebar" data-sidebar>
+    <div class="tree-explorer-tools">
+      <strong>Page explorer</strong>
+      <input type="search" data-tree-filter aria-label="Filter page tree" placeholder="Filter pages…" autocomplete="off" />
+      <button type="button" data-tree-reveal>Reveal current page</button>
+      <p data-tree-filter-status role="status" hidden></p>
+    </div>
     <nav
       data-navigation
       data-navigation-state-url="/settings/preferences/navigation-state"

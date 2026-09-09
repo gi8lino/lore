@@ -116,15 +116,9 @@ type groupWriter interface {
 	RemoveGroupMember(context.Context, int64, int64) error
 }
 
-// Knowledge interfaces expose only the slice of knowledge functionality a
-// handler needs.
+// Knowledge interfaces expose only the reusable-content and graph operations a handler needs.
 type knowledgeContentService interface {
 	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
-}
-
-type knowledgeSidebarService interface {
-	SavedSearches(context.Context, int64) ([]domain.SavedSearch, error)
-	Notifications(context.Context, int64, int) (notifications []domain.Notification, unread int, err error)
 }
 
 type knowledgeGraphService interface {
@@ -142,14 +136,24 @@ type knowledgeSnippetService interface {
 	DeleteKnowledgeSnippet(context.Context, int64, int64) error
 }
 
+type savedSearchReader interface {
+	SavedSearches(context.Context, int64) ([]domain.SavedSearch, error)
+}
+
 type savedSearchService interface {
 	SaveSavedSearch(context.Context, int64, int64, string, string, bool) error
 	DeleteSavedSearch(context.Context, int64, int64) error
 }
 
-type notificationService interface {
+type notificationReader interface {
 	Notifications(context.Context, int64, int) (notifications []domain.Notification, unread int, err error)
+}
+
+type notificationService interface {
+	notificationReader
 	MarkNotificationRead(context.Context, int64, int64) error
+	MarkAllNotificationsRead(context.Context, int64) error
+	OpenNotification(context.Context, int64, int64) (string, error)
 }
 
 // Media readers and writers are separated so read-only exports and downloads

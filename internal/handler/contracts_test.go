@@ -52,7 +52,11 @@ func (emptyContractServices) Notifications(context.Context, int64, int) ([]domai
 	return nil, 0, nil
 }
 func (emptyContractServices) MarkNotificationRead(context.Context, int64, int64) error { return nil }
-func (emptyContractServices) Images(context.Context) ([]domain.Image, error)           { return nil, nil }
+func (emptyContractServices) MarkAllNotificationsRead(context.Context, int64) error    { return nil }
+func (emptyContractServices) OpenNotification(context.Context, int64, int64) (string, error) {
+	return "", nil
+}
+func (emptyContractServices) Images(context.Context) ([]domain.Image, error) { return nil, nil }
 func (emptyContractServices) Attachments(context.Context) ([]domain.Attachment, error) {
 	return nil, nil
 }

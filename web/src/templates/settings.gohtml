@@ -108,10 +108,11 @@
                 <label class="navigation-style-option">
                   <input type="radio" name="navigation_style" value="tree" {{ if eq .Preferences.NavigationStyle "tree" }}checked{{ end }} />
                   <span class="navigation-style-preview navigation-style-preview-tree" aria-hidden="true"><i></i><b></b></span>
-                  <span><strong>Page tree</strong><small>Focused hierarchy for browsing deeply nested documentation.</small></span>
+                  <span><strong>Page tree</strong><small>Filterable explorer with hierarchy guides and current-page reveal.</small></span>
                 </label>
               </div>
             </fieldset>
+            <small>Style and density preview immediately. Save preferences to keep your changes.</small>
             <label>
               Density
               <select name="navigation_density">
@@ -351,4 +352,3 @@
     </div>
   </section>
 {{ end }}
-

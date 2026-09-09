@@ -1004,13 +1004,16 @@ function setupEditorExperience(form: HTMLFormElement): void {
 export function preferredEditorMode(): EditorMode {
   try {
     const mode = localStorage.getItem(editorModeStorageKey);
-    return mode === "split" || mode === "preview" ? mode : "write";
+    return mode === "split" ? "split" : "write";
   } catch {
     return "write";
   }
 }
 
 export function rememberEditorMode(mode: EditorMode): void {
+  // Preview is temporary; reopening the editor must keep the source visible.
+  if (mode === "preview") return;
+
   try {
     localStorage.setItem(editorModeStorageKey, mode);
   } catch {

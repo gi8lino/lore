@@ -91,6 +91,84 @@ function initNavigationTree(): void {
   const scrollKey = `${NAVIGATION_SCROLL_KEY}:${window.matchMedia(MOBILE_SIDEBAR_QUERY).matches ? "mobile" : "desktop"}`;
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let savePromise: Promise<void> = Promise.resolve();
+  let unfilteredState: Map<HTMLDetailsElement, boolean> | undefined;
+  const sidebar = navigation.closest<HTMLElement>("[data-sidebar]");
+  const filter = sidebar?.querySelector<HTMLInputElement>("[data-tree-filter]");
+  const status = sidebar?.querySelector<HTMLElement>(
+    "[data-tree-filter-status]",
+  );
+  const entries = [
+    ...navigation.querySelectorAll<HTMLElement>(".nav-node, .nav-page-link"),
+  ];
+
+  function filterTree(): void {
+    const query = filter?.value.trim().toLocaleLowerCase() ?? "";
+    if (query && !unfilteredState)
+      unfilteredState = new Map(nodes.map((node) => [node, node.open]));
+    let matches = 0;
+    for (const entry of [...entries].reverse()) {
+      const label =
+        entry instanceof HTMLDetailsElement
+          ? entry.querySelector(
+              "summary .nav-node-link, summary .nav-node-label",
+            )?.textContent
+          : entry.textContent;
+      const ownMatch =
+        !query || (label ?? "").toLocaleLowerCase().includes(query);
+      const childMatch =
+        entry instanceof HTMLDetailsElement &&
+        [
+          ...entry.querySelectorAll<HTMLElement>(".nav-node, .nav-page-link"),
+        ].some((child) => !child.hidden);
+      entry.hidden = !ownMatch && !childMatch;
+      if (query && ownMatch) matches++;
+      if (entry instanceof HTMLDetailsElement) {
+        if (query) entry.open = Boolean(childMatch);
+        else if (unfilteredState)
+          entry.open = unfilteredState.get(entry) ?? false;
+      }
+    }
+    if (!query) unfilteredState = undefined;
+    if (status) {
+      status.hidden = !query;
+      status.textContent = matches
+        ? `${matches} matching ${matches === 1 ? "entry" : "entries"}`
+        : "No matching pages";
+    }
+  }
+  filter?.addEventListener("input", filterTree);
+  filter?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      filter.value = "";
+      filterTree();
+    }
+  });
+  const reveal =
+    sidebar?.querySelector<HTMLButtonElement>("[data-tree-reveal]");
+  const currentPage = navigation.querySelector<HTMLElement>(
+    '[aria-current="page"]',
+  );
+  if (reveal) reveal.disabled = !currentPage;
+  function revealCurrentPage(): void {
+    if (!currentPage) return;
+    if (filter) filter.value = "";
+    filterTree();
+    for (
+      let parent = currentPage.parentElement;
+      parent && parent !== navigation;
+      parent = parent.parentElement
+    )
+      if (parent instanceof HTMLDetailsElement) parent.open = true;
+    currentPage.scrollIntoView({ block: "nearest" });
+  }
+  reveal?.addEventListener("click", revealCurrentPage);
+  document.addEventListener("navigation-style-change", () => {
+    if (filter) filter.value = "";
+    filterTree();
+    if (document.body.dataset.navigationStyle === "tree") revealCurrentPage();
+  });
 
   function saveScrollPosition(destination: string): void {
     try {
@@ -109,7 +187,7 @@ function initNavigationTree(): void {
 
   function expandedPaths(): string[] {
     return nodes
-      .filter((node) => node.open)
+      .filter((node) => unfilteredState?.get(node) ?? node.open)
       .map((node) => node.dataset.navPath)
       .filter((value): value is string => Boolean(value));
   }
@@ -128,7 +206,7 @@ function initNavigationTree(): void {
   }
 
   function persistExpandedState(): void {
-    if (!remember) return;
+    if (!remember || unfilteredState) return;
 
     if (saveTimer) clearTimeout(saveTimer);
 
@@ -178,6 +256,8 @@ function initNavigationTree(): void {
   const restoredScrollPosition =
     navigation.dataset.navigationScrollRestored === "true";
   const active = navigation.querySelector<HTMLElement>('[aria-current="page"]');
+
+  if (document.body.dataset.navigationStyle === "tree") revealCurrentPage();
 
   if (active && !restoredScrollPosition) {
     const navigationRect = navigation.getBoundingClientRect();
@@ -502,6 +582,21 @@ export function initLayout(): void {
   initAccountMenus();
   initSidebarResize();
   initSidebarWidthSetting();
+  for (const input of document.querySelectorAll<HTMLInputElement>(
+    'input[name="navigation_style"]',
+  )) {
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      document.body.dataset.navigationStyle = input.value;
+      document.dispatchEvent(new Event("navigation-style-change"));
+    });
+  }
+  const density = document.querySelector<HTMLSelectElement>(
+    'select[name="navigation_density"]',
+  );
+  density?.addEventListener("change", () => {
+    document.body.dataset.navigationDensity = density.value;
+  });
   document.addEventListener("keydown", (event: KeyboardEvent) => {
     if (
       event.key === "/" &&

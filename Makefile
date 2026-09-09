@@ -117,6 +117,10 @@ test-web: check-web ## Compile and run the TypeScript frontend unit tests.
 	$(TSC) -p test/ts/tsconfig.json --outDir "$$tmp"; \
 	$(NODE) --test "$$tmp"/test/ts/*.test.js
 
+.PHONY: test-browser
+test-browser: check-web ## Run browser regressions in Chrome (override BROWSER_CHANNEL if needed).
+	$(NODE) --test test/browser/*.test.mjs
+
 .PHONY: download
 download: $(NODE_MODULES) ## Download Go and frontend dependencies.
 	go mod download

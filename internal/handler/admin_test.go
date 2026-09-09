@@ -58,12 +58,13 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	assert.False(t, settings.Tables)
 }
 
-func TestRenderingOptionsIncludeTypographer(t *testing.T) {
+func TestRenderingOptionsIncludeTypographerAndCodingLigatures(t *testing.T) {
 	t.Parallel()
 
-	options := renderingOptionsFromSettings(domain.RenderingSettings{Typographer: true})
+	options := renderingOptionsFromSettings(domain.RenderingSettings{Typographer: true, CodingLigatures: true})
 
 	assert.True(t, options.Typographer)
+	assert.True(t, options.CodingLigatures)
 }
 
 func TestRenderingLanguageValidation(t *testing.T) {

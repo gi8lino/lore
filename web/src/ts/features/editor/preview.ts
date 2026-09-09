@@ -70,7 +70,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
     "[data-editor-section-description]",
   );
   const buttons = [
-    ...form.querySelectorAll<HTMLButtonElement>("[data-editor-mode]"),
+    ...form.querySelectorAll<HTMLButtonElement>("button[data-editor-mode]"),
   ];
   if (
     !workspace ||
@@ -92,52 +92,97 @@ function setupEditorPreview(form: HTMLFormElement): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let mode: EditorMode = "write";
   let syncing = false;
+  let renderedInput: string | undefined;
+  let pendingInput: string | undefined;
+  let renderedHTML: string | undefined;
+
+  function previewInput(): string {
+    return JSON.stringify({
+      markdown: sourceEditor.value,
+      slug: slug?.value || "",
+    });
+  }
 
   // Renders preview.
   async function renderPreview(): Promise<void> {
-    const signal = previewRequests.next();
+    timer = undefined;
+    const input = previewInput();
+    if (input === renderedInput) {
+      previewStatus.hidden = true;
+      return;
+    }
+    if (input === pendingInput) return;
 
-    previewStatus.hidden = false;
+    const signal = previewRequests.next();
+    pendingInput = input;
+    let staging: HTMLDivElement | undefined;
+
+    // Background refreshes must not insert a status row and shift the content.
+    previewStatus.hidden = renderedInput !== undefined;
     previewStatus.textContent = "Rendering preview…";
 
     try {
       const payload = await requestJSON(previewEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          markdown: sourceEditor.value,
-          slug: slug?.value || "",
-        }),
+        body: input,
         signal,
       });
       if (!isPreviewPayload(payload))
         throw new Error("Invalid preview response.");
+      if (signal.aborted) return;
 
-      previewContent.innerHTML = payload.html;
+      if (payload.html !== renderedHTML) {
+        // Mermaid needs a connected, measurable element. Prepare it offscreen
+        // so raw diagram source never replaces the currently visible preview.
+        staging = document.createElement("div");
+        staging.className = `${previewContent.className} editor-preview-staging`;
+        staging.style.width = `${previewContent.getBoundingClientRect().width}px`;
+        staging.setAttribute("aria-hidden", "true");
+        staging.inert = true;
+        staging.innerHTML = payload.html;
+        previewPanel.append(staging);
+        setupMarkdownEnhancements(staging);
+        await renderMermaid(staging);
+        if (signal.aborted) return;
+
+        const scrollTop = previewPanel.scrollTop;
+        previewContent.replaceChildren(...staging.childNodes);
+        previewPanel.scrollTop = scrollTop;
+        renderedHTML = payload.html;
+      }
+      renderedInput = input;
       previewStatus.hidden = true;
-      setupMarkdownEnhancements(previewPanel);
-      await renderMermaid(previewPanel);
     } catch (error) {
-      if (isAbortError(error)) return;
+      if (signal.aborted || isAbortError(error)) return;
 
       console.error("markdown preview failed", error);
       previewStatus.hidden = false;
       previewStatus.textContent =
         errorMessage(error) || "Preview could not be rendered.";
+    } finally {
+      staging?.remove();
+      if (previewRequests.current() === signal) pendingInput = undefined;
     }
   }
 
   // Schedules preview.
   function schedulePreview(): void {
-    if (mode === "write") return;
+    if (previewInput() === pendingInput) return;
 
     if (timer !== undefined) clearTimeout(timer);
+    // Invalidate old responses immediately, including during the debounce.
+    previewRequests.abort();
+    pendingInput = undefined;
+    if (mode === "write") return;
 
     timer = setTimeout(() => void renderPreview(), 180);
   }
 
   // Sets mode.
   function setMode(nextMode: string | undefined, remember = true): void {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = undefined;
     mode = editorMode(nextMode);
     form.dataset.editorMode = mode;
     editorWorkspace.dataset.editorMode = mode;
@@ -155,6 +200,10 @@ function setupEditorPreview(form: HTMLFormElement): void {
     }
     if (remember) rememberEditorMode(mode);
     if (mode !== "write") void renderPreview();
+    else {
+      previewRequests.abort();
+      pendingInput = undefined;
+    }
   }
 
   // Synchronizes scroll.

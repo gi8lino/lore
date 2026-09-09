@@ -373,6 +373,7 @@ body.sidebar-resizing {
 }
 
 .navigation-style-setting {
+  min-width: 0;
   margin: 0;
   border: 0;
   padding: 0;
@@ -491,5 +492,160 @@ body.sidebar-resizing {
 @media (max-width: 700px) {
   .navigation-style-options {
     grid-template-columns: 1fr;
+  }
+}
+
+/* A focused explorer, distinct from the shortcut-oriented sidebar. */
+.tree-explorer-tools {
+  display: none;
+}
+body[data-navigation-style="tree"] .tree-explorer-tools {
+  display: grid;
+  gap: 8px;
+  flex: none;
+  padding: 18px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+.tree-explorer-tools strong {
+  font-size: 13px;
+}
+.tree-explorer-tools input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.tree-explorer-tools input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tree-explorer-tools button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.tree-explorer-tools button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.tree-explorer-tools button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tree-explorer-tools p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+body[data-navigation-style="tree"] .sidebar-shortcuts {
+  display: none;
+}
+body[data-navigation-style="tree"] .sidebar .nav-tree-actions {
+  opacity: 1;
+}
+body[data-navigation-style="tree"] .sidebar .navigation-tree {
+  gap: 0;
+}
+body[data-navigation-style="tree"] .sidebar .nav-root > summary,
+body[data-navigation-style="tree"] .sidebar .nav-root-link {
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 600;
+}
+body[data-navigation-style="tree"] .sidebar .nav-children {
+  margin-left: 9px;
+  padding-left: 10px;
+  gap: 0;
+}
+body[data-navigation-style="tree"][data-navigation-guides="true"]
+  .sidebar
+  .nav-children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  left: 3px;
+  width: 1px;
+  background: var(--border);
+}
+body[data-navigation-style="tree"] .sidebar .nav-icon {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+}
+body[data-navigation-style="tree"] .sidebar .nav-icon svg {
+  width: 15px;
+  height: 15px;
+}
+body[data-navigation-style="tree"] .sidebar .nav-page-link,
+body[data-navigation-style="tree"] .sidebar .nav-node > summary {
+  font-size: 13px;
+  border-radius: 3px;
+}
+body[data-navigation-style="tree"][data-navigation-density="compact"]
+  .sidebar
+  .nav-root
+  > summary,
+body[data-navigation-style="tree"][data-navigation-density="compact"]
+  .sidebar
+  .nav-root-link {
+  min-height: 26px;
+}
+.sidebar .navigation-tree [hidden] {
+  display: none !important;
+}
+.navigation-style-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+body[data-navigation-density="compact"] .navigation-style-preview-sidebar b {
+  height: 3px;
+  box-shadow:
+    0 6px 0 var(--border-strong),
+    0 12px 0 var(--border-strong),
+    0 18px 0 var(--border-strong),
+    0 24px 0 var(--border-strong),
+    0 30px 0 var(--border-strong);
+}
+.navigation-style-preview-tree i {
+  width: 40%;
+}
+body[data-navigation-density="compact"] .navigation-style-preview-tree b {
+  height: 2px;
+  box-shadow:
+    5px 5px 0 var(--border-strong),
+    10px 10px 0 var(--border-strong),
+    5px 15px 0 var(--border-strong),
+    10px 20px 0 var(--border-strong),
+    15px 25px 0 var(--border-strong),
+    5px 30px 0 var(--border-strong);
+}
+body[data-navigation-density="compact"] .navigation-style-preview-topbar i {
+  height: 8px;
+}
+body[data-navigation-density="compact"] .navigation-style-preview-topbar b {
+  top: 17px;
+  width: 10px;
+  height: 2px;
+  box-shadow:
+    14px 0 0 var(--border-strong),
+    28px 0 0 var(--border-strong),
+    42px 0 0 var(--border-strong),
+    56px 0 0 var(--border-strong);
+}
+@media (min-width: 801px) {
+  body[data-navigation-density="compact"] .desktop-top-navigation-inner {
+    height: 36px;
   }
 }

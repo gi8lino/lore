@@ -8,7 +8,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 )
 
-// knowledgeRepository contains knowledge tools, saved searches, and notification operations.
+// knowledgeRepository contains knowledge graph, snippet, and saved-search operations.
 type knowledgeRepository interface {
 	auditRepository
 	KnowledgeGraph(context.Context, int) (domain.KnowledgeGraph, error)
@@ -19,11 +19,9 @@ type knowledgeRepository interface {
 	SavedSearches(context.Context, int64) ([]domain.SavedSearch, error)
 	SaveSavedSearch(context.Context, int64, int64, string, string, bool) error
 	DeleteSavedSearch(context.Context, int64, int64) error
-	Notifications(context.Context, int64, int) (notifications []domain.Notification, unread int, err error)
-	MarkNotificationRead(context.Context, int64, int64) error
 }
 
-// Knowledge exposes snippets, saved searches, graph, and notification use cases.
+// Knowledge exposes knowledge graph, snippet, and saved-search use cases.
 type Knowledge struct{ repository knowledgeRepository }
 
 // NewKnowledge constructs the knowledge tools service.
@@ -110,18 +108,4 @@ func (s *Knowledge) SaveSavedSearch(
 // DeleteSavedSearch removes a saved search owned by a user.
 func (s *Knowledge) DeleteSavedSearch(ctx context.Context, userID, id int64) error {
 	return s.repository.DeleteSavedSearch(ctx, userID, id)
-}
-
-// Notifications returns a user's recent notifications and unread count.
-func (s *Knowledge) Notifications(
-	ctx context.Context,
-	userID int64,
-	limit int,
-) (notifications []domain.Notification, unread int, err error) {
-	return s.repository.Notifications(ctx, userID, limit)
-}
-
-// MarkNotificationRead marks an owned notification as read.
-func (s *Knowledge) MarkNotificationRead(ctx context.Context, userID, id int64) error {
-	return s.repository.MarkNotificationRead(ctx, userID, id)
 }
