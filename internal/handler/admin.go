@@ -1347,7 +1347,7 @@ func AddAdminGroupMember(
 			httpresponse.Problem(w,
 				http.StatusBadRequest,
 				"Invalid member request.",
-				httpresponse.NewFieldProblem("request", err.Error()),
+				httpresponse.NewFieldProblem("request", "Provide a valid member request body."),
 			)
 			return
 		}

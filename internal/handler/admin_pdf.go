@@ -13,6 +13,8 @@ import (
 	"github.com/gi8lino/lore/internal/pdf"
 )
 
+const pdfURLFieldProblem = "Enter an HTTP(S) PDF endpoint including its path, without credentials or a fragment."
+
 // SaveAdminPDFSettings stores the database-managed PDF rendering endpoint.
 func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +30,7 @@ func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger)
 				w,
 				http.StatusUnprocessableEntity,
 				"PDF settings validation failed.",
-				httpresponse.NewFieldProblem("pdf_url", err.Error()),
+				httpresponse.NewFieldProblem("pdf_url", pdfURLFieldProblem),
 			)
 			return
 		}
@@ -64,7 +66,7 @@ func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 				w,
 				http.StatusUnprocessableEntity,
 				"PDF service test failed.",
-				httpresponse.NewFieldProblem("pdf_url", err.Error()),
+				httpresponse.NewFieldProblem("pdf_url", pdfURLFieldProblem),
 			)
 			return
 		}
@@ -76,7 +78,7 @@ func TestAdminPDFService(logger *slog.Logger) http.HandlerFunc {
 				w,
 				http.StatusBadGateway,
 				"PDF service test failed.",
-				httpresponse.NewFieldProblem("pdf_url", err.Error()),
+				httpresponse.NewFieldProblem("pdf_url", "The PDF service could not render the test document. Check the endpoint and service logs."),
 			)
 			return
 		}

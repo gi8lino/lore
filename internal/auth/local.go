@@ -228,8 +228,8 @@ func (l *Local) ClearSession(w http.ResponseWriter, r *http.Request) {
 
 // localPasswordHash hashes a validated local password with bcrypt.
 func localPasswordHash(password string) (string, error) {
-	if problem := LocalPasswordProblem(password); problem != "" {
-		return "", errors.New(problem)
+	if !ValidLocalPassword(password) {
+		return "", errors.New("invalid local password")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(

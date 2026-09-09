@@ -89,7 +89,7 @@ func lucideModuleDir() (string, error) {
 		return "", fmt.Errorf("download Lucide module: %s", module.Error)
 	}
 	if module.Dir == "" {
-		return "", errors.New("Lucide module directory is empty")
+		return "", errors.New("lucide module directory is empty")
 	}
 
 	return module.Dir, nil

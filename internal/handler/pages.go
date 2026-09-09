@@ -352,7 +352,7 @@ func SavePageForm(
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
-			httpresponse.Problem(w, http.StatusBadRequest, err.Error())
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid page metadata.")
 			return
 		}
 

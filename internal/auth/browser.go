@@ -287,16 +287,16 @@ func (b *browserAuthenticator) validateSettings(settings domain.AuthenticationSe
 		issuer := strings.TrimSpace(settings.OIDCIssuer)
 		clientID := strings.TrimSpace(settings.OIDCClientID)
 		if issuer == "" || clientID == "" {
-			return errors.New("OIDC authentication requires an issuer and client ID")
+			return errors.New("oidc authentication requires an issuer and client ID")
 		}
 		if (settings.OIDCGroupSync || strings.TrimSpace(settings.OIDCAdminGroup) != "") && strings.TrimSpace(settings.OIDCGroupClaim) == "" {
-			return errors.New("OIDC group synchronization and administrator elevation require a group claim")
+			return errors.New("oidc group synchronization and administrator elevation require a group claim")
 		}
 		if b.oidcConfig.ClientSecret == "" {
-			return errors.New("OIDC client secret is not configured")
+			return errors.New("oidc client secret is not configured")
 		}
 		if len(b.oidcConfig.SessionSecret) < 32 {
-			return errors.New("OIDC session secret must be at least 32 characters")
+			return errors.New("oidc session secret must be at least 32 characters")
 		}
 
 		return nil

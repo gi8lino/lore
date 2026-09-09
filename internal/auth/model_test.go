@@ -84,11 +84,11 @@ func TestBrowserAuthenticatorValidatesOIDCSecrets(t *testing.T) {
 	}
 	browser := &browserAuthenticator{}
 
-	assert.EqualError(t, browser.validateSettings(settings), "OIDC client secret is not configured")
+	assert.EqualError(t, browser.validateSettings(settings), "oidc client secret is not configured")
 
 	browser.oidcConfig.ClientSecret = "client-secret"
 
-	assert.EqualError(t, browser.validateSettings(settings), "OIDC session secret must be at least 32 characters")
+	assert.EqualError(t, browser.validateSettings(settings), "oidc session secret must be at least 32 characters")
 }
 
 func TestBrowserValidationRequiresAdministratorGroupSources(t *testing.T) {

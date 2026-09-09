@@ -26,6 +26,14 @@ func TestLocalPasswordHash(t *testing.T) {
 	assert.Error(t, bcrypt.CompareHashAndPassword([]byte(hash), []byte("wrong-password")))
 }
 
+func TestLocalPasswordHashRejectsInvalidPasswordWithInternalError(t *testing.T) {
+	t.Parallel()
+
+	_, err := localPasswordHash("short")
+
+	assert.EqualError(t, err, "invalid local password")
+}
+
 func TestLocalSessionHash(t *testing.T) {
 	t.Parallel()
 

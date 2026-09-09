@@ -73,7 +73,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 
 		format, err := parseImportFormat(r.FormValue("format"))
 		if err != nil {
-			httpresponse.Problem(w, http.StatusBadRequest, err.Error())
+			httpresponse.Problem(w, http.StatusBadRequest, "Choose a source format.")
 			return
 		}
 
@@ -83,7 +83,17 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 		for _, header := range r.MultipartForm.File["files"] {
 			items, err := importCandidatesFromFile(header, format, &remaining)
 			if err != nil {
-				httpresponse.Problem(w, http.StatusBadRequest, "Import "+header.Filename+": "+err.Error())
+				logger.Warn(
+					"import file rejected",
+					"event", "import_file_rejected",
+					"file", header.Filename,
+					"error", err,
+				)
+				httpresponse.Problem(
+					w,
+					http.StatusBadRequest,
+					fmt.Sprintf("Import %q could not be processed. Check the selected source format and file contents.", header.Filename),
+				)
 				return
 			}
 

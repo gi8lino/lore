@@ -16,9 +16,9 @@ var (
 	// ErrRegistrationDisabled indicates that a new external identity may not create an account.
 	ErrRegistrationDisabled = errors.New("user registration is disabled")
 	// ErrIdentityApprovalRequired indicates that an OIDC identity awaits administrator approval.
-	ErrIdentityApprovalRequired = errors.New("OIDC identity requires administrator approval")
+	ErrIdentityApprovalRequired = errors.New("oidc identity requires administrator approval")
 	// ErrIdentityRejected indicates that an administrator rejected an OIDC identity.
-	ErrIdentityRejected = errors.New("OIDC identity was rejected")
+	ErrIdentityRejected = errors.New("oidc identity was rejected")
 	// ErrPageInBin indicates that a page path is occupied by a recycled page.
 	ErrPageInBin = errors.New("page path is in recycle bin")
 )

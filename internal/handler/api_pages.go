@@ -71,7 +71,7 @@ func PreviewMarkdown(
 			httpresponse.Problem(w,
 				http.StatusBadRequest,
 				"Invalid JSON request.",
-				httpresponse.NewFieldProblem("request", err.Error()),
+				httpresponse.NewFieldProblem("request", "Provide a valid JSON request body."),
 			)
 			return
 		}
@@ -208,7 +208,7 @@ func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerF
 			httpresponse.Problem(w,
 				http.StatusBadRequest,
 				"Invalid JSON request.",
-				httpresponse.NewFieldProblem("request", err.Error()),
+				httpresponse.NewFieldProblem("request", "Provide a valid JSON request body."),
 			)
 			return
 		}

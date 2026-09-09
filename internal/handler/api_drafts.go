@@ -42,7 +42,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 				w,
 				http.StatusBadRequest,
 				"Invalid draft request.",
-				httpresponse.NewFieldProblem("request", err.Error()),
+				httpresponse.NewFieldProblem("request", "Provide a valid draft request body."),
 			)
 			return
 		}

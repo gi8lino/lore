@@ -58,6 +58,22 @@ func TestSaveAdminPDFSettings(t *testing.T) {
 	assert.Equal(t, int64(7), settings.actorID)
 }
 
+func TestSaveAdminPDFSettingsUsesUserFacingURLProblem(t *testing.T) {
+	t.Parallel()
+
+	form := url.Values{"pdf_url": {"ftp://example.test/render"}}
+	request := httptest.NewRequest(http.MethodPost, "/admin/pdf", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = auth.WithUser(request, domain.User{ID: 7, Role: "admin"})
+	response := httptest.NewRecorder()
+
+	SaveAdminPDFSettings(&pdfSettingsStub{}, slog.Default())(response, request)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
+	assert.Contains(t, response.Body.String(), pdfURLFieldProblem)
+	assert.NotContains(t, response.Body.String(), "pdf URL must")
+}
+
 func TestTestAdminPDFService(t *testing.T) {
 	t.Parallel()
 
