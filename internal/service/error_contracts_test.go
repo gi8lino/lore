@@ -15,6 +15,28 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	ctx := context.Background()
 
 	// Nil repositories ensure invalid input is rejected before persistence.
+	t.Run("notification id for mark read", func(t *testing.T) {
+		t.Parallel()
+
+		err := NewNotifications(nil).MarkNotificationRead(ctx, 1, 0)
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "notification", validation.Fields[0].Field)
+	})
+
+	t.Run("notification id for open", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewNotifications(nil).OpenNotification(ctx, 1, 0)
+
+		validation, ok := errors.AsType[*ValidationError](err)
+		require.True(t, ok)
+		require.Len(t, validation.Fields, 1)
+		assert.Equal(t, "notification", validation.Fields[0].Field)
+	})
+
 	t.Run("saved search name", func(t *testing.T) {
 		t.Parallel()
 

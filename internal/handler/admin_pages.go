@@ -1,0 +1,113 @@
+package handler
+
+import (
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gi8lino/lore/internal/httpresponse"
+	"github.com/gi8lino/lore/internal/service"
+)
+
+// AdminPages renders bulk page management.
+func AdminPages(
+	viewDataUseCases viewDataService,
+	catalogUseCases pageInventoryService,
+	groupUseCases groupReader,
+	views *Views,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := administrationData(r, viewDataUseCases, views, "Pages", "pages")
+		if err != nil {
+			writeInternalServerError(views.logger, w, err)
+			return
+		}
+
+		pages, err := catalogUseCases.PageInventory(r.Context())
+		if err != nil {
+			writeInternalServerError(views.logger, w, err)
+			return
+		}
+
+		groups, err := groupUseCases.Groups(r.Context())
+		if err != nil {
+			writeInternalServerError(views.logger, w, err)
+			return
+		}
+
+		data.AdminPages = pages
+		data.Groups = groups
+		render(views, w, "admin_pages", data)
+	}
+}
+
+// BulkAdminPages applies one action to selected pages.
+func BulkAdminPages(
+	pageUseCases pageBulkService,
+	catalogUseCases pageContentService,
+	mediaUseCases imageContentService,
+	logger *slog.Logger,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := currentUser(r)
+		if err := r.ParseForm(); err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid bulk page form.")
+			return
+		}
+
+		slugs := uniqueNonEmpty(r.Form["slug"])
+		if len(slugs) == 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Select at least one page.")
+			return
+		}
+
+		action := r.FormValue("action")
+		if action == "export" {
+			file, modTime, cleanup, exportErr := createExportArchive(r.Context(), catalogUseCases, mediaUseCases, slugs)
+			if exportErr != nil {
+				writeExportProblem(logger, w, exportErr)
+				return
+			}
+			defer cleanup()
+
+			filename := "lore-pages-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+			serveExportArchive(w, r, filename, file, modTime)
+			return
+		}
+
+		groupID, _ := strconv.ParseInt(r.FormValue("group_id"), 10, 64)
+		if err := pageUseCases.Bulk(r.Context(), service.BulkPageInput{
+			Action:  action,
+			Slugs:   slugs,
+			Status:  r.FormValue("status"),
+			Tag:     r.FormValue("tag"),
+			GroupID: groupID,
+			Target:  r.FormValue("target"),
+			Actor:   user,
+		}); err != nil {
+			writePageProblem(logger, w, err)
+			return
+		}
+
+		http.Redirect(w, r, "/admin/pages", http.StatusSeeOther)
+	}
+}
+
+// uniqueNonEmpty trims, deduplicates, and removes empty strings while preserving order.
+func uniqueNonEmpty(values []string) []string {
+	seen := map[string]bool{}
+	result := make([]string, 0, len(values))
+
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		result = append(result, value)
+	}
+
+	return result
+}

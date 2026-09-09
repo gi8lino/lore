@@ -131,11 +131,12 @@ type Views struct {
 
 // ViewDataLoader assembles the shared data required by authenticated HTML views.
 type ViewDataLoader struct {
-	preferenceUseCases preferenceService
-	navigationUseCases navigationService
-	catalogUseCases    sidebarCatalogService
-	settingsUseCases   settingsService
-	knowledgeUseCases  knowledgeSidebarService
+	preferenceUseCases   preferenceService
+	navigationUseCases   navigationService
+	catalogUseCases      sidebarCatalogService
+	settingsUseCases     settingsService
+	savedSearchUseCases  savedSearchReader
+	notificationUseCases notificationReader
 }
 
 // NewViewDataLoader constructs the shared authenticated view-data loader.
@@ -144,14 +145,16 @@ func NewViewDataLoader(
 	navigation navigationService,
 	catalog sidebarCatalogService,
 	settings settingsService,
-	knowledge knowledgeSidebarService,
+	savedSearches savedSearchReader,
+	notifications notificationReader,
 ) *ViewDataLoader {
 	return &ViewDataLoader{
-		preferenceUseCases: preferences,
-		navigationUseCases: navigation,
-		catalogUseCases:    catalog,
-		settingsUseCases:   settings,
-		knowledgeUseCases:  knowledge,
+		preferenceUseCases:   preferences,
+		navigationUseCases:   navigation,
+		catalogUseCases:      catalog,
+		settingsUseCases:     settings,
+		savedSearchUseCases:  savedSearches,
+		notificationUseCases: notifications,
 	}
 }
 
@@ -469,12 +472,12 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		return ViewData{}, err
 	}
 
-	savedSearches, err := l.knowledgeUseCases.SavedSearches(r.Context(), user.ID)
+	savedSearches, err := l.savedSearchUseCases.SavedSearches(r.Context(), user.ID)
 	if err != nil {
 		return ViewData{}, err
 	}
 
-	notifications, unreadNotifications, err := l.knowledgeUseCases.Notifications(r.Context(), user.ID, 8)
+	notifications, unreadNotifications, err := l.notificationUseCases.Notifications(r.Context(), user.ID, 8)
 	if err != nil {
 		return ViewData{}, err
 	}

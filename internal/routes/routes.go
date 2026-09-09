@@ -24,6 +24,7 @@ func addRoutes(
 	draftUseCases *service.Drafts,
 	groupUseCases *service.Groups,
 	knowledgeUseCases *service.Knowledge,
+	notificationUseCases *service.Notifications,
 	mediaUseCases *service.Media,
 	navigationUseCases *service.Navigation,
 	pageUseCases *service.Pages,
@@ -352,10 +353,11 @@ func addRoutes(
 		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, knowledgeUseCases, catalogUseCases, logger))),
 	)
 	mux.Handle("GET /api/mentions/users", apiAuthn(handler.MentionUsers(userUseCases, logger)))
-	mux.Handle("GET /api/notifications", apiAuthn(handler.NotificationsAPI(knowledgeUseCases, logger)))
+	mux.Handle("GET /api/notifications", apiAuthn(handler.NotificationsAPI(notificationUseCases, logger)))
+	mux.Handle("POST /notifications/{id}/open", browserAuthn(handler.OpenNotification(notificationUseCases, logger)))
 	mux.Handle(
 		"POST /api/notifications/{id}/read",
-		apiAuthn(handler.MarkNotificationRead(knowledgeUseCases, logger)),
+		apiAuthn(handler.MarkNotificationRead(notificationUseCases, logger)),
 	)
 	mux.Handle("GET /api/tags", apiAuthn(handler.Tags(catalogUseCases, logger)))
 	mux.Handle("GET /api/groups", apiAuthn(handler.GroupsAPI(groupUseCases, logger)))
