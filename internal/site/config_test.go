@@ -181,6 +181,7 @@ mermaid = true
 		"--config", configPath,
 		"--site-name", "From CLI",
 		"--mermaid=false",
+		"--robots=disallow",
 	}))
 
 	cfg, err := resolve()
@@ -189,6 +190,7 @@ mermaid = true
 	assert.Equal(t, "From CLI", cfg.SiteName)
 	assert.Equal(t, "https://example.com/docs/", cfg.SiteURL)
 	assert.False(t, cfg.Mermaid)
+	assert.Equal(t, domain.RobotsPolicyDisallow, cfg.RobotsPolicy)
 }
 
 func TestDefaultConfigUsesGenericBranding(t *testing.T) {
@@ -200,6 +202,33 @@ func TestDefaultConfigUsesGenericBranding(t *testing.T) {
 	assert.Empty(t, config.Logo)
 	assert.Empty(t, config.Favicon)
 	assert.Empty(t, config.FaviconICO)
+	assert.Equal(t, domain.RobotsPolicyAllow, config.RobotsPolicy)
+}
+
+func TestRobotsConfiguration(t *testing.T) {
+	t.Parallel()
+
+	t.Run("loads policy", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		filename := filepath.Join(root, "site.toml")
+		require.NoError(t, os.WriteFile(filename, []byte(`robots = "none"`), 0o600))
+
+		config, err := loadConfig(filename, true)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.RobotsPolicyNone, config.RobotsPolicy)
+	})
+
+	t.Run("rejects unknown policy", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.RobotsPolicy = "sometimes"
+
+		assert.ErrorContains(t, config.validate(), "robots must be allow, disallow, or none")
+	})
 }
 
 func TestBuildFlagsValidateOverrides(t *testing.T) {

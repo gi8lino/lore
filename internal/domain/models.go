@@ -34,6 +34,12 @@ const (
 	NavigationDensityComfortable = "comfortable"
 	// NavigationDensityCompact reduces vertical navigation spacing.
 	NavigationDensityCompact = "compact"
+	// RobotsPolicyAllow permits crawlers to crawl the application.
+	RobotsPolicyAllow = "allow"
+	// RobotsPolicyDisallow asks crawlers not to crawl the application.
+	RobotsPolicyDisallow = "disallow"
+	// RobotsPolicyNone disables robots.txt output.
+	RobotsPolicyNone = "none"
 	// TypographySizeCompact uses the smallest content typography preset.
 	TypographySizeCompact = "compact"
 	// TypographySizeStandard uses the regular content typography preset.
@@ -212,6 +218,8 @@ type ApplicationSettings struct {
 	PDFURL string
 	// ExternalLinks contains configurable links rendered beside global search.
 	ExternalLinks []ExternalLink
+	// RobotsPolicy controls whether robots.txt allows, disallows, or omits crawler guidance.
+	RobotsPolicy string
 	// Authentication contains non-secret browser authentication settings.
 	Authentication AuthenticationSettings
 	// Rendering contains administrator-controlled Markdown rendering features.
@@ -620,6 +628,16 @@ func ValidNavigationStyle(value string) bool {
 // ValidNavigationDensity reports whether value is a supported navigation density.
 func ValidNavigationDensity(value string) bool {
 	return value == NavigationDensityComfortable || value == NavigationDensityCompact
+}
+
+// ValidRobotsPolicy reports whether value is a supported robots.txt policy.
+func ValidRobotsPolicy(value string) bool {
+	switch value {
+	case RobotsPolicyAllow, RobotsPolicyDisallow, RobotsPolicyNone:
+		return true
+	default:
+		return false
+	}
 }
 
 // ValidTypographySize reports whether value is a supported content typography preset.

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/icons"
 )
 
@@ -205,6 +206,52 @@ func writeSitemap(config Config, pages []sourcePage) error {
 	output.WriteString("</urlset>\n")
 
 	return os.WriteFile(outputFile(config.OutputDir, "sitemap.xml"), []byte(output.String()), 0o644)
+}
+
+// writeRobots writes robots.txt according to the configured static-site policy.
+func writeRobots(config Config) error {
+	if config.RobotsPolicy == domain.RobotsPolicyNone {
+		return nil
+	}
+
+	var output strings.Builder
+	output.WriteString("User-agent: *\n")
+
+	switch config.RobotsPolicy {
+	case domain.RobotsPolicyAllow:
+		output.WriteString("Allow: /\n")
+		if sitemap := staticSitemapURL(config.SiteURL); sitemap != "" {
+			output.WriteString("Sitemap: ")
+			output.WriteString(sitemap)
+			output.WriteByte('\n')
+		}
+	case domain.RobotsPolicyDisallow:
+		output.WriteString("Disallow: /\n")
+	default:
+		return fmt.Errorf("unsupported robots policy %q", config.RobotsPolicy)
+	}
+
+	return os.WriteFile(outputFile(config.OutputDir, "robots.txt"), []byte(output.String()), 0o644)
+}
+
+// staticSitemapURL returns the public sitemap URL when site_url is absolute.
+func staticSitemapURL(siteURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(siteURL))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+
+	basePath, err := staticBasePath(siteURL)
+	if err != nil {
+		return ""
+	}
+
+	parsed.Path = path.Join(basePath, "sitemap.xml")
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+
+	return parsed.String()
 }
 
 // compareSearchEntries orders search results by case-insensitive page title.

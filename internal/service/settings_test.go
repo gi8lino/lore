@@ -64,7 +64,8 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		settings := NewSettings(repository, nil)
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
-			Rendering: domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+			Rendering:    domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+			RobotsPolicy: domain.RobotsPolicyDisallow,
 			ExternalLinks: []domain.ExternalLink{{
 				Label:       " Repository ",
 				URL:         " https://github.com/gi8lino/lore ",
@@ -89,6 +90,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
 			Rendering:     domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+			RobotsPolicy:  domain.RobotsPolicyDisallow,
 			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "javascript:alert(1)"}},
 		}, 7)
 
@@ -105,6 +107,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 
 		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
 			Rendering:     domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+			RobotsPolicy:  domain.RobotsPolicyDisallow,
 			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}},
 		}, 7)
 
@@ -112,6 +115,21 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "Choose external link icons from the available icon catalog.", validation.UserMessage())
 	})
+}
+
+func TestSaveApplicationSettingsValidatesRobotsPolicy(t *testing.T) {
+	t.Parallel()
+
+	settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
+	err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+		RobotsPolicy: "invalid",
+		Rendering:    domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+	}, 7)
+
+	validation, ok := errors.AsType[*domain.ValidationError](err)
+	require.True(t, ok)
+	assert.Equal(t, "robots_policy", validation.Fields[0].Field)
+	assert.Equal(t, "Choose a valid robots.txt policy.", validation.UserMessage())
 }
 
 func TestSaveApplicationSettingsValidatesTypographySize(t *testing.T) {

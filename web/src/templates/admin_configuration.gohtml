@@ -79,6 +79,16 @@
           </label>
 
           <label>
+            robots.txt
+            <select name="robots_policy">
+              <option value="disallow" {{ if eq .ApplicationSettings.RobotsPolicy "disallow" }}selected{{ end }}>Disallow crawling</option>
+              <option value="allow" {{ if eq .ApplicationSettings.RobotsPolicy "allow" }}selected{{ end }}>Allow crawling</option>
+              <option value="none" {{ if eq .ApplicationSettings.RobotsPolicy "none" }}selected{{ end }}>Disabled</option>
+            </select>
+            <small>Controls the public <code>/robots.txt</code> response. Lore defaults to disallowing crawling.</small>
+          </label>
+
+          <label>
             Default typography size
             <select name="default_typography_size">
               <option value="compact" {{ if eq .ApplicationSettings.Rendering.DefaultTypographySize "compact" }}selected{{ end }}>Compact</option>

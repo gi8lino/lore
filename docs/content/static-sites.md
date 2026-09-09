@@ -34,6 +34,7 @@ output_dir = "site"
 theme = "Light"
 language = "en"
 mermaid = true
+robots = "allow"
 
 logo = "../branding/logo.svg"
 favicon = "../branding/favicon.svg"
@@ -50,6 +51,8 @@ description = "v2.4.1"
 `logo`, `favicon`, `favicon_ico`, and `assets_dir` are resolved relative to the configuration file. Normal relative paths, including `../`, are supported, so assets may live in a parent directory. Absolute paths are supported too. `source_dir` and `output_dir` are resolved relative to the process working directory.
 
 `site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
+
+`robots` controls generated crawler guidance. `allow` writes a `robots.txt` that permits crawling and links to `sitemap.xml` when `site_url` is absolute. `disallow` writes `Disallow: /`, while `none` omits the file entirely. Static builds default to `allow`; the regular Lore application has its own administrator-controlled setting and defaults to `disallow`.
 
 `external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional icon identifier and `description` is optional secondary text such as a version, environment, or provider name. Icon identifiers explicitly include their source: use `-lucide` for Lucide interface icons and `-simple` for Simple Icons brand logos, for example `book-open-lucide` or `github-simple`. Multiple entries are rendered in configuration order.
 
@@ -122,7 +125,8 @@ A static build includes:
 - `search-index.json` for browser-side search;
 - source assets such as images;
 - `.nojekyll` for GitHub Pages;
-- `sitemap.xml` when `site_url` is an absolute HTTP(S) URL.
+- `sitemap.xml` when `site_url` is an absolute HTTP(S) URL;
+- `robots.txt` unless `robots = "none"`.
 
 It intentionally does **not** ship the Lore editor, authentication, account menus, admin UI, drafts, notifications, API tokens, or write APIs. The output is ordinary static files and can be hosted by GitHub Pages, Cloudflare Pages, S3-compatible storage, or any web server.
 

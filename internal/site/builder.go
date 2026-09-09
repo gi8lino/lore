@@ -323,7 +323,10 @@ func (b *builder) writeSupportFiles(plan buildPlan, common viewData, searchIndex
 	if err := writeNotFoundPage(plan, common); err != nil {
 		return err
 	}
-	return writeSitemap(plan.config, plan.pages)
+	if err := writeSitemap(plan.config, plan.pages); err != nil {
+		return err
+	}
+	return writeRobots(plan.config)
 }
 
 // writeSearchPage renders the browser-side static search page.

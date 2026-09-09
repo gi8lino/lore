@@ -160,6 +160,9 @@ func (s *Settings) SaveApplicationSettings(
 	if !domain.ValidTypographySize(settings.Rendering.DefaultTypographySize) {
 		return domain.NewValidationError("default_typography_size", "Choose a valid default typography size.")
 	}
+	if !domain.ValidRobotsPolicy(settings.RobotsPolicy) {
+		return domain.NewValidationError("robots_policy", "Choose a valid robots.txt policy.")
+	}
 
 	externalLinks, err := normalizeExternalLinks(settings.ExternalLinks)
 	if err != nil {

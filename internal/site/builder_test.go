@@ -238,6 +238,12 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("robots.txt", func(t *testing.T) {
+		robots, err := os.ReadFile(filepath.Join(output, filepath.FromSlash("robots.txt")))
+		require.NoError(t, err)
+		assert.Equal(t, "User-agent: *\nAllow: /\nSitemap: https://example.com/docs/sitemap.xml\n", string(robots))
+	})
+
 	t.Run("images/logo.png", func(t *testing.T) {
 		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("images/logo.png")))
 		assert.NoError(t, err)
@@ -253,6 +259,37 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	t.Run("assets/js/static.js", func(t *testing.T) {
 		_, err := os.Stat(filepath.Join(output, filepath.FromSlash("assets/js/static.js")))
 		assert.NoError(t, err)
+	})
+}
+
+func TestWriteRobots(t *testing.T) {
+	t.Parallel()
+
+	t.Run("disallows indexing", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.OutputDir = t.TempDir()
+		config.RobotsPolicy = domain.RobotsPolicyDisallow
+
+		require.NoError(t, writeRobots(config))
+
+		robots, err := os.ReadFile(filepath.Join(config.OutputDir, "robots.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "User-agent: *\nDisallow: /\n", string(robots))
+	})
+
+	t.Run("can be disabled", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.OutputDir = t.TempDir()
+		config.RobotsPolicy = domain.RobotsPolicyNone
+
+		require.NoError(t, writeRobots(config))
+
+		_, err := os.Stat(filepath.Join(config.OutputDir, "robots.txt"))
+		assert.ErrorIs(t, err, os.ErrNotExist)
 	})
 }
 

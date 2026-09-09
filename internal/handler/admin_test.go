@@ -24,6 +24,7 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 		"allow_user_registration":   {"on"},
 		"discussions_enabled":       {"on"},
 		"default_typography_size":   {" compact "},
+		"robots_policy":             {" disallow "},
 		"external_link_label":       {" Repository ", "Status"},
 		"external_link_url":         {" https://github.com/gi8lino/lore ", "https://status.example.test"},
 		"external_link_icon":        {" github-simple ", ""},
@@ -39,6 +40,7 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 	assert.True(t, settings.AllowUserRegistration)
 	assert.True(t, settings.DiscussionsEnabled)
 	assert.Equal(t, domain.TypographySizeCompact, settings.Rendering.DefaultTypographySize)
+	assert.Equal(t, domain.RobotsPolicyDisallow, settings.RobotsPolicy)
 	assert.Equal(t, []domain.ExternalLink{
 		{Label: "Repository", URL: "https://github.com/gi8lino/lore", Icon: "github-simple", Description: "v2.4.1"},
 		{Label: "Status", URL: "https://status.example.test"},

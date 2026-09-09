@@ -373,6 +373,7 @@ SELECT
   pdf_url,
   external_links,
   default_typography_size,
+  robots_policy,
   auth_mode,
   oidc_issuer,
   oidc_client_id,
@@ -410,6 +411,7 @@ WHERE singleton=true`).Scan(
 		&settings.PDFURL,
 		&externalLinks,
 		&settings.Rendering.DefaultTypographySize,
+		&settings.RobotsPolicy,
 		&settings.Authentication.Mode,
 		&settings.Authentication.OIDCIssuer,
 		&settings.Authentication.OIDCClientID,
@@ -460,14 +462,15 @@ func (s *Store) SaveApplicationSettings(ctx context.Context, settings domain.App
 	}
 
 	_, err = s.pool.Exec(ctx, `
-INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,external_links,default_typography_size,updated_at)
-VALUES(true,$1,$2,$3::jsonb,$4,now())
+INSERT INTO application_settings(singleton,allow_user_registration,discussions_enabled,external_links,default_typography_size,robots_policy,updated_at)
+VALUES(true,$1,$2,$3::jsonb,$4,$5,now())
 ON CONFLICT(singleton) DO UPDATE
 SET allow_user_registration=EXCLUDED.allow_user_registration,
     discussions_enabled=EXCLUDED.discussions_enabled,
     external_links=EXCLUDED.external_links,
     default_typography_size=EXCLUDED.default_typography_size,
-    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled, string(externalLinks), settings.Rendering.DefaultTypographySize)
+    robots_policy=EXCLUDED.robots_policy,
+    updated_at=now()`, settings.AllowUserRegistration, settings.DiscussionsEnabled, string(externalLinks), settings.Rendering.DefaultTypographySize, settings.RobotsPolicy)
 	return err
 }
 

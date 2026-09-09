@@ -31,6 +31,7 @@ type Config struct {
 	Theme         string                `toml:"theme"`
 	Language      string                `toml:"language"`
 	Mermaid       bool                  `toml:"mermaid"`
+	RobotsPolicy  string                `toml:"robots"`
 	ExternalLinks []domain.ExternalLink `toml:"external_links"`
 	logFormat     logging.LogFormat
 }
@@ -38,13 +39,14 @@ type Config struct {
 // defaultConfig returns generic zero-infrastructure static site defaults.
 func defaultConfig() Config {
 	return Config{
-		SiteName:  "Documentation",
-		SourceDir: "docs",
-		OutputDir: "site",
-		Theme:     themes.DefaultTheme,
-		Language:  "en",
-		Mermaid:   true,
-		logFormat: logging.LogFormatJSON,
+		SiteName:     "Documentation",
+		SourceDir:    "docs",
+		OutputDir:    "site",
+		Theme:        themes.DefaultTheme,
+		Language:     "en",
+		Mermaid:      true,
+		RobotsPolicy: domain.RobotsPolicyAllow,
+		logFormat:    logging.LogFormatJSON,
 	}
 }
 
@@ -100,6 +102,9 @@ func (c *Config) validate() error {
 	}
 	if err := c.validateBrandingFormats(); err != nil {
 		return err
+	}
+	if !domain.ValidRobotsPolicy(c.RobotsPolicy) {
+		return errors.New("robots must be allow, disallow, or none")
 	}
 	return c.validateExternalLinks()
 }
@@ -284,6 +289,9 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 	theme := flags.String("theme", defaults.Theme, "Theme").Placeholder("THEME")
 	language := flags.String("language", defaults.Language, "HTML content language").Placeholder("LANG")
 	mermaid := flags.Bool("mermaid", defaults.Mermaid, "Enable Mermaid rendering").Strict()
+	robots := flags.String("robots", defaults.RobotsPolicy, "robots.txt policy").
+		Choices(domain.RobotsPolicyAllow, domain.RobotsPolicyDisallow, domain.RobotsPolicyNone).
+		Placeholder("POLICY")
 	logFormat := flags.String("log-format", string(defaults.logFormat), "Log output format").
 		Choices(string(logging.LogFormatText), string(logging.LogFormatJSON)).
 		Short("l").
@@ -315,6 +323,9 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 		}
 		if mermaid.Changed() {
 			cfg.Mermaid = *mermaid.Value()
+		}
+		if robots.Changed() {
+			cfg.RobotsPolicy = *robots.Value()
 		}
 		cfg.logFormat = logging.LogFormat(*logFormat.Value())
 
