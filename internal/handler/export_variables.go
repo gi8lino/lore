@@ -106,7 +106,7 @@ func PreviewPageExport(
 
 // writeRenderedExportProblem translates expected rendered-export failures and hides infrastructure errors.
 func writeRenderedExportProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if writeValidationProblem(w, err, "Export validation failed.") {
+	if tryWriteValidationProblem(w, err, "Export validation failed.") {
 		return
 	}
 	if _, ok := errors.AsType[*exportMediaError](err); ok {

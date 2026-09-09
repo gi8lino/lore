@@ -207,7 +207,7 @@ func TestErrorTranslatorsUseProblemResponses(t *testing.T) {
 
 		response := httptest.NewRecorder()
 
-		writePageSaveProblem(
+		writePageProblem(
 			slog.New(slog.NewTextHandler(io.Discard, nil)),
 			response,
 			domain.ErrForbidden,
@@ -252,7 +252,7 @@ func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
 	t.Run("Revision not found.", func(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
-		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrRevisionNotFound))
+		writePageProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrRevisionNotFound))
 		assert.Equal(t, http.StatusNotFound, response.Code)
 		assert.Contains(t, response.Body.String(), "Revision not found.")
 	})
@@ -260,7 +260,7 @@ func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
 	t.Run("Comment not found.", func(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
-		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrCommentNotFound))
+		writePageProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", domain.ErrCommentNotFound))
 		assert.Equal(t, http.StatusNotFound, response.Code)
 		assert.Contains(t, response.Body.String(), "Comment not found.")
 	})
@@ -268,7 +268,7 @@ func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
 	t.Run(`"owner_group_id"`, func(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
-		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "owner_group_id"}))
+		writePageProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "owner_group_id"}))
 		assert.Equal(t, http.StatusForbidden, response.Code)
 		assert.Contains(t, response.Body.String(), `"owner_group_id"`)
 	})
@@ -276,7 +276,7 @@ func TestPageProblemsPreserveResourceAndFieldContext(t *testing.T) {
 	t.Run(`"group_ids"`, func(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
-		writePageSaveProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "group_ids"}))
+		writePageProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("operation: %w", &domain.GroupAssignmentError{Field: "group_ids"}))
 		assert.Equal(t, http.StatusForbidden, response.Code)
 		assert.Contains(t, response.Body.String(), `"group_ids"`)
 	})
@@ -288,7 +288,7 @@ func TestValidationResponseDoesNotExposeCause(t *testing.T) {
 	err := domain.NewValidationError("group_ids", "Choose an existing group.")
 	err.Cause = cause
 	response := httptest.NewRecorder()
-	assert.True(t, writeValidationProblem(response, fmt.Errorf("update: %w", err), "Validation failed."))
+	assert.True(t, tryWriteValidationProblem(response, fmt.Errorf("update: %w", err), "Validation failed."))
 	assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 	assert.Contains(t, response.Body.String(), "Choose an existing group.")
 	assert.NotContains(t, response.Body.String(), cause.Error())
@@ -322,4 +322,11 @@ func TestUserErrorMessage(t *testing.T) {
 		assert.False(t, ok)
 		assert.Empty(t, message)
 	})
+}
+
+func TestGenericPageProhibitionDoesNotImplyGroupAssignment(t *testing.T) {
+	response := httptest.NewRecorder()
+	writePageProblem(slog.New(slog.NewTextHandler(io.Discard, nil)), response, fmt.Errorf("save: %w", domain.ErrForbidden))
+	assert.Equal(t, http.StatusForbidden, response.Code)
+	assert.JSONEq(t, `{"error":"The page operation is not permitted.","problems":{}}`, response.Body.String())
 }

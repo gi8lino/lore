@@ -44,7 +44,7 @@ func SaveAdminPDFSettings(settingsUseCases settingsService, logger *slog.Logger)
 
 		headers, err := pdfHeadersFromForm(r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid PDF settings form.", "pdf_headers", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid PDF settings form.", "pdf_headers", err) {
 				return
 			}
 
@@ -96,7 +96,7 @@ func TestAdminPDFService(settingsUseCases settingsService, logger *slog.Logger) 
 
 		inputs, err := pdfHeadersFromForm(r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid PDF service test request.", "pdf_headers", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid PDF service test request.", "pdf_headers", err) {
 				return
 			}
 
@@ -106,7 +106,7 @@ func TestAdminPDFService(settingsUseCases settingsService, logger *slog.Logger) 
 
 		headers, err := settingsUseCases.ResolvePDFRequestHeaders(r.Context(), inputs)
 		if err != nil {
-			if writeValidationProblem(w, err, "PDF service test failed.") {
+			if tryWriteValidationProblem(w, err, "PDF service test failed.") {
 				return
 			}
 
@@ -154,7 +154,7 @@ func RevealAdminPDFHeader(settingsUseCases settingsService, logger *slog.Logger)
 
 		value, err := settingsUseCases.RevealPDFHeader(r.Context(), id)
 		if err != nil {
-			if writeValidationProblem(w, err, "PDF header reveal failed.") {
+			if tryWriteValidationProblem(w, err, "PDF header reveal failed.") {
 				return
 			}
 			if errors.Is(err, domain.ErrNotFound) {

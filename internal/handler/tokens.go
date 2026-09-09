@@ -170,7 +170,7 @@ func parseTokenForm(r *http.Request) (name string, expiration *time.Time, err er
 
 // writeTokenFormError writes browser-facing token form parsing and validation errors.
 func writeTokenFormError(w http.ResponseWriter, err error) {
-	if writeRequestProblem(w, http.StatusBadRequest, "Token validation failed.", "", err) {
+	if tryWriteRequestProblem(w, http.StatusBadRequest, "Token validation failed.", "", err) {
 		return
 	}
 
@@ -179,7 +179,7 @@ func writeTokenFormError(w http.ResponseWriter, err error) {
 
 // writeTokenCreateProblem translates token validation and owner lookup failures.
 func writeTokenCreateProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if writeValidationProblem(w, err, "Token validation failed.") {
+	if tryWriteValidationProblem(w, err, "Token validation failed.") {
 		return
 	}
 	switch {

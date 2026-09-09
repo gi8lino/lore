@@ -352,7 +352,7 @@ func SavePageForm(
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Page validation failed.", "", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Page validation failed.", "", err) {
 				return
 			}
 
@@ -380,7 +380,7 @@ func SavePageForm(
 			Actor:              user,
 		})
 		if err != nil {
-			writePageSaveProblem(views.logger, w, err)
+			writePageProblem(views.logger, w, err)
 			return
 		}
 
@@ -543,7 +543,7 @@ func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 			httpresponse.NewFieldProblem(assignment.Field, "Choose groups you are allowed to assign."))
 		return
 	}
-	if writeValidationProblem(w, err, "Page validation failed.") {
+	if tryWriteValidationProblem(w, err, "Page validation failed.") {
 		return
 	}
 	switch {
@@ -572,20 +572,4 @@ func writePageProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
 	default:
 		writeInternalServerError(logger, w, err)
 	}
-}
-
-// writePageSaveProblem translates errors specific to creating or updating a page.
-func writePageSaveProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if _, typed := errors.AsType[*domain.GroupAssignmentError](err); !typed && errors.Is(err, domain.ErrForbidden) {
-		httpresponse.Problem(w,
-			http.StatusForbidden,
-			"You cannot assign this page to one or more selected groups.",
-			httpresponse.NewFieldProblem(
-				"group_ids",
-				"One or more selected groups are not assignable by this user.",
-			),
-		)
-		return
-	}
-	writePageProblem(logger, w, err)
 }

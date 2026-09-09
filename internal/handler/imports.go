@@ -78,7 +78,7 @@ func ImportPages(pageUseCases pageImportService, logger *slog.Logger) http.Handl
 
 		format, err := parseImportFormat(r.FormValue("format"))
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Import validation failed.", "format", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Import validation failed.", "format", err) {
 				return
 			}
 

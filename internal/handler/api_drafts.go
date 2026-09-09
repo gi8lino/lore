@@ -38,7 +38,7 @@ func SavePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		request, err := decode[pageDraftRequest](w, r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid draft request.", "request", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid draft request.", "request", err) {
 				return
 			}
 
@@ -79,7 +79,7 @@ func DeletePageDraft(draftUseCases editorDraftService, logger *slog.Logger) http
 
 // writeDraftProblem translates private-draft failures into structured HTTP problems.
 func writeDraftProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if writeValidationProblem(w, err, "Draft validation failed.") {
+	if tryWriteValidationProblem(w, err, "Draft validation failed.") {
 		return
 	}
 	switch {

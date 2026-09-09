@@ -70,7 +70,7 @@ func DeleteSavedSearch(knowledgeUseCases savedSearchService, logger *slog.Logger
 
 // writeSavedSearchProblem translates failures for searches owned by the current user.
 func writeSavedSearchProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if writeValidationProblem(w, err, "Saved search validation failed.") {
+	if tryWriteValidationProblem(w, err, "Saved search validation failed.") {
 		return
 	}
 	switch {

@@ -235,7 +235,7 @@ func SaveNavigationState(preferenceUseCases preferenceService, logger *slog.Logg
 
 		request, err := decode[navigationStateRequest](w, r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid navigation state.", "expanded", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid navigation state.", "expanded", err) {
 				return
 			}
 
@@ -274,7 +274,7 @@ func SaveSidebarWidth(preferenceUseCases preferenceService, logger *slog.Logger)
 
 		request, err := decode[sidebarWidthRequest](w, r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid sidebar width.", "width", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid sidebar width.", "width", err) {
 				return
 			}
 
@@ -311,7 +311,7 @@ func writePasswordChangeProblem(logger *slog.Logger, w http.ResponseWriter, err 
 
 // writePreferencesProblem translates persisted preference validation failures.
 func writePreferencesProblem(logger *slog.Logger, w http.ResponseWriter, err error) {
-	if writeValidationProblem(w, err, "Preferences validation failed.") {
+	if tryWriteValidationProblem(w, err, "Preferences validation failed.") {
 		return
 	}
 	writeInternalServerError(logger, w, err)

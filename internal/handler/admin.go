@@ -646,7 +646,7 @@ func SaveAdminAuthentication(
 		}
 
 		if err := browserAuth.Validate(r.Context(), effective); err != nil {
-			if writeValidationProblem(w, err, "Authentication validation failed.") {
+			if tryWriteValidationProblem(w, err, "Authentication validation failed.") {
 				return
 			}
 
@@ -1265,7 +1265,7 @@ func hasGroupID(groups []domain.Group, id int64) bool {
 
 // writeAdminProblem translates expected administration errors into HTTP problems.
 func writeAdminProblem(logger *slog.Logger, w http.ResponseWriter, err error, object string) {
-	if writeValidationProblem(w, err, object+" validation failed.") {
+	if tryWriteValidationProblem(w, err, object+" validation failed.") {
 		return
 	}
 	switch {
@@ -1274,7 +1274,7 @@ func writeAdminProblem(logger *slog.Logger, w http.ResponseWriter, err error, ob
 	case errors.Is(err, domain.ErrAlreadyExists):
 		httpresponse.Problem(w, http.StatusConflict, object+" already exists.")
 	case errors.Is(err, domain.ErrForbidden):
-		httpresponse.Problem(w, http.StatusForbidden, object+" cannot be changed in its current state.")
+		httpresponse.Problem(w, http.StatusForbidden, object+" operation is not permitted.")
 	default:
 		writeInternalServerError(logger, w, err)
 	}
@@ -1412,7 +1412,7 @@ func AddAdminGroupMember(
 
 		request, err := decode[groupMemberRequest](w, r)
 		if err != nil {
-			if writeRequestProblem(w, http.StatusBadRequest, "Invalid member request.", "request", err) {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid member request.", "request", err) {
 				return
 			}
 

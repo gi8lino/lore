@@ -63,8 +63,8 @@ func userErrorMessage(err error) (string, bool) {
 	return message, message != ""
 }
 
-// writeRequestProblem maps a typed transport-validation error to an HTTP problem.
-func writeRequestProblem(w http.ResponseWriter, status int, title, defaultField string, err error) bool {
+// tryWriteRequestProblem maps a typed transport-validation error to an HTTP problem.
+func tryWriteRequestProblem(w http.ResponseWriter, status int, title, defaultField string, err error) bool {
 	requestErr, ok := errors.AsType[*requestError](err)
 	if !ok {
 		return false
@@ -93,8 +93,8 @@ func writeRequestProblem(w http.ResponseWriter, status int, title, defaultField 
 	return true
 }
 
-// writeValidationProblem maps application validation failures to field problems.
-func writeValidationProblem(w http.ResponseWriter, err error, title string) bool {
+// tryWriteValidationProblem maps application validation failures to field problems.
+func tryWriteValidationProblem(w http.ResponseWriter, err error, title string) bool {
 	validation, ok := errors.AsType[*domain.ValidationError](err)
 	if !ok {
 		return false
