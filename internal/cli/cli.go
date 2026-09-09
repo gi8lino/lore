@@ -88,6 +88,7 @@ func Run(
 
 			return nil
 		default:
+			_, _ = fmt.Fprintln(stderr, err)
 			return err
 		}
 	}

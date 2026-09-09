@@ -42,3 +42,18 @@ func TestRunShowsBuildHelp(t *testing.T) {
 	assert.Contains(t, stdout.String(), "--config")
 	assert.Contains(t, stdout.String(), "--site-name")
 }
+
+func TestRunPrintsConfigurationErrors(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	err := Run(context.Background(), []string{
+		"serve",
+		"--database-url", "postgres://example/lore",
+		"--encryption-key", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	}, nil, "test", "deadbeef", &stdout, &stderr)
+
+	require.ErrorContains(t, err, "encryption key must be a base64-encoded 32-byte value")
+	assert.Equal(t, err.Error()+"\n", stderr.String())
+	assert.Empty(t, stdout.String())
+}
