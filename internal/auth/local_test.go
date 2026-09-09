@@ -11,13 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidLocalPassword(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, ValidLocalPassword("short"))
-	assert.True(t, ValidLocalPassword("twelve-chars!"))
-}
-
 func TestLocalPasswordHash(t *testing.T) {
 	t.Parallel()
 

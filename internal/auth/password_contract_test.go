@@ -11,6 +11,7 @@ import (
 
 func TestLocalPasswordSharedContract(t *testing.T) {
 	t.Parallel()
+
 	data, err := os.ReadFile("../../test/contracts/passwords.json")
 	require.NoError(t, err)
 
@@ -23,6 +24,7 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.NotContains(t, fixturesByName, fixture.Name, "shared fixture names must be unique")
 		fixturesByName[fixture.Name] = fixture
 	}
+
 	// Fail when the shared contract grows without a corresponding explicit subtest.
 	require.Len(t, fixturesByName, 10)
 
@@ -33,7 +35,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("minimum", func(t *testing.T) {
@@ -43,7 +44,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("ascii-limit", func(t *testing.T) {
@@ -53,7 +53,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("ascii-too-long", func(t *testing.T) {
@@ -63,7 +62,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("six-emoji", func(t *testing.T) {
@@ -73,7 +71,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("twelve-emoji", func(t *testing.T) {
@@ -83,7 +80,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("emoji-limit", func(t *testing.T) {
@@ -93,7 +89,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("emoji-too-long", func(t *testing.T) {
@@ -103,7 +98,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("accent-limit", func(t *testing.T) {
@@ -113,7 +107,6 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 
 	t.Run("accent-too-long", func(t *testing.T) {
@@ -123,12 +116,11 @@ func TestLocalPasswordSharedContract(t *testing.T) {
 		require.True(t, ok, "shared fixture is missing")
 
 		assert.Equal(t, fixture.Problem, LocalPasswordProblem(fixture.Password))
-		assert.Equal(t, fixture.Problem == "", ValidLocalPassword(fixture.Password))
 	})
 }
 
-func TestLocalPasswordRejectsInvalidUTF8(t *testing.T) {
+func TestLocalPasswordProblemRejectsInvalidUTF8(t *testing.T) {
 	t.Parallel()
 
-	assert.False(t, ValidLocalPassword("valid-length-"+string([]byte{0xff})))
+	assert.Equal(t, "Use valid UTF-8 characters.", LocalPasswordProblem("valid-length-"+string([]byte{0xff})))
 }
