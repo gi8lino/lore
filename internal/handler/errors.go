@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/containeroo/uuidv7"
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 )
@@ -110,37 +109,7 @@ func tryWriteValidationProblem(w http.ResponseWriter, err error, title string) b
 	return true
 }
 
-// writeInternalServerError logs a failure and writes a safe HTTP 500 response with a reference ID.
+// writeInternalServerError reports an unexpected failure through the shared HTTP boundary.
 func writeInternalServerError(logger *slog.Logger, w http.ResponseWriter, err error) {
-	reference, referenceErr := uuidv7.New()
-	if referenceErr != nil {
-		logger.Error(
-			"generate error reference",
-			"event", "error_reference_failed",
-			"error", referenceErr,
-		)
-		logger.Error(
-			"request failed",
-			"event", "request_failed",
-			"error", err,
-		)
-
-		httpresponse.Problem(w,
-			http.StatusInternalServerError,
-			"The request could not be processed.",
-		)
-		return
-	}
-
-	logger.Error(
-		"request failed",
-		"event", "request_failed",
-		"error_reference", reference,
-		"error", err,
-	)
-
-	httpresponse.Problem(w,
-		http.StatusInternalServerError,
-		"The request could not be processed. Reference: "+reference,
-	)
+	httpresponse.InternalServerError(logger, w, err)
 }

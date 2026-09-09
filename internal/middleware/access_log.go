@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/gi8lino/lore/internal/httpresponse"
 	"log/slog"
 	"net/http"
 	"time"
@@ -13,7 +14,11 @@ func AccessLog(logger *slog.Logger) Middleware {
 			started := time.Now()
 
 			next.ServeHTTP(w, r)
-			logger.Info(
+			requestLogger := logger
+			if request, ok := w.(*httpresponse.RequestWriter); ok && request.ErrorReference != "" {
+				requestLogger = logger.With("error_reference", request.ErrorReference)
+			}
+			requestLogger.Info(
 				"request",
 				"event",
 				"request_complete",

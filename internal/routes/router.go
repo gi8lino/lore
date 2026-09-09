@@ -88,7 +88,7 @@ func New(
 		editorAuthz,
 	)
 
-	middlewares := make([]middleware.Middleware, 0, 4)
+	middlewares := []middleware.Middleware{middleware.RequestContext()}
 
 	if accessLog {
 		middlewares = append(middlewares, middleware.AccessLog(logger))

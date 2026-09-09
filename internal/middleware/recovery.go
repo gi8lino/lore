@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -13,18 +14,17 @@ func RecoverPanics(logger *slog.Logger) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					logger.Error(
-						"request panic",
-						"event",
-						"request_panic",
-						"method",
-						r.Method,
-						"path",
-						r.URL.Path,
-						"error",
-						recovered,
-					)
-					httpresponse.Problem(w, http.StatusInternalServerError, "The request could not be processed.")
+					if recovered == http.ErrAbortHandler {
+						panic(recovered)
+					}
+					committed := false
+					if response, ok := w.(*httpresponse.RequestWriter); ok {
+						committed = response.Status != 0
+					}
+					httpresponse.InternalServerError(logger.With("operation", "request_panic"), w, fmt.Errorf("request panic: %v", recovered))
+					if committed {
+						panic(http.ErrAbortHandler)
+					}
 				}
 			}()
 			next.ServeHTTP(w, r)
