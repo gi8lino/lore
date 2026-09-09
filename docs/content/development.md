@@ -18,6 +18,31 @@ make screenshots
 
 `make run`, `make build`, and frontend-related checks ensure npm dependencies exist before invoking TypeScript. `web/dist` is generated and ignored by Git.
 
+Local startup requires Python 3 for `scripts/dev-port.py`. Named ports are saved in the Git-ignored `.dev-ports.json` and reused across Make invocations. This supports starting components separately:
+
+```sh
+make dev-build
+make postgres
+make html-pdf
+make serve
+```
+
+`make run` builds and starts everything together and opens the browser once Lore responds. `make open` can also be run from another terminal. `make ports` prints saved addresses.
+
+Override and save fixed ports:
+
+```sh
+make ports LORE_ASSIGNED_PORT=8080 DB_ASSIGNED_PORT=5433 PDF_ASSIGNED_PORT=8081
+```
+
+The helper can also be used directly: `python3 scripts/dev-port.py postgres` retrieves a saved port, and `python3 scripts/dev-port.py postgres --port 5433` saves an explicit assignment. Stop services before `make ports-reset`. Saved ports are reused even when occupied, and are not reserved between runs.
+
+The port helper is vendored from [gi8lino/dev-port](https://github.com/gi8lino/dev-port),
+release `v0.1.0`, so normal commands work offline. To upgrade, change
+`DEV_PORT_REF` in the Makefile to the desired release commit and run
+`make dev-port-update`. Review and commit the updated pin and script together.
+Helper tests are maintained in the upstream repository.
+
 ## Frontend
 
 All authored frontend code is TypeScript under `web/src/ts`; frontend tests are TypeScript under `test/ts`. `tsc` emits native ES modules into `web/dist/js`. The service worker has its own TypeScript project so Web Worker types do not leak into the browser DOM project. Node-based tests likewise have a separate TypeScript configuration.

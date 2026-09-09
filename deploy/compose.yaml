@@ -40,7 +40,7 @@ services:
     volumes:
       - lore-postgres:/var/lib/postgresql
     ports:
-      - "${LORE_POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${LORE_POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lore -d lore"]
       interval: 5s

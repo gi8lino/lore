@@ -1,6 +1,6 @@
 # Makefile
 
-## Location to install Go dependencies to
+## Location to install local development tools to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -18,12 +18,25 @@ NODE_MODULES := node_modules/.package-lock.json
 
 ## Tool Binaries
 GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
+DEV_PORT := $(LOCALBIN)/dev-port
+OPEN_BROWSER := $(LOCALBIN)/open-browser
+DEV_TAG := $(LOCALBIN)/dev-tag
+GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
 
 ## Tool Versions
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.13.2
+
+# renovate: datasource=github-releases depName=gi8lino/dev-tools
+DEV_TOOLS_VERSION ?= v0.3.0
+
 # renovate: datasource=npm depName=prettier
 PRETTIER_VERSION ?= 3.9.6
+
+DEV_PORT_VERSIONED := $(DEV_PORT)-$(DEV_TOOLS_VERSION)
+OPEN_BROWSER_VERSIONED := $(OPEN_BROWSER)-$(DEV_TOOLS_VERSION)
+DEV_TAG_VERSIONED := $(DEV_TAG)-$(DEV_TOOLS_VERSION)
+GO_INSTALL_TOOL_VERSIONED := $(GO_INSTALL_TOOL)-$(DEV_TOOLS_VERSION)
 
 ## Build Configuration
 BINARY ?= lore
@@ -34,14 +47,16 @@ BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 LDFLAGS ?= -s -w -X main.Version=$(BUILD_VERSION) -X main.Commit=$(BUILD_COMMIT)
 
 # Debugging
-COMPOSE_PROJECT   ?= $(notdir $(CURDIR))
-COMPOSE_FILE      := deploy/compose.yaml
+COMPOSE_PROJECT ?= $(notdir $(CURDIR))
+COMPOSE_FILE := deploy/compose.yaml
 DB_CONTAINER_NAME ?= postgres
 PDF_CONTAINER_NAME ?= html2pdf
-# Pick random host ports for local development.
-LORE_ASSIGNED_PORT := $(shell jot -r 1 5000 6000)
-DB_ASSIGNED_PORT := $(shell jot -r 1 5000 6000)
-PDF_ASSIGNED_PORT := $(shell jot -r 1 4000 4999)
+
+# Named ports persist across separate Make invocations in this checkout.
+dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
+LORE_ASSIGNED_PORT ?= $(call dev-port,app)
+DB_ASSIGNED_PORT ?= $(call dev-port,postgres)
+PDF_ASSIGNED_PORT ?= $(call dev-port,pdf)
 
 ## Site Configuration
 SITE_CONFIG ?= docs/site.toml
@@ -52,42 +67,49 @@ SCREENSHOT_BROWSER_CHANNEL ?= chrome
 ## Formatting
 PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
 
-# Default tag prefix. Override with an empty value for unprefixed tags.
 VERSION_PREFIX ?= v
 
 ##@ Tagging
 
-# Find the latest tag with the configured prefix, or use 0.0.0 when none exists.
-LATEST_TAG = $(shell git tag --list "$(VERSION_PREFIX)*" --sort=-v:refname | head -n 1)
-VERSION = $(shell [ -n "$(LATEST_TAG)" ] && echo $(LATEST_TAG) | sed "s/^$(VERSION_PREFIX)//" || echo "0.0.0")
-
 .PHONY: patch
-patch: ## Create a new patch release (x.y.Z+1)
-	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.%d", $$1, $$2, $$3+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
-	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
+patch: dev-tools ## Create a new patch release (x.y.Z+1).
+	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" patch
 
 .PHONY: minor
-minor: ## Create a new minor release (x.Y+1.0)
-	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.%d.0", $$1, $$2+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
-	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
+minor: dev-tools ## Create a new minor release (x.Y+1.0).
+	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" minor
 
 .PHONY: major
-major: ## Create a new major release (X+1.0.0)
-	@NEW_VERSION=$$(echo "$(VERSION)" | awk -F. '{printf "%d.0.0", $$1+1}') && \
-	git tag "$(VERSION_PREFIX)$${NEW_VERSION}" && \
-	echo "Tagged $(VERSION_PREFIX)$${NEW_VERSION}"
+major: dev-tools ## Create a new major release (X+1.0.0).
+	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" major
 
 .PHONY: tag
-tag: ## Show the latest tag.
-	@echo "Latest version: $(LATEST_TAG)"
+tag: dev-tools ## Show the latest tag.
+	@echo "Latest version: $$($(DEV_TAG) --prefix "$(VERSION_PREFIX)" current)"
 
 .PHONY: push
 push: ## Push tags to the configured remote.
 	git push --tags
 
 ##@ Development
+
+.PHONY: ports-reset
+ports-reset: dev-tools ## Clear saved ports after stopping local services.
+	$(DEV_PORT) --reset
+
+.PHONY: ports
+ports: dev-tools ## Print selected local development ports.
+	@$(DEV_PORT) app --port "$(LORE_ASSIGNED_PORT)" > /dev/null
+	@$(DEV_PORT) postgres --port "$(DB_ASSIGNED_PORT)" > /dev/null
+	@$(DEV_PORT) pdf --port "$(PDF_ASSIGNED_PORT)" > /dev/null
+	@echo "Lore: http://127.0.0.1:$(LORE_ASSIGNED_PORT)/"
+	@echo "Postgres: 127.0.0.1:$(DB_ASSIGNED_PORT)"
+	@echo "PDF: http://127.0.0.1:$(PDF_ASSIGNED_PORT)/render"
+
+# Start build work only after ports are printed, including with make -j.
+.PHONY: dev-build
+dev-build: ports
+	$(MAKE) generate web
 
 .PHONY: generate
 generate: ## Generate the Lucide icon catalog from the installed Go dependency.
@@ -132,30 +154,40 @@ test-browser: check-web ## Run browser regressions in Chrome (override BROWSER_C
 	$(NODE) --test test/browser/*.test.mjs
 
 .PHONY: download
-download: $(NODE_MODULES) ## Download Go and frontend dependencies.
+download: $(NODE_MODULES) dev-tools ## Download Go, frontend, and development dependencies.
 	go mod download
 
 .PHONY: postgres
-postgres:  ## Run postgres locally.
+postgres: ports ## Run postgres locally.
 	@echo "Starting Postgres on dynamic host port: $(DB_ASSIGNED_PORT)"
 	@LORE_POSTGRES_PORT=$(DB_ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d --wait --wait-timeout 60 $(DB_CONTAINER_NAME)
 
 .PHONY: html-pdf
-html-pdf:  ## Run html2pdf locally.
+html-pdf: ports ## Run html2pdf locally.
 	@LORE_PDF_PORT=$(PDF_ASSIGNED_PORT) docker compose -f $(COMPOSE_FILE) -p $(COMPOSE_PROJECT) up -d $(PDF_CONTAINER_NAME)
 
-.PHONY: run
-run: generate web html-pdf postgres ## Run Lore locally and open the browser.
+.PHONY: serve
+serve: ports ## Run Lore using the saved ports (services and build must already be ready).
 	@echo "Starting Lore application..."
-	@open "http://localhost:$(LORE_ASSIGNED_PORT)/"
 	@LORE_POSTGRES_PORT=$(DB_ASSIGNED_PORT) go run $(COMMAND) serve \
 		--debug \
 		--access-log \
 		--listen-address="127.0.0.1:$(LORE_ASSIGNED_PORT)" \
 		--log-format text \
-		--pdf-url="http://localhost:$(PDF_ASSIGNED_PORT)/render" \
-		--database-url="postgres://lore:lore@localhost:$(DB_ASSIGNED_PORT)/lore?sslmode=disable" \
-  	$(RUN_ARGS)
+		--pdf-url="http://127.0.0.1:$(PDF_ASSIGNED_PORT)/render" \
+		--database-url="postgres://lore:lore@127.0.0.1:$(DB_ASSIGNED_PORT)/lore?sslmode=disable" \
+		$(RUN_ARGS)
+
+.PHONY: open
+open: ports ## Open the browser once Lore responds.
+	$(OPEN_BROWSER) "http://127.0.0.1:$(LORE_ASSIGNED_PORT)/"
+
+.PHONY: run
+run: dev-build html-pdf postgres ## Build, start services, and run Lore with the browser.
+	@$(OPEN_BROWSER) "http://127.0.0.1:$(LORE_ASSIGNED_PORT)/" & \
+	browser_pid=$$!; \
+	trap 'kill "$$browser_pid" 2>/dev/null || true' EXIT; \
+	$(MAKE) serve
 
 .PHONY: build
 build: generate web ## Build the Lore binary.
@@ -212,6 +244,7 @@ fmt-web: $(NODE_MODULES) ## Format CSS and TypeScript source files.
 fmt-go: generate web ## Format Go code.
 	go fmt ./...
 
+.PHONY: fmt-md
 fmt-md: ## Format Markdown files with Prettier.
 	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write README.md "docs/**/*.md"
 
@@ -231,27 +264,51 @@ lint-fix: web golangci-lint ## Run golangci-lint and apply fixes.
 $(NODE_MODULES): package.json package-lock.json
 	$(NPM) ci
 
-.PHONY: golangci-lint
-golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
+.PHONY: dev-tools
+dev-tools: \
+	$(DEV_PORT_VERSIONED) \
+	$(OPEN_BROWSER_VERSIONED) \
+	$(DEV_TAG_VERSIONED) \
+	$(GO_INSTALL_TOOL_VERSIONED) ## Download the pinned development tools.
+	@ln -sf "$(notdir $(DEV_PORT_VERSIONED))" "$(DEV_PORT)"
+	@ln -sf "$(notdir $(OPEN_BROWSER_VERSIONED))" "$(OPEN_BROWSER)"
+	@ln -sf "$(notdir $(DEV_TAG_VERSIONED))" "$(DEV_TAG)"
+	@ln -sf "$(notdir $(GO_INSTALL_TOOL_VERSIONED))" "$(GO_INSTALL_TOOL)"
 
-$(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+$(DEV_PORT_VERSIONED): | $(LOCALBIN)
+	$(call download-dev-tool,dev-port,$@)
 
-# go-install-tool installs a versioned tool and links its stable binary name.
-# $1 - target path with name of binary
-# $2 - package URL
-# $3 - version
-define go-install-tool
-@[ -f "$(1)-$(3)" ] || { \
-set -e; \
-package=$(2)@$(3) ;\
-echo "Downloading $${package}" ;\
-rm -f $(1) || true ;\
-GOBIN=$(LOCALBIN) go install $${package} ;\
-mv $(1) $(1)-$(3) ;\
-} ;\
-ln -sf $(1)-$(3) $(1)
+$(OPEN_BROWSER_VERSIONED): | $(LOCALBIN)
+	$(call download-dev-tool,open-browser,$@)
+
+$(DEV_TAG_VERSIONED): | $(LOCALBIN)
+	$(call download-dev-tool,dev-tag,$@)
+
+$(GO_INSTALL_TOOL_VERSIONED): | $(LOCALBIN)
+	$(call download-dev-tool,go-install-tool,$@)
+
+# download-dev-tool downloads a versioned tool from gi8lino/dev-tools.
+# $1 - release asset name
+# $2 - versioned destination path
+define download-dev-tool
+	@set -eu; \
+	tmp="$(2).tmp"; \
+	trap 'rm -f "$$tmp"' EXIT INT TERM; \
+	echo "Downloading gi8lino/dev-tools $(DEV_TOOLS_VERSION) $(1)"; \
+	curl --fail --silent --show-error --location \
+		"https://github.com/gi8lino/dev-tools/releases/download/$(DEV_TOOLS_VERSION)/$(1)" \
+		-o "$$tmp"; \
+	chmod +x "$$tmp"; \
+	mv "$$tmp" "$(2)"; \
+	trap - EXIT INT TERM
 endef
+
+.PHONY: golangci-lint
+golangci-lint: dev-tools ## Download golangci-lint locally if necessary.
+	$(GO_INSTALL_TOOL) \
+		--target "$(GOLANGCI_LINT)" \
+		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
+		--tool-version "$(GOLANGCI_LINT_VERSION)"
 
 ##@ General
 
