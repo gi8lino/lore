@@ -10,6 +10,7 @@ import (
 	"github.com/containeroo/tinyflags"
 	"github.com/gi8lino/lore/internal/app"
 	"github.com/gi8lino/lore/internal/config"
+	"github.com/gi8lino/lore/internal/mirror"
 	"github.com/gi8lino/lore/internal/site"
 )
 
@@ -74,6 +75,13 @@ func Run(
 			build.OverriddenValues(),
 			stdout,
 		)
+	})
+
+	mirrorCommand := root.Command("mirror", "Export PostgreSQL content as a Git-friendly Markdown mirror")
+	mirrorConfig := mirror.BindFlags(mirrorCommand.FlagSet)
+
+	mirrorCommand.Run(func(ctx context.Context) error {
+		return mirror.Run(ctx, mirrorConfig(), stdout)
 	})
 
 	runner, err := root.ParseRunner(args)
