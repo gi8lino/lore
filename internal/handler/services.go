@@ -76,6 +76,7 @@ type sidebarCatalogService interface {
 type pageViewCatalogService interface {
 	pageLookupService
 	pageSearchService
+	pageWatchReader
 	RecordView(context.Context, string, int64) error
 	IsFavorite(context.Context, string, int64) (bool, error)
 	Backlinks(context.Context, string) ([]domain.Page, error)
@@ -86,6 +87,15 @@ type pageViewCatalogService interface {
 
 type favoriteService interface {
 	SetFavorite(context.Context, string, int64, bool) error
+}
+
+type pageWatchReader interface {
+	PageWatch(context.Context, string, int64) (domain.PageWatch, error)
+}
+
+type pageWatchService interface {
+	pageWatchReader
+	SetPageWatch(context.Context, string, int64, string) error
 }
 
 type pageRevisionService interface {

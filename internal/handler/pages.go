@@ -122,6 +122,12 @@ func ViewPage(
 			return
 		}
 
+		pageWatch, err := catalogUseCases.PageWatch(r.Context(), slug, user.ID)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
@@ -228,6 +234,7 @@ func ViewPage(
 		data.BrokenLinks = brokenLinks
 		data.Comments = comments
 		data.PageFavorite = pageFavorite
+		data.PageWatchScope = pageWatch.Scope
 		data.RevisionCount = revisionCount
 
 		if revisionCount > 0 {
@@ -538,6 +545,34 @@ func FavoritePage(
 }
 
 // splitTags normalizes a comma-separated tag list.
+// WatchPage updates the current user's page or subtree subscription.
+func WatchPage(
+	catalogUseCases pageWatchService,
+	views *Views,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, _ := auth.User(r)
+		slug := strings.Trim(strings.TrimSpace(r.PathValue("slug")), "/")
+		scope := strings.TrimSpace(r.FormValue("scope"))
+
+		if scope != "" && scope != domain.PageWatchScopePage && scope != domain.PageWatchScopeSubtree {
+			httpresponse.Problem(w,
+				http.StatusUnprocessableEntity,
+				"Watch settings are invalid.",
+				httpresponse.NewFieldProblem("scope", "Choose page or subtree notifications."),
+			)
+			return
+		}
+
+		if err := catalogUseCases.SetPageWatch(r.Context(), slug, user.ID, scope); err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+
+		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
+	}
+}
+
 func splitTags(value string) []string {
 	result := make([]string, 0)
 

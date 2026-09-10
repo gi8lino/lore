@@ -24,6 +24,10 @@ var (
 )
 
 const (
+	// PageWatchScopePage subscribes to changes on one exact page.
+	PageWatchScopePage = "page"
+	// PageWatchScopeSubtree subscribes to the selected page path and descendants.
+	PageWatchScopeSubtree = "subtree"
 	// NavigationStyleSidebar keeps Lore's full navigation sidebar.
 	NavigationStyleSidebar = "sidebar"
 	// NavigationStyleTopbar moves page navigation into a horizontal desktop bar.
@@ -335,6 +339,13 @@ type SavedSearch struct {
 	Name   string `json:"name"`
 	Query  string `json:"query"`
 	Pinned bool   `json:"pinned"`
+}
+
+// PageWatch is one user's subscription to a page path.
+type PageWatch struct {
+	Path      string    `json:"path"`
+	Scope     string    `json:"scope"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Notification is a lightweight user inbox item.

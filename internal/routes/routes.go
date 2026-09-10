@@ -309,6 +309,7 @@ func addRoutes(
 		browserAuthn(editorAuthz(handler.SavePageForm(pageUseCases, draftUseCases, views))),
 	)
 	mux.Handle("POST /pages/{slug...}", browserAuthn(handler.FavoritePage(catalogUseCases, views)))
+	mux.Handle("POST /page-watch/{slug...}", browserAuthn(handler.WatchPage(catalogUseCases, views)))
 	mux.Handle("GET /revisions/{slug...}", browserAuthn(handler.RevisionHistory(catalogUseCases, views)))
 	mux.Handle(
 		"POST /revisions/{number}/restore/{slug...}",

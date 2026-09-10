@@ -29,6 +29,8 @@ type catalogRepository interface {
 	PageInventory(context.Context) ([]domain.Page, error)
 	PageComments(context.Context, string) ([]domain.PageComment, error)
 	PageSlugByID(context.Context, int64) (string, error)
+	PageWatch(context.Context, string, int64) (domain.PageWatch, error)
+	SetPageWatch(context.Context, string, int64, string) error
 }
 
 // Catalog exposes page retrieval and discovery use cases.
@@ -130,4 +132,14 @@ func (s *Catalog) PageInventory(ctx context.Context) ([]domain.Page, error) {
 // PageComments returns discussion comments attached to a page.
 func (s *Catalog) PageComments(ctx context.Context, slug string) ([]domain.PageComment, error) {
 	return s.repository.PageComments(ctx, slug)
+}
+
+// PageWatch returns the current user's exact-path watch.
+func (s *Catalog) PageWatch(ctx context.Context, slug string, userID int64) (domain.PageWatch, error) {
+	return s.repository.PageWatch(ctx, slug, userID)
+}
+
+// SetPageWatch creates, changes, or removes one user's exact-path watch.
+func (s *Catalog) SetPageWatch(ctx context.Context, slug string, userID int64, scope string) error {
+	return s.repository.SetPageWatch(ctx, slug, userID, scope)
 }

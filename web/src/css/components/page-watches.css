@@ -1,0 +1,40 @@
+.page-watch-menu {
+  position: relative;
+}
+
+.page-watch-menu > summary {
+  list-style: none;
+}
+
+.page-watch-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.page-watch-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: 230px;
+  padding: 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+.page-watch-popover > strong {
+  display: block;
+  margin: 0.1rem 0 0.55rem;
+  font-size: 0.82rem;
+}
+
+.page-watch-popover form {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.page-watch-popover .button {
+  justify-content: flex-start;
+  width: 100%;
+}

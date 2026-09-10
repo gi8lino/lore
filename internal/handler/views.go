@@ -185,6 +185,8 @@ type ViewData struct {
 	Page *domain.Page
 	// PageFavorite reports whether the current user has pinned the current page.
 	PageFavorite bool
+	// PageWatchScope is page or subtree when the current user watches this path.
+	PageWatchScope string
 	// HTML is the sanitized rendered Markdown for the current page.
 	HTML template.HTML
 	// PageContents contains heading links for the current rendered page.

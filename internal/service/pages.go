@@ -71,6 +71,7 @@ type pageRepository interface {
 	MarkPageReviewed(context.Context, string) error
 	MovePage(context.Context, string, string, domain.MovePageOptions, domain.User) error
 	NotifyMentions(context.Context, int64, string, string, string) error
+	NotifyPageWatchers(context.Context, int64, string, string, string, string) error
 	ResolvePageComment(context.Context, int64, bool) error
 	Revision(context.Context, string, int) (revision.Revision, error)
 	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
@@ -111,6 +112,7 @@ func (s *Pages) Save(ctx context.Context, input PageSaveInput) (domain.Page, err
 		"Mention in "+page.Title,
 		"/pages/"+page.Slug,
 	)
+	s.notifyWatchers(ctx, input.Actor.ID, page.Slug, actionTitle(action, page.Title), "A watched page changed.", "/pages/"+page.Slug)
 
 	return page, nil
 }
@@ -208,6 +210,7 @@ func (s *Pages) Delete(ctx context.Context, slug string, actor domain.User) erro
 	}
 
 	s.recordAudit(ctx, actor.ID, "page.deleted", "page", slug, "Moved page to recycle bin")
+	s.notifyWatchers(ctx, actor.ID, slug, "Page deleted: "+slug, "A watched page was moved to the recycle bin.", "/")
 
 	return nil
 }
@@ -235,6 +238,7 @@ func (s *Pages) Move(
 	}
 
 	s.recordAudit(ctx, actor.ID, "page.moved", "page", newSlug, oldSlug+" → "+newSlug)
+	s.notifyWatchers(ctx, actor.ID, oldSlug, "Page moved: "+oldSlug, "The watched page moved to "+newSlug+".", "/pages/"+newSlug)
 
 	return nil
 }
@@ -247,6 +251,7 @@ func (s *Pages) Review(ctx context.Context, slug string, actor domain.User) erro
 	}
 
 	s.recordAudit(ctx, actor.ID, "page.reviewed", "page", slug, "Documentation review completed")
+	s.notifyWatchers(ctx, actor.ID, slug, "Page reviewed: "+slug, "A watched page was reviewed.", "/pages/"+slug)
 
 	return nil
 }
@@ -308,6 +313,7 @@ func (s *Pages) RestoreRevision(ctx context.Context, slug string, number int, ac
 		page.Slug,
 		"Restored revision "+fmt.Sprint(number),
 	)
+	s.notifyWatchers(ctx, actor.ID, page.Slug, "Revision restored: "+page.Title, "A watched page restored an older revision.", "/pages/"+page.Slug)
 
 	return page, nil
 }
@@ -332,6 +338,7 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 	}
 
 	s.notifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
+	s.notifyWatchers(ctx, actor.ID, slug, "New comment: "+slug, "A watched page has a new discussion comment.", "/pages/"+slug+"#comments")
 
 	return nil
 }
@@ -516,4 +523,15 @@ func validContentLanguage(value string) bool {
 // compareMoveSlugs puts longer paths first so descendants move before ancestors.
 func compareMoveSlugs(left, right string) int {
 	return cmp.Compare(len(right), len(left))
+}
+
+func actionTitle(action, title string) string {
+	switch action {
+	case "page.created":
+		return "Page created: " + title
+	case "page.renamed":
+		return "Page renamed: " + title
+	default:
+		return "Page updated: " + title
+	}
 }

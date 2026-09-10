@@ -32,3 +32,17 @@ func (s *Pages) notifyMentions(ctx context.Context, actorID int64, body, title, 
 		)
 	}
 }
+
+// notifyWatchers reports delivery failures without changing the primary mutation result.
+func (s *Pages) notifyWatchers(ctx context.Context, actorID int64, slug, title, body, destination string) {
+	if err := s.repository.NotifyPageWatchers(ctx, actorID, slug, title, body, destination); err != nil {
+		s.logger.ErrorContext(ctx,
+			"page watch notifications failed",
+			"event", "page_side_effect_failed",
+			"operation", "notify_watchers",
+			"actor_id", actorID,
+			"slug", slug,
+			"error", err,
+		)
+	}
+}

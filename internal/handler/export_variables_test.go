@@ -29,12 +29,15 @@ type variableExportStub struct {
 func (s variableExportStub) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
 	return s.application, nil
 }
+
 func (s variableExportStub) PDFRequestHeaders(context.Context) ([]domain.PDFHeader, error) {
 	return s.pdfHeaders, nil
 }
+
 func (s variableExportStub) NavigationPages(context.Context) ([]domain.Page, error) {
 	return s.navigationPages, nil
 }
+
 func (variableExportStub) NavigationIcons(context.Context) (map[string]string, error) {
 	return nil, nil
 }

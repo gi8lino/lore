@@ -61,6 +61,31 @@
             {{ icon "star-lucide" 17 }}
           </button>
         </form>
+        <details class="page-watch-menu">
+          <summary
+            class="button icon-only{{ if .PageWatchScope }} active{{ end }}"
+            aria-label="Watch page"
+            title="{{ if .PageWatchScope }}Watching {{ .PageWatchScope }}{{ else }}Watch page{{ end }}"
+          >
+            {{ icon "bell-lucide" 17 }}
+          </summary>
+          <div class="page-watch-popover">
+            <strong>Notifications</strong>
+            <form action="/page-watch/{{ .Page.Slug }}" method="post">
+              <button class="button compact{{ if eq .PageWatchScope "page" }} active{{ end }}" name="scope" value="page" type="submit">
+                {{ icon "file-lucide" 14 }}<span>Watch this page</span>
+              </button>
+              <button class="button compact{{ if eq .PageWatchScope "subtree" }} active{{ end }}" name="scope" value="subtree" type="submit">
+                {{ icon "folder-tree-lucide" 14 }}<span>Watch page &amp; subtree</span>
+              </button>
+              {{ if .PageWatchScope }}
+                <button class="button compact" name="scope" value="" type="submit">
+                  {{ icon "bell-off-lucide" 14 }}<span>Stop watching</span>
+                </button>
+              {{ end }}
+            </form>
+          </div>
+        </details>
         <button
           class="button icon-only"
           type="button"
@@ -505,6 +530,8 @@
     </dialog>
   {{ end }}
 {{ end }}
+
+
 
 
 
