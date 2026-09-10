@@ -18,6 +18,17 @@ func TestWikiLinksAndCallouts(t *testing.T) {
 	assert.Contains(t, got, `class="callout warning"`)
 }
 
+func TestWikiLinksSupportHeadingFragments(t *testing.T) {
+	t.Parallel()
+
+	renderer := New()
+	got, err := renderer.Render("See [[operations/postgres#Restore from backup|restore procedure]].")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `href="/pages/operations/postgres#restore-from-backup"`)
+	assert.Equal(t, []string{"operations/postgres"}, Links("[[operations/postgres#Restore from backup]]"))
+}
+
 func TestWikiLinkPrefix(t *testing.T) {
 	t.Parallel()
 

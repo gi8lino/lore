@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
+	md "github.com/gi8lino/lore/internal/markdown"
 )
 
 const maxKnowledgeExpansionDepth = 5
@@ -155,12 +156,17 @@ func expandKnowledgeMacro(
 		}
 		return item.Content, nil
 	case "include":
-		slug := strings.Trim(name, "/")
+		pageTarget, heading := md.SplitHeadingTarget(name)
+		slug := strings.Trim(pageTarget, "/")
 		if slug == "" {
 			return "", fmt.Errorf("include requires a page path")
 		}
-		if seen[slug] {
-			return "", fmt.Errorf("recursive page include %q", slug)
+		includeKey := slug
+		if heading != "" {
+			includeKey += "#" + md.HeadingID(heading)
+		}
+		if seen[includeKey] {
+			return "", fmt.Errorf("recursive page include %q", includeKey)
 		}
 		page, err := content.GetPage(ctx, slug)
 		if err != nil {
@@ -169,9 +175,16 @@ func expandKnowledgeMacro(
 			}
 			return "", err
 		}
+		markdown := page.Markdown
+		if heading != "" {
+			markdown, err = markdownSection(markdown, heading)
+			if err != nil {
+				return "", fmt.Errorf("include section %s#%s: %w", slug, heading, err)
+			}
+		}
 		nextSeen := maps.Clone(seen)
-		nextSeen[slug] = true
-		expanded, err := expandKnowledgeMarkdown(ctx, content, page.Markdown, nextSeen, depth+1)
+		nextSeen[includeKey] = true
+		expanded, err := expandKnowledgeMarkdown(ctx, content, markdown, nextSeen, depth+1)
 		if err != nil {
 			return "", fmt.Errorf("expand include %s: %w", slug, err)
 		}
@@ -179,6 +192,73 @@ func expandKnowledgeMacro(
 	default:
 		return "", fmt.Errorf("unsupported knowledge macro %q", kind)
 	}
+}
+
+// markdownSection returns one ATX-heading section, including its heading, through the next sibling or ancestor heading.
+func markdownSection(source, requested string) (string, error) {
+	requestedID := md.HeadingID(requested)
+	lines := strings.Split(source, "\n")
+	start := -1
+	level := 0
+	fence := ""
+
+	for index, line := range lines {
+		trimmed := strings.TrimLeft(line, " ")
+		if marker := renderFenceMarker(trimmed); marker != "" {
+			if fence == "" {
+				fence = marker
+			} else if strings.HasPrefix(trimmed, fence) {
+				fence = ""
+			}
+			continue
+		}
+		if fence != "" {
+			continue
+		}
+
+		headingLevel, title, ok := atxHeading(line)
+		if !ok {
+			continue
+		}
+		if start < 0 {
+			if md.HeadingID(title) == requestedID {
+				start = index
+				level = headingLevel
+			}
+			continue
+		}
+		if headingLevel <= level {
+			return strings.Join(lines[start:index], "\n"), nil
+		}
+	}
+
+	if start < 0 {
+		return "", fmt.Errorf("heading %q not found", requested)
+	}
+	return strings.Join(lines[start:], "\n"), nil
+}
+
+// atxHeading parses a Markdown ATX heading without interpreting fenced code.
+func atxHeading(line string) (level int, title string, ok bool) {
+	trimmed := strings.TrimLeft(line, " ")
+	indent := len(line) - len(trimmed)
+	if indent > 3 || !strings.HasPrefix(trimmed, "#") {
+		return 0, "", false
+	}
+	for level < len(trimmed) && level < 6 && trimmed[level] == '#' {
+		level++
+	}
+	if level == len(trimmed) || (trimmed[level] != ' ' && trimmed[level] != '\t') {
+		return 0, "", false
+	}
+	title = strings.TrimSpace(trimmed[level:])
+	for strings.HasSuffix(title, "#") {
+		title = strings.TrimSpace(strings.TrimSuffix(title, "#"))
+	}
+	if title == "" {
+		return 0, "", false
+	}
+	return level, title, true
 }
 
 // renderFenceMarker returns the Markdown fence opened by a line, if any.

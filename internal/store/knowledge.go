@@ -617,6 +617,7 @@ VALUES($1,$2,$3,$4,$5)`, edit.id, revisionNumber, edit.markdown, user.ID, "Updat
 func rewriteDirectWikiTarget(source, oldSlug, newSlug string) string {
 	source = strings.ReplaceAll(source, "[["+oldSlug+"]]", "[["+newSlug+"]]")
 	source = strings.ReplaceAll(source, "[["+oldSlug+"|", "[["+newSlug+"|")
+	source = strings.ReplaceAll(source, "[["+oldSlug+"#", "[["+newSlug+"#")
 
 	return source
 }

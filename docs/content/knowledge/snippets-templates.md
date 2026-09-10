@@ -23,7 +23,10 @@ A page can also include another page's Markdown:
 
 ```text
 {{include:platform/shared-warning}}
+{{include:operations/postgres#Restore from backup}}
 ```
+
+An include can select an ATX heading (`#` through `######`). Lore inserts that heading and its content through the next heading at the same or higher level, so shared runbooks can expose one canonical section without transcluding the complete page.
 
 Includes can nest, with recursion protection and a maximum expansion depth. Stored variable and snippet values are inserted without recursively evaluating new knowledge macros. These macros are database-backed and therefore belong to normal server mode rather than filesystem static mode.
 

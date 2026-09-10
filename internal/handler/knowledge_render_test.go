@@ -36,6 +36,33 @@ func (s knowledgeContentStub) KnowledgeSnippetByName(
 	return item, nil
 }
 
+func TestExpandKnowledgeMarkdownIncludesHeadingSection(t *testing.T) {
+	t.Parallel()
+
+	content := knowledgeContentStub{pages: map[string]domain.Page{
+		"runbook": {Slug: "runbook", Markdown: "# Runbook\n\nIntro\n\n## Restore\n\nStep one.\n\n### Details\n\nMore.\n\n## Verify\n\nDone.\n"},
+	}}
+
+	expanded, err := expandKnowledgeMarkdown(context.Background(), content, "{{include:runbook#Restore}}", nil, 0)
+
+	require.NoError(t, err)
+	assert.Contains(t, expanded, "## Restore")
+	assert.Contains(t, expanded, "### Details")
+	assert.NotContains(t, expanded, "## Verify")
+}
+
+func TestExpandKnowledgeMarkdownRejectsMissingHeadingSection(t *testing.T) {
+	t.Parallel()
+
+	content := knowledgeContentStub{pages: map[string]domain.Page{
+		"runbook": {Slug: "runbook", Markdown: "# Runbook\n"},
+	}}
+
+	_, err := expandKnowledgeMarkdown(context.Background(), content, "{{include:runbook#Missing}}", nil, 0)
+
+	assert.ErrorContains(t, err, `heading "Missing" not found`)
+}
+
 func TestExpandKnowledgeMarkdownReportsMissingContent(t *testing.T) {
 	t.Parallel()
 

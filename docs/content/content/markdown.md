@@ -21,9 +21,11 @@ for limits, reference-style images, and export behavior.
 [[Postgres Restore]]
 [[Postgres Restore|the runbook]]
 [[operations/postgres/restore]]
+[[operations/postgres/restore#Verify the restore]]
+[[operations/postgres/restore#Verify the restore|verification steps]]
 ```
 
-Wiki links are ignored inside fenced code blocks.
+Append `#Heading` to link directly to a rendered heading. Heading fragments use the same stable lowercase anchor form as the page renderer, while the page path remains the backlink and broken-link target. Wiki links are ignored inside fenced code blocks.
 
 ## Callouts
 
@@ -92,3 +94,5 @@ The Lore server can expand reusable knowledge content before Markdown rendering:
 Variables and snippets come from the knowledge-snippet store; includes insert another page's Markdown. Expansion is skipped inside fenced code and recursion is bounded. Filesystem static mode does not depend on the database, so these database-backed macros are not expanded there.
 
 See [Tables](tables.md) for Lore's table directive syntax.
+
+
