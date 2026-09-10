@@ -52,8 +52,9 @@
         <form action="/pages/{{ .Page.Slug }}/favorite" method="post">
           <input type="hidden" name="on" value="{{ if .PageFavorite }}false{{ else }}true{{ end }}" />
           <button
-            class="button icon-only{{ if .PageFavorite }}active{{ end }}"
+            class="button icon-only page-favorite-button{{ if .PageFavorite }} active{{ end }}"
             type="submit"
+            aria-pressed="{{ if .PageFavorite }}true{{ else }}false{{ end }}"
             aria-label="{{ if .PageFavorite }}Remove from pinned pages{{ else }}Pin page{{ end }}"
             title="{{ if .PageFavorite }}Remove from pinned pages{{ else }}Pin page{{ end }}"
           >
@@ -662,3 +663,5 @@
     </dialog>
   {{ end }}
 {{ end }}
+
+

@@ -10,6 +10,14 @@
 .button.icon-only {
   gap: 0;
 }
+.page-favorite-button.active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+.page-favorite-button.active svg {
+  fill: currentColor;
+}
 .icon-button {
   display: inline-grid;
   place-items: center;
