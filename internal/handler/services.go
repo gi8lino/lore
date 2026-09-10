@@ -131,19 +131,6 @@ type groupWriter interface {
 	RemoveGroupMember(context.Context, int64, int64) error
 }
 
-type pageAccessReader interface {
-	CanView(context.Context, domain.User, string) (bool, error)
-	CanEdit(context.Context, domain.User, string) (bool, error)
-	FilterPages(context.Context, domain.User, []domain.Page) ([]domain.Page, error)
-}
-
-type pageAccessAdmin interface {
-	pageAccessReader
-	PageAccessRules(context.Context) ([]domain.PageAccessRule, error)
-	SavePageAccessRule(context.Context, string, int64, string) error
-	DeletePageAccessRule(context.Context, int64) error
-}
-
 // Knowledge interfaces expose only the reusable-content and graph operations a handler needs.
 type knowledgeContentService interface {
 	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
@@ -182,14 +169,6 @@ type notificationService interface {
 	MarkNotificationRead(context.Context, int64, int64) error
 	MarkAllNotificationsRead(context.Context, int64) error
 	OpenNotification(context.Context, int64, int64) (string, error)
-}
-
-type webhookAdminService interface {
-	Webhooks(context.Context) ([]domain.Webhook, error)
-	WebhookDeliveries(context.Context, int) ([]domain.WebhookDelivery, error)
-	SaveWebhook(context.Context, int64, service.WebhookInput) (domain.Webhook, error)
-	DeleteWebhook(context.Context, int64) error
-	TestWebhook(context.Context, int64) error
 }
 
 // Media readers and writers are separated so read-only exports and downloads
@@ -241,13 +220,6 @@ type pageMoveService interface {
 
 type pageReviewService interface {
 	Review(context.Context, string, domain.User) error
-}
-
-type pageApprovalService interface {
-	PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error)
-	CanReview(context.Context, string, domain.User) (bool, error)
-	RequestReview(context.Context, string, string, domain.User) (domain.PageReviewRequest, error)
-	DecideReview(context.Context, int64, string, string, string, domain.User) error
 }
 
 type pageRevisionWriter interface {
@@ -308,8 +280,8 @@ type systemService interface {
 type templateService interface {
 	PageTemplates(context.Context) ([]domain.PageTemplate, error)
 	PageTemplate(context.Context, int64) (domain.PageTemplate, error)
-	CreatePageTemplate(context.Context, service.PageTemplateInput) (domain.PageTemplate, error)
-	UpdatePageTemplate(context.Context, int64, service.PageTemplateInput) error
+	CreatePageTemplate(context.Context, string, string, string) (domain.PageTemplate, error)
+	UpdatePageTemplate(context.Context, int64, string, string, string) error
 	DeletePageTemplate(context.Context, int64) error
 }
 

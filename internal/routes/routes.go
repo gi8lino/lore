@@ -21,7 +21,6 @@ func addRoutes(
 	renderer *markdown.Renderer,
 	browserAuth auth.BrowserAuth,
 	administrationUseCases *service.Administration,
-	accessUseCases *service.Access,
 	catalogUseCases *service.Catalog,
 	draftUseCases *service.Drafts,
 	groupUseCases *service.Groups,
@@ -37,7 +36,6 @@ func addRoutes(
 	templateUseCases *service.Templates,
 	tokenUseCases *service.Tokens,
 	userUseCases *service.Users,
-	webhookUseCases *service.Webhooks,
 	viewDataUseCases *handler.ViewDataLoader,
 	logger *slog.Logger,
 	browserAuthn middleware.Middleware,
@@ -46,13 +44,10 @@ func addRoutes(
 	adminAuthz middleware.Middleware,
 	editorAuthz middleware.Middleware,
 ) {
-	pageViewAuthz := middleware.RequirePageView(accessUseCases)
-	pageEditAuthz := middleware.RequirePageEdit(accessUseCases)
-
 	// Public infrastructure and authentication routes.
 	mux.HandleFunc("GET /healthz", handler.Health(systemUseCases))
 	mux.Handle("GET /robots.txt", handler.Robots(settingsUseCases, views, logger))
-	mux.Handle("GET /sitemap.xml", handler.Sitemap(settingsUseCases, catalogUseCases, accessUseCases, views, logger))
+	mux.Handle("GET /sitemap.xml", handler.Sitemap(settingsUseCases, catalogUseCases, views, logger))
 	mux.Handle("GET /assets/", handler.Assets(appFS))
 	mux.Handle("GET /sw.js", handler.ServiceWorker(appFS))
 	mux.Handle("GET /auth/login", browserAuth.Login)
@@ -67,8 +62,8 @@ func addRoutes(
 
 	// Browser routes require the configured browser authenticator.
 	mux.Handle("POST /auth/logout", browserAuthn(auth.Logout(browserAuth.Local)))
-	mux.Handle("GET /{$}", browserAuthn(handler.Home(viewDataUseCases, catalogUseCases, draftUseCases, accessUseCases, views)))
-	mux.Handle("GET /search", browserAuthn(handler.Search(viewDataUseCases, catalogUseCases, accessUseCases, views)))
+	mux.Handle("GET /{$}", browserAuthn(handler.Home(viewDataUseCases, catalogUseCases, draftUseCases, views)))
+	mux.Handle("GET /search", browserAuthn(handler.Search(viewDataUseCases, catalogUseCases, views)))
 	mux.Handle("GET /graph", browserAuthn(handler.KnowledgeGraphPage(viewDataUseCases, views)))
 	mux.Handle("GET /p/{id}", browserAuthn(handler.PagePermalink(catalogUseCases, logger)))
 	mux.Handle(
@@ -93,16 +88,8 @@ func addRoutes(
 	)
 	mux.Handle(
 		"GET /admin/templates",
-		browserAuthn(adminAuthz(handler.AdminPageTemplates(viewDataUseCases, templateUseCases, groupUseCases, views))),
+		browserAuthn(adminAuthz(handler.AdminPageTemplates(viewDataUseCases, templateUseCases, views))),
 	)
-	mux.Handle("GET /admin/permissions", browserAuthn(adminAuthz(handler.AdminPageAccess(viewDataUseCases, accessUseCases, groupUseCases, views))))
-	mux.Handle("GET /admin/webhooks", browserAuthn(adminAuthz(handler.AdminWebhooks(viewDataUseCases, webhookUseCases, views))))
-	mux.Handle("POST /admin/webhooks", browserAuthn(adminAuthz(handler.SaveAdminWebhook(webhookUseCases, logger))))
-	mux.Handle("POST /admin/webhooks/{id}", browserAuthn(adminAuthz(handler.SaveAdminWebhook(webhookUseCases, logger))))
-	mux.Handle("POST /admin/webhooks/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminWebhook(webhookUseCases, logger))))
-	mux.Handle("POST /admin/webhooks/{id}/test", browserAuthn(adminAuthz(handler.TestAdminWebhook(webhookUseCases, logger))))
-	mux.Handle("POST /admin/permissions", browserAuthn(adminAuthz(handler.SaveAdminPageAccess(accessUseCases, logger))))
-	mux.Handle("POST /admin/permissions/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminPageAccess(accessUseCases, logger))))
 	mux.Handle(
 		"GET /admin/audit",
 		browserAuthn(adminAuthz(handler.AdminAudit(viewDataUseCases, administrationUseCases, views))),
@@ -275,78 +262,74 @@ func addRoutes(
 	)
 	mux.Handle(
 		"GET /export/markdown/{slug...}",
-		browserAuthn(pageViewAuthz(handler.ExportPageMarkdown(catalogUseCases, mediaUseCases, logger))),
+		browserAuthn(handler.ExportPageMarkdown(catalogUseCases, mediaUseCases, logger)),
 	)
-	exportPDF := browserAuthn(pageViewAuthz(handler.ExportPagePDF(
+	exportPDF := browserAuthn(handler.ExportPagePDF(
 		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
-		mediaUseCases, accessUseCases, renderer, views, logger,
-	)))
+		mediaUseCases, renderer, views, logger,
+	))
 	mux.Handle("GET /export/pdf/{slug...}", exportPDF)
 	mux.Handle("POST /export/pdf/{slug...}", exportPDF)
-	mux.Handle("POST /export/preview/{slug...}", browserAuthn(pageViewAuthz(handler.PreviewPageExport(
+	mux.Handle("POST /export/preview/{slug...}", browserAuthn(handler.PreviewPageExport(
 		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
-		mediaUseCases, accessUseCases, renderer, logger,
-	))))
+		mediaUseCases, renderer, logger,
+	)))
 	mux.Handle("POST /pages/delete/{slug...}", browserAuthn(adminAuthz(handler.DeletePageForm(pageUseCases, views))))
-	mux.Handle("POST /pages/move/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.MovePageForm(pageUseCases, accessUseCases, logger)))))
-	mux.Handle("POST /pages/review/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.ReviewPageForm(pageUseCases, logger)))))
-	mux.Handle("POST /pages/approval/request/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.RequestPageReview(pageUseCases, logger)))))
-	mux.Handle("POST /pages/approval/{id}", browserAuthn(editorAuthz(handler.DecidePageReview(pageUseCases, logger))))
-	mux.Handle("POST /page-comments/{slug...}", browserAuthn(pageViewAuthz(handler.AddPageComment(pageUseCases, views))))
+	mux.Handle("POST /pages/move/{slug...}", browserAuthn(editorAuthz(handler.MovePageForm(pageUseCases, logger))))
+	mux.Handle("POST /pages/review/{slug...}", browserAuthn(editorAuthz(handler.ReviewPageForm(pageUseCases, logger))))
+	mux.Handle("POST /page-comments/{slug...}", browserAuthn(handler.AddPageComment(pageUseCases, views)))
 	mux.Handle(
 		"POST /page-comments/resolve/{id}",
 		browserAuthn(editorAuthz(handler.ResolvePageComment(pageUseCases, views))),
 	)
 	mux.Handle(
 		"GET /pages/new",
-		browserAuthn(editorAuthz(pageEditAuthz(handler.EditPage(
+		browserAuthn(editorAuthz(handler.EditPage(
 			viewDataUseCases,
 			catalogUseCases,
 			groupUseCases,
 			knowledgeUseCases,
 			templateUseCases,
 			views,
-		)))),
+		))),
 	)
 	mux.Handle(
 		"GET /edit/{slug...}",
-		browserAuthn(editorAuthz(pageEditAuthz(handler.EditPage(
+		browserAuthn(editorAuthz(handler.EditPage(
 			viewDataUseCases,
 			catalogUseCases,
 			groupUseCases,
 			knowledgeUseCases,
 			templateUseCases,
 			views,
-		)))),
+		))),
 	)
 	mux.Handle(
 		"POST /pages",
-		browserAuthn(editorAuthz(handler.SavePageForm(pageUseCases, draftUseCases, templateUseCases, accessUseCases, views))),
+		browserAuthn(editorAuthz(handler.SavePageForm(pageUseCases, draftUseCases, views))),
 	)
-	mux.Handle("POST /pages/{slug...}", browserAuthn(pageViewAuthz(handler.FavoritePage(catalogUseCases, views))))
-	mux.Handle("POST /page-watch/{slug...}", browserAuthn(pageViewAuthz(handler.WatchPage(catalogUseCases, views))))
-	mux.Handle("GET /revisions/{slug...}", browserAuthn(pageViewAuthz(handler.RevisionHistory(catalogUseCases, views))))
+	mux.Handle("POST /pages/{slug...}", browserAuthn(handler.FavoritePage(catalogUseCases, views)))
+	mux.Handle("POST /page-watch/{slug...}", browserAuthn(handler.WatchPage(catalogUseCases, views)))
+	mux.Handle("GET /revisions/{slug...}", browserAuthn(handler.RevisionHistory(catalogUseCases, views)))
 	mux.Handle(
 		"POST /revisions/{number}/restore/{slug...}",
-		browserAuthn(editorAuthz(pageEditAuthz(handler.RestoreRevision(pageUseCases, views)))),
+		browserAuthn(editorAuthz(handler.RestoreRevision(pageUseCases, views))),
 	)
 	mux.Handle(
 		"GET /pages/{slug...}",
-		browserAuthn(pageViewAuthz(handler.ViewPage(
+		browserAuthn(handler.ViewPage(
 			viewDataUseCases,
 			catalogUseCases,
-			accessUseCases,
-			pageUseCases,
 			settingsUseCases,
 			knowledgeUseCases,
 			renderer,
 			views,
-		))),
+		)),
 	)
 
 	// API routes accept either bearer-token or browser authentication.
-	mux.Handle("GET /api/pages", apiAuthn(handler.ListPages(catalogUseCases, accessUseCases, logger)))
-	mux.Handle("POST /api/pages", apiAuthn(editorAuthz(handler.SavePage(pageUseCases, accessUseCases, logger))))
+	mux.Handle("GET /api/pages", apiAuthn(handler.ListPages(catalogUseCases, logger)))
+	mux.Handle("POST /api/pages", apiAuthn(editorAuthz(handler.SavePage(pageUseCases, logger))))
 	mux.Handle(
 		"POST /api/preview",
 		apiAuthn(editorAuthz(handler.PreviewMarkdown(
@@ -354,7 +337,6 @@ func addRoutes(
 			navigationUseCases,
 			catalogUseCases,
 			knowledgeUseCases,
-			accessUseCases,
 			renderer,
 			logger,
 		))),
@@ -362,15 +344,15 @@ func addRoutes(
 	mux.Handle("GET /api/drafts/{key}", apiAuthn(editorAuthz(handler.GetPageDraft(draftUseCases, logger))))
 	mux.Handle("PUT /api/drafts/{key}", apiAuthn(editorAuthz(handler.SavePageDraft(draftUseCases, logger))))
 	mux.Handle("DELETE /api/drafts/{key}", apiAuthn(editorAuthz(handler.DeletePageDraft(draftUseCases, logger))))
-	mux.Handle("GET /api/pages/{slug...}", apiAuthn(pageViewAuthz(handler.GetPage(catalogUseCases, logger))))
-	mux.Handle("PUT /api/pages/{slug...}", apiAuthn(editorAuthz(handler.SavePage(pageUseCases, accessUseCases, logger))))
-	mux.Handle("DELETE /api/pages/{slug...}", apiAuthn(adminAuthz(pageEditAuthz(handler.DeletePage(pageUseCases, logger)))))
+	mux.Handle("GET /api/pages/{slug...}", apiAuthn(handler.GetPage(catalogUseCases, logger)))
+	mux.Handle("PUT /api/pages/{slug...}", apiAuthn(editorAuthz(handler.SavePage(pageUseCases, logger))))
+	mux.Handle("DELETE /api/pages/{slug...}", apiAuthn(adminAuthz(handler.DeletePage(pageUseCases, logger))))
 	mux.Handle(
 		"DELETE /api/admin/bin/{slug...}",
 		apiAuthn(adminAuthz(handler.PermanentlyDeletePage(recycleBinUseCases, logger))),
 	)
-	mux.Handle("GET /api/search", apiAuthn(handler.SearchAPI(catalogUseCases, accessUseCases, logger)))
-	mux.Handle("GET /api/graph", apiAuthn(handler.KnowledgeGraphAPI(knowledgeUseCases, accessUseCases, logger)))
+	mux.Handle("GET /api/search", apiAuthn(handler.SearchAPI(catalogUseCases, logger)))
+	mux.Handle("GET /api/graph", apiAuthn(handler.KnowledgeGraphAPI(knowledgeUseCases, logger)))
 	mux.Handle(
 		"GET /api/editor/catalog",
 		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, knowledgeUseCases, catalogUseCases, logger))),
@@ -393,7 +375,7 @@ func addRoutes(
 	)
 	mux.Handle("POST /api/images", apiAuthn(editorAuthz(handler.UploadImage(mediaUseCases, logger))))
 	mux.Handle("DELETE /api/images/{id}", apiAuthn(editorAuthz(handler.DeleteImage(mediaUseCases, logger))))
-	mux.Handle("GET /api/recent", apiAuthn(handler.Recent(catalogUseCases, accessUseCases, logger)))
+	mux.Handle("GET /api/recent", apiAuthn(handler.Recent(catalogUseCases, logger)))
 	mux.Handle(
 		"POST /api/admin/export",
 		apiAuthn(adminAuthz(handler.ExportPages(catalogUseCases, navigationUseCases, mediaUseCases, logger))),

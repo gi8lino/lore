@@ -63,7 +63,6 @@ func PreviewMarkdown(
 	navigationUseCases navigationService,
 	catalogUseCases pageReportCatalogService,
 	knowledgeUseCases knowledgeContentService,
-	accessUseCases pageAccessReader,
 	renderer *md.Renderer,
 	logger *slog.Logger,
 ) http.HandlerFunc {
@@ -85,9 +84,7 @@ func PreviewMarkdown(
 		}
 
 		slug := md.Slug(request.Slug)
-		user := currentUser(r)
-		securedCatalog := accessiblePageCatalog{catalog: catalogUseCases, access: accessUseCases, user: user}
-		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, accessUseCases, user, slug)
+		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, slug)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
@@ -95,7 +92,7 @@ func PreviewMarkdown(
 
 		expandedMarkdown, err := expandKnowledgeMarkdown(
 			r.Context(),
-			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
+			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
 			request.Markdown,
 			nil,
 			0,
@@ -109,7 +106,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(r.Context(), securedCatalog)},
+			md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases)},
 		)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
@@ -124,15 +121,9 @@ func PreviewMarkdown(
 func subpagesRenderer(
 	ctx context.Context,
 	navigationUseCases navigationService,
-	accessUseCases pageAccessReader,
-	user domain.User,
 	slug string,
 ) (func(md.SubpagesOptions) (string, error), error) {
 	pages, err := navigationUseCases.NavigationPages(ctx)
-	if err != nil {
-		return nil, err
-	}
-	pages, err = accessUseCases.FilterPages(ctx, user, pages)
 	if err != nil {
 		return nil, err
 	}
@@ -157,12 +148,9 @@ func pageURL(slug string) string {
 }
 
 // ListPages returns recently updated pages up to the requested limit.
-func ListPages(catalogUseCases pageListService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
+func ListPages(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 100)
-		if err == nil {
-			pages, err = accessUseCases.FilterPages(r.Context(), currentUser(r), pages)
-		}
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
@@ -213,7 +201,7 @@ func GetPage(catalogUseCases pageLookupService, logger *slog.Logger) http.Handle
 }
 
 // SavePage persists page content, revision history, tags, and links transactionally.
-func SavePage(pageUseCases pageWriterService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
+func SavePage(pageUseCases pageWriterService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
 		request, err := decode[pageRequest](w, r)
@@ -227,15 +215,6 @@ func SavePage(pageUseCases pageWriterService, accessUseCases pageAccessReader, l
 		}
 
 		slug := cmp.Or(r.PathValue("slug"), request.Slug)
-		allowed, accessErr := accessUseCases.CanEdit(r.Context(), user, slug)
-		if accessErr != nil {
-			httpresponse.InternalServerError(logger, w, accessErr)
-			return
-		}
-		if !allowed {
-			httpresponse.Problem(w, http.StatusForbidden, "You do not have permission to edit this page path.")
-			return
-		}
 
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
 			PreviousSlug:       r.PathValue("slug"),

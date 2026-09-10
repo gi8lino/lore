@@ -3,7 +3,6 @@ package domain
 import (
 	"errors"
 	"slices"
-	"strings"
 	"time"
 )
 
@@ -22,8 +21,6 @@ var (
 	ErrIdentityRejected = errors.New("process OIDC identity: identity was rejected")
 	// ErrPageInBin indicates that a page path is occupied by a recycled page.
 	ErrPageInBin = errors.New("page path is in recycle bin")
-	// ErrStaleReview indicates that a page changed after review was requested.
-	ErrStaleReview = errors.New("page changed after review was requested")
 )
 
 const (
@@ -203,79 +200,6 @@ type ExternalLink struct {
 	URL         string `json:"url" toml:"url"`
 	Icon        string `json:"icon,omitempty" toml:"icon"`
 	Description string `json:"description,omitempty" toml:"description"`
-	// HoverEffect controls visual feedback when a pointer hovers over the link.
-	HoverEffect string `json:"hover_effect,omitempty" toml:"hover_effect"`
-	// HoverText is an optional title template supporting {{label}} and {{description}}.
-	HoverText string `json:"hover_text,omitempty" toml:"hover_text"`
-}
-
-const (
-	ExternalLinkHoverHighlight = "highlight"
-	ExternalLinkHoverLift      = "lift"
-	ExternalLinkHoverNone      = "none"
-)
-
-// ExternalLinkHoverEffects returns the supported external-link hover presentations.
-func ExternalLinkHoverEffects() []string {
-	return []string{ExternalLinkHoverHighlight, ExternalLinkHoverLift, ExternalLinkHoverNone}
-}
-
-// ValidExternalLinkHoverEffect reports whether value is a supported hover presentation.
-// Empty is accepted as the compatibility default and renders as highlight.
-func ValidExternalLinkHoverEffect(value string) bool {
-	switch value {
-	case "", ExternalLinkHoverHighlight, ExternalLinkHoverLift, ExternalLinkHoverNone:
-		return true
-	default:
-		return false
-	}
-}
-
-// EffectiveExternalLinkHoverEffect returns the visual hover presentation used for a link.
-func EffectiveExternalLinkHoverEffect(value string) string {
-	if value == "" {
-		return ExternalLinkHoverHighlight
-	}
-	return value
-}
-
-// ExternalLinkHoverTitle resolves a link's hover text template.
-func ExternalLinkHoverTitle(link ExternalLink) string {
-	template := strings.TrimSpace(link.HoverText)
-	if template == "" {
-		if strings.TrimSpace(link.Description) == "" {
-			return strings.TrimSpace(link.Label)
-		}
-		return strings.TrimSpace(link.Label) + " — " + strings.TrimSpace(link.Description)
-	}
-
-	var output strings.Builder
-	for len(template) > 0 {
-		start := strings.Index(template, "{{")
-		if start < 0 {
-			output.WriteString(template)
-			break
-		}
-		output.WriteString(template[:start])
-		end := strings.Index(template[start+2:], "}}")
-		if end < 0 {
-			output.WriteString(template[start:])
-			break
-		}
-		end += start + 2
-		name := strings.TrimSpace(template[start+2 : end])
-		switch name {
-		case "label":
-			output.WriteString(link.Label)
-		case "description":
-			output.WriteString(link.Description)
-		default:
-			output.WriteString(template[start : end+2])
-		}
-		template = template[end+2:]
-	}
-
-	return strings.TrimSpace(output.String())
 }
 
 // PDFHeader describes one configurable request header sent to the external PDF service.
@@ -424,64 +348,7 @@ type PageWatch struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// PageReviewRequest tracks lightweight documentation approval for one revision.
-type PageReviewRequest struct {
-	ID              int64
-	PageSlug        string
-	RevisionNumber  int
-	RequestedBy     int64
-	RequestedByName string
-	ReviewedBy      int64
-	ReviewedByName  string
-	Status          string
-	Note            string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
-
-// PageAccess is the effective nearest path-rule decision for one user.
-type PageAccess struct {
-	Restricted bool
-	CanView    bool
-	CanEdit    bool
-}
-
-// PageAccessRule grants one group view or edit access at a path.
-type PageAccessRule struct {
-	ID        int64
-	Path      string
-	GroupID   int64
-	GroupName string
-	Access    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
 // Notification is a lightweight user inbox item.
-// Webhook is one administrator-configured outgoing event destination.
-type Webhook struct {
-	ID               int64
-	Name             string
-	URL              string
-	Events           []string
-	Secret           string `json:"-"`
-	SecretConfigured bool
-	Enabled          bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
-
-// WebhookDelivery records the latest attempt to deliver an outgoing event.
-type WebhookDelivery struct {
-	ID          int64
-	WebhookID   int64
-	WebhookName string
-	Event       string
-	StatusCode  int
-	Error       string
-	CreatedAt   time.Time
-}
-
 type Notification struct {
 	ID        int64      `json:"id"`
 	Kind      string     `json:"kind"`
@@ -601,28 +468,12 @@ type PageLink struct {
 	Exists      bool
 }
 
-// PageTemplateField is one author-supplied value used by a page blueprint.
-type PageTemplateField struct {
-	Name     string `json:"name"`
-	Label    string `json:"label"`
-	Default  string `json:"default,omitempty"`
-	Required bool   `json:"required,omitempty"`
-}
-
-// PageTemplate is a reusable page blueprint offered when creating a page.
+// PageTemplate is reusable Markdown content offered when creating a page.
 type PageTemplate struct {
-	ID                 int64
-	Name               string
-	Description        string
-	Markdown           string
-	PathPrefix         string
-	Icon               string
-	Tags               []string
-	Status             string
-	OwnerGroupID       int64
-	ReviewIntervalDays int
-	Properties         map[string]string
-	Fields             []PageTemplateField
+	ID          int64
+	Name        string
+	Description string
+	Markdown    string
 }
 
 // UserPreferences contains presentation preferences for one wiki user.

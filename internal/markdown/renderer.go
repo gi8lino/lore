@@ -272,8 +272,7 @@ func Links(source string) []string {
 	var links []string
 
 	walkWikiLinks(source, func(target, _ string) {
-		pageTarget, _ := SplitHeadingTarget(target)
-		slug := Slug(pageTarget)
+		slug := Slug(target)
 		if slug == "" || seen[slug] {
 			return
 		}
@@ -990,17 +989,6 @@ func parseWikiLink(
 	return target, label, true
 }
 
-// SplitHeadingTarget separates a wiki page target from an optional heading fragment.
-func SplitHeadingTarget(target string) (page string, heading string) {
-	page, heading, _ = strings.Cut(strings.TrimSpace(target), "#")
-	return strings.TrimSpace(page), strings.TrimSpace(heading)
-}
-
-// HeadingID converts a human-readable heading reference into Lore's heading anchor form.
-func HeadingID(value string) string {
-	return Slug(strings.ReplaceAll(value, "/", " "))
-}
-
 // wikiLinkPrefix returns the configured wiki-link URL prefix.
 func wikiLinkPrefix(options Options) string {
 	if strings.TrimSpace(options.WikiLinkPrefix) == "" {
@@ -1095,14 +1083,8 @@ func rewriteWikiLinksLine(
 		output.WriteByte('[')
 		output.WriteString(label)
 		output.WriteString("](")
-		pageTarget, heading := SplitHeadingTarget(target)
-		resolved := resolve(pageTarget)
 		output.WriteString(prefix)
-		output.WriteString(resolved)
-		if heading != "" {
-			output.WriteByte('#')
-			output.WriteString(HeadingID(heading))
-		}
+		output.WriteString(resolve(target))
 		output.WriteByte(')')
 
 		offset = end + 2

@@ -54,8 +54,6 @@ var pageTemplateNames = []string{
 	"admin_rendering",
 	"admin_health",
 	"admin_templates",
-	"admin_permissions",
-	"admin_webhooks",
 	"admin_audit",
 	"admin_snippets",
 	"admin_pages",
@@ -152,7 +150,6 @@ type ViewDataLoader struct {
 	settingsUseCases     settingsService
 	savedSearchUseCases  savedSearchReader
 	notificationUseCases notificationReader
-	accessUseCases       pageAccessReader
 }
 
 // NewViewDataLoader constructs the shared authenticated view-data loader.
@@ -163,7 +160,6 @@ func NewViewDataLoader(
 	settings settingsService,
 	savedSearches savedSearchReader,
 	notifications notificationReader,
-	access pageAccessReader,
 ) *ViewDataLoader {
 	return &ViewDataLoader{
 		preferenceUseCases:   preferences,
@@ -172,7 +168,6 @@ func NewViewDataLoader(
 		settingsUseCases:     settings,
 		savedSearchUseCases:  savedSearches,
 		notificationUseCases: notifications,
-		accessUseCases:       access,
 	}
 }
 
@@ -192,10 +187,6 @@ type ViewData struct {
 	PageFavorite bool
 	// PageWatchScope is page or subtree when the current user watches this path.
 	PageWatchScope string
-	// PageReviewRequest is the newest lightweight approval workflow item.
-	PageReviewRequest domain.PageReviewRequest
-	// CanReviewPage reports whether the current user may decide the pending review.
-	CanReviewPage bool
 	// HTML is the sanitized rendered Markdown for the current page.
 	HTML template.HTML
 	// PageContents contains heading links for the current rendered page.
@@ -270,16 +261,6 @@ type ViewData struct {
 	Groups []domain.Group
 	// PageTemplates contains reusable templates available to page authors.
 	PageTemplates []domain.PageTemplate
-	// PageAccessRules contains inherited path access rules for administrators.
-	PageAccessRules []domain.PageAccessRule
-	// Webhooks contains outgoing administrator integrations.
-	Webhooks []domain.Webhook
-	// WebhookDeliveries contains recent outgoing delivery attempts.
-	WebhookDeliveries []domain.WebhookDelivery
-	// WebhookEvents contains supported event names.
-	WebhookEvents []string
-	// WebhookDraft provides enabled defaults for the create form.
-	WebhookDraft domain.Webhook
 	// PageVariables contains distinct variables resolved in this reading page.
 	PageVariables []pageVariable
 	// KnowledgeSnippets contains reusable variables and Markdown snippets.
@@ -342,56 +323,6 @@ type ViewData struct {
 	RenderMermaid bool
 }
 
-type pageTemplateView struct {
-	domain.PageTemplate
-	Groups       []domain.Group
-	PageStatuses []string
-}
-
-type webhookView struct {
-	domain.Webhook
-	AvailableEvents []string
-}
-
-func webhookContext(item domain.Webhook, events []string) webhookView {
-	return webhookView{Webhook: item, AvailableEvents: events}
-}
-
-func pageTemplateContext(item domain.PageTemplate, groups []domain.Group, statuses []string) pageTemplateView {
-	return pageTemplateView{PageTemplate: item, Groups: groups, PageStatuses: statuses}
-}
-
-func blankPageTemplate() domain.PageTemplate {
-	return domain.PageTemplate{Status: "verified", Properties: map[string]string{}}
-}
-
-func templatePropertiesText(properties map[string]string) string {
-	keys := make([]string, 0, len(properties))
-	for key := range properties {
-		keys = append(keys, key)
-	}
-	slices.SortFunc(keys, func(left, right string) int {
-		return strings.Compare(strings.ToLower(left), strings.ToLower(right))
-	})
-	lines := make([]string, 0, len(keys))
-	for _, key := range keys {
-		lines = append(lines, key+"="+properties[key])
-	}
-	return strings.Join(lines, "\n")
-}
-
-func templateFieldsText(fields []domain.PageTemplateField) string {
-	lines := make([]string, 0, len(fields))
-	for _, field := range fields {
-		required := ""
-		if field.Required {
-			required = "required"
-		}
-		lines = append(lines, strings.Join([]string{field.Name, field.Label, field.Default, required}, " | "))
-	}
-	return strings.Join(lines, "\n")
-}
-
 // NewViews parses each page template with the shared layout and partials once at startup.
 func NewViews(
 	appFS fs.FS,
@@ -411,22 +342,12 @@ func NewViews(
 	}
 
 	funcs := template.FuncMap{
-		"join":               strings.Join,
-		"timeago":            timeAgo,
-		"filesize":           fileSize,
-		"hasgroup":           hasGroup,
-		"hasgroupid":         hasGroupID,
-		"hasstring":          slices.Contains[[]string, string],
-		"templateproperties": templatePropertiesText,
-		"templatefields":     templateFieldsText,
-		"blueprintcontext":   pageTemplateContext,
-		"blankblueprint":     blankPageTemplate,
-		"webhookcontext":     webhookContext,
-		"externalhover":      domain.ExternalLinkHoverTitle,
-		"externalhovereffect": func(link domain.ExternalLink) string {
-			return domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
-		},
-		"icon": icons.SVG,
+		"join":       strings.Join,
+		"timeago":    timeAgo,
+		"filesize":   fileSize,
+		"hasgroup":   hasGroup,
+		"hasgroupid": hasGroupID,
+		"icon":       icons.SVG,
 		"logo": func() template.HTML {
 			return template.HTML(logoSVG)
 		},
@@ -508,11 +429,6 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			return ViewData{}, err
 		}
 
-		pages, err = l.accessUseCases.FilterPages(r.Context(), user, pages)
-		if err != nil {
-			return ViewData{}, err
-		}
-
 		navigationIcons, err := l.navigationUseCases.NavigationIcons(r.Context())
 		if err != nil {
 			return ViewData{}, err
@@ -546,17 +462,9 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			if err != nil {
 				return ViewData{}, err
 			}
-			sidebarPinned, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarPinned)
-			if err != nil {
-				return ViewData{}, err
-			}
 		}
 		if preferences.ShowRecentlyViewed {
 			sidebarRecent, err = l.catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
-			if err != nil {
-				return ViewData{}, err
-			}
-			sidebarRecent, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarRecent)
 			if err != nil {
 				return ViewData{}, err
 			}

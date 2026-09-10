@@ -17,13 +17,6 @@ func (s *Pages) recordAudit(ctx context.Context, actorID int64, action, objectTy
 			"error", err,
 		)
 	}
-
-	event := OutgoingEvent{Event: action, ActorID: actorID, ObjectType: objectType, ObjectKey: objectKey, Detail: detail}
-	for _, sink := range s.eventSinks {
-		if err := sink.Emit(ctx, event); err != nil {
-			s.logger.ErrorContext(ctx, "outgoing event delivery failed", "event", "page_side_effect_failed", "operation", "webhook", "action", action, "error", err)
-		}
-	}
 }
 
 // notifyMentions reports delivery failures without logging the page or comment body.
