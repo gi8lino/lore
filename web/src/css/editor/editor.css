@@ -966,3 +966,25 @@ body.editor-focus-mode {
 .editor-properties .editor-property-add {
   justify-self: start;
 }
+
+.editor-blueprint-fields {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.editor-blueprint-fields > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.editor-blueprint-fields label {
+  display: grid;
+  gap: 6px;
+}

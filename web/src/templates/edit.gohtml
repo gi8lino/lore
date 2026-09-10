@@ -22,6 +22,7 @@
     {{ end }}"
   >
     <input type="hidden" name="original_slug" value="{{ if .Page }}{{ .Page.Slug }}{{ end }}" />
+    {{ if and (not .Page) .EditorTemplate }}<input type="hidden" name="template_id" value="{{ .EditorTemplate.ID }}" />{{ end }}
     <header class="editor-chrome">
       <div class="editor-chrome-left">
         <a
@@ -118,12 +119,24 @@
         </div>
       {{ end }}
 
+      {{ if .EditorTemplate.Fields }}
+        <section class="editor-blueprint-fields" data-blueprint-fields>
+          <div><strong>{{ .EditorTemplate.Name }} fields</strong><span class="muted">Values replace matching <code>{{ "{{field:name}}" }}</code> placeholders when saved.</span></div>
+          <div class="form-grid">
+            {{ range .EditorTemplate.Fields }}
+              <label>{{ .Label }}{{ if not .Required }} <span class="optional">optional</span>{{ end }}
+                <input name="blueprint_{{ .Name }}" value="{{ .Default }}" {{ if .Required }}required{{ end }} data-blueprint-field="{{ .Name }}" />
+              </label>
+            {{ end }}
+          </div>
+        </section>
+      {{ end }}
     {{ end }}
 
 
     <section class="editor-document-head">
       <div class="editor-page-icon" data-icon-picker-owner>
-        <input type="hidden" name="icon" value="{{ if .Page }}{{ .Page.Icon }}{{ end }}" data-icon-picker-value />
+        <input type="hidden" name="icon" value="{{ if .Page }}{{ .Page.Icon }}{{ else if .EditorTemplate }}{{ .EditorTemplate.Icon }}{{ end }}" data-icon-picker-value />
         <button
           class="editor-page-icon-button"
           type="button"
@@ -134,6 +147,8 @@
           <span data-icon-picker-preview data-icon-picker-empty="plus"
             >{{ if .Page }}
               {{ if .Page.Icon }}{{ icon .Page.Icon 25 }}{{ else }}{{ icon "plus-lucide" 25 }}{{ end }}
+            {{ else if .EditorTemplate }}
+              {{ if .EditorTemplate.Icon }}{{ icon .EditorTemplate.Icon 25 }}{{ else }}{{ icon "plus-lucide" 25 }}{{ end }}
             {{ else }}
               {{ icon "plus-lucide" 25 }}
             {{ end }}</span
@@ -218,7 +233,7 @@
                 type="hidden"
                 name="tags"
                 data-tag-value
-                value="{{ if .Page }}{{ join .Page.Tags "," }}{{ end }}"
+                value="{{ if .Page }}{{ join .Page.Tags "," }}{{ else if .EditorTemplate }}{{ join .EditorTemplate.Tags "," }}{{ end }}"
               />
               <span class="tag-suggestions" data-tag-suggestions role="listbox" hidden></span>
             </span>
@@ -272,6 +287,8 @@
                   value="{{ . }}"
                   {{ if $.Page }}
                     {{ if eq $.Page.Status . }}selected{{ end }}
+                  {{ else if $.EditorTemplate }}
+                    {{ if eq $.EditorTemplate.Status . }}selected{{ end }}
                   {{ else }}
                     {{ if eq . "verified" }}selected{{ end }}
                   {{ end }}
@@ -293,8 +310,10 @@
                   {{ end }}
                 {{ end }}
               {{ end }}
-              {{ $page := .Page }}{{ range .Groups }}
-                <option value="{{ .ID }}" {{ if $page }}{{ if eq $page.OwnerGroupID .ID }}selected{{ end }}{{ end }}>
+              {{ $page := .Page }}{{ $blueprint := .EditorTemplate }}{{ range .Groups }}
+                <option value="{{ .ID }}"
+                  {{ if $page }}{{ if eq $page.OwnerGroupID .ID }}selected{{ end }}
+                  {{ else if $blueprint }}{{ if eq $blueprint.OwnerGroupID .ID }}selected{{ end }}{{ end }}>
                   {{ .Name }}
                 </option>
               {{ end }}
@@ -310,6 +329,8 @@
               name="review_interval_days"
               value="{{ if .Page }}
                 {{ .Page.ReviewIntervalDays }}
+              {{ else if .EditorTemplate }}
+                {{ .EditorTemplate.ReviewIntervalDays }}
               {{ else }}
                 0
               {{ end }}"
@@ -342,6 +363,18 @@
                   <input name="property_key" value="{{ .Key }}" placeholder="Environment" /><input
                     name="property_value"
                     value="{{ .Value }}"
+                    placeholder="Production"
+                  /><button class="icon-button" type="button" data-page-property-remove aria-label="Remove property">
+                    {{ icon "x-lucide" 15 }}
+                  </button>
+                </div>
+              {{ end }}
+            {{ else if .EditorTemplate }}
+              {{ range $key, $value := .EditorTemplate.Properties }}
+                <div class="editor-property-row">
+                  <input name="property_key" value="{{ $key }}" placeholder="Environment" /><input
+                    name="property_value"
+                    value="{{ $value }}"
                     placeholder="Production"
                   /><button class="icon-button" type="button" data-page-property-remove aria-label="Remove property">
                     {{ icon "x-lucide" 15 }}
@@ -846,3 +879,5 @@
     </div>
   </dialog>
 {{ end }}
+
+

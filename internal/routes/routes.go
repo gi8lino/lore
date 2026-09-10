@@ -88,7 +88,7 @@ func addRoutes(
 	)
 	mux.Handle(
 		"GET /admin/templates",
-		browserAuthn(adminAuthz(handler.AdminPageTemplates(viewDataUseCases, templateUseCases, views))),
+		browserAuthn(adminAuthz(handler.AdminPageTemplates(viewDataUseCases, templateUseCases, groupUseCases, views))),
 	)
 	mux.Handle(
 		"GET /admin/audit",
@@ -306,7 +306,7 @@ func addRoutes(
 	)
 	mux.Handle(
 		"POST /pages",
-		browserAuthn(editorAuthz(handler.SavePageForm(pageUseCases, draftUseCases, views))),
+		browserAuthn(editorAuthz(handler.SavePageForm(pageUseCases, draftUseCases, templateUseCases, views))),
 	)
 	mux.Handle("POST /pages/{slug...}", browserAuthn(handler.FavoritePage(catalogUseCases, views)))
 	mux.Handle("POST /page-watch/{slug...}", browserAuthn(handler.WatchPage(catalogUseCases, views)))

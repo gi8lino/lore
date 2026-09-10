@@ -96,9 +96,22 @@ function setupEditorPreview(form: HTMLFormElement): void {
   let pendingInput: string | undefined;
   let renderedHTML: string | undefined;
 
+  function resolvedBlueprintMarkdown(markdown: string): string {
+    let resolved = markdown;
+    const fields = form.querySelectorAll<HTMLInputElement>(
+      "input[data-blueprint-field]",
+    );
+    for (const field of fields) {
+      const name = field.dataset.blueprintField;
+      if (!name) continue;
+      resolved = resolved.split(`{{field:${name}}}`).join(field.value);
+    }
+    return resolved;
+  }
+
   function previewInput(): string {
     return JSON.stringify({
-      markdown: sourceEditor.value,
+      markdown: resolvedBlueprintMarkdown(sourceEditor.value),
       slug: slug?.value || "",
     });
   }
@@ -228,6 +241,11 @@ function setupEditorPreview(form: HTMLFormElement): void {
   );
   sourceEditor.addEventListener("input", schedulePreview);
   slug?.addEventListener("input", schedulePreview);
+  for (const field of form.querySelectorAll<HTMLInputElement>(
+    "input[data-blueprint-field]",
+  )) {
+    field.addEventListener("input", schedulePreview);
+  }
   sourceEditor.addEventListener("scroll", () =>
     syncScroll(sourceEditor, previewPanel),
   );

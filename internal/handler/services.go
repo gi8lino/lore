@@ -280,8 +280,8 @@ type systemService interface {
 type templateService interface {
 	PageTemplates(context.Context) ([]domain.PageTemplate, error)
 	PageTemplate(context.Context, int64) (domain.PageTemplate, error)
-	CreatePageTemplate(context.Context, string, string, string) (domain.PageTemplate, error)
-	UpdatePageTemplate(context.Context, int64, string, string, string) error
+	CreatePageTemplate(context.Context, service.PageTemplateInput) (domain.PageTemplate, error)
+	UpdatePageTemplate(context.Context, int64, service.PageTemplateInput) error
 	DeletePageTemplate(context.Context, int64) error
 }
 

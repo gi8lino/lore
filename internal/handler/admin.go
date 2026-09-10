@@ -330,6 +330,7 @@ func AdminGroups(
 func AdminPageTemplates(
 	viewDataUseCases viewDataService,
 	templateUseCases templateService,
+	groupUseCases groupReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +346,15 @@ func AdminPageTemplates(
 			return
 		}
 
+		groups, err := groupUseCases.Groups(r.Context())
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+
 		data.PageTemplates = templates
+		data.Groups = groups
+		data.PageStatuses = domain.PageStatuses()
 
 		render(views, w, "admin_templates", data)
 	}
@@ -360,9 +369,7 @@ func CreateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 		}
 		if _, err := templateUseCases.CreatePageTemplate(
 			r.Context(),
-			r.FormValue("name"),
-			r.FormValue("description"),
-			r.FormValue("markdown"),
+			pageTemplateInputFromForm(r),
 		); err != nil {
 			writeAdminProblem(logger, w, err, "Page template")
 			return
@@ -387,9 +394,7 @@ func UpdateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 		if err := templateUseCases.UpdatePageTemplate(
 			r.Context(),
 			id,
-			r.FormValue("name"),
-			r.FormValue("description"),
-			r.FormValue("markdown"),
+			pageTemplateInputFromForm(r),
 		); err != nil {
 			writeAdminProblem(logger, w, err, "Page template")
 			return
@@ -397,6 +402,59 @@ func UpdateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 
 		http.Redirect(w, r, "/admin/templates", http.StatusSeeOther)
 	}
+}
+
+func pageTemplateInputFromForm(r *http.Request) service.PageTemplateInput {
+	ownerGroupID, _ := strconv.ParseInt(strings.TrimSpace(r.FormValue("owner_group_id")), 10, 64)
+	reviewIntervalDays, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("review_interval_days")))
+
+	return service.PageTemplateInput{
+		Name:               r.FormValue("name"),
+		Description:        r.FormValue("description"),
+		Markdown:           r.FormValue("markdown"),
+		PathPrefix:         r.FormValue("path_prefix"),
+		Icon:               r.FormValue("icon"),
+		Tags:               splitTags(r.FormValue("tags")),
+		Status:             r.FormValue("status"),
+		OwnerGroupID:       ownerGroupID,
+		ReviewIntervalDays: reviewIntervalDays,
+		Properties:         parseBlueprintProperties(r.FormValue("properties")),
+		Fields:             parseBlueprintFields(r.FormValue("fields")),
+	}
+}
+
+func parseBlueprintProperties(value string) map[string]string {
+	properties := map[string]string{}
+	for line := range strings.SplitSeq(value, "\n") {
+		key, content, ok := strings.Cut(line, "=")
+		key = strings.TrimSpace(key)
+		if ok && key != "" {
+			properties[key] = strings.TrimSpace(content)
+		}
+	}
+	return properties
+}
+
+func parseBlueprintFields(value string) []domain.PageTemplateField {
+	fields := make([]domain.PageTemplateField, 0)
+	for line := range strings.SplitSeq(value, "\n") {
+		parts := strings.Split(line, "|")
+		if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+			continue
+		}
+		field := domain.PageTemplateField{Name: strings.TrimSpace(parts[0])}
+		if len(parts) > 1 {
+			field.Label = strings.TrimSpace(parts[1])
+		}
+		if len(parts) > 2 {
+			field.Default = strings.TrimSpace(parts[2])
+		}
+		if len(parts) > 3 {
+			field.Required = strings.EqualFold(strings.TrimSpace(parts[3]), "required")
+		}
+		fields = append(fields, field)
+	}
+	return fields
 }
 
 // DeleteAdminPageTemplate deletes one reusable page template.

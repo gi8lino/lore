@@ -422,6 +422,7 @@ func splitPagePath(slug string) (string, string) {
 func SavePageForm(
 	pageUseCases pageWriterService,
 	draftUseCases draftDiscardService,
+	templateUseCases templateService,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -451,6 +452,15 @@ func SavePageForm(
 			return
 		}
 
+		markdown := r.FormValue("markdown")
+		if originalSlug == "" {
+			markdown, err = resolvePageTemplateFields(r.Context(), r, templateUseCases, markdown)
+			if err != nil {
+				writePageProblem(views.logger, w, err)
+				return
+			}
+		}
+
 		properties := pagePropertiesFromForm(r)
 
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
@@ -459,7 +469,7 @@ func SavePageForm(
 			Title:              r.FormValue("title"),
 			Icon:               r.FormValue("icon"),
 			Language:           r.FormValue("language"),
-			Markdown:           r.FormValue("markdown"),
+			Markdown:           markdown,
 			Message:            r.FormValue("message"),
 			Tags:               splitTags(r.FormValue("tags")),
 			GroupIDs:           parseGroupIDs(r.Form["group_id"]),
@@ -494,6 +504,38 @@ func SavePageForm(
 
 		http.Redirect(w, r, "/pages/"+page.Slug, http.StatusSeeOther)
 	}
+}
+
+func resolvePageTemplateFields(
+	ctx context.Context,
+	r *http.Request,
+	templates templateService,
+	markdown string,
+) (string, error) {
+	value := strings.TrimSpace(r.FormValue("template_id"))
+	if value == "" {
+		return markdown, nil
+	}
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id <= 0 {
+		return "", &service.ValidationError{Fields: []service.FieldError{{Field: "template", Message: "Choose a valid page template."}}}
+	}
+	template, err := templates.PageTemplate(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	validation := &service.ValidationError{}
+	for _, field := range template.Fields {
+		fieldValue := r.FormValue("blueprint_" + field.Name)
+		if field.Required && strings.TrimSpace(fieldValue) == "" {
+			validation.Fields = append(validation.Fields, service.FieldError{Field: "blueprint_" + field.Name, Message: field.Label + " is required."})
+		}
+		markdown = strings.ReplaceAll(markdown, "{{field:"+field.Name+"}}", fieldValue)
+	}
+	if len(validation.Fields) > 0 {
+		return "", validation
+	}
+	return markdown, nil
 }
 
 // DeletePageForm deletes a page from the browser and returns home.

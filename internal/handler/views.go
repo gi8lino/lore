@@ -323,6 +323,47 @@ type ViewData struct {
 	RenderMermaid bool
 }
 
+type pageTemplateView struct {
+	domain.PageTemplate
+	Groups       []domain.Group
+	PageStatuses []string
+}
+
+func pageTemplateContext(item domain.PageTemplate, groups []domain.Group, statuses []string) pageTemplateView {
+	return pageTemplateView{PageTemplate: item, Groups: groups, PageStatuses: statuses}
+}
+
+func blankPageTemplate() domain.PageTemplate {
+	return domain.PageTemplate{Status: "verified", Properties: map[string]string{}}
+}
+
+func templatePropertiesText(properties map[string]string) string {
+	keys := make([]string, 0, len(properties))
+	for key := range properties {
+		keys = append(keys, key)
+	}
+	slices.SortFunc(keys, func(left, right string) int {
+		return strings.Compare(strings.ToLower(left), strings.ToLower(right))
+	})
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		lines = append(lines, key+"="+properties[key])
+	}
+	return strings.Join(lines, "\n")
+}
+
+func templateFieldsText(fields []domain.PageTemplateField) string {
+	lines := make([]string, 0, len(fields))
+	for _, field := range fields {
+		required := ""
+		if field.Required {
+			required = "required"
+		}
+		lines = append(lines, strings.Join([]string{field.Name, field.Label, field.Default, required}, " | "))
+	}
+	return strings.Join(lines, "\n")
+}
+
 // NewViews parses each page template with the shared layout and partials once at startup.
 func NewViews(
 	appFS fs.FS,
@@ -342,12 +383,16 @@ func NewViews(
 	}
 
 	funcs := template.FuncMap{
-		"join":       strings.Join,
-		"timeago":    timeAgo,
-		"filesize":   fileSize,
-		"hasgroup":   hasGroup,
-		"hasgroupid": hasGroupID,
-		"icon":       icons.SVG,
+		"join":               strings.Join,
+		"timeago":            timeAgo,
+		"filesize":           fileSize,
+		"hasgroup":           hasGroup,
+		"hasgroupid":         hasGroupID,
+		"templateproperties": templatePropertiesText,
+		"templatefields":     templateFieldsText,
+		"blueprintcontext":   pageTemplateContext,
+		"blankblueprint":     blankPageTemplate,
+		"icon":               icons.SVG,
 		"logo": func() template.HTML {
 			return template.HTML(logoSVG)
 		},

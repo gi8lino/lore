@@ -96,7 +96,7 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Run("create template name", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := NewTemplates(nil).CreatePageTemplate(ctx, " ", "", "")
+		_, err := NewTemplates(nil).CreatePageTemplate(ctx, PageTemplateInput{Name: " "})
 
 		validation, ok := errors.AsType[*ValidationError](err)
 		require.True(t, ok)
@@ -107,7 +107,7 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 	t.Run("update template name", func(t *testing.T) {
 		t.Parallel()
 
-		err := NewTemplates(nil).UpdatePageTemplate(ctx, 1, " ", "", "")
+		err := NewTemplates(nil).UpdatePageTemplate(ctx, 1, PageTemplateInput{Name: " "})
 
 		validation, ok := errors.AsType[*ValidationError](err)
 		require.True(t, ok)

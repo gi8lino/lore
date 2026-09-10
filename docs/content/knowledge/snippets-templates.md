@@ -4,7 +4,11 @@ Lore has two reusable-content mechanisms in the server application.
 
 ## Page templates
 
-Administrators create named page templates with a description and Markdown body. Authors can choose a template when creating a new page to prefill editor content.
+Administrators create named page blueprints. A blueprint can prefill the page path prefix, icon, tags, lifecycle status, owner group, review interval, structured properties, and Markdown body. Authors can choose a blueprint when creating a page.
+
+Blueprints can also declare prompted fields. Each field has a stable name, label, optional default, and optional required flag. Use `{{field:name}}` in the blueprint Markdown; the new-page editor asks for the value, renders it in live preview, and replaces the placeholder when the page is saved. Blueprint fields are creation-time inputs rather than persistent macros.
+
+For example, a service blueprint can provide fields such as `service`, `repository`, and `tier`, pre-assign an owner and `service` tag, and seed properties used by dynamic page reports.
 
 ## Knowledge snippets
 

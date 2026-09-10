@@ -468,12 +468,28 @@ type PageLink struct {
 	Exists      bool
 }
 
-// PageTemplate is reusable Markdown content offered when creating a page.
+// PageTemplateField is one author-supplied value used by a page blueprint.
+type PageTemplateField struct {
+	Name     string `json:"name"`
+	Label    string `json:"label"`
+	Default  string `json:"default,omitempty"`
+	Required bool   `json:"required,omitempty"`
+}
+
+// PageTemplate is a reusable page blueprint offered when creating a page.
 type PageTemplate struct {
-	ID          int64
-	Name        string
-	Description string
-	Markdown    string
+	ID                 int64
+	Name               string
+	Description        string
+	Markdown           string
+	PathPrefix         string
+	Icon               string
+	Tags               []string
+	Status             string
+	OwnerGroupID       int64
+	ReviewIntervalDays int
+	Properties         map[string]string
+	Fields             []PageTemplateField
 }
 
 // UserPreferences contains presentation preferences for one wiki user.
