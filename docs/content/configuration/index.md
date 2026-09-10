@@ -8,10 +8,12 @@ Application settings are stored in PostgreSQL and changed through the administra
 
 The regular server exposes `/robots.txt` without authentication. Administrators can choose **Disallow crawling**, **Allow crawling**, or **Disabled** under **Administration → Configuration**. New installations default to disallowing crawling. When crawling is allowed, Lore also exposes `/sitemap.xml`, advertises it from `robots.txt`, and lists the home page plus verified and deprecated pages. Draft and archived pages are omitted. Disallowing or disabling crawling makes `/sitemap.xml` return 404; disabling also makes `/robots.txt` return 404.
 
-External links are rendered beside global search for all authenticated users. Each link has a label and HTTP(S) URL plus optional icon and description. The icon picker combines Lucide interface icons and Simple Icons brand logos; persisted identifiers use the explicit `-lucide` or `-simple` suffix. The description is secondary header text and can carry information such as a version or environment.
+External links are rendered beside global search for all authenticated users. Each link has a label and HTTP(S) URL plus optional icon and description. The icon picker combines Lucide interface icons and Simple Icons brand logos; persisted identifiers use the explicit `-lucide` or `-simple` suffix. The description is secondary header text and can carry information such as a version or environment. Each link can independently use the **Highlight**, **Lift**, or **None** hover effect. Its optional hover-text template accepts `{{label}}` and `{{description}}` placeholders; when omitted, Lore uses the existing `Label — Description` title (or just the label when no description is set).
 
 The PDF integration supports arbitrary request headers for bearer tokens, API keys, gateways, and other service-specific authentication. Each header can be marked **Sensitive**. Sensitive values are encrypted in PostgreSQL with the deployment-managed `LORE__ENCRYPTION_KEY`, are masked in the normal configuration response, and are returned to the browser only after an administrator explicitly chooses **Reveal**. Lore rejects transport-controlled and renderer-protocol headers such as `Host`, `Content-Length`, `Content-Type`, `Accept`, `Transfer-Encoding`, and `Connection`.
 
 The PDF service test uses the endpoint and headers currently entered in the form, including unsaved replacements. Lore renders a fixed two-page diagnostic document, verifies that a PDF was returned, reports its page count and size, and shows the generated document so an administrator can judge the visual result.
 
 {{subpages}}
+
+

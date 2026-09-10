@@ -46,6 +46,8 @@ label = "Repository"
 url = "https://github.com/example/project"
 icon = "github-simple"
 description = "v2.4.1"
+hover_effect = "lift"
+hover_text = "{{label}} | {{description}}"
 ```
 
 `logo`, `favicon`, `favicon_ico`, and `assets_dir` are resolved relative to the configuration file. Normal relative paths, including `../`, are supported, so assets may live in a parent directory. Absolute paths are supported too. `source_dir` and `output_dir` are resolved relative to the process working directory.
@@ -54,7 +56,7 @@ description = "v2.4.1"
 
 `robots` controls generated crawler guidance. `allow` writes a `robots.txt` that permits crawling and links to `sitemap.xml` when `site_url` is absolute. `disallow` writes `Disallow: /`, while `none` omits the file entirely. Static builds default to `allow`; the regular Lore application has its own administrator-controlled setting and defaults to `disallow`.
 
-`external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional icon identifier and `description` is optional secondary text such as a version, environment, or provider name. Icon identifiers explicitly include their source: use `-lucide` for Lucide interface icons and `-simple` for Simple Icons brand logos, for example `book-open-lucide` or `github-simple`. Multiple entries are rendered in configuration order.
+`external_links` adds optional links beside search in the generated header. Each entry requires `label` and an absolute HTTP(S) `url`; `icon` is an optional icon identifier and `description` is optional secondary text such as a version, environment, or provider name. `hover_effect` accepts `highlight` (the default), `lift`, or `none`. `hover_text` customizes the browser tooltip and can contain `{{label}}` and `{{description}}`. Icon identifiers explicitly include their source: use `-lucide` for Lucide interface icons and `-simple` for Simple Icons brand logos, for example `book-open-lucide` or `github-simple`. Multiple entries are rendered in configuration order.
 
 ## Filesystem routes
 
@@ -135,3 +137,5 @@ It intentionally does **not** ship the Lore editor, authentication, account menu
 A typical CI job builds the frontend and Lore binary, runs `lore build`, and publishes the generated `site/` directory as the Pages artifact. No PostgreSQL service is needed for that job.
 
 For local preview, override the site URL to match your local server root if the checked-in configuration uses a GitHub Pages project prefix.
+
+

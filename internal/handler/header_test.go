@@ -19,9 +19,13 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 	require.NoError(t, err)
 
 	tmpl, err := template.New("header").Funcs(template.FuncMap{
-		"icon":    func(string, int) template.HTML { return "" },
-		"logo":    func() template.HTML { return "" },
-		"timeago": func(time.Time) string { return "now" },
+		"icon":          func(string, int) template.HTML { return "" },
+		"logo":          func() template.HTML { return "" },
+		"timeago":       func(time.Time) string { return "now" },
+		"externalhover": domain.ExternalLinkHoverTitle,
+		"externalhovereffect": func(link domain.ExternalLink) string {
+			return domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
+		},
 	}).Parse(string(source))
 	require.NoError(t, err)
 
@@ -31,6 +35,8 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 			URL:         "https://github.com/gi8lino/lore",
 			Icon:        "github-simple",
 			Description: "v2.4.1",
+			HoverEffect: "lift",
+			HoverText:   "{{label }} | {{description}}",
 		}}},
 		Notifications: []domain.Notification{{
 			ID:        7,
@@ -48,5 +54,7 @@ func TestNotificationHeaderUnreadClass(t *testing.T) {
 	assert.Contains(t, output.String(), `href="https://github.com/gi8lino/lore"`)
 	assert.Contains(t, output.String(), ">Repository</strong>")
 	assert.Contains(t, output.String(), ">v2.4.1</small>")
+	assert.Contains(t, output.String(), `class="external-link hover-lift has-icon"`)
+	assert.Contains(t, output.String(), `title="Repository | v2.4.1"`)
 	assert.NotContains(t, output.String(), `class="notification-itemunread"`)
 }

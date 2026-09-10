@@ -196,6 +196,8 @@ func normalizeExternalLinks(links []domain.ExternalLink) ([]domain.ExternalLink,
 		link.URL = strings.TrimSpace(link.URL)
 		link.Icon = strings.TrimSpace(link.Icon)
 		link.Description = strings.TrimSpace(link.Description)
+		link.HoverEffect = strings.TrimSpace(link.HoverEffect)
+		link.HoverText = strings.TrimSpace(link.HoverText)
 
 		if link == (domain.ExternalLink{}) {
 			continue
@@ -209,6 +211,10 @@ func normalizeExternalLinks(links []domain.ExternalLink) ([]domain.ExternalLink,
 		if link.Icon != "" && !icons.IsIcon(link.Icon) {
 			return nil, domain.NewValidationError("external_links", "Choose external link icons from the available icon catalog.")
 		}
+		if !domain.ValidExternalLinkHoverEffect(link.HoverEffect) {
+			return nil, domain.NewValidationError("external_links", "Choose a valid hover effect for every external link.")
+		}
+		link.HoverEffect = domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
 
 		normalized = append(normalized, link)
 	}

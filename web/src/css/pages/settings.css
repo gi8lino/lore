@@ -525,8 +525,8 @@
 .external-link-settings-row {
   display: grid;
   grid-template-columns:
-    minmax(130px, 0.75fr) minmax(220px, 1.5fr) minmax(130px, 0.75fr)
-    auto;
+    minmax(120px, 0.7fr) minmax(210px, 1.3fr) minmax(120px, 0.7fr)
+    minmax(110px, 0.55fr) auto;
   align-items: end;
   gap: 8px;
   padding: 10px;
@@ -537,6 +537,9 @@
 .external-link-settings-row > label {
   display: grid;
   gap: 5px;
+}
+.external-link-settings-row > .external-link-hover-text {
+  grid-column: 1 / -2;
 }
 .external-link-settings-row > label > span {
   color: var(--text-secondary);
@@ -1137,3 +1140,5 @@
 .auth-setup-note {
   margin: 18px 0 0;
 }
+
+

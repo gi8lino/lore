@@ -49,7 +49,11 @@ func (b *builder) parseTemplates(basePath string) (siteTemplates, error) {
 // parseTemplate parses one static page template with URL and icon helpers.
 func (b *builder) parseTemplate(pageTemplate, basePath string) (*template.Template, error) {
 	funcs := template.FuncMap{
-		"icon": icons.SVG,
+		"icon":          icons.SVG,
+		"externalhover": domain.ExternalLinkHoverTitle,
+		"externalhovereffect": func(link domain.ExternalLink) string {
+			return domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
+		},
 		"pageurl": func(route string) string {
 			return pageURL(basePath, route)
 		},

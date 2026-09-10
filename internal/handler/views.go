@@ -422,7 +422,11 @@ func NewViews(
 		"blueprintcontext":   pageTemplateContext,
 		"blankblueprint":     blankPageTemplate,
 		"webhookcontext":     webhookContext,
-		"icon":               icons.SVG,
+		"externalhover":      domain.ExternalLinkHoverTitle,
+		"externalhovereffect": func(link domain.ExternalLink) string {
+			return domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
+		},
+		"icon": icons.SVG,
 		"logo": func() template.HTML {
 			return template.HTML(logoSVG)
 		},

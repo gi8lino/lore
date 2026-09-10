@@ -71,9 +71,17 @@
   color: var(--text-secondary);
   text-decoration: none;
 }
-.external-link:hover {
+.external-link.hover-highlight:hover,
+.external-link.hover-lift:hover {
   border-color: var(--border-strong);
   color: var(--text);
+}
+.external-link.hover-lift {
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.external-link.hover-lift:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
 .external-link-icon {
   display: grid;
@@ -507,3 +515,5 @@
     padding-top: 2px;
   }
 }
+
+

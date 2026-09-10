@@ -117,6 +117,8 @@ func (c *Config) validateExternalLinks() error {
 		link.URL = strings.TrimSpace(link.URL)
 		link.Icon = strings.TrimSpace(link.Icon)
 		link.Description = strings.TrimSpace(link.Description)
+		link.HoverEffect = strings.TrimSpace(link.HoverEffect)
+		link.HoverText = strings.TrimSpace(link.HoverText)
 
 		if link.Label == "" {
 			return fmt.Errorf("external_links[%d].label is required", index)
@@ -127,6 +129,10 @@ func (c *Config) validateExternalLinks() error {
 		if link.Icon != "" && !icons.IsIcon(link.Icon) {
 			return fmt.Errorf("external_links[%d].icon must be an available icon", index)
 		}
+		if !domain.ValidExternalLinkHoverEffect(link.HoverEffect) {
+			return fmt.Errorf("external_links[%d].hover_effect must be highlight, lift, or none", index)
+		}
+		link.HoverEffect = domain.EffectiveExternalLinkHoverEffect(link.HoverEffect)
 	}
 
 	return nil

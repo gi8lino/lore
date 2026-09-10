@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -202,6 +203,79 @@ type ExternalLink struct {
 	URL         string `json:"url" toml:"url"`
 	Icon        string `json:"icon,omitempty" toml:"icon"`
 	Description string `json:"description,omitempty" toml:"description"`
+	// HoverEffect controls visual feedback when a pointer hovers over the link.
+	HoverEffect string `json:"hover_effect,omitempty" toml:"hover_effect"`
+	// HoverText is an optional title template supporting {{label}} and {{description}}.
+	HoverText string `json:"hover_text,omitempty" toml:"hover_text"`
+}
+
+const (
+	ExternalLinkHoverHighlight = "highlight"
+	ExternalLinkHoverLift      = "lift"
+	ExternalLinkHoverNone      = "none"
+)
+
+// ExternalLinkHoverEffects returns the supported external-link hover presentations.
+func ExternalLinkHoverEffects() []string {
+	return []string{ExternalLinkHoverHighlight, ExternalLinkHoverLift, ExternalLinkHoverNone}
+}
+
+// ValidExternalLinkHoverEffect reports whether value is a supported hover presentation.
+// Empty is accepted as the compatibility default and renders as highlight.
+func ValidExternalLinkHoverEffect(value string) bool {
+	switch value {
+	case "", ExternalLinkHoverHighlight, ExternalLinkHoverLift, ExternalLinkHoverNone:
+		return true
+	default:
+		return false
+	}
+}
+
+// EffectiveExternalLinkHoverEffect returns the visual hover presentation used for a link.
+func EffectiveExternalLinkHoverEffect(value string) string {
+	if value == "" {
+		return ExternalLinkHoverHighlight
+	}
+	return value
+}
+
+// ExternalLinkHoverTitle resolves a link's hover text template.
+func ExternalLinkHoverTitle(link ExternalLink) string {
+	template := strings.TrimSpace(link.HoverText)
+	if template == "" {
+		if strings.TrimSpace(link.Description) == "" {
+			return strings.TrimSpace(link.Label)
+		}
+		return strings.TrimSpace(link.Label) + " — " + strings.TrimSpace(link.Description)
+	}
+
+	var output strings.Builder
+	for len(template) > 0 {
+		start := strings.Index(template, "{{")
+		if start < 0 {
+			output.WriteString(template)
+			break
+		}
+		output.WriteString(template[:start])
+		end := strings.Index(template[start+2:], "}}")
+		if end < 0 {
+			output.WriteString(template[start:])
+			break
+		}
+		end += start + 2
+		name := strings.TrimSpace(template[start+2 : end])
+		switch name {
+		case "label":
+			output.WriteString(link.Label)
+		case "description":
+			output.WriteString(link.Description)
+		default:
+			output.WriteString(template[start : end+2])
+		}
+		template = template[end+2:]
+	}
+
+	return strings.TrimSpace(output.String())
 }
 
 // PDFHeader describes one configurable request header sent to the external PDF service.

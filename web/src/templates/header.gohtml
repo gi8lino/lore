@@ -29,10 +29,10 @@
       <nav class="external-links" aria-label="External links">
         {{ range .ApplicationSettings.ExternalLinks }}
           <a
-            class="external-link{{ if .Icon }} has-icon{{ end }}"
+            class="external-link hover-{{ externalhovereffect . }}{{ if .Icon }} has-icon{{ end }}"
             href="{{ .URL }}"
             aria-label="{{ .Label }}{{ if .Description }} — {{ .Description }}{{ end }}"
-            title="{{ .Label }}{{ if .Description }} — {{ .Description }}{{ end }}"
+            title="{{ externalhover . }}"
           >
             {{ if .Icon }}<span class="external-link-icon" aria-hidden="true">{{ icon .Icon 18 }}</span>{{ end }}
             <span class="external-link-copy">
@@ -89,6 +89,8 @@
     {{ end }}
   </header>
 {{ end }}
+
+
 
 
 

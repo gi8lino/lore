@@ -968,7 +968,9 @@ func externalLinksFromForm(r *http.Request) []domain.ExternalLink {
 	urls := r.Form["external_link_url"]
 	icons := r.Form["external_link_icon"]
 	descriptions := r.Form["external_link_description"]
-	count := max(len(labels), len(urls), len(icons), len(descriptions))
+	hoverEffects := r.Form["external_link_hover_effect"]
+	hoverTexts := r.Form["external_link_hover_text"]
+	count := max(len(labels), len(urls), len(icons), len(descriptions), len(hoverEffects), len(hoverTexts))
 	links := make([]domain.ExternalLink, 0, count)
 
 	for index := range count {
@@ -977,6 +979,8 @@ func externalLinksFromForm(r *http.Request) []domain.ExternalLink {
 			URL:         formValueAt(urls, index),
 			Icon:        formValueAt(icons, index),
 			Description: formValueAt(descriptions, index),
+			HoverEffect: formValueAt(hoverEffects, index),
+			HoverText:   formValueAt(hoverTexts, index),
 		}
 		if link == (domain.ExternalLink{}) {
 			continue

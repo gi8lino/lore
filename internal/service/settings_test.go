@@ -80,6 +80,7 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 			URL:         "https://github.com/gi8lino/lore",
 			Icon:        "github-simple",
 			Description: "v2.4.1",
+			HoverEffect: domain.ExternalLinkHoverHighlight,
 		}}, repository.saved.ExternalLinks)
 	})
 
@@ -114,6 +115,22 @@ func TestSaveApplicationSettingsValidatesExternalLinks(t *testing.T) {
 		validation, ok := errors.AsType[*domain.ValidationError](err)
 		require.True(t, ok)
 		assert.Equal(t, "Choose external link icons from the available icon catalog.", validation.UserMessage())
+	})
+
+	t.Run("rejects unknown hover effect", func(t *testing.T) {
+		t.Parallel()
+
+		settings := NewSettings(&applicationSettingsRepositoryStub{}, nil)
+
+		err := settings.SaveApplicationSettings(context.Background(), domain.ApplicationSettings{
+			Rendering:     domain.RenderingSettings{DefaultTypographySize: domain.TypographySizeCompact},
+			RobotsPolicy:  domain.RobotsPolicyDisallow,
+			ExternalLinks: []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", HoverEffect: "bounce"}},
+		}, 7)
+
+		validation, ok := errors.AsType[*domain.ValidationError](err)
+		require.True(t, ok)
+		assert.Equal(t, "Choose a valid hover effect for every external link.", validation.UserMessage())
 	})
 }
 

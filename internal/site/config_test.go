@@ -261,6 +261,8 @@ label = " Repository "
 url = " https://github.com/gi8lino/lore "
 icon = " github-simple "
 description = " v2.4.1 "
+hover_effect = " lift "
+hover_text = " {{label }} | {{description}} "
 `), 0o600))
 
 		config, err := loadConfig(filename, true)
@@ -271,6 +273,8 @@ description = " v2.4.1 "
 		assert.Equal(t, "https://github.com/gi8lino/lore", config.ExternalLinks[0].URL)
 		assert.Equal(t, "github-simple", config.ExternalLinks[0].Icon)
 		assert.Equal(t, "v2.4.1", config.ExternalLinks[0].Description)
+		assert.Equal(t, domain.ExternalLinkHoverLift, config.ExternalLinks[0].HoverEffect)
+		assert.Equal(t, "{{label }} | {{description}}", config.ExternalLinks[0].HoverText)
 	})
 
 	t.Run("rejects unsafe URL", func(t *testing.T) {
@@ -289,5 +293,14 @@ description = " v2.4.1 "
 		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}}
 
 		assert.ErrorContains(t, config.validate(), "available icon")
+	})
+
+	t.Run("rejects unknown hover effect", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", HoverEffect: "bounce"}}
+
+		assert.ErrorContains(t, config.validate(), "hover_effect")
 	})
 }

@@ -106,7 +106,7 @@
             <div class="external-link-settings-title">
               <div>
                 <strong>External links</strong>
-                <small>Add links beside search. The optional description can show secondary information such as a version.</small>
+                <small>Add links beside search. Hover feedback and tooltip text can be configured per link; tooltip templates support <code>{{ "{{label}}" }}</code> and <code>{{ "{{description}}" }}</code>.</small>
               </div>
               <button class="button compact" type="button" data-external-link-add>{{ icon "plus-lucide" 14 }}<span>Add link</span></button>
             </div>
@@ -125,6 +125,18 @@
                   <label>
                     <span>Description</span>
                     <input type="text" name="external_link_description" value="{{ .Description }}" placeholder="v2.4.1" />
+                  </label>
+                  <label>
+                    <span>Hover effect</span>
+                    <select name="external_link_hover_effect">
+                      <option value="highlight" {{ if or (eq .HoverEffect "") (eq .HoverEffect "highlight") }}selected{{ end }}>Highlight</option>
+                      <option value="lift" {{ if eq .HoverEffect "lift" }}selected{{ end }}>Lift</option>
+                      <option value="none" {{ if eq .HoverEffect "none" }}selected{{ end }}>None</option>
+                    </select>
+                  </label>
+                  <label class="external-link-hover-text">
+                    <span>Hover text</span>
+                    <input type="text" name="external_link_hover_text" value="{{ .HoverText }}" placeholder="{{ "{{label}} — {{description}}" }}" />
                   </label>
                   <div class="external-link-settings-actions">
                     <input type="hidden" name="external_link_icon" value="{{ .Icon }}" data-icon-picker-value />
@@ -151,6 +163,18 @@
                 <label>
                   <span>Description</span>
                   <input type="text" name="external_link_description" placeholder="v2.4.1" />
+                </label>
+                <label>
+                  <span>Hover effect</span>
+                  <select name="external_link_hover_effect">
+                    <option value="highlight" selected>Highlight</option>
+                    <option value="lift">Lift</option>
+                    <option value="none">None</option>
+                  </select>
+                </label>
+                <label class="external-link-hover-text">
+                  <span>Hover text</span>
+                  <input type="text" name="external_link_hover_text" placeholder="{{ "{{label}} — {{description}}" }}" />
                 </label>
                 <div class="external-link-settings-actions">
                   <input type="hidden" name="external_link_icon" data-icon-picker-value />
@@ -711,6 +735,8 @@
     <p class="icon-picker-empty-state muted" data-icon-picker-empty hidden>No matching icons.</p>
   </dialog>
 {{ end }}
+
+
 
 
 
