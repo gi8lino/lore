@@ -12,6 +12,7 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/subpages"
 )
@@ -60,7 +61,7 @@ type pageRequest struct {
 func PreviewMarkdown(
 	settingsUseCases settingsService,
 	navigationUseCases navigationService,
-	catalogUseCases pageContentService,
+	catalogUseCases pageReportCatalogService,
 	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
 	logger *slog.Logger,
@@ -105,7 +106,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: renderSubpages},
+			md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases)},
 		)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)

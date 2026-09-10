@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/subpages"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
@@ -132,11 +133,14 @@ type Functions struct {
 	Variables []Variable
 	// Subpages renders the generated navigation tree inserted by {{subpages}}.
 	Subpages func(SubpagesOptions) (string, error)
+	// PageReport renders a dynamic query inserted by {{pages ...}}.
+	PageReport func(pagereport.Options) (string, error)
 }
 
-type subpagesInvocation struct {
+type functionInvocation struct {
 	placeholder string
-	options     SubpagesOptions
+	subpages    *SubpagesOptions
+	pageReport  *pagereport.Options
 }
 
 // tabSection contains one parsed Markdown tab label and body.
@@ -400,7 +404,7 @@ func (r *Renderer) renderPage(
 	options Options,
 	functions Functions,
 ) (RenderedPage, error) {
-	source, invocations := preprocessFunctions(source)
+	source, invocations := preprocessFunctions(source, functions)
 
 	raw, err := r.renderRawResolved(source, resolve, options)
 	if err != nil {
@@ -413,11 +417,14 @@ func (r *Renderer) renderPage(
 	for _, invocation := range invocations {
 		replacement := ""
 
-		if functions.Subpages != nil {
-			replacement, err = functions.Subpages(invocation.options)
-			if err != nil {
-				return RenderedPage{}, err
-			}
+		switch {
+		case invocation.subpages != nil && functions.Subpages != nil:
+			replacement, err = functions.Subpages(*invocation.subpages)
+		case invocation.pageReport != nil && functions.PageReport != nil:
+			replacement, err = functions.PageReport(*invocation.pageReport)
+		}
+		if err != nil {
+			return RenderedPage{}, err
 		}
 
 		html = strings.Replace(
@@ -437,10 +444,11 @@ func (r *Renderer) renderPage(
 // preprocessFunctions replaces standalone function calls outside fenced code with safe placeholders.
 func preprocessFunctions(
 	source string,
-) (string, []subpagesInvocation) {
+	functions Functions,
+) (string, []functionInvocation) {
 	lines := strings.Split(source, "\n")
 	output := make([]string, 0, len(lines))
-	invocations := make([]subpagesInvocation, 0, 1)
+	invocations := make([]functionInvocation, 0, 1)
 
 	for index := 0; index < len(lines); {
 		if marker := fenceDelimiter(lines[index]); marker != "" {
@@ -454,20 +462,23 @@ func preprocessFunctions(
 		}
 
 		if options, ok := parseSubpagesFunction(lines[index]); ok {
-			placeholder :=
-				`<div class="lore-function-subpages lore-function-subpages-` +
-					strconv.Itoa(len(invocations)) +
-					`"></div>`
-
-			invocations = append(
-				invocations,
-				subpagesInvocation{
-					placeholder: placeholder,
-					options:     options,
-				},
-			)
-
+			placeholder := functionPlaceholder("subpages", len(invocations))
+			invocations = append(invocations, functionInvocation{
+				placeholder: placeholder,
+				subpages:    &options,
+			})
 			output = append(output, placeholder)
+		} else if functions.PageReport != nil {
+			if options, ok := pagereport.Parse(lines[index]); ok {
+				placeholder := functionPlaceholder("pages", len(invocations))
+				invocations = append(invocations, functionInvocation{
+					placeholder: placeholder,
+					pageReport:  &options,
+				})
+				output = append(output, placeholder)
+			} else {
+				output = append(output, lines[index])
+			}
 		} else {
 			output = append(output, lines[index])
 		}
@@ -476,6 +487,10 @@ func preprocessFunctions(
 	}
 
 	return strings.Join(output, "\n"), invocations
+}
+
+func functionPlaceholder(kind string, index int) string {
+	return `<div class="lore-function-` + kind + ` lore-function-` + kind + `-` + strconv.Itoa(index) + `"></div>`
 }
 
 // parseSubpagesFunction parses the supported named options from one standalone invocation.

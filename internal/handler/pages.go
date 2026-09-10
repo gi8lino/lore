@@ -16,6 +16,7 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/subpages"
@@ -195,8 +196,9 @@ func ViewPage(
 			md.Slug,
 			options,
 			md.Functions{
-				Subpages:  renderSubpages,
-				Variables: expanded.Annotations,
+				Subpages:   renderSubpages,
+				PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases),
+				Variables:  expanded.Annotations,
 			},
 		)
 		if err != nil {

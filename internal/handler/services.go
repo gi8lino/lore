@@ -41,6 +41,11 @@ type pageSearchService interface {
 	Search(context.Context, string, int) ([]domain.Page, error)
 }
 
+type pageReportCatalogService interface {
+	pageContentService
+	pageSearchService
+}
+
 type homeCatalogService interface {
 	pageListService
 	Favorites(context.Context, int64) ([]domain.Page, error)

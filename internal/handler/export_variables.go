@@ -11,6 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/pdf"
 )
 
@@ -38,7 +39,7 @@ func readExportVariables(w http.ResponseWriter, r *http.Request) (map[string]str
 // renderExportHTML renders the shared self-contained page body used by print preview and PDF export.
 func renderExportHTML(
 	ctx context.Context,
-	catalog pageContentService,
+	catalog pageReportCatalogService,
 	knowledge knowledgeContentService,
 	navigation navigationService,
 	media imageContentService,
@@ -55,7 +56,7 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(ctx, catalog)})
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +65,7 @@ func renderExportHTML(
 
 // PreviewPageExport returns a self-contained script-free print document without calling the PDF service.
 func PreviewPageExport(
-	catalog pageContentService,
+	catalog pageReportCatalogService,
 	settings settingsService,
 	navigation navigationService,
 	knowledge knowledgeContentService,

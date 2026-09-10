@@ -11,6 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/pagereport"
 )
 
 type createPageShareLinkResponse struct {
@@ -39,7 +40,7 @@ func CreatePageShareLink(sharingUseCases sharingService, logger *slog.Logger) ht
 // SharedPage serves a reusable public permalink without authentication.
 func SharedPage(
 	sharingUseCases sharingService,
-	catalogUseCases pageContentService,
+	catalogUseCases pageReportCatalogService,
 	settingsUseCases settingsService,
 	knowledgeUseCases knowledgeContentService,
 	mediaUseCases imageContentService,
@@ -75,7 +76,7 @@ func SharedPage(
 func renderSharedPage(
 	w http.ResponseWriter,
 	r *http.Request,
-	catalogUseCases pageContentService,
+	catalogUseCases pageReportCatalogService,
 	settingsUseCases settingsService,
 	knowledgeUseCases knowledgeContentService,
 	mediaUseCases imageContentService,
@@ -112,7 +113,7 @@ func renderSharedPage(
 		expanded,
 		md.Slug,
 		options,
-		md.Functions{},
+		md.Functions{PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases)},
 	)
 	if err != nil {
 		writePublicShareError(logger, w, err)
