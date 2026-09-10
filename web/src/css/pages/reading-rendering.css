@@ -110,3 +110,43 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
+
+
+
+
+.page-review-workflow {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+}
+
+.page-review-workflow-heading,
+.page-review-request,
+.page-review-decision,
+.page-review-decision > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-review-workflow-heading > div,
+.page-review-request label,
+.page-review-decision label {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.page-review-note {
+  margin: 0 0 0 28px;
+  color: var(--text-secondary);
+}
+
+.page-review-decision {
+  align-items: end;
+  flex-wrap: wrap;
+}

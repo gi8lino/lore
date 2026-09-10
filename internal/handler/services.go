@@ -235,6 +235,13 @@ type pageReviewService interface {
 	Review(context.Context, string, domain.User) error
 }
 
+type pageApprovalService interface {
+	PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error)
+	CanReview(context.Context, string, domain.User) (bool, error)
+	RequestReview(context.Context, string, string, domain.User) (domain.PageReviewRequest, error)
+	DecideReview(context.Context, int64, string, string, string, domain.User) error
+}
+
 type pageRevisionWriter interface {
 	RestoreRevision(context.Context, string, int, domain.User) (domain.Page, error)
 }

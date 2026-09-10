@@ -106,6 +106,7 @@ func ViewPage(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageViewCatalogService,
 	accessUseCases pageAccessReader,
+	approvalUseCases pageApprovalService,
 	settingsUseCases settingsService,
 	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
@@ -140,6 +141,22 @@ func ViewPage(
 		}
 
 		pageWatch, err := catalogUseCases.PageWatch(r.Context(), slug, user.ID)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+
+		reviewRequest, err := approvalUseCases.PageReviewRequest(r.Context(), slug)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+		canReview, err := approvalUseCases.CanReview(r.Context(), slug, user)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+		canEditPage, err := accessUseCases.CanEdit(r.Context(), user, slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
@@ -256,6 +273,9 @@ func ViewPage(
 		}
 
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
+		data.PageReviewRequest = reviewRequest
+		data.CanReviewPage = canReview
+		data.CanEdit = canEditPage
 		data.PageVariables = expanded.Variables
 		data.OutgoingLinks = outgoingLinks
 		data.BrokenLinks = brokenLinks

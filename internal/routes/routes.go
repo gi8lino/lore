@@ -284,6 +284,8 @@ func addRoutes(
 	mux.Handle("POST /pages/delete/{slug...}", browserAuthn(adminAuthz(handler.DeletePageForm(pageUseCases, views))))
 	mux.Handle("POST /pages/move/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.MovePageForm(pageUseCases, accessUseCases, logger)))))
 	mux.Handle("POST /pages/review/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.ReviewPageForm(pageUseCases, logger)))))
+	mux.Handle("POST /pages/approval/request/{slug...}", browserAuthn(editorAuthz(pageEditAuthz(handler.RequestPageReview(pageUseCases, logger)))))
+	mux.Handle("POST /pages/approval/{id}", browserAuthn(editorAuthz(handler.DecidePageReview(pageUseCases, logger))))
 	mux.Handle("POST /page-comments/{slug...}", browserAuthn(pageViewAuthz(handler.AddPageComment(pageUseCases, views))))
 	mux.Handle(
 		"POST /page-comments/resolve/{id}",
@@ -328,6 +330,7 @@ func addRoutes(
 			viewDataUseCases,
 			catalogUseCases,
 			accessUseCases,
+			pageUseCases,
 			settingsUseCases,
 			knowledgeUseCases,
 			renderer,

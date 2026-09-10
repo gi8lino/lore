@@ -191,6 +191,10 @@ type ViewData struct {
 	PageFavorite bool
 	// PageWatchScope is page or subtree when the current user watches this path.
 	PageWatchScope string
+	// PageReviewRequest is the newest lightweight approval workflow item.
+	PageReviewRequest domain.PageReviewRequest
+	// CanReviewPage reports whether the current user may decide the pending review.
+	CanReviewPage bool
 	// HTML is the sanitized rendered Markdown for the current page.
 	HTML template.HTML
 	// PageContents contains heading links for the current rendered page.

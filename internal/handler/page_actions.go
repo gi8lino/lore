@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
@@ -53,6 +55,49 @@ func ReviewPageForm(pageUseCases pageReviewService, logger *slog.Logger) http.Ha
 			return
 		}
 
+		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
+	}
+}
+
+// RequestPageReview opens a lightweight approval request for the current revision.
+func RequestPageReview(pageUseCases pageApprovalService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := currentUser(r)
+		if err := r.ParseForm(); err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid review request.")
+			return
+		}
+		slug := strings.TrimSpace(r.PathValue("slug"))
+		if _, err := pageUseCases.RequestReview(r.Context(), slug, r.FormValue("note"), user); err != nil {
+			writePageProblem(logger, w, err)
+			return
+		}
+		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
+	}
+}
+
+// DecidePageReview approves the requested revision or asks for changes.
+func DecidePageReview(pageUseCases pageApprovalService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := currentUser(r)
+		if err := r.ParseForm(); err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid review decision.")
+			return
+		}
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || id <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid review request.")
+			return
+		}
+		slug := strings.TrimSpace(r.FormValue("slug"))
+		if err := pageUseCases.DecideReview(r.Context(), id, slug, r.FormValue("decision"), r.FormValue("note"), user); err != nil {
+			if errors.Is(err, domain.ErrStaleReview) {
+				httpresponse.Problem(w, http.StatusConflict, "The page changed after review was requested. Request a new review for the latest revision.")
+				return
+			}
+			writePageProblem(logger, w, err)
+			return
+		}
 		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
 	}
 }

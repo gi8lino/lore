@@ -21,6 +21,8 @@ var (
 	ErrIdentityRejected = errors.New("process OIDC identity: identity was rejected")
 	// ErrPageInBin indicates that a page path is occupied by a recycled page.
 	ErrPageInBin = errors.New("page path is in recycle bin")
+	// ErrStaleReview indicates that a page changed after review was requested.
+	ErrStaleReview = errors.New("page changed after review was requested")
 )
 
 const (
@@ -346,6 +348,21 @@ type PageWatch struct {
 	Path      string    `json:"path"`
 	Scope     string    `json:"scope"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// PageReviewRequest tracks lightweight documentation approval for one revision.
+type PageReviewRequest struct {
+	ID              int64
+	PageSlug        string
+	RevisionNumber  int
+	RequestedBy     int64
+	RequestedByName string
+	ReviewedBy      int64
+	ReviewedByName  string
+	Status          string
+	Note            string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // PageAccess is the effective nearest path-rule decision for one user.
