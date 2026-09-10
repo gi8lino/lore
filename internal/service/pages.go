@@ -72,6 +72,10 @@ type pageRepository interface {
 	MovePage(context.Context, string, string, domain.MovePageOptions, domain.User) error
 	NotifyMentions(context.Context, int64, string, string, string) error
 	NotifyPageWatchers(context.Context, int64, string, string, string, string) error
+	PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error)
+	RequestPageReview(context.Context, string, int64, string) (domain.PageReviewRequest, error)
+	CanReviewPage(context.Context, string, int64) (bool, error)
+	DecidePageReview(context.Context, int64, string, int64, string, string) (string, error)
 	ResolvePageComment(context.Context, int64, bool) error
 	Revision(context.Context, string, int) (revision.Revision, error)
 	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
@@ -81,11 +85,13 @@ type pageRepository interface {
 type Pages struct {
 	repository pageRepository
 	logger     *slog.Logger
+	eventSinks []EventSink
 }
 
-// NewPages constructs the page application service.
-func NewPages(repository pageRepository, logger *slog.Logger) *Pages {
-	return &Pages{repository: repository, logger: logger}
+// NewPages constructs the page application service. Event sinks are optional so
+// page mutations remain independently testable.
+func NewPages(repository pageRepository, logger *slog.Logger, eventSinks ...EventSink) *Pages {
+	return &Pages{repository: repository, logger: logger, eventSinks: eventSinks}
 }
 
 // Save validates and persists a page, then records audit and mention side effects.
@@ -339,6 +345,7 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 
 	s.notifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
 	s.notifyWatchers(ctx, actor.ID, slug, "New comment: "+slug, "A watched page has a new discussion comment.", "/pages/"+slug+"#comments")
+	s.recordAudit(ctx, actor.ID, "comment.created", "page", slug, "Page discussion comment created")
 
 	return nil
 }
@@ -534,4 +541,62 @@ func actionTitle(action, title string) string {
 	default:
 		return "Page updated: " + title
 	}
+}
+
+// PageReviewRequest returns the newest review workflow item for a page.
+func (s *Pages) PageReviewRequest(ctx context.Context, slug string) (domain.PageReviewRequest, error) {
+	return s.repository.PageReviewRequest(ctx, strings.TrimSpace(slug))
+}
+
+// CanReview reports whether an editor is allowed to approve the page for its owner group.
+func (s *Pages) CanReview(ctx context.Context, slug string, actor domain.User) (bool, error) {
+	if actor.Role == "admin" || actor.ExternalAdmin {
+		return true, nil
+	}
+	if actor.Role != "editor" {
+		return false, nil
+	}
+	return s.repository.CanReviewPage(ctx, strings.TrimSpace(slug), actor.ID)
+}
+
+// RequestReview opens a review for the current page revision and moves the page to draft.
+func (s *Pages) RequestReview(ctx context.Context, slug, note string, actor domain.User) (domain.PageReviewRequest, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return domain.PageReviewRequest{}, newValidationError("slug", "A page path is required.")
+	}
+	if actor.Role != "admin" && actor.Role != "editor" && !actor.ExternalAdmin {
+		return domain.PageReviewRequest{}, domain.ErrForbidden
+	}
+	request, err := s.repository.RequestPageReview(ctx, slug, actor.ID, strings.TrimSpace(note))
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+	s.recordAudit(ctx, actor.ID, "page.review_requested", "page", slug, "Review requested for revision "+fmt.Sprint(request.RevisionNumber))
+	s.notifyWatchers(ctx, actor.ID, slug, "review-requested", "Review requested", "/pages/"+slug)
+	return request, nil
+}
+
+// DecideReview approves the requested revision or asks the author for changes.
+func (s *Pages) DecideReview(ctx context.Context, id int64, slug, decision, note string, actor domain.User) error {
+	if id <= 0 {
+		return newValidationError("review", "Choose a valid review request.")
+	}
+	if decision != "approved" && decision != "changes_requested" {
+		return newValidationError("decision", "Choose approve or request changes.")
+	}
+	allowed, err := s.CanReview(ctx, slug, actor)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return domain.ErrForbidden
+	}
+	resolvedSlug, err := s.repository.DecidePageReview(ctx, id, strings.TrimSpace(slug), actor.ID, decision, strings.TrimSpace(note))
+	if err != nil {
+		return err
+	}
+	s.recordAudit(ctx, actor.ID, "page.review_"+decision, "page", resolvedSlug, strings.TrimSpace(note))
+	s.notifyWatchers(ctx, actor.ID, resolvedSlug, "review-"+decision, "Review "+strings.ReplaceAll(decision, "_", " "), "/pages/"+resolvedSlug)
+	return nil
 }

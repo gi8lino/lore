@@ -27,6 +27,7 @@ func Home(
 	viewDataUseCases viewDataService,
 	catalogUseCases homeCatalogService,
 	draftUseCases draftListService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +63,20 @@ func Home(
 			return
 		}
 
+		for _, collection := range []*[]domain.Page{&favorites, &recent, &viewed, &popular} {
+			filtered, filterErr := accessUseCases.FilterPages(r.Context(), user, *collection)
+			if filterErr != nil {
+				httpresponse.InternalServerError(views.logger, w, filterErr)
+				return
+			}
+			*collection = filtered
+		}
+		recentEdits, err = visibleRecentEdits(r.Context(), accessUseCases, user, recentEdits)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+
 		var drafts []domain.PageDraft
 
 		if user.Role == "admin" || user.Role == "editor" {
@@ -90,6 +105,8 @@ func Home(
 func ViewPage(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageViewCatalogService,
+	accessUseCases pageAccessReader,
+	approvalUseCases pageApprovalService,
 	settingsUseCases settingsService,
 	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
@@ -114,6 +131,7 @@ func ViewPage(
 		}
 
 		user, _ := auth.User(r)
+		securedCatalog := accessiblePageCatalog{catalog: catalogUseCases, access: accessUseCases, user: user}
 		_ = catalogUseCases.RecordView(r.Context(), slug, user.ID)
 
 		pageFavorite, err := catalogUseCases.IsFavorite(r.Context(), slug, user.ID)
@@ -128,6 +146,22 @@ func ViewPage(
 			return
 		}
 
+		reviewRequest, err := approvalUseCases.PageReviewRequest(r.Context(), slug)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+		canReview, err := approvalUseCases.CanReview(r.Context(), slug, user)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+		canEditPage, err := accessUseCases.CanEdit(r.Context(), user, slug)
+		if err != nil {
+			writePageProblem(views.logger, w, err)
+			return
+		}
+
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
@@ -137,6 +171,11 @@ func ViewPage(
 		backlinks, err := catalogUseCases.Backlinks(r.Context(), slug)
 		if err != nil {
 			writePageProblem(views.logger, w, err)
+			return
+		}
+		backlinks, err = accessUseCases.FilterPages(r.Context(), user, backlinks)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
@@ -160,6 +199,11 @@ func ViewPage(
 				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
+		}
+		related, err = accessUseCases.FilterPages(r.Context(), user, related)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
@@ -187,7 +231,7 @@ func ViewPage(
 
 		expanded, err := expandPageKnowledge(
 			r.Context(),
-			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
+			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
 			page.Markdown,
 			nil,
 			true,
@@ -203,7 +247,7 @@ func ViewPage(
 			options,
 			md.Functions{
 				Subpages:   renderSubpages,
-				PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases),
+				PageReport: pagereport.NewRenderer(r.Context(), securedCatalog),
 				Variables:  expanded.Annotations,
 			},
 		)
@@ -229,6 +273,9 @@ func ViewPage(
 		}
 
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
+		data.PageReviewRequest = reviewRequest
+		data.CanReviewPage = canReview
+		data.CanEdit = canEditPage
 		data.PageVariables = expanded.Variables
 		data.OutgoingLinks = outgoingLinks
 		data.BrokenLinks = brokenLinks
@@ -278,6 +325,7 @@ func EditPage(
 	groupUseCases groupReader,
 	knowledgeUseCases knowledgeSnippetReader,
 	templateUseCases templateService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -422,6 +470,8 @@ func splitPagePath(slug string) (string, string) {
 func SavePageForm(
 	pageUseCases pageWriterService,
 	draftUseCases draftDiscardService,
+	templateUseCases templateService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -434,6 +484,21 @@ func SavePageForm(
 		}
 
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
+		destinationSlug := md.Slug(r.FormValue("slug"))
+		for _, path := range []string{originalSlug, destinationSlug} {
+			if path == "" {
+				continue
+			}
+			allowed, accessErr := accessUseCases.CanEdit(r.Context(), user, path)
+			if accessErr != nil {
+				httpresponse.InternalServerError(views.logger, w, accessErr)
+				return
+			}
+			if !allowed {
+				httpresponse.Problem(w, http.StatusForbidden, "You do not have permission to edit this page path.")
+				return
+			}
+		}
 
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {
@@ -451,6 +516,15 @@ func SavePageForm(
 			return
 		}
 
+		markdown := r.FormValue("markdown")
+		if originalSlug == "" {
+			markdown, err = resolvePageTemplateFields(r.Context(), r, templateUseCases, markdown)
+			if err != nil {
+				writePageProblem(views.logger, w, err)
+				return
+			}
+		}
+
 		properties := pagePropertiesFromForm(r)
 
 		page, err := pageUseCases.Save(r.Context(), service.PageSaveInput{
@@ -459,7 +533,7 @@ func SavePageForm(
 			Title:              r.FormValue("title"),
 			Icon:               r.FormValue("icon"),
 			Language:           r.FormValue("language"),
-			Markdown:           r.FormValue("markdown"),
+			Markdown:           markdown,
 			Message:            r.FormValue("message"),
 			Tags:               splitTags(r.FormValue("tags")),
 			GroupIDs:           parseGroupIDs(r.Form["group_id"]),
@@ -494,6 +568,38 @@ func SavePageForm(
 
 		http.Redirect(w, r, "/pages/"+page.Slug, http.StatusSeeOther)
 	}
+}
+
+func resolvePageTemplateFields(
+	ctx context.Context,
+	r *http.Request,
+	templates templateService,
+	markdown string,
+) (string, error) {
+	value := strings.TrimSpace(r.FormValue("template_id"))
+	if value == "" {
+		return markdown, nil
+	}
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id <= 0 {
+		return "", &service.ValidationError{Fields: []service.FieldError{{Field: "template", Message: "Choose a valid page template."}}}
+	}
+	template, err := templates.PageTemplate(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	validation := &service.ValidationError{}
+	for _, field := range template.Fields {
+		fieldValue := r.FormValue("blueprint_" + field.Name)
+		if field.Required && strings.TrimSpace(fieldValue) == "" {
+			validation.Fields = append(validation.Fields, service.FieldError{Field: "blueprint_" + field.Name, Message: field.Label + " is required."})
+		}
+		markdown = strings.ReplaceAll(markdown, "{{field:"+field.Name+"}}", fieldValue)
+	}
+	if len(validation.Fields) > 0 {
+		return "", validation
+	}
+	return markdown, nil
 }
 
 // DeletePageForm deletes a page from the browser and returns home.

@@ -189,6 +189,39 @@
     {{ end }}
 
 
+    {{ if or .PageReviewRequest.ID .CanEdit }}
+      <aside class="page-review-workflow status-{{ .PageReviewRequest.Status }}">
+        <div class="page-review-workflow-heading">
+          {{ icon "clipboard-check-lucide" 18 }}
+          <div>
+            <strong>Approval</strong>
+            {{ if .PageReviewRequest.ID }}
+              <span>{{ if eq .PageReviewRequest.Status "pending" }}Review requested for revision {{ .PageReviewRequest.RevisionNumber }} by {{ .PageReviewRequest.RequestedByName }}.{{ else if eq .PageReviewRequest.Status "approved" }}Revision {{ .PageReviewRequest.RevisionNumber }} was approved{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}.{{ else }}Changes were requested for revision {{ .PageReviewRequest.RevisionNumber }}{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}.{{ end }}</span>
+            {{ else }}
+              <span>No approval has been requested for this page.</span>
+            {{ end }}
+          </div>
+        </div>
+        {{ if .PageReviewRequest.Note }}<p class="page-review-note">{{ .PageReviewRequest.Note }}</p>{{ end }}
+        {{ if and .PageReviewRequest.ID (eq .PageReviewRequest.Status "pending") .CanReviewPage }}
+          <form action="/pages/approval/{{ .PageReviewRequest.ID }}" method="post" class="page-review-decision">
+            <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
+            <label><span>Review note <span class="optional">Optional</span></span><input name="note" placeholder="What did you check?" /></label>
+            <div>
+              <button class="button" name="decision" value="changes_requested" type="submit">{{ icon "message-square-warning-lucide" 15 }}<span>Request changes</span></button>
+              <button class="button primary" name="decision" value="approved" type="submit">{{ icon "badge-check-lucide" 15 }}<span>Approve revision</span></button>
+            </div>
+          </form>
+        {{ else if and .CanEdit (or (not .PageReviewRequest.ID) (ne .PageReviewRequest.Status "pending")) }}
+          <form action="/pages/approval/request/{{ .Page.Slug }}" method="post" class="page-review-request">
+            <label><span>Request note <span class="optional">Optional</span></span><input name="note" placeholder="What should the reviewer focus on?" /></label>
+            <button class="button" type="submit">{{ icon "send-lucide" 15 }}<span>Request review</span></button>
+          </form>
+        {{ end }}
+      </aside>
+    {{ end }}
+
+
     <div
       class="page-reading{{ if .PageContents }}
         {{ if .Preferences.ShowPageContents }}with-contents{{ else }}contents-hidden{{ end }}
@@ -530,9 +563,3 @@
     </dialog>
   {{ end }}
 {{ end }}
-
-
-
-
-
-

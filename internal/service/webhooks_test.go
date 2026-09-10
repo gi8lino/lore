@@ -46,7 +46,7 @@ func (r *webhookRepositoryStub) WebhookDeliveries(context.Context, int) ([]domai
 	return r.deliveries, nil
 }
 
-func testSecretCipher(t *testing.T) *secrets.Cipher {
+func testWebhookSecretCipher(t *testing.T) *secrets.Cipher {
 	t.Helper()
 	key := base64.StdEncoding.EncodeToString([]byte("01234567890123456789012345678901"))
 	cipher, err := secrets.New(key)
@@ -67,7 +67,7 @@ func TestWebhooks(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		defer server.Close()
-		cipher := testSecretCipher(t)
+		cipher := testWebhookSecretCipher(t)
 		encrypted, err := cipher.Encrypt("hook-secret")
 		require.NoError(t, err)
 		repository := &webhookRepositoryStub{items: []domain.Webhook{{ID: 1, Name: "build", URL: server.URL, Events: []string{"page.updated"}, Secret: encrypted, Enabled: true}}}
