@@ -162,6 +162,17 @@ func ViewPage(
 			return
 		}
 
+		canManageReview := canEditPage && approvalUseCases.CanManageReview(reviewRequest, user)
+
+		var reviewGroups []domain.Group
+		if canEditPage && (reviewRequest.ID == 0 || canManageReview) {
+			reviewGroups, err = approvalUseCases.ReviewGroups(r.Context())
+			if err != nil {
+				httpresponse.InternalServerError(views.logger, w, err)
+				return
+			}
+		}
+
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
@@ -275,6 +286,8 @@ func ViewPage(
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
 		data.PageReviewRequest = reviewRequest
 		data.CanReviewPage = canReview
+		data.CanManageReview = canManageReview
+		data.ReviewGroups = reviewGroups
 		data.CanEdit = canEditPage
 		data.PageVariables = expanded.Variables
 		data.OutgoingLinks = outgoingLinks

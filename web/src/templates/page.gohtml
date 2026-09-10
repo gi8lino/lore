@@ -85,17 +85,43 @@
             </form>
           </div>
         </details>
-        {{ if and .CanEdit (or (not .PageReviewRequest.ID) (ne .PageReviewRequest.Status "pending")) }}
+        {{ if and .CanEdit (not .PageReviewRequest.ID) }}
           <details class="page-review-action">
             <summary class="button icon-only" aria-label="Request review" title="Request review">
               {{ icon "send-lucide" 17 }}
             </summary>
-            <form action="/pages/approval/request/{{ .Page.Slug }}" method="post" class="page-review-request">
-              <label>
-                <span>Note <span class="optional">Optional</span></span>
-                <input name="note" placeholder="What should the reviewer focus on?" />
-              </label>
-              <button class="button primary compact" type="submit">Request</button>
+            <form action="/pages/approval/request/{{ .Page.Slug }}" method="post" class="page-review-request" data-validate-form data-error-title="Could not request review">
+              <div class="page-review-form-grid">
+                <label class="page-review-reviewers">
+                  <span>Reviewers <span class="optional">Optional</span></span>
+                  <textarea
+                    name="reviewers"
+                    rows="1"
+                    data-mention-autocomplete
+                    data-mention-roles="admin,editor"
+                    placeholder="@alice @bob"
+                  ></textarea>
+                </label>
+                <label>
+                  <span>Group <span class="optional">Optional</span></span>
+                  <select name="reviewer_group_id">
+                    <option value="">No group</option>
+                    {{ range .ReviewGroups }}
+                      <option value="{{ .ID }}"{{ if eq .ID $.Page.OwnerGroupID }} selected{{ end }}>
+                        {{ .Name }}{{ if eq .ID $.Page.OwnerGroupID }} · owner{{ end }}
+                      </option>
+                    {{ end }}
+                  </select>
+                </label>
+                <label class="page-review-note-field">
+                  <span>Note <span class="optional">Optional</span></span>
+                  <input name="note" placeholder="What should they focus on?" />
+                </label>
+              </div>
+              <div class="page-review-request-footer">
+                <small>Any assigned reviewer can approve. With no target, Lore uses the owner group or administrators.</small>
+                <button class="button primary compact" type="submit">Request</button>
+              </div>
             </form>
           </details>
         {{ end }}
@@ -202,31 +228,95 @@
     {{ end }}
 
 
-    {{ if .PageReviewRequest.ID }}
-      <aside class="page-review-workflow status-{{ .PageReviewRequest.Status }}">
+    {{ if eq .PageReviewRequest.Status "pending" }}
+      <aside class="page-review-workflow status-pending">
         <div class="page-review-summary">
-          <span class="page-review-icon" aria-hidden="true">{{ icon "clipboard-check-lucide" 16 }}</span>
+          <span class="page-review-icon" aria-hidden="true">{{ icon "clipboard-clock-lucide" 16 }}</span>
           <div class="page-review-copy">
-            <strong>Review</strong>
-            <span>{{ if eq .PageReviewRequest.Status "pending" }}Revision {{ .PageReviewRequest.RevisionNumber }} requested by {{ .PageReviewRequest.RequestedByName }}{{ else if eq .PageReviewRequest.Status "approved" }}Revision {{ .PageReviewRequest.RevisionNumber }} approved{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}{{ else }}Changes requested for revision {{ .PageReviewRequest.RevisionNumber }}{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}{{ end }}</span>
+            <strong>Review requested</strong>
+            <span>Revision {{ .PageReviewRequest.RevisionNumber }} by {{ .PageReviewRequest.RequestedByName }}</span>
+          </div>
+          <div class="page-review-targets" aria-label="Assigned reviewers">
+            {{ range .PageReviewRequest.Reviewers }}<span>@{{ .Username }}</span>{{ end }}
+            {{ if .PageReviewRequest.ReviewerGroupName }}
+              <span>{{ icon "users-lucide" 12 }}{{ .PageReviewRequest.ReviewerGroupName }}</span>
+            {{ end }}
+            {{ if and (not .PageReviewRequest.Reviewers) (not .PageReviewRequest.ReviewerGroupName) }}
+              <span>{{ icon "shield-lucide" 12 }}Administrators</span>
+            {{ end }}
           </div>
         </div>
 
         {{ if .PageReviewRequest.Note }}<p class="page-review-note">{{ .PageReviewRequest.Note }}</p>{{ end }}
 
-        {{ if and (eq .PageReviewRequest.Status "pending") .CanReviewPage }}
-          <form action="/pages/approval/{{ .PageReviewRequest.ID }}" method="post" class="page-review-decision">
-            <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
-            <label>
-              <span>Review note <span class="optional">Optional</span></span>
-              <input name="note" placeholder="What did you check?" />
-            </label>
-            <div class="page-review-actions">
-              <button class="button compact" name="decision" value="changes_requested" type="submit">{{ icon "message-square-warning-lucide" 14 }}<span>Request changes</span></button>
-              <button class="button primary compact" name="decision" value="approved" type="submit">{{ icon "badge-check-lucide" 14 }}<span>Approve</span></button>
-            </div>
-          </form>
-        {{ end }}
+        <div class="page-review-controls">
+          {{ if .CanManageReview }}
+            <details class="page-review-edit">
+              <summary class="button compact">{{ icon "pencil-lucide" 13 }}<span>Edit request</span></summary>
+              <form action="/pages/approval/{{ .PageReviewRequest.ID }}/update" method="post" class="page-review-edit-form" data-validate-form data-error-title="Could not update review">
+                <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
+                <div class="page-review-form-grid">
+                  <label class="page-review-reviewers">
+                    <span>Reviewers <span class="optional">Optional</span></span>
+                    <textarea
+                      name="reviewers"
+                      rows="1"
+                      data-mention-autocomplete
+                      data-mention-roles="admin,editor"
+                      placeholder="@alice @bob"
+                    >{{ range .PageReviewRequest.Reviewers }}@{{ .Username }} {{ end }}</textarea>
+                  </label>
+                  <label>
+                    <span>Group <span class="optional">Optional</span></span>
+                    <select name="reviewer_group_id">
+                      <option value="">No group</option>
+                      {{ range .ReviewGroups }}
+                        <option value="{{ .ID }}"{{ if eq .ID $.PageReviewRequest.ReviewerGroupID }} selected{{ end }}>{{ .Name }}</option>
+                      {{ end }}
+                    </select>
+                  </label>
+                  <label class="page-review-note-field">
+                    <span>Note <span class="optional">Optional</span></span>
+                    <input name="note" value="{{ .PageReviewRequest.Note }}" placeholder="What should they focus on?" />
+                  </label>
+                </div>
+                <div class="page-review-edit-actions">
+                  <button class="button primary compact" type="submit">Save changes</button>
+                </div>
+              </form>
+            </details>
+            <form action="/pages/approval/{{ .PageReviewRequest.ID }}/cancel" method="post" data-validate-form data-error-title="Could not cancel review">
+              <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
+              <button class="button compact" type="submit">{{ icon "x-lucide" 13 }}<span>Cancel review</span></button>
+            </form>
+          {{ end }}
+
+          {{ if .CanReviewPage }}
+            <form action="/pages/approval/{{ .PageReviewRequest.ID }}" method="post" class="page-review-decision" data-validate-form data-error-title="Could not submit review">
+              <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
+              <label>
+                <span>Decision note <span class="optional">Optional</span></span>
+                <input name="note" placeholder="What did you check?" />
+              </label>
+              <div class="page-review-actions">
+                <button class="button compact" name="decision" value="changes_requested" type="submit">{{ icon "message-square-warning-lucide" 14 }}<span>Request changes</span></button>
+                <button class="button primary compact" name="decision" value="approved" type="submit">{{ icon "badge-check-lucide" 14 }}<span>Approve</span></button>
+              </div>
+            </form>
+          {{ end }}
+        </div>
+      </aside>
+    {{ else if and (eq .PageReviewRequest.Status "changes_requested") .CanEdit }}
+      <aside class="page-review-workflow status-changes-requested">
+        <div class="page-review-summary">
+          <span class="page-review-icon" aria-hidden="true">{{ icon "message-square-warning-lucide" 16 }}</span>
+          <div class="page-review-copy">
+            <strong>Changes requested</strong>
+            <span>Revision {{ .PageReviewRequest.RevisionNumber }}{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}</span>
+          </div>
+        </div>
+        {{ if .PageReviewRequest.DecisionNote }}<p class="page-review-note">{{ .PageReviewRequest.DecisionNote }}</p>{{ end }}
+        <p class="page-review-hint">Edit the page to address the feedback, then request a new review.</p>
       </aside>
     {{ end }}
 

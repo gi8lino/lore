@@ -22,7 +22,8 @@ import (
 
 var webhookEvents = []string{
 	"page.created", "page.updated", "page.renamed", "page.deleted", "page.moved",
-	"page.reviewed", "page.review_requested", "page.review_approved", "page.review_changes_requested",
+	"page.reviewed", "page.review_requested", "page.review_updated", "page.review_canceled",
+	"page.review_approved", "page.review_changes_requested",
 	"page.revision_restored", "comment.created", "pages.imported",
 	"page.bulk_status", "page.bulk_tag", "page.bulk_group", "page.bulk_move", "page.bulk_delete",
 }

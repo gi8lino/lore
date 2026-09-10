@@ -55,6 +55,34 @@ type BulkPageInput struct {
 	Actor   domain.User
 }
 
+// PageReviewRequestInput contains the editable fields used to open a review.
+type PageReviewRequestInput struct {
+	Slug              string
+	ReviewerUsernames []string
+	ReviewerGroupID   int64
+	Note              string
+	Actor             domain.User
+}
+
+// PageReviewUpdateInput contains the editable fields of an existing pending review.
+type PageReviewUpdateInput struct {
+	ID                int64
+	Slug              string
+	ReviewerUsernames []string
+	ReviewerGroupID   int64
+	Note              string
+	Actor             domain.User
+}
+
+// PageReviewDecisionInput contains one immutable decision for a pending review.
+type PageReviewDecisionInput struct {
+	ID       int64
+	Slug     string
+	Decision string
+	Note     string
+	Actor    domain.User
+}
+
 // pageRepository is the persistence contract required by page use cases.
 // Keeping it here makes the application service independently testable and
 // prevents unrelated store capabilities from becoming implicit dependencies.
@@ -73,9 +101,15 @@ type pageRepository interface {
 	NotifyMentions(context.Context, int64, string, string, string) error
 	NotifyPageWatchers(context.Context, int64, string, string, string, string) error
 	PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error)
-	RequestPageReview(context.Context, string, int64, string) (domain.PageReviewRequest, error)
+	PageReviewRequestByID(context.Context, int64, string) (domain.PageReviewRequest, error)
+	ReviewUsers(context.Context, []string) ([]domain.User, error)
+	ReviewGroup(context.Context, int64) (domain.Group, error)
+	Groups(context.Context) ([]domain.Group, error)
+	RequestPageReview(context.Context, string, int64, []int64, int64, string) (domain.PageReviewRequest, error)
+	UpdatePageReview(context.Context, int64, string, int64, []int64, int64, string) (domain.PageReviewRequest, error)
+	CancelPageReview(context.Context, int64, string, int64) (string, error)
 	CanReviewPage(context.Context, string, int64) (bool, error)
-	DecidePageReview(context.Context, int64, string, int64, string, string) (string, error)
+	DecidePageReview(context.Context, int64, string, int64, bool, string, string) (string, error)
 	ResolvePageComment(context.Context, int64, bool) error
 	Revision(context.Context, string, int) (revision.Revision, error)
 	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
@@ -544,12 +578,17 @@ func actionTitle(action, title string) string {
 	}
 }
 
-// PageReviewRequest returns the newest review workflow item for a page.
+// PageReviewRequest returns the active review workflow item for a page.
 func (s *Pages) PageReviewRequest(ctx context.Context, slug string) (domain.PageReviewRequest, error) {
 	return s.repository.PageReviewRequest(ctx, strings.TrimSpace(slug))
 }
 
-// CanReview reports whether an editor is allowed to approve the page for its owner group.
+// ReviewGroups returns collaboration groups that can be selected as review targets.
+func (s *Pages) ReviewGroups(ctx context.Context) ([]domain.Group, error) {
+	return s.repository.Groups(ctx)
+}
+
+// CanReview reports whether an editor is assigned to the current pending review.
 func (s *Pages) CanReview(ctx context.Context, slug string, actor domain.User) (bool, error) {
 	if actor.Role == "admin" || actor.ExternalAdmin {
 		return true, nil
@@ -557,47 +596,264 @@ func (s *Pages) CanReview(ctx context.Context, slug string, actor domain.User) (
 	if actor.Role != "editor" {
 		return false, nil
 	}
+
 	return s.repository.CanReviewPage(ctx, strings.TrimSpace(slug), actor.ID)
 }
 
+// CanManageReview reports whether the actor may edit or cancel the pending request.
+func (s *Pages) CanManageReview(request domain.PageReviewRequest, actor domain.User) bool {
+	if request.ID == 0 || request.Status != domain.PageReviewStatusPending {
+		return false
+	}
+
+	return actor.Role == "admin" || actor.ExternalAdmin || request.RequestedBy == actor.ID
+}
+
 // RequestReview opens a review for the current page revision and moves the page to draft.
-func (s *Pages) RequestReview(ctx context.Context, slug, note string, actor domain.User) (domain.PageReviewRequest, error) {
-	slug = strings.TrimSpace(slug)
-	if slug == "" {
+func (s *Pages) RequestReview(ctx context.Context, input PageReviewRequestInput) (domain.PageReviewRequest, error) {
+	input.Slug = strings.TrimSpace(input.Slug)
+	if input.Slug == "" {
 		return domain.PageReviewRequest{}, newValidationError("slug", "A page path is required.")
 	}
-	if actor.Role != "admin" && actor.Role != "editor" && !actor.ExternalAdmin {
+	if !canRequestReview(input.Actor) {
 		return domain.PageReviewRequest{}, domain.ErrForbidden
 	}
-	request, err := s.repository.RequestPageReview(ctx, slug, actor.ID, strings.TrimSpace(note))
+
+	active, err := s.repository.PageReviewRequest(ctx, input.Slug)
 	if err != nil {
 		return domain.PageReviewRequest{}, err
 	}
-	s.recordAudit(ctx, actor.ID, "page.review_requested", "page", slug, "Review requested for revision "+fmt.Sprint(request.RevisionNumber))
-	s.notifyWatchers(ctx, actor.ID, slug, "review-requested", "Review requested", "/pages/"+slug)
+	if active.Status == domain.PageReviewStatusPending {
+		return domain.PageReviewRequest{}, domain.ErrReviewPending
+	}
+	if active.Status == domain.PageReviewStatusChangesRequested {
+		return domain.PageReviewRequest{}, domain.ErrReviewChangesRequired
+	}
+
+	reviewerIDs, reviewerGroupID, err := s.resolveReviewTargets(
+		ctx,
+		input.Slug,
+		input.ReviewerUsernames,
+		input.ReviewerGroupID,
+	)
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+
+	request, err := s.repository.RequestPageReview(
+		ctx,
+		input.Slug,
+		input.Actor.ID,
+		reviewerIDs,
+		reviewerGroupID,
+		strings.TrimSpace(input.Note),
+	)
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+
+	s.recordAudit(ctx, input.Actor.ID, "page.review_requested", "page", input.Slug, "Review requested for revision "+fmt.Sprint(request.RevisionNumber))
+	s.notifyWatchers(ctx, input.Actor.ID, input.Slug, "review-requested", "Review requested", "/pages/"+input.Slug)
+
 	return request, nil
 }
 
-// DecideReview approves the requested revision or asks the author for changes.
-func (s *Pages) DecideReview(ctx context.Context, id int64, slug, decision, note string, actor domain.User) error {
+// UpdateReview changes reviewers, reviewer group, or note without changing the requested revision.
+func (s *Pages) UpdateReview(ctx context.Context, input PageReviewUpdateInput) (domain.PageReviewRequest, error) {
+	if input.ID <= 0 {
+		return domain.PageReviewRequest{}, newValidationError("review", "Choose a valid review request.")
+	}
+	input.Slug = strings.TrimSpace(input.Slug)
+	if input.Slug == "" {
+		return domain.PageReviewRequest{}, newValidationError("slug", "A page path is required.")
+	}
+
+	request, err := s.repository.PageReviewRequestByID(ctx, input.ID, input.Slug)
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+	if request.Status != domain.PageReviewStatusPending {
+		return domain.PageReviewRequest{}, domain.ErrReviewClosed
+	}
+	if !s.CanManageReview(request, input.Actor) {
+		return domain.PageReviewRequest{}, domain.ErrForbidden
+	}
+
+	reviewerIDs, reviewerGroupID, err := s.resolveReviewTargets(
+		ctx,
+		input.Slug,
+		input.ReviewerUsernames,
+		input.ReviewerGroupID,
+	)
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+
+	updated, err := s.repository.UpdatePageReview(
+		ctx,
+		input.ID,
+		input.Slug,
+		input.Actor.ID,
+		reviewerIDs,
+		reviewerGroupID,
+		strings.TrimSpace(input.Note),
+	)
+	if err != nil {
+		return domain.PageReviewRequest{}, err
+	}
+
+	s.recordAudit(ctx, input.Actor.ID, "page.review_updated", "page", input.Slug, "Pending review request updated")
+	s.notifyWatchers(ctx, input.Actor.ID, input.Slug, "review-updated", "Review request updated", "/pages/"+input.Slug)
+
+	return updated, nil
+}
+
+// CancelReview cancels a pending request without rewriting its history.
+func (s *Pages) CancelReview(ctx context.Context, id int64, slug string, actor domain.User) error {
 	if id <= 0 {
 		return newValidationError("review", "Choose a valid review request.")
 	}
-	if decision != "approved" && decision != "changes_requested" {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return newValidationError("slug", "A page path is required.")
+	}
+
+	request, err := s.repository.PageReviewRequestByID(ctx, id, slug)
+	if err != nil {
+		return err
+	}
+	if request.Status != domain.PageReviewStatusPending {
+		return domain.ErrReviewClosed
+	}
+	if !s.CanManageReview(request, actor) {
+		return domain.ErrForbidden
+	}
+
+	resolvedSlug, err := s.repository.CancelPageReview(ctx, id, slug, actor.ID)
+	if err != nil {
+		return err
+	}
+
+	s.recordAudit(ctx, actor.ID, "page.review_canceled", "page", resolvedSlug, "Pending review request canceled")
+	s.notifyWatchers(ctx, actor.ID, resolvedSlug, "review-canceled", "Review request canceled", "/pages/"+resolvedSlug)
+
+	return nil
+}
+
+// DecideReview approves the requested revision or asks the author for changes.
+func (s *Pages) DecideReview(ctx context.Context, input PageReviewDecisionInput) error {
+	if input.ID <= 0 {
+		return newValidationError("review", "Choose a valid review request.")
+	}
+	if input.Decision != domain.PageReviewStatusApproved && input.Decision != domain.PageReviewStatusChangesRequested {
 		return newValidationError("decision", "Choose approve or request changes.")
 	}
-	allowed, err := s.CanReview(ctx, slug, actor)
+
+	allowed, err := s.CanReview(ctx, input.Slug, input.Actor)
 	if err != nil {
 		return err
 	}
 	if !allowed {
 		return domain.ErrForbidden
 	}
-	resolvedSlug, err := s.repository.DecidePageReview(ctx, id, strings.TrimSpace(slug), actor.ID, decision, strings.TrimSpace(note))
+
+	administrator := input.Actor.Role == "admin" || input.Actor.ExternalAdmin
+	resolvedSlug, err := s.repository.DecidePageReview(
+		ctx,
+		input.ID,
+		strings.TrimSpace(input.Slug),
+		input.Actor.ID,
+		administrator,
+		input.Decision,
+		strings.TrimSpace(input.Note),
+	)
 	if err != nil {
 		return err
 	}
-	s.recordAudit(ctx, actor.ID, "page.review_"+decision, "page", resolvedSlug, strings.TrimSpace(note))
-	s.notifyWatchers(ctx, actor.ID, resolvedSlug, "review-"+decision, "Review "+strings.ReplaceAll(decision, "_", " "), "/pages/"+resolvedSlug)
+
+	s.recordAudit(ctx, input.Actor.ID, "page.review_"+input.Decision, "page", resolvedSlug, strings.TrimSpace(input.Note))
+	s.notifyWatchers(ctx, input.Actor.ID, resolvedSlug, "review-"+input.Decision, "Review "+strings.ReplaceAll(input.Decision, "_", " "), "/pages/"+resolvedSlug)
+
 	return nil
+}
+
+// canRequestReview reports whether an actor may open a page review.
+func canRequestReview(actor domain.User) bool {
+	return actor.Role == "admin" || actor.Role == "editor" || actor.ExternalAdmin
+}
+
+// resolveReviewTargets validates selected people and the optional group and applies the owner-group fallback.
+func (s *Pages) resolveReviewTargets(
+	ctx context.Context,
+	slug string,
+	usernames []string,
+	groupID int64,
+) ([]int64, int64, error) {
+	if groupID < 0 {
+		return nil, 0, newValidationError("reviewer_group_id", "Choose a valid reviewer group.")
+	}
+
+	usernames = normalizeReviewerUsernames(usernames)
+	reviewers, err := s.repository.ReviewUsers(ctx, usernames)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(reviewers) != len(usernames) || !validReviewers(reviewers) {
+		return nil, 0, newValidationError("reviewers", "Choose enabled editors or administrators as reviewers.")
+	}
+
+	if groupID > 0 {
+		if _, err := s.repository.ReviewGroup(ctx, groupID); errors.Is(err, domain.ErrNotFound) {
+			return nil, 0, newValidationError("reviewer_group_id", "Choose an existing reviewer group.")
+		} else if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	if groupID == 0 && len(reviewers) == 0 {
+		page, err := s.repository.GetPage(ctx, slug)
+		if err != nil {
+			return nil, 0, err
+		}
+		groupID = page.OwnerGroupID
+	}
+
+	ids := make([]int64, 0, len(reviewers))
+	for _, reviewer := range reviewers {
+		ids = append(ids, reviewer.ID)
+	}
+
+	return ids, groupID, nil
+}
+
+// validReviewers reports whether every selected account has a role that can decide reviews.
+func validReviewers(reviewers []domain.User) bool {
+	for _, reviewer := range reviewers {
+		if reviewer.Role != "admin" && reviewer.Role != "editor" {
+			return false
+		}
+	}
+
+	return true
+}
+
+// normalizeReviewerUsernames trims mention markers, removes blanks, and keeps each username once.
+func normalizeReviewerUsernames(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+
+	for _, value := range values {
+		value = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(value), "@"))
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, key)
+	}
+
+	return result
 }

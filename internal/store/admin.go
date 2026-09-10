@@ -664,7 +664,7 @@ func (s *Store) SearchUsers(ctx context.Context, query string, limit int) ([]dom
 	}
 
 	rows, err := s.pool.Query(ctx, `
-SELECT id,username,email,display_name,role
+SELECT id,username,email,display_name,role,enabled
 FROM users
 WHERE username ILIKE $1 OR display_name ILIKE $1 OR email ILIKE $1
 ORDER BY
@@ -681,7 +681,7 @@ LIMIT $3`, "%"+query+"%", query+"%", limit)
 
 	for rows.Next() {
 		var user domain.User
-		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role); err != nil {
+		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.DisplayName, &user.Role, &user.Enabled); err != nil {
 			return nil, err
 		}
 

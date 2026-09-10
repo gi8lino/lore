@@ -217,3 +217,13 @@ func TestMutationErrorDoesNotReclassifyInfrastructureFailures(t *testing.T) {
 		assert.Equal(t, err, mutationError(err))
 	})
 }
+
+func TestMutationErrorPreservesReviewConflict(t *testing.T) {
+	t.Parallel()
+
+	cause := &pgconn.PgError{Code: "23505", ConstraintName: "page_review_requests_pending_idx"}
+	err := mutationError(fmt.Errorf("persist: %w", cause))
+
+	assert.ErrorIs(t, err, domain.ErrReviewPending)
+	assert.ErrorIs(t, err, cause)
+}

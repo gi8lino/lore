@@ -5,6 +5,7 @@ import { requestJSON } from "../core/http.ts";
 import { textareaCaretOffset } from "../core/textarea.ts";
 
 const resultLimit = 50;
+let mentionMenuSequence = 0;
 
 type Fence = { character: string; length: number };
 export type MentionTrigger = { start: number; query: string };
@@ -142,6 +143,19 @@ function mentionUsers(value: unknown): MentionUser[] {
   return requireArrayOf(value, isMentionUser, "mention user response");
 }
 
+// Returns an optional role allow-list configured on a mention field.
+function mentionRoles(source: HTMLTextAreaElement): Set<string> | null {
+  const value = source.dataset.mentionRoles?.trim();
+  if (!value) return null;
+
+  const roles = value
+    .split(",")
+    .map((role) => role.trim())
+    .filter(Boolean);
+
+  return roles.length ? new Set(roles) : null;
+}
+
 // Wires mention autocomplete behavior.
 function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   const anchor = source.parentElement;
@@ -154,12 +168,14 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
   const menu = document.createElement("div");
 
   menu.className = "mention-suggestion-menu";
-  menu.id = "mention-suggestions";
+  mentionMenuSequence += 1;
+  menu.id = `mention-suggestions-${mentionMenuSequence}`;
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
   menu.setAttribute("aria-label", "Mention a user");
   suggestionAnchor.append(menu);
 
+  const allowedRoles = mentionRoles(source);
   let trigger: MentionTrigger | null = null;
   let results: MentionUser[] = [];
   let active = -1;
@@ -288,7 +304,9 @@ function setupMentionAutocomplete(source: HTMLTextAreaElement): void {
       );
       if (currentRequest !== request) return;
 
-      results = mentionUsers(payload).slice(0, resultLimit);
+      results = mentionUsers(payload)
+        .filter((user) => !allowedRoles || allowedRoles.has(user.role ?? ""))
+        .slice(0, resultLimit);
       active = results.length ? 0 : -1;
       render();
     } catch (error) {

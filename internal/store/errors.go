@@ -19,6 +19,8 @@ func mutationError(err error) error {
 			"page_templates_name_key", "page_templates_name_ci_idx", "knowledge_snippets_kind_name_key",
 			"knowledge_snippets_kind_name_ci_idx", "saved_searches_user_id_name_key", "saved_searches_user_name_ci_idx":
 			return errors.Join(domain.ErrAlreadyExists, err)
+		case "page_review_requests_pending_idx":
+			return errors.Join(domain.ErrReviewPending, err)
 		}
 	}
 	if databaseError.Code == "23503" {
@@ -32,6 +34,10 @@ func mutationError(err error) error {
 			field = "owner_group_id"
 		case "oidc_group_mappings_group_id_fkey":
 			field = "oidc_group_mappings"
+		case "page_review_requests_reviewer_group_id_fkey":
+			field = "reviewer_group_id"
+		case "page_review_request_reviewers_user_id_fkey":
+			field = "reviewers"
 		}
 		if field != "" {
 			validation := domain.NewValidationError(field, "One or more selected groups no longer exist.")

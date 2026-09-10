@@ -519,6 +519,13 @@ VALUES($1,$2,$3,$4,$5)`, id, rev, markdown, user.ID, message); err != nil {
 	}
 
 	if _, err = tx.Exec(ctx, `
+UPDATE page_review_requests
+SET status='superseded',updated_at=now()
+WHERE page_id=$1 AND status IN ('pending','changes_requested')`, id); err != nil {
+		return domain.Page{}, mutationError(err)
+	}
+
+	if _, err = tx.Exec(ctx, `
 DELETE FROM page_tags
 WHERE page_id=$1`, id); err != nil {
 		return domain.Page{}, mutationError(err)

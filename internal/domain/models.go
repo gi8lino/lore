@@ -24,9 +24,25 @@ var (
 	ErrPageInBin = errors.New("page path is in recycle bin")
 	// ErrStaleReview indicates that a page changed after review was requested.
 	ErrStaleReview = errors.New("page changed after review was requested")
+	// ErrReviewPending indicates that a page already has a pending review request.
+	ErrReviewPending = errors.New("review already pending")
+	// ErrReviewClosed indicates that a completed review request cannot be changed.
+	ErrReviewClosed = errors.New("review request is closed")
+	// ErrReviewChangesRequired indicates that reviewer feedback must be addressed before another request.
+	ErrReviewChangesRequired = errors.New("review changes must be addressed")
 )
 
 const (
+	// PageReviewStatusPending means the requested revision is awaiting a decision.
+	PageReviewStatusPending = "pending"
+	// PageReviewStatusChangesRequested means a reviewer asked the author to update the page.
+	PageReviewStatusChangesRequested = "changes_requested"
+	// PageReviewStatusApproved means the requested revision was approved.
+	PageReviewStatusApproved = "approved"
+	// PageReviewStatusCanceled means the requester or an administrator canceled the request.
+	PageReviewStatusCanceled = "canceled"
+	// PageReviewStatusSuperseded means a newer page revision replaced the requested revision.
+	PageReviewStatusSuperseded = "superseded"
 	// PageWatchScopePage subscribes to changes on one exact page.
 	PageWatchScopePage = "page"
 	// PageWatchScopeSubtree subscribes to the selected page path and descendants.
@@ -444,17 +460,22 @@ type PageWatch struct {
 
 // PageReviewRequest tracks lightweight documentation approval for one revision.
 type PageReviewRequest struct {
-	ID              int64
-	PageSlug        string
-	RevisionNumber  int
-	RequestedBy     int64
-	RequestedByName string
-	ReviewedBy      int64
-	ReviewedByName  string
-	Status          string
-	Note            string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                int64
+	PageSlug          string
+	RevisionNumber    int
+	RequestedBy       int64
+	RequestedByName   string
+	ReviewerGroupID   int64
+	ReviewerGroupName string
+	Reviewers         []User
+	ReviewedBy        int64
+	ReviewedByName    string
+	Status            string
+	Note              string
+	DecisionNote      string
+	PreviousStatus    string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // PageAccess is the effective nearest path-rule decision for one user.

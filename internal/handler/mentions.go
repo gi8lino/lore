@@ -35,6 +35,10 @@ func MentionUsers(userUseCases userDirectoryService, logger *slog.Logger) http.H
 		result := make([]mentionUser, 0, len(users))
 
 		for _, user := range users {
+			if !user.Enabled {
+				continue
+			}
+
 			result = append(result, mentionUser{
 				Username:    user.Username,
 				DisplayName: user.DisplayName,

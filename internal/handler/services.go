@@ -245,9 +245,13 @@ type pageReviewService interface {
 
 type pageApprovalService interface {
 	PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error)
+	ReviewGroups(context.Context) ([]domain.Group, error)
 	CanReview(context.Context, string, domain.User) (bool, error)
-	RequestReview(context.Context, string, string, domain.User) (domain.PageReviewRequest, error)
-	DecideReview(context.Context, int64, string, string, string, domain.User) error
+	CanManageReview(domain.PageReviewRequest, domain.User) bool
+	RequestReview(context.Context, service.PageReviewRequestInput) (domain.PageReviewRequest, error)
+	UpdateReview(context.Context, service.PageReviewUpdateInput) (domain.PageReviewRequest, error)
+	CancelReview(context.Context, int64, string, domain.User) error
+	DecideReview(context.Context, service.PageReviewDecisionInput) error
 }
 
 type pageRevisionWriter interface {
