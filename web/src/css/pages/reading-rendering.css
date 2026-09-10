@@ -173,18 +173,21 @@
   font-size: 11px;
 }
 
-.page-review-compose {
+.page-review-action {
   position: relative;
 }
 
-.page-review-compose > summary {
+.page-review-action > summary {
   list-style: none;
-  font-size: 12px;
-  font-weight: 550;
 }
 
-.page-review-compose > summary::-webkit-details-marker {
+.page-review-action > summary::-webkit-details-marker {
   display: none;
+}
+
+.page-review-action[open] > summary {
+  border-color: var(--border-strong);
+  color: var(--accent);
 }
 
 .page-review-request {
@@ -248,6 +251,7 @@
   gap: 7px;
 }
 
+.page-review-request .button.compact,
 .page-review-workflow .button.compact {
   min-height: 34px;
   padding: 6px 10px;
@@ -259,16 +263,11 @@
     grid-template-columns: 28px minmax(0, 1fr);
   }
 
-  .page-review-compose {
-    grid-column: 1 / -1;
-    justify-self: start;
-    margin-left: 37px;
-  }
-
-  .page-review-request {
-    right: auto;
-    left: 0;
+  .page-review-action .page-review-request {
+    right: 0;
+    left: auto;
     grid-template-columns: 1fr;
+    width: min(340px, calc(100vw - 32px));
   }
 
   .page-review-decision {
