@@ -55,6 +55,7 @@ var pageTemplateNames = []string{
 	"admin_health",
 	"admin_templates",
 	"admin_permissions",
+	"admin_webhooks",
 	"admin_audit",
 	"admin_snippets",
 	"admin_pages",
@@ -271,6 +272,14 @@ type ViewData struct {
 	PageTemplates []domain.PageTemplate
 	// PageAccessRules contains inherited path access rules for administrators.
 	PageAccessRules []domain.PageAccessRule
+	// Webhooks contains outgoing administrator integrations.
+	Webhooks []domain.Webhook
+	// WebhookDeliveries contains recent outgoing delivery attempts.
+	WebhookDeliveries []domain.WebhookDelivery
+	// WebhookEvents contains supported event names.
+	WebhookEvents []string
+	// WebhookDraft provides enabled defaults for the create form.
+	WebhookDraft domain.Webhook
 	// PageVariables contains distinct variables resolved in this reading page.
 	PageVariables []pageVariable
 	// KnowledgeSnippets contains reusable variables and Markdown snippets.
@@ -339,6 +348,15 @@ type pageTemplateView struct {
 	PageStatuses []string
 }
 
+type webhookView struct {
+	domain.Webhook
+	AvailableEvents []string
+}
+
+func webhookContext(item domain.Webhook, events []string) webhookView {
+	return webhookView{Webhook: item, AvailableEvents: events}
+}
+
 func pageTemplateContext(item domain.PageTemplate, groups []domain.Group, statuses []string) pageTemplateView {
 	return pageTemplateView{PageTemplate: item, Groups: groups, PageStatuses: statuses}
 }
@@ -398,10 +416,12 @@ func NewViews(
 		"filesize":           fileSize,
 		"hasgroup":           hasGroup,
 		"hasgroupid":         hasGroupID,
+		"hasstring":          slices.Contains[[]string, string],
 		"templateproperties": templatePropertiesText,
 		"templatefields":     templateFieldsText,
 		"blueprintcontext":   pageTemplateContext,
 		"blankblueprint":     blankPageTemplate,
+		"webhookcontext":     webhookContext,
 		"icon":               icons.SVG,
 		"logo": func() template.HTML {
 			return template.HTML(logoSVG)

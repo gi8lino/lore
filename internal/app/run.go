@@ -106,7 +106,8 @@ func Run(
 	notificationUseCases := service.NewNotifications(database)
 	mediaUseCases := service.NewMedia(database)
 	navigationUseCases := service.NewNavigation(database)
-	pageUseCases := service.NewPages(database, logger)
+	webhookUseCases := service.NewWebhooks(database, secretCipher, logger)
+	pageUseCases := service.NewPages(database, logger, webhookUseCases)
 	preferenceUseCases := service.NewPreferences(database)
 	recycleBinUseCases := service.NewRecycleBin(database)
 	settingsUseCases := service.NewSettings(database, secretCipher)
@@ -206,6 +207,7 @@ func Run(
 		templateUseCases,
 		tokenUseCases,
 		userUseCases,
+		webhookUseCases,
 		viewDataUseCases,
 		logger.With("component", "server"),
 		accessLog,

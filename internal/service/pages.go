@@ -85,11 +85,13 @@ type pageRepository interface {
 type Pages struct {
 	repository pageRepository
 	logger     *slog.Logger
+	eventSinks []EventSink
 }
 
-// NewPages constructs the page application service.
-func NewPages(repository pageRepository, logger *slog.Logger) *Pages {
-	return &Pages{repository: repository, logger: logger}
+// NewPages constructs the page application service. Event sinks are optional so
+// page mutations remain independently testable.
+func NewPages(repository pageRepository, logger *slog.Logger, eventSinks ...EventSink) *Pages {
+	return &Pages{repository: repository, logger: logger, eventSinks: eventSinks}
 }
 
 // Save validates and persists a page, then records audit and mention side effects.
@@ -343,6 +345,7 @@ func (s *Pages) AddComment(ctx context.Context, slug, anchor, body string, actor
 
 	s.notifyMentions(ctx, actor.ID, body, "Mention in "+slug, "/pages/"+slug+"#comments")
 	s.notifyWatchers(ctx, actor.ID, slug, "New comment: "+slug, "A watched page has a new discussion comment.", "/pages/"+slug+"#comments")
+	s.recordAudit(ctx, actor.ID, "comment.created", "page", slug, "Page discussion comment created")
 
 	return nil
 }

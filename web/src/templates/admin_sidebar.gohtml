@@ -34,6 +34,9 @@
       <a href="/admin/permissions" {{ if eq .AdminSection "permissions" }}class="active" aria-current="page"{{ end }}
         >{{ icon "shield-check-lucide" 17 }}<span>Page access</span></a
       >
+      <a href="/admin/webhooks" {{ if eq .AdminSection "webhooks" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "webhook-lucide" 17 }}<span>Webhooks</span></a
+      >
       <a href="/admin/snippets" {{ if eq .AdminSection "snippets" }}class="active" aria-current="page"{{ end }}
         >{{ icon "braces-lucide" 17 }}<span>Snippets & variables</span></a
       >

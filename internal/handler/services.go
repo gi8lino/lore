@@ -184,6 +184,14 @@ type notificationService interface {
 	OpenNotification(context.Context, int64, int64) (string, error)
 }
 
+type webhookAdminService interface {
+	Webhooks(context.Context) ([]domain.Webhook, error)
+	WebhookDeliveries(context.Context, int) ([]domain.WebhookDelivery, error)
+	SaveWebhook(context.Context, int64, service.WebhookInput) (domain.Webhook, error)
+	DeleteWebhook(context.Context, int64) error
+	TestWebhook(context.Context, int64) error
+}
+
 // Media readers and writers are separated so read-only exports and downloads
 // do not receive upload/delete capabilities.
 type imageContentService interface {

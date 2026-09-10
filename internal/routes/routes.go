@@ -37,6 +37,7 @@ func addRoutes(
 	templateUseCases *service.Templates,
 	tokenUseCases *service.Tokens,
 	userUseCases *service.Users,
+	webhookUseCases *service.Webhooks,
 	viewDataUseCases *handler.ViewDataLoader,
 	logger *slog.Logger,
 	browserAuthn middleware.Middleware,
@@ -95,6 +96,11 @@ func addRoutes(
 		browserAuthn(adminAuthz(handler.AdminPageTemplates(viewDataUseCases, templateUseCases, groupUseCases, views))),
 	)
 	mux.Handle("GET /admin/permissions", browserAuthn(adminAuthz(handler.AdminPageAccess(viewDataUseCases, accessUseCases, groupUseCases, views))))
+	mux.Handle("GET /admin/webhooks", browserAuthn(adminAuthz(handler.AdminWebhooks(viewDataUseCases, webhookUseCases, views))))
+	mux.Handle("POST /admin/webhooks", browserAuthn(adminAuthz(handler.SaveAdminWebhook(webhookUseCases, logger))))
+	mux.Handle("POST /admin/webhooks/{id}", browserAuthn(adminAuthz(handler.SaveAdminWebhook(webhookUseCases, logger))))
+	mux.Handle("POST /admin/webhooks/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminWebhook(webhookUseCases, logger))))
+	mux.Handle("POST /admin/webhooks/{id}/test", browserAuthn(adminAuthz(handler.TestAdminWebhook(webhookUseCases, logger))))
 	mux.Handle("POST /admin/permissions", browserAuthn(adminAuthz(handler.SaveAdminPageAccess(accessUseCases, logger))))
 	mux.Handle("POST /admin/permissions/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminPageAccess(accessUseCases, logger))))
 	mux.Handle(

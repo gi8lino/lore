@@ -1,0 +1,50 @@
+{{ define "webhook-fields" }}
+  <div class="settings-grid">
+    <label>Name <input name="name" required value="{{ .Name }}" placeholder="Documentation automation" /></label>
+    <label>Endpoint <input name="url" type="url" required value="{{ .URL }}" placeholder="https://example.test/hooks/lore" /></label>
+    <label>Signing secret <input name="secret" type="password" autocomplete="new-password" placeholder="{{ if .SecretConfigured }}Keep existing secret{{ else }}Optional HMAC secret{{ end }}" /></label>
+    {{ if .SecretConfigured }}<label class="toggle-row compact"><span><strong>Clear signing secret</strong><small>Future deliveries will no longer include X-Lore-Signature.</small></span><input type="checkbox" name="clear_secret" /></label>{{ end }}
+    <label class="toggle-row compact"><span><strong>Enabled</strong><small>Deliver matching events to this endpoint.</small></span><input type="checkbox" name="enabled" {{ if .Enabled }}checked{{ end }} /></label>
+  </div>
+  <fieldset class="webhook-events"><legend>Events</legend>
+    {{ range $event := $.AvailableEvents }}
+      <label><input type="checkbox" name="event" value="{{ $event }}" {{ if hasstring $.Events $event }}checked{{ end }} /><code>{{ $event }}</code></label>
+    {{ end }}
+  </fieldset>
+{{ end }}
+
+{{ define "content" }}
+  <section class="admin-page">
+    <div class="settings-heading"><p class="eyebrow">Administration</p><h1>Webhooks</h1><p class="muted">Send signed Lore events to automation, chat, CI, or indexing systems.</p></div>
+    <section class="panel">
+      <div class="panel-title"><div><h2>New webhook</h2><p class="muted">Signing secrets are encrypted with LORE__ENCRYPTION_KEY and never shown again.</p></div></div>
+      <form action="/admin/webhooks" method="post" data-validate-form data-error-title="Could not save webhook">
+        {{ template "webhook-fields" (webhookcontext .WebhookDraft .WebhookEvents) }}
+        <div class="settings-actions"><button class="button primary" type="submit">Create webhook</button></div>
+      </form>
+    </section>
+
+    {{ range .Webhooks }}
+      <details class="panel">
+        <summary><strong>{{ .Name }}</strong> <span class="muted">{{ .URL }}{{ if not .Enabled }} · disabled{{ end }}</span></summary>
+        <div class="admin-detail-body">
+          <form action="/admin/webhooks/{{ .ID }}" method="post" data-validate-form data-error-title="Could not save webhook">
+            {{ template "webhook-fields" (webhookcontext . $.WebhookEvents) }}
+            <div class="settings-actions"><button class="button primary" type="submit">Save changes</button></div>
+          </form>
+          <div class="admin-inline-actions">
+            <form action="/admin/webhooks/{{ .ID }}/test" method="post"><button class="button" type="submit">{{ icon "send-lucide" 15 }}<span>Send test</span></button></form>
+            <form action="/admin/webhooks/{{ .ID }}/delete" method="post" data-confirm="Delete webhook {{ .Name }}?" data-confirm-title="Delete webhook" data-confirm-label="Delete webhook"><button class="button danger" type="submit">Delete</button></form>
+          </div>
+        </div>
+      </details>
+    {{ else }}<p class="muted">No outgoing webhooks configured.</p>{{ end }}
+
+    <section class="panel settings-wide">
+      <div class="panel-title"><div><h2>Recent deliveries</h2><p class="muted">Successful and failed HTTP delivery attempts.</p></div></div>
+      {{ if .WebhookDeliveries }}<div class="admin-list">
+        {{ range .WebhookDeliveries }}<div class="admin-list-row"><div><strong>{{ .WebhookName }} · <code>{{ .Event }}</code></strong><small>{{ .CreatedAt.Format "2006-01-02 15:04:05" }}{{ if .StatusCode }} · HTTP {{ .StatusCode }}{{ end }}{{ if .Error }} · {{ .Error }}{{ end }}</small></div></div>{{ end }}
+      </div>{{ else }}<p class="muted">No deliveries yet.</p>{{ end }}
+    </section>
+  </section>
+{{ end }}

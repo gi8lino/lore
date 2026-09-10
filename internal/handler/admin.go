@@ -1577,3 +1577,82 @@ func DeleteAdminPageAccess(accessUseCases pageAccessAdmin, logger *slog.Logger) 
 		http.Redirect(w, r, "/admin/permissions", http.StatusSeeOther)
 	}
 }
+
+// AdminWebhooks renders outgoing webhook configuration and recent deliveries.
+func AdminWebhooks(viewDataUseCases viewDataService, webhookUseCases webhookAdminService, views *Views) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := administrationData(r, viewDataUseCases, views, "Webhooks", "webhooks")
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+		data.Webhooks, err = webhookUseCases.Webhooks(r.Context())
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+		data.WebhookDeliveries, err = webhookUseCases.WebhookDeliveries(r.Context(), 50)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+		data.WebhookEvents = service.WebhookEvents()
+		data.WebhookDraft = domain.Webhook{Enabled: true}
+		render(views, w, "admin_webhooks", data)
+	}
+}
+
+// SaveAdminWebhook creates or updates one outgoing webhook.
+func SaveAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook form.")
+			return
+		}
+		var id int64
+		if raw := r.PathValue("id"); raw != "" {
+			parsed, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || parsed <= 0 {
+				httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+				return
+			}
+			id = parsed
+		}
+		_, err := webhookUseCases.SaveWebhook(r.Context(), id, service.WebhookInput{Name: r.FormValue("name"), URL: r.FormValue("url"), Events: r.Form["event"], Secret: r.FormValue("secret"), ClearSecret: r.FormValue("clear_secret") == "on", Enabled: r.FormValue("enabled") == "on"})
+		if err != nil {
+			writeAdminProblem(logger, w, err, "Webhook")
+			return
+		}
+		http.Redirect(w, r, "/admin/webhooks", http.StatusSeeOther)
+	}
+}
+
+func DeleteAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || id <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+			return
+		}
+		if err := webhookUseCases.DeleteWebhook(r.Context(), id); err != nil {
+			writeAdminProblem(logger, w, err, "Webhook")
+			return
+		}
+		http.Redirect(w, r, "/admin/webhooks", http.StatusSeeOther)
+	}
+}
+
+func TestAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || id <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+			return
+		}
+		if err := webhookUseCases.TestWebhook(r.Context(), id); err != nil {
+			httpresponse.InternalServerError(logger, w, err)
+			return
+		}
+		http.Redirect(w, r, "/admin/webhooks", http.StatusSeeOther)
+	}
+}

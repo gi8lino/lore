@@ -384,6 +384,30 @@ type PageAccessRule struct {
 }
 
 // Notification is a lightweight user inbox item.
+// Webhook is one administrator-configured outgoing event destination.
+type Webhook struct {
+	ID               int64
+	Name             string
+	URL              string
+	Events           []string
+	Secret           string `json:"-"`
+	SecretConfigured bool
+	Enabled          bool
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+// WebhookDelivery records the latest attempt to deliver an outgoing event.
+type WebhookDelivery struct {
+	ID          int64
+	WebhookID   int64
+	WebhookName string
+	Event       string
+	StatusCode  int
+	Error       string
+	CreatedAt   time.Time
+}
+
 type Notification struct {
 	ID        int64      `json:"id"`
 	Kind      string     `json:"kind"`
