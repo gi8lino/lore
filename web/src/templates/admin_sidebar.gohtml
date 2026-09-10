@@ -31,6 +31,9 @@
       <a href="/admin/templates" {{ if eq .AdminSection "templates" }}class="active" aria-current="page"{{ end }}
         >{{ icon "layout-template-lucide" 17 }}<span>Page templates</span></a
       >
+      <a href="/admin/permissions" {{ if eq .AdminSection "permissions" }}class="active" aria-current="page"{{ end }}
+        >{{ icon "shield-check-lucide" 17 }}<span>Page access</span></a
+      >
       <a href="/admin/snippets" {{ if eq .AdminSection "snippets" }}class="active" aria-current="page"{{ end }}
         >{{ icon "braces-lucide" 17 }}<span>Snippets & variables</span></a
       >
@@ -60,3 +63,5 @@
     {{ template "account-menu" . }}
   </aside>
 {{ end }}
+
+

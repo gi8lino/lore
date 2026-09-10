@@ -98,6 +98,7 @@ func Run(
 	// composition root. The routing layer only receives ready-to-use
 	// dependencies and decides which handlers consume them.
 	administrationUseCases := service.NewAdministration(database)
+	accessUseCases := service.NewAccess(database)
 	catalogUseCases := service.NewCatalog(database)
 	draftUseCases := service.NewDrafts(database)
 	groupUseCases := service.NewGroups(database)
@@ -120,6 +121,7 @@ func Run(
 		settingsUseCases,
 		knowledgeUseCases,
 		notificationUseCases,
+		accessUseCases,
 	)
 
 	browserAuth, err := auth.ConfigureBrowserAuth(
@@ -188,6 +190,7 @@ func Run(
 		browserAuth,
 		bearerAuth,
 		administrationUseCases,
+		accessUseCases,
 		catalogUseCases,
 		draftUseCases,
 		groupUseCases,

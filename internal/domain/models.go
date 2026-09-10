@@ -348,6 +348,24 @@ type PageWatch struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// PageAccess is the effective nearest path-rule decision for one user.
+type PageAccess struct {
+	Restricted bool
+	CanView    bool
+	CanEdit    bool
+}
+
+// PageAccessRule grants one group view or edit access at a path.
+type PageAccessRule struct {
+	ID        int64
+	Path      string
+	GroupID   int64
+	GroupName string
+	Access    string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // Notification is a lightweight user inbox item.
 type Notification struct {
 	ID        int64      `json:"id"`

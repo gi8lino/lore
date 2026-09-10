@@ -27,6 +27,7 @@ func Home(
 	viewDataUseCases viewDataService,
 	catalogUseCases homeCatalogService,
 	draftUseCases draftListService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +63,20 @@ func Home(
 			return
 		}
 
+		for collection := range []*[]domain.Page{&favorites, &recent, &viewed, &popular} {
+			filtered, filterErr := accessUseCases.FilterPages(r.Context(), user, *collection)
+			if filterErr != nil {
+				httpresponse.InternalServerError(views.logger, w, filterErr)
+				return
+			}
+			*collection = filtered
+		}
+		recentEdits, err = visibleRecentEdits(r.Context(), accessUseCases, user, recentEdits)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
+
 		var drafts []domain.PageDraft
 
 		if user.Role == "admin" || user.Role == "editor" {
@@ -90,6 +105,7 @@ func Home(
 func ViewPage(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageViewCatalogService,
+	accessUseCases pageAccessReader,
 	settingsUseCases settingsService,
 	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
@@ -114,6 +130,7 @@ func ViewPage(
 		}
 
 		user, _ := auth.User(r)
+		securedCatalog := accessiblePageCatalog{catalog: catalogUseCases, access: accessUseCases, user: user}
 		_ = catalogUseCases.RecordView(r.Context(), slug, user.ID)
 
 		pageFavorite, err := catalogUseCases.IsFavorite(r.Context(), slug, user.ID)
@@ -139,6 +156,11 @@ func ViewPage(
 			writePageProblem(views.logger, w, err)
 			return
 		}
+		backlinks, err = accessUseCases.FilterPages(r.Context(), user, backlinks)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
+		}
 
 		outgoingLinks, err := catalogUseCases.PageLinks(r.Context(), slug)
 		if err != nil {
@@ -160,6 +182,11 @@ func ViewPage(
 				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
+		}
+		related, err = accessUseCases.FilterPages(r.Context(), user, related)
+		if err != nil {
+			httpresponse.InternalServerError(views.logger, w, err)
+			return
 		}
 
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
@@ -187,7 +214,7 @@ func ViewPage(
 
 		expanded, err := expandPageKnowledge(
 			r.Context(),
-			knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
+			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
 			page.Markdown,
 			nil,
 			true,
@@ -203,7 +230,7 @@ func ViewPage(
 			options,
 			md.Functions{
 				Subpages:   renderSubpages,
-				PageReport: pagereport.NewRenderer(r.Context(), catalogUseCases),
+				PageReport: pagereport.NewRenderer(r.Context(), securedCatalog),
 				Variables:  expanded.Annotations,
 			},
 		)
@@ -278,6 +305,7 @@ func EditPage(
 	groupUseCases groupReader,
 	knowledgeUseCases knowledgeSnippetReader,
 	templateUseCases templateService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -435,6 +463,21 @@ func SavePageForm(
 		}
 
 		originalSlug := strings.TrimSpace(r.FormValue("original_slug"))
+		destinationSlug := md.Slug(r.FormValue("slug"))
+		for _, path := range []string{originalSlug, destinationSlug} {
+			if path == "" {
+				continue
+			}
+			allowed, accessErr := accessUseCases.CanEdit(r.Context(), user, path)
+			if accessErr != nil {
+				httpresponse.InternalServerError(views.logger, w, accessErr)
+				return
+			}
+			if !allowed {
+				httpresponse.Problem(w, http.StatusForbidden, "You do not have permission to edit this page path.")
+				return
+			}
+		}
 
 		metadata, err := pageMetadataFromForm(r)
 		if err != nil {

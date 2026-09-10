@@ -54,6 +54,7 @@ var pageTemplateNames = []string{
 	"admin_rendering",
 	"admin_health",
 	"admin_templates",
+	"admin_permissions",
 	"admin_audit",
 	"admin_snippets",
 	"admin_pages",
@@ -150,6 +151,7 @@ type ViewDataLoader struct {
 	settingsUseCases     settingsService
 	savedSearchUseCases  savedSearchReader
 	notificationUseCases notificationReader
+	accessUseCases       pageAccessReader
 }
 
 // NewViewDataLoader constructs the shared authenticated view-data loader.
@@ -160,6 +162,7 @@ func NewViewDataLoader(
 	settings settingsService,
 	savedSearches savedSearchReader,
 	notifications notificationReader,
+	access pageAccessReader,
 ) *ViewDataLoader {
 	return &ViewDataLoader{
 		preferenceUseCases:   preferences,
@@ -168,6 +171,7 @@ func NewViewDataLoader(
 		settingsUseCases:     settings,
 		savedSearchUseCases:  savedSearches,
 		notificationUseCases: notifications,
+		accessUseCases:       access,
 	}
 }
 
@@ -261,6 +265,8 @@ type ViewData struct {
 	Groups []domain.Group
 	// PageTemplates contains reusable templates available to page authors.
 	PageTemplates []domain.PageTemplate
+	// PageAccessRules contains inherited path access rules for administrators.
+	PageAccessRules []domain.PageAccessRule
 	// PageVariables contains distinct variables resolved in this reading page.
 	PageVariables []pageVariable
 	// KnowledgeSnippets contains reusable variables and Markdown snippets.
@@ -474,6 +480,11 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			return ViewData{}, err
 		}
 
+		pages, err = l.accessUseCases.FilterPages(r.Context(), user, pages)
+		if err != nil {
+			return ViewData{}, err
+		}
+
 		navigationIcons, err := l.navigationUseCases.NavigationIcons(r.Context())
 		if err != nil {
 			return ViewData{}, err
@@ -507,9 +518,17 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			if err != nil {
 				return ViewData{}, err
 			}
+			sidebarPinned, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarPinned)
+			if err != nil {
+				return ViewData{}, err
+			}
 		}
 		if preferences.ShowRecentlyViewed {
 			sidebarRecent, err = l.catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
+			if err != nil {
+				return ViewData{}, err
+			}
+			sidebarRecent, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarRecent)
 			if err != nil {
 				return ViewData{}, err
 			}

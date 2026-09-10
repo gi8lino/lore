@@ -44,19 +44,22 @@ func renderExportHTML(
 	navigation navigationService,
 	media imageContentService,
 	renderer *md.Renderer,
+	access pageAccessReader,
+	user domain.User,
 	page domain.Page,
 	settings domain.RenderingSettings,
 	overrides map[string]string,
 ) (string, error) {
-	expanded, err := expandPageKnowledge(ctx, knowledgeContentFrom(catalog, knowledge), page.Markdown, overrides, false)
+	securedCatalog := accessiblePageCatalog{catalog: catalog, access: access, user: user}
+	expanded, err := expandPageKnowledge(ctx, knowledgeContentFrom(securedCatalog, knowledge), page.Markdown, overrides, false)
 	if err != nil {
 		return "", err
 	}
-	renderSubpages, err := subpagesRenderer(ctx, navigation, page.Slug)
+	renderSubpages, err := subpagesRenderer(ctx, navigation, access, user, page.Slug)
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(ctx, catalog)})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(ctx, securedCatalog)})
 	if err != nil {
 		return "", err
 	}
@@ -70,6 +73,7 @@ func PreviewPageExport(
 	navigation navigationService,
 	knowledge knowledgeContentService,
 	media imageContentService,
+	access pageAccessReader,
 	renderer *md.Renderer,
 	logger *slog.Logger,
 ) http.HandlerFunc {
@@ -95,7 +99,7 @@ func PreviewPageExport(
 			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
-		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, page, application.Rendering, overrides)
+		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, access, currentUser(r), page, application.Rendering, overrides)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)
 			return

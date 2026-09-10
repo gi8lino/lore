@@ -10,11 +10,15 @@ import (
 func Search(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageSearchService,
+	accessUseCases pageAccessReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
 		pages, err := catalogUseCases.Search(r.Context(), query, 50)
+		if err == nil {
+			pages, err = accessUseCases.FilterPages(r.Context(), currentUser(r), pages)
+		}
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return

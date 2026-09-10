@@ -131,6 +131,19 @@ type groupWriter interface {
 	RemoveGroupMember(context.Context, int64, int64) error
 }
 
+type pageAccessReader interface {
+	CanView(context.Context, domain.User, string) (bool, error)
+	CanEdit(context.Context, domain.User, string) (bool, error)
+	FilterPages(context.Context, domain.User, []domain.Page) ([]domain.Page, error)
+}
+
+type pageAccessAdmin interface {
+	pageAccessReader
+	PageAccessRules(context.Context) ([]domain.PageAccessRule, error)
+	SavePageAccessRule(context.Context, string, int64, string) error
+	DeletePageAccessRule(context.Context, int64) error
+}
+
 // Knowledge interfaces expose only the reusable-content and graph operations a handler needs.
 type knowledgeContentService interface {
 	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)

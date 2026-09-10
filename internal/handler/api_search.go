@@ -10,9 +10,12 @@ import (
 )
 
 // SearchAPI executes a page search and returns page summaries as JSON.
-func SearchAPI(catalogUseCases pageSearchService, logger *slog.Logger) http.HandlerFunc {
+func SearchAPI(catalogUseCases pageSearchService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.Search(r.Context(), r.URL.Query().Get("q"), 50)
+		if err == nil {
+			pages, err = accessUseCases.FilterPages(r.Context(), currentUser(r), pages)
+		}
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
@@ -37,9 +40,12 @@ func Tags(catalogUseCases pageTagService, logger *slog.Logger) http.HandlerFunc 
 }
 
 // Recent returns recently updated page summaries as JSON.
-func Recent(catalogUseCases pageListService, logger *slog.Logger) http.HandlerFunc {
+func Recent(catalogUseCases pageListService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages, err := catalogUseCases.ListPages(r.Context(), 50)
+		if err == nil {
+			pages, err = accessUseCases.FilterPages(r.Context(), currentUser(r), pages)
+		}
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return

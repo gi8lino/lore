@@ -125,6 +125,7 @@ func TestSitemap(t *testing.T) {
 				{Slug: "legacy", Status: "deprecated", UpdatedAt: updatedAt},
 				{Slug: "platform/start", Status: "verified", UpdatedAt: updatedAt},
 			}},
+			emptyContractServices{},
 			&Views{runtime: RuntimeInfo{PublicURL: "https://lore.example.test/docs/"}},
 			slog.Default(),
 		)
@@ -155,6 +156,7 @@ func TestSitemap(t *testing.T) {
 		handler := Sitemap(
 			robotsSettingsStub{settings: domain.ApplicationSettings{RobotsPolicy: domain.RobotsPolicyDisallow}},
 			sitemapCatalogStub{},
+			emptyContractServices{},
 			&Views{},
 			slog.Default(),
 		)
@@ -172,6 +174,7 @@ func TestSitemap(t *testing.T) {
 		handler := Sitemap(
 			robotsSettingsStub{settings: domain.ApplicationSettings{RobotsPolicy: domain.RobotsPolicyNone}},
 			sitemapCatalogStub{},
+			emptyContractServices{},
 			&Views{},
 			slog.Default(),
 		)
@@ -191,6 +194,7 @@ func TestSitemap(t *testing.T) {
 		handler := Sitemap(
 			robotsSettingsStub{settings: domain.ApplicationSettings{RobotsPolicy: domain.RobotsPolicyAllow}},
 			sitemapCatalogStub{err: errors.New("inventory unavailable")},
+			emptyContractServices{},
 			&Views{runtime: RuntimeInfo{PublicURL: "https://lore.example.test"}},
 			logger,
 		)

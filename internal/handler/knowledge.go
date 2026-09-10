@@ -24,9 +24,12 @@ func KnowledgeGraphPage(viewDataUseCases viewDataService, views *Views) http.Han
 }
 
 // KnowledgeGraphAPI returns pages and current wiki-link relationships.
-func KnowledgeGraphAPI(knowledgeUseCases knowledgeGraphService, logger *slog.Logger) http.HandlerFunc {
+func KnowledgeGraphAPI(knowledgeUseCases knowledgeGraphService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		graph, err := knowledgeUseCases.KnowledgeGraph(r.Context(), 300)
+		if err == nil {
+			graph, err = visibleKnowledgeGraph(r.Context(), accessUseCases, currentUser(r), graph)
+		}
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return

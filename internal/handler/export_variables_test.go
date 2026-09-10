@@ -29,15 +29,12 @@ type variableExportStub struct {
 func (s variableExportStub) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
 	return s.application, nil
 }
-
 func (s variableExportStub) PDFRequestHeaders(context.Context) ([]domain.PDFHeader, error) {
 	return s.pdfHeaders, nil
 }
-
 func (s variableExportStub) NavigationPages(context.Context) ([]domain.Page, error) {
 	return s.navigationPages, nil
 }
-
 func (variableExportStub) NavigationIcons(context.Context) (map[string]string, error) {
 	return nil, nil
 }
@@ -100,7 +97,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"environment":"staging"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
 		var result exportPreviewResponse
@@ -118,7 +115,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"contact":"other"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
 		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 		assert.Contains(t, response.Body.String(), `"variables"`)
 	})
@@ -126,7 +123,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		t.Parallel()
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"variables":[]}`))
-		PreviewPageExport(nil, nil, nil, nil, nil, nil, nil)(response, request)
+		PreviewPageExport(nil, nil, nil, nil, nil, emptyContractServices{}, nil, nil)(response, request)
 		assert.Equal(t, http.StatusBadRequest, response.Code)
 	})
 	t.Run("sanitizes markup in temporary values", func(t *testing.T) {
@@ -137,7 +134,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body)))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		var result exportPreviewResponse
 		require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
@@ -150,7 +147,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{}`))
 		request.SetPathValue("slug", "missing")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
 		assert.Equal(t, http.StatusNotFound, response.Code)
 	})
 }
@@ -185,7 +182,7 @@ func TestPDFReceivesTemporaryVariables(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/export/pdf/guide", strings.NewReader(`{"variables":{"environment":"staging"}}`))
 	request.SetPathValue("slug", "guide")
 	response := httptest.NewRecorder()
-	ExportPagePDF(stub, stub, stub, stub, &exportMediaStub{}, md.New(), views, logger)(response, request)
+	ExportPagePDF(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), views, logger)(response, request)
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	assert.Equal(t, "application/pdf", response.Header().Get("Content-Type"))
 	assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))

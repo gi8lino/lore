@@ -11,7 +11,7 @@ import (
 )
 
 // MovePageForm safely moves one page or subtree and optionally refactors direct wiki links.
-func MovePageForm(pageUseCases pageMoveService, logger *slog.Logger) http.HandlerFunc {
+func MovePageForm(pageUseCases pageMoveService, accessUseCases pageAccessReader, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
 		if err := r.ParseForm(); err != nil {
@@ -20,6 +20,15 @@ func MovePageForm(pageUseCases pageMoveService, logger *slog.Logger) http.Handle
 		}
 
 		newSlug := md.Slug(r.FormValue("slug"))
+		allowed, err := accessUseCases.CanEdit(r.Context(), user, newSlug)
+		if err != nil {
+			httpresponse.InternalServerError(logger, w, err)
+			return
+		}
+		if !allowed {
+			httpresponse.Problem(w, http.StatusForbidden, "You do not have permission to move a page to that path.")
+			return
+		}
 		options := domain.MovePageOptions{
 			MoveChildren:        r.FormValue("move_children") == "on",
 			UpdateIncomingLinks: r.FormValue("update_links") == "on",

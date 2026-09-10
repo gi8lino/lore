@@ -75,6 +75,7 @@ func Robots(settingsUseCases robotsSettingsService, views *Views, logger *slog.L
 func Sitemap(
 	settingsUseCases robotsSettingsService,
 	catalogUseCases sitemapCatalogService,
+	accessUseCases pageAccessReader,
 	views *Views,
 	logger *slog.Logger,
 ) http.HandlerFunc {
@@ -96,6 +97,11 @@ func Sitemap(
 		}
 
 		pages, err := catalogUseCases.PageInventory(r.Context())
+		if err != nil {
+			httpresponse.InternalServerError(logger, w, err)
+			return
+		}
+		pages, err = accessUseCases.FilterPages(r.Context(), domain.User{}, pages)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
