@@ -76,10 +76,9 @@ SCREENSHOT_BROWSER_CHANNEL ?= chrome
 ## Formatting
 PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
 
-VERSION_PREFIX ?= v
-
-
 ##@ Tagging
+
+VERSION_PREFIX ?= v
 
 .PHONY: current
 current: $(DEV_TAG) ## Show the current semantic version tag.
