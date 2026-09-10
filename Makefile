@@ -1,9 +1,10 @@
-# Makefile
+.DEFAULT_GOAL := help
 
 ## Location to install local development tools to
-LOCALBIN ?= $(shell pwd)/bin
+LOCALBIN ?= bin
+
 $(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+	@mkdir -p "$@"
 
 ## Frontend
 WEB_BUILD := scripts/web/build.sh
@@ -16,27 +17,34 @@ NPX ?= npx
 TSC ?= ./node_modules/.bin/tsc
 NODE_MODULES := node_modules/.package-lock.json
 
-## Tool Binaries
-GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
-DEV_PORT := $(LOCALBIN)/dev-port
-OPEN_BROWSER := $(LOCALBIN)/open-browser
-DEV_TAG := $(LOCALBIN)/dev-tag
-GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
-
 ## Tool Versions
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.13.2
 
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.3.0
+DEV_TOOLS_VERSION ?= v0.5.0
 
 # renovate: datasource=npm depName=prettier
 PRETTIER_VERSION ?= 3.9.6
 
-DEV_PORT_VERSIONED := $(DEV_PORT)-$(DEV_TOOLS_VERSION)
-OPEN_BROWSER_VERSIONED := $(OPEN_BROWSER)-$(DEV_TOOLS_VERSION)
-DEV_TAG_VERSIONED := $(DEV_TAG)-$(DEV_TOOLS_VERSION)
-GO_INSTALL_TOOL_VERSIONED := $(GO_INSTALL_TOOL)-$(DEV_TOOLS_VERSION)
+## Tool Binaries
+DEV_TOOL_NAMES := dev-port open-browser dev-tag make-help go-install-tool
+DEV_TOOL_TARGETS := $(addprefix $(LOCALBIN)/,$(DEV_TOOL_NAMES))
+DEV_TOOL_VERSIONED := $(addsuffix -$(DEV_TOOLS_VERSION),$(DEV_TOOL_TARGETS))
+
+DEV_PORT := $(LOCALBIN)/dev-port
+OPEN_BROWSER := $(LOCALBIN)/open-browser
+DEV_TAG := $(LOCALBIN)/dev-tag
+MAKE_HELP := $(LOCALBIN)/make-help
+GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
+
+GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
+
+# Run a local tool while displaying only its executable name.
+define run-tool
+@printf '%s\n' '$(notdir $(1)) $(2)'
+@$(1) $(2)
+endef
 
 ## Build Configuration
 BINARY ?= lore
@@ -54,6 +62,7 @@ PDF_CONTAINER_NAME ?= html2pdf
 
 # Named ports persist across separate Make invocations in this checkout.
 dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
+
 LORE_ASSIGNED_PORT ?= $(call dev-port,app)
 DB_ASSIGNED_PORT ?= $(call dev-port,postgres)
 PDF_ASSIGNED_PORT ?= $(call dev-port,pdf)
@@ -69,36 +78,41 @@ PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
 
 VERSION_PREFIX ?= v
 
+
 ##@ Tagging
 
+.PHONY: current
+current: $(DEV_TAG) ## Show the current semantic version tag.
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" current)
+
 .PHONY: patch
-patch: dev-tools ## Create a new patch release (x.y.Z+1).
-	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" patch
+patch: $(DEV_TAG) ## Create a new patch release (x.y.Z+1).
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" patch)
 
 .PHONY: minor
-minor: dev-tools ## Create a new minor release (x.Y+1.0).
-	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" minor
+minor: $(DEV_TAG) ## Create a new minor release (x.Y+1.0).
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" minor)
 
 .PHONY: major
-major: dev-tools ## Create a new major release (X+1.0.0).
-	$(DEV_TAG) --prefix "$(VERSION_PREFIX)" major
+major: $(DEV_TAG) ## Create a new major release (X+1.0.0).
+	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" major)
 
 .PHONY: tag
-tag: dev-tools ## Show the latest tag.
-	@echo "Latest version: $$($(DEV_TAG) --prefix "$(VERSION_PREFIX)" current)"
+tag: current
 
 .PHONY: push
 push: ## Push tags to the configured remote.
 	git push --tags
 
+
 ##@ Development
 
 .PHONY: ports-reset
-ports-reset: dev-tools ## Clear saved ports after stopping local services.
-	$(DEV_PORT) --reset
+ports-reset: $(DEV_PORT) ## Clear saved ports after stopping local services.
+	$(call run-tool,$(DEV_PORT),--reset)
 
 .PHONY: ports
-ports: dev-tools ## Print selected local development ports.
+ports: $(DEV_PORT) ## Print selected local development ports.
 	@$(DEV_PORT) app --port "$(LORE_ASSIGNED_PORT)" > /dev/null
 	@$(DEV_PORT) postgres --port "$(DB_ASSIGNED_PORT)" > /dev/null
 	@$(DEV_PORT) pdf --port "$(PDF_ASSIGNED_PORT)" > /dev/null
@@ -179,11 +193,11 @@ serve: ports ## Run Lore using the saved ports (services and build must already 
 		$(RUN_ARGS)
 
 .PHONY: open
-open: ports ## Open the browser once Lore responds.
-	$(OPEN_BROWSER) "http://127.0.0.1:$(LORE_ASSIGNED_PORT)/"
+open: ports $(OPEN_BROWSER) ## Open the browser once Lore responds.
+	$(call run-tool,$(OPEN_BROWSER),"http://127.0.0.1:$(LORE_ASSIGNED_PORT)/")
 
 .PHONY: run
-run: dev-build html-pdf postgres ## Build, start services, and run Lore with the browser.
+run: dev-build html-pdf postgres $(OPEN_BROWSER) ## Build, start services, and run Lore with the browser.
 	@$(OPEN_BROWSER) "http://127.0.0.1:$(LORE_ASSIGNED_PORT)/" & \
 	browser_pid=$$!; \
 	trap 'kill "$$browser_pid" 2>/dev/null || true' EXIT; \
@@ -231,6 +245,7 @@ clean: ## Clean up generated application files.
 	rm -f $(BINARY) coverage.out coverage.html
 	rm -rf web/dist
 
+
 ##@ Formatting
 
 .PHONY: fmt
@@ -246,18 +261,19 @@ fmt-go: generate web ## Format Go code.
 
 .PHONY: fmt-md
 fmt-md: ## Format Markdown files with Prettier.
-	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write README.md "docs/**/*.md"
+	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write $(PRETTIER_MD_SOURCES)
 
 .PHONY: lint
 lint: typecheck check-web lint-go ## Run all linters and formatting checks.
 
 .PHONY: lint-go
 lint-go: web golangci-lint ## Run golangci-lint.
-	$(GOLANGCI_LINT) run
+	$(call run-tool,$(GOLANGCI_LINT),run)
 
 .PHONY: lint-fix
 lint-fix: web golangci-lint ## Run golangci-lint and apply fixes.
-	$(GOLANGCI_LINT) run --fix
+	$(call run-tool,$(GOLANGCI_LINT),run --fix)
+
 
 ##@ Dependencies
 
@@ -265,27 +281,13 @@ $(NODE_MODULES): package.json package-lock.json
 	$(NPM) ci
 
 .PHONY: dev-tools
-dev-tools: \
-	$(DEV_PORT_VERSIONED) \
-	$(OPEN_BROWSER_VERSIONED) \
-	$(DEV_TAG_VERSIONED) \
-	$(GO_INSTALL_TOOL_VERSIONED) ## Download the pinned development tools.
-	@ln -sf "$(notdir $(DEV_PORT_VERSIONED))" "$(DEV_PORT)"
-	@ln -sf "$(notdir $(OPEN_BROWSER_VERSIONED))" "$(OPEN_BROWSER)"
-	@ln -sf "$(notdir $(DEV_TAG_VERSIONED))" "$(DEV_TAG)"
-	@ln -sf "$(notdir $(GO_INSTALL_TOOL_VERSIONED))" "$(GO_INSTALL_TOOL)"
+dev-tools: $(DEV_TOOL_TARGETS) ## Download the pinned development tools.
 
-$(DEV_PORT_VERSIONED): | $(LOCALBIN)
-	$(call download-dev-tool,dev-port,$@)
+$(DEV_TOOL_TARGETS): $(LOCALBIN)/%: $(LOCALBIN)/%-$(DEV_TOOLS_VERSION)
+	@ln -sf "$(notdir $<)" "$@"
 
-$(OPEN_BROWSER_VERSIONED): | $(LOCALBIN)
-	$(call download-dev-tool,open-browser,$@)
-
-$(DEV_TAG_VERSIONED): | $(LOCALBIN)
-	$(call download-dev-tool,dev-tag,$@)
-
-$(GO_INSTALL_TOOL_VERSIONED): | $(LOCALBIN)
-	$(call download-dev-tool,go-install-tool,$@)
+$(DEV_TOOL_VERSIONED): $(LOCALBIN)/%-$(DEV_TOOLS_VERSION): | $(LOCALBIN)
+	$(call download-dev-tool,$*,$@)
 
 # download-dev-tool downloads a versioned tool from gi8lino/dev-tools.
 # $1 - release asset name
@@ -304,14 +306,15 @@ define download-dev-tool
 endef
 
 .PHONY: golangci-lint
-golangci-lint: dev-tools ## Download golangci-lint locally if necessary.
-	$(GO_INSTALL_TOOL) \
+golangci-lint: $(GO_INSTALL_TOOL) ## Download golangci-lint locally if necessary.
+	@$(GO_INSTALL_TOOL) \
 		--target "$(GOLANGCI_LINT)" \
 		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
 		--tool-version "$(GOLANGCI_LINT_VERSION)"
 
+
 ##@ General
 
 .PHONY: help
-help: ## Display this help.
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+help: $(MAKE_HELP) ## Display this help.
+	@$(MAKE_HELP) $(MAKEFILE_LIST)
