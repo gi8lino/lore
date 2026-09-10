@@ -1022,14 +1022,20 @@
   }
 }
 
-
-
-
 .webhook-events {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px 16px;
   margin: 16px 0;
 }
-.webhook-events label { display: flex; align-items: center; gap: 8px; }
-.admin-inline-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.webhook-events label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-inline-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}

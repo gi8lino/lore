@@ -94,5 +94,3 @@ The Lore server can expand reusable knowledge content before Markdown rendering:
 Variables and snippets come from the knowledge-snippet store; includes insert another page's Markdown. Expansion is skipped inside fenced code and recursion is bounded. Filesystem static mode does not depend on the database, so these database-backed macros are not expanded there.
 
 See [Tables](tables.md) for Lore's table directive syntax.
-
-

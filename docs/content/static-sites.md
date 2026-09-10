@@ -137,5 +137,3 @@ It intentionally does **not** ship the Lore editor, authentication, account menu
 A typical CI job builds the frontend and Lore binary, runs `lore build`, and publishes the generated `site/` directory as the Pages artifact. No PostgreSQL service is needed for that job.
 
 For local preview, override the site URL to match your local server root if the checked-in configuration uses a GitHub Pages project prefix.
-
-

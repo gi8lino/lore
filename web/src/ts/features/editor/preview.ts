@@ -263,5 +263,3 @@ export function initEditorPreview(): void {
   ))
     setupEditorPreview(form);
 }
-
-

@@ -85,5 +85,3 @@ Temporary values follow the existing Markdown rendering and sanitization rules.
 Export requests accept at most 128 changed variables, 8 KiB per value, and 64 KiB
 in total for names and values. Only variables actually used by the page may be
 overridden. None of these operations writes to the database.
-
-

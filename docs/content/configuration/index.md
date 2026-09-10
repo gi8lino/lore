@@ -15,5 +15,3 @@ The PDF integration supports arbitrary request headers for bearer tokens, API ke
 The PDF service test uses the endpoint and headers currently entered in the form, including unsaved replacements. Lore renders a fixed two-page diagnostic document, verifies that a PDF was returned, reports its page count and size, and shows the generated document so an administrator can judge the visual result.
 
 {{subpages}}
-
-

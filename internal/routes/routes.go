@@ -305,6 +305,7 @@ func addRoutes(
 			groupUseCases,
 			knowledgeUseCases,
 			templateUseCases,
+			accessUseCases,
 			views,
 		)))),
 	)
@@ -316,6 +317,7 @@ func addRoutes(
 			groupUseCases,
 			knowledgeUseCases,
 			templateUseCases,
+			accessUseCases,
 			views,
 		)))),
 	)

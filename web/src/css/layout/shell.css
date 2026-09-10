@@ -77,7 +77,11 @@
   color: var(--text);
 }
 .external-link.hover-lift {
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 .external-link.hover-lift:hover {
   box-shadow: var(--shadow);
@@ -515,5 +519,3 @@
     padding-top: 2px;
   }
 }
-
-
