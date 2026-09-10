@@ -37,9 +37,16 @@
       </div>
       <div class="actions">
         {{ if .PageVariables }}
-          <button class="button variables-button" type="button" data-variables-open
-            aria-expanded="false" aria-controls="page-variables">
-            {{ icon "braces-lucide" 17 }}<span>Variables ({{ len .PageVariables }})</span>
+          <button
+            class="button variables-button"
+            type="button"
+            data-variables-open
+            aria-expanded="false"
+            aria-controls="page-variables"
+            aria-label="Show {{ len .PageVariables }} page variable{{ if ne (len .PageVariables) 1 }}s{{ end }}"
+            title="{{ len .PageVariables }} page variable{{ if ne (len .PageVariables) 1 }}s{{ end }}"
+          >
+            {{ icon "braces-lucide" 17 }}<span>{{ len .PageVariables }}</span>
           </button>
         {{ end }}
         <form action="/pages/{{ .Page.Slug }}/favorite" method="post">
@@ -70,16 +77,16 @@
             {{ icon "bell-lucide" 17 }}
           </summary>
           <div class="page-watch-popover">
-            <strong>Notifications</strong>
+            <span class="page-watch-title">Watch</span>
             <form action="/page-watch/{{ .Page.Slug }}" method="post">
-              <button class="button compact{{ if eq .PageWatchScope "page" }} active{{ end }}" name="scope" value="page" type="submit">
-                {{ icon "file-lucide" 14 }}<span>Watch this page</span>
+              <button class="page-watch-option{{ if eq .PageWatchScope "page" }} active{{ end }}" name="scope" value="page" type="submit">
+                {{ icon "file-lucide" 14 }}<span>This page</span>
               </button>
-              <button class="button compact{{ if eq .PageWatchScope "subtree" }} active{{ end }}" name="scope" value="subtree" type="submit">
-                {{ icon "folder-tree-lucide" 14 }}<span>Watch page &amp; subtree</span>
+              <button class="page-watch-option{{ if eq .PageWatchScope "subtree" }} active{{ end }}" name="scope" value="subtree" type="submit">
+                {{ icon "folder-tree-lucide" 14 }}<span>Page &amp; subtree</span>
               </button>
               {{ if .PageWatchScope }}
-                <button class="button compact" name="scope" value="" type="submit">
+                <button class="page-watch-option stop" name="scope" value="" type="submit">
                   {{ icon "bell-off-lucide" 14 }}<span>Stop watching</span>
                 </button>
               {{ end }}
@@ -191,31 +198,44 @@
 
     {{ if or .PageReviewRequest.ID .CanEdit }}
       <aside class="page-review-workflow status-{{ .PageReviewRequest.Status }}">
-        <div class="page-review-workflow-heading">
-          {{ icon "clipboard-check-lucide" 18 }}
-          <div>
-            <strong>Approval</strong>
+        <div class="page-review-summary">
+          <span class="page-review-icon" aria-hidden="true">{{ icon "clipboard-check-lucide" 16 }}</span>
+          <div class="page-review-copy">
+            <strong>Review</strong>
             {{ if .PageReviewRequest.ID }}
-              <span>{{ if eq .PageReviewRequest.Status "pending" }}Review requested for revision {{ .PageReviewRequest.RevisionNumber }} by {{ .PageReviewRequest.RequestedByName }}.{{ else if eq .PageReviewRequest.Status "approved" }}Revision {{ .PageReviewRequest.RevisionNumber }} was approved{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}.{{ else }}Changes were requested for revision {{ .PageReviewRequest.RevisionNumber }}{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}.{{ end }}</span>
+              <span>{{ if eq .PageReviewRequest.Status "pending" }}Revision {{ .PageReviewRequest.RevisionNumber }} requested by {{ .PageReviewRequest.RequestedByName }}{{ else if eq .PageReviewRequest.Status "approved" }}Revision {{ .PageReviewRequest.RevisionNumber }} approved{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}{{ else }}Changes requested for revision {{ .PageReviewRequest.RevisionNumber }}{{ if .PageReviewRequest.ReviewedByName }} by {{ .PageReviewRequest.ReviewedByName }}{{ end }}{{ end }}</span>
             {{ else }}
-              <span>No approval has been requested for this page.</span>
+              <span>No review requested</span>
             {{ end }}
           </div>
+
+          {{ if and .CanEdit (or (not .PageReviewRequest.ID) (ne .PageReviewRequest.Status "pending")) }}
+            <details class="page-review-compose">
+              <summary class="button compact">{{ icon "send-lucide" 14 }}<span>Request review</span></summary>
+              <form action="/pages/approval/request/{{ .Page.Slug }}" method="post" class="page-review-request">
+                <label>
+                  <span>Note <span class="optional">Optional</span></span>
+                  <input name="note" placeholder="What should the reviewer focus on?" />
+                </label>
+                <button class="button primary compact" type="submit">Request</button>
+              </form>
+            </details>
+          {{ end }}
         </div>
+
         {{ if .PageReviewRequest.Note }}<p class="page-review-note">{{ .PageReviewRequest.Note }}</p>{{ end }}
+
         {{ if and .PageReviewRequest.ID (eq .PageReviewRequest.Status "pending") .CanReviewPage }}
           <form action="/pages/approval/{{ .PageReviewRequest.ID }}" method="post" class="page-review-decision">
             <input type="hidden" name="slug" value="{{ .Page.Slug }}" />
-            <label><span>Review note <span class="optional">Optional</span></span><input name="note" placeholder="What did you check?" /></label>
-            <div>
-              <button class="button" name="decision" value="changes_requested" type="submit">{{ icon "message-square-warning-lucide" 15 }}<span>Request changes</span></button>
-              <button class="button primary" name="decision" value="approved" type="submit">{{ icon "badge-check-lucide" 15 }}<span>Approve revision</span></button>
+            <label>
+              <span>Review note <span class="optional">Optional</span></span>
+              <input name="note" placeholder="What did you check?" />
+            </label>
+            <div class="page-review-actions">
+              <button class="button compact" name="decision" value="changes_requested" type="submit">{{ icon "message-square-warning-lucide" 14 }}<span>Request changes</span></button>
+              <button class="button primary compact" name="decision" value="approved" type="submit">{{ icon "badge-check-lucide" 14 }}<span>Approve</span></button>
             </div>
-          </form>
-        {{ else if and .CanEdit (or (not .PageReviewRequest.ID) (ne .PageReviewRequest.Status "pending")) }}
-          <form action="/pages/approval/request/{{ .Page.Slug }}" method="post" class="page-review-request">
-            <label><span>Request note <span class="optional">Optional</span></span><input name="note" placeholder="What should the reviewer focus on?" /></label>
-            <button class="button" type="submit">{{ icon "send-lucide" 15 }}<span>Request review</span></button>
           </form>
         {{ end }}
       </aside>

@@ -6,11 +6,6 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 )
 
-// visiblePages removes pages the current user may not read.
-func visiblePages(ctx context.Context, access pageAccessReader, user domain.User, pages []domain.Page) ([]domain.Page, error) {
-	return access.FilterPages(ctx, user, pages)
-}
-
 // accessiblePageCatalog limits page-report and include reads to one user's access.
 type accessiblePageCatalog struct {
 	catalog pageReportCatalogService

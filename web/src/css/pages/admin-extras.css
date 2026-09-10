@@ -1022,20 +1022,320 @@
   }
 }
 
-.webhook-events {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px 16px;
-  margin: 16px 0;
+/* Outgoing webhook administration. */
+.webhook-admin {
+  max-width: 1080px;
 }
-.webhook-events label {
+
+.webhook-heading {
+  margin-bottom: 20px;
+}
+
+.webhook-heading h1 {
+  font-size: clamp(30px, 4vw, 40px);
+}
+
+.webhook-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.webhook-create-panel,
+.webhook-list-panel,
+.webhook-deliveries-panel {
+  padding: 20px;
+}
+
+.webhook-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.webhook-field-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.75fr) minmax(220px, 1.25fr);
+  gap: 12px;
+}
+
+.webhook-field-grid > label,
+.webhook-secret-grid > label:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.webhook-field-grid label > span,
+.webhook-secret-grid label > span {
+  min-width: 0;
+}
+
+.webhook-secret-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.webhook-secret-grid small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.webhook-clear-secret,
+.webhook-enabled-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
-.admin-inline-actions {
+
+.webhook-clear-secret {
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  cursor: pointer;
+}
+
+.webhook-clear-secret > span,
+.webhook-enabled-row > span {
+  display: grid;
+  gap: 1px;
+}
+
+.webhook-clear-secret strong,
+.webhook-enabled-row strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.webhook-clear-secret small,
+.webhook-enabled-row small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.stacked-form .webhook-clear-secret input[type="checkbox"],
+.stacked-form .webhook-enabled-row input[type="checkbox"],
+.stacked-form .webhook-event-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  accent-color: var(--accent);
+}
+
+.webhook-enabled-row {
+  justify-content: space-between;
+  padding: 10px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  cursor: pointer;
+}
+
+.webhook-events {
+  min-width: 0;
+  margin: 2px 0 0;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.webhook-events legend {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.webhook-events legend span,
+.webhook-events legend small {
+  display: block;
+}
+
+.webhook-events legend span {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.webhook-events legend small {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.webhook-event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.webhook-event-option {
   display: flex;
+  align-items: center;
+  min-width: 0;
   gap: 8px;
-  justify-content: flex-end;
-  margin-top: 14px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.webhook-event-option:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.webhook-event-option:has(input:checked) {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  color: var(--text);
+}
+
+.webhook-event-option code {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webhook-list-panel > .panel-title,
+.webhook-deliveries-panel > .panel-title {
+  margin-bottom: 12px;
+}
+
+.webhook-item > summary small {
+  max-width: 100%;
+}
+
+.webhook-edit-body {
+  display: grid;
+  gap: 14px;
+}
+
+.webhook-secondary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.webhook-empty {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 34px 18px;
+}
+
+.webhook-empty svg {
+  margin-bottom: 3px;
+  color: var(--text-tertiary);
+}
+
+.webhook-empty p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.webhook-deliveries-panel {
+  margin-top: 18px;
+}
+
+.webhook-deliveries {
+  display: grid;
+}
+
+.webhook-delivery-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.webhook-delivery-row:first-child {
+  border-top: 0;
+}
+
+.webhook-delivery-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--success);
+}
+
+.webhook-delivery-icon.error {
+  color: var(--danger);
+}
+
+.webhook-delivery-row > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.webhook-delivery-row strong {
+  font-size: 12px;
+}
+
+.webhook-delivery-row code {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webhook-delivery-row small {
+  grid-column: 1 / -1;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.webhook-no-deliveries {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .webhook-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .webhook-field-grid,
+  .webhook-secret-grid,
+  .webhook-event-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .webhook-clear-secret {
+    justify-self: stretch;
+  }
+
+  .webhook-secondary-actions {
+    flex-wrap: wrap;
+  }
 }

@@ -1,6 +1,14 @@
 /* Variables stay visually ordinary until inspection is explicitly enabled. */
 .variables-button {
+  min-width: 0;
+  padding-inline: 10px;
+  color: var(--text-secondary);
+  font-weight: 400;
   white-space: nowrap;
+}
+.variables-button span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .variables-panel {
   scroll-margin-top: calc(88px + var(--page-heading-height, 0px));
