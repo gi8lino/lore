@@ -176,52 +176,62 @@ func TestAuthenticateAPILogsMissingCredentials(t *testing.T) {
 	)
 }
 
-func TestBrowserUnauthorizedReturnsToReadablePage(t *testing.T) {
-	t.Run("POST/admin/oidc/pending/42/reopen", func(t *testing.T) {
-		response := httptest.NewRecorder()
+func TestBrowserReturnDestination(t *testing.T) {
+	t.Parallel()
 
-		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/oidc/pending/42/reopen", nil), unauthorizedCredentialsRequired)
-		require.Equal(t, http.StatusFound, response.Code)
+	t.Run("GET preserves the original URI", func(t *testing.T) {
+		t.Parallel()
 
-		location, err := url.Parse(response.Header().Get("Location"))
+		request := httptest.NewRequest(http.MethodGet, "/admin/users?filter=all", nil)
 
-		require.NoError(t, err)
-		assert.Equal(t, "/admin/users", location.Query().Get("next"))
+		assert.Equal(t, "/admin/users?filter=all", browserReturnDestination(request))
 	})
 
-	t.Run("POST/admin/users/7", func(t *testing.T) {
-		response := httptest.NewRecorder()
+	t.Run("HEAD preserves the original URI", func(t *testing.T) {
+		t.Parallel()
 
-		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/users/7", nil), unauthorizedCredentialsRequired)
-		require.Equal(t, http.StatusFound, response.Code)
+		request := httptest.NewRequest(http.MethodHead, "/admin/users?filter=all", nil)
 
-		location, err := url.Parse(response.Header().Get("Location"))
-
-		require.NoError(t, err)
-		assert.Equal(t, "/admin/users", location.Query().Get("next"))
+		assert.Equal(t, "/admin/users?filter=all", browserReturnDestination(request))
 	})
 
-	t.Run("POST/admin/settings", func(t *testing.T) {
-		response := httptest.NewRecorder()
+	t.Run("OIDC mutation returns to user administration", func(t *testing.T) {
+		t.Parallel()
 
-		browserUnauthorized(response, httptest.NewRequest("POST", "/admin/settings", nil), unauthorizedCredentialsRequired)
-		require.Equal(t, http.StatusFound, response.Code)
+		request := httptest.NewRequest(http.MethodPost, "/admin/oidc/pending/42/reopen", nil)
 
-		location, err := url.Parse(response.Header().Get("Location"))
-
-		require.NoError(t, err)
-		assert.Equal(t, "/", location.Query().Get("next"))
+		assert.Equal(t, "/admin/users", browserReturnDestination(request))
 	})
 
-	t.Run("GET/admin/users?filter=all", func(t *testing.T) {
-		response := httptest.NewRecorder()
+	t.Run("user mutation returns to user administration", func(t *testing.T) {
+		t.Parallel()
 
-		browserUnauthorized(response, httptest.NewRequest("GET", "/admin/users?filter=all", nil), unauthorizedCredentialsRequired)
-		require.Equal(t, http.StatusFound, response.Code)
+		request := httptest.NewRequest(http.MethodPost, "/admin/users/7", nil)
 
-		location, err := url.Parse(response.Header().Get("Location"))
-
-		require.NoError(t, err)
-		assert.Equal(t, "/admin/users?filter=all", location.Query().Get("next"))
+		assert.Equal(t, "/admin/users", browserReturnDestination(request))
 	})
+
+	t.Run("other mutation returns home", func(t *testing.T) {
+		t.Parallel()
+
+		request := httptest.NewRequest(http.MethodPost, "/admin/settings", nil)
+
+		assert.Equal(t, "/", browserReturnDestination(request))
+	})
+}
+
+func TestBrowserUnauthorizedRedirectsToLogin(t *testing.T) {
+	t.Parallel()
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/admin/users/7", nil)
+
+	browserUnauthorized(response, request, unauthorizedCredentialsRequired)
+
+	require.Equal(t, http.StatusFound, response.Code)
+
+	location, err := url.Parse(response.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "/auth/login", location.Path)
+	assert.Equal(t, "/admin/users", location.Query().Get("next"))
 }

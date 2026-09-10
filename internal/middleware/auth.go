@@ -126,19 +126,25 @@ func unauthorized(
 
 // browserUnauthorized redirects an unauthenticated browser request to the login endpoint.
 func browserUnauthorized(w http.ResponseWriter, r *http.Request, _ unauthorizedReason) {
-	destination := r.URL.RequestURI()
-
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		// Login resumes with GET, so never return to a POST-only action URL.
-		destination = "/"
-		if strings.HasPrefix(r.URL.Path, "/admin/oidc/") || strings.HasPrefix(r.URL.Path, "/admin/users/") {
-			destination = "/admin/users"
-		}
-	}
-
-	next := url.QueryEscape(destination)
+	next := url.QueryEscape(browserReturnDestination(r))
 
 	http.Redirect(w, r, "/auth/login?next="+next, http.StatusFound)
+}
+
+// browserReturnDestination chooses a readable page to open after authentication.
+func browserReturnDestination(r *http.Request) string {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		return r.URL.RequestURI()
+	}
+
+	// Login resumes with GET, so never return to a mutation-only action URL.
+	switch {
+	case strings.HasPrefix(r.URL.Path, "/admin/oidc/"),
+		strings.HasPrefix(r.URL.Path, "/admin/users/"):
+		return "/admin/users"
+	default:
+		return "/"
+	}
 }
 
 // apiUnauthorized writes the JSON response for an unauthenticated API request.
