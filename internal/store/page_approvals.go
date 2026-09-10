@@ -69,23 +69,7 @@ RETURNING id`, pageID, revisionNumber, actorID, note).Scan(&id)
 		return domain.PageReviewRequest{}, err
 	}
 
-	if ownerGroupID != 0 {
-		_, err = tx.Exec(ctx, `
-INSERT INTO notifications(user_id,kind,title,body,url)
-SELECT DISTINCT u.id,'review','Review requested for ' || p.title,$2,'/pages/' || p.slug
-FROM pages p
-JOIN user_groups ug ON ug.group_id=p.owner_group_id
-JOIN users u ON u.id=ug.user_id AND u.enabled
-WHERE p.id=$1 AND u.id<>$3`, pageID, note, actorID)
-	} else {
-		_, err = tx.Exec(ctx, `
-INSERT INTO notifications(user_id,kind,title,body,url)
-SELECT u.id,'review','Review requested for ' || p.title,$2,'/pages/' || p.slug
-FROM pages p
-JOIN users u ON u.role='admin' AND u.enabled
-WHERE p.id=$1 AND u.id<>$3`, pageID, note, actorID)
-	}
-	if err != nil {
+	if err := notifyPageReviewers(ctx, tx, pageID, ownerGroupID, actorID, note); err != nil {
 		return domain.PageReviewRequest{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -148,22 +132,81 @@ WHERE id=$1 AND status='pending'`, id, decision, note, reviewerID)
 	if tag.RowsAffected() == 0 {
 		return "", domain.ErrNotFound
 	}
-	if decision == "approved" {
-		if _, err := tx.Exec(ctx, `UPDATE pages SET status='verified',last_reviewed_at=now(),updated_at=now() WHERE id=$1`, pageID); err != nil {
-			return "", err
-		}
+	if err := markPageReviewApproved(ctx, tx, pageID, decision); err != nil {
+		return "", err
 	}
-	body := note
-	if body == "" {
-		body = "The review was " + decision + "."
-	}
-	if requesterID != reviewerID {
-		if _, err := tx.Exec(ctx, `INSERT INTO notifications(user_id,kind,title,body,url) VALUES($1,'review',$2,$3,$4)`, requesterID, "Review "+decision+" for "+title, body, "/pages/"+slug); err != nil {
-			return "", err
-		}
+
+	if err := notifyReviewRequester(ctx, tx, requesterID, reviewerID, title, slug, decision, note); err != nil {
+		return "", err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
 	return slug, nil
+}
+
+// notifyPageReviewers notifies the owner group, or administrators when a page has no owner.
+func notifyPageReviewers(
+	ctx context.Context,
+	tx pgx.Tx,
+	pageID, ownerGroupID, actorID int64,
+	note string,
+) error {
+	if ownerGroupID != 0 {
+		_, err := tx.Exec(ctx, `
+INSERT INTO notifications(user_id,kind,title,body,url)
+SELECT DISTINCT u.id,'review','Review requested for ' || p.title,$2,'/pages/' || p.slug
+FROM pages p
+JOIN user_groups ug ON ug.group_id=p.owner_group_id
+JOIN users u ON u.id=ug.user_id AND u.enabled
+WHERE p.id=$1 AND u.id<>$3`, pageID, note, actorID)
+
+		return err
+	}
+
+	_, err := tx.Exec(ctx, `
+INSERT INTO notifications(user_id,kind,title,body,url)
+SELECT u.id,'review','Review requested for ' || p.title,$2,'/pages/' || p.slug
+FROM pages p
+JOIN users u ON u.role='admin' AND u.enabled
+WHERE p.id=$1 AND u.id<>$3`, pageID, note, actorID)
+
+	return err
+}
+
+// markPageReviewApproved verifies a page only for an approval decision.
+func markPageReviewApproved(ctx context.Context, tx pgx.Tx, pageID int64, decision string) error {
+	if decision != "approved" {
+		return nil
+	}
+
+	_, err := tx.Exec(ctx, `
+UPDATE pages
+SET status='verified',last_reviewed_at=now(),updated_at=now()
+WHERE id=$1`, pageID)
+
+	return err
+}
+
+// notifyReviewRequester sends the review result unless the requester reviewed their own request.
+func notifyReviewRequester(
+	ctx context.Context,
+	tx pgx.Tx,
+	requesterID, reviewerID int64,
+	title, slug, decision, note string,
+) error {
+	if requesterID == reviewerID {
+		return nil
+	}
+
+	body := note
+	if body == "" {
+		body = "The review was " + decision + "."
+	}
+
+	_, err := tx.Exec(ctx, `
+INSERT INTO notifications(user_id,kind,title,body,url)
+VALUES($1,'review',$2,$3,$4)`, requesterID, "Review "+decision+" for "+title, body, "/pages/"+slug)
+
+	return err
 }

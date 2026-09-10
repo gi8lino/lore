@@ -91,13 +91,20 @@ func DecidePageReview(pageUseCases pageApprovalService, logger *slog.Logger) htt
 		}
 		slug := strings.TrimSpace(r.FormValue("slug"))
 		if err := pageUseCases.DecideReview(r.Context(), id, slug, r.FormValue("decision"), r.FormValue("note"), user); err != nil {
-			if errors.Is(err, domain.ErrStaleReview) {
-				httpresponse.Problem(w, http.StatusConflict, "The page changed after review was requested. Request a new review for the latest revision.")
-				return
-			}
-			writePageProblem(logger, w, err)
+			writeReviewDecisionProblem(w, logger, err)
 			return
 		}
+
 		http.Redirect(w, r, "/pages/"+slug, http.StatusSeeOther)
 	}
+}
+
+// writeReviewDecisionProblem translates review-specific conflicts before generic page errors.
+func writeReviewDecisionProblem(w http.ResponseWriter, logger *slog.Logger, err error) {
+	if errors.Is(err, domain.ErrStaleReview) {
+		httpresponse.Problem(w, http.StatusConflict, "The page changed after review was requested. Request a new review for the latest revision.")
+		return
+	}
+
+	writePageProblem(logger, w, err)
 }

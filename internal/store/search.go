@@ -217,6 +217,7 @@ func searchTokens(query string) []string {
 // queryArgs owns SQL parameters and returns their positional placeholder.
 type queryArgs []any
 
+// add appends one search argument and returns its SQL placeholder.
 func (a *queryArgs) add(value any) string {
 	*a = append(*a, value)
 

@@ -99,6 +99,7 @@ type pageDraftResponse struct {
 	Values map[string][]string `json:"values"`
 }
 
+// draftResponse converts a stored draft into its JSON transport representation.
 func draftResponse(draft domain.PageDraft) pageDraftResponse {
 	values := make(map[string][]string, len(draft.Values))
 	for name, entries := range draft.Values {

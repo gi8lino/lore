@@ -143,55 +143,96 @@ func expandKnowledgeMacro(
 ) (string, error) {
 	switch kind {
 	case "var", "snippet":
-		storedKind := kind
-		if kind == "var" {
-			storedKind = "variable"
-		}
-		item, err := content.KnowledgeSnippetByName(ctx, storedKind, name)
-		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				return "", fmt.Errorf("%s %q not found: %w", kind, name, err)
-			}
-			return "", err
-		}
-		return item.Content, nil
+		return expandStoredKnowledge(ctx, content, kind, name)
 	case "include":
-		pageTarget, heading := md.SplitHeadingTarget(name)
-		slug := strings.Trim(pageTarget, "/")
-		if slug == "" {
-			return "", fmt.Errorf("include requires a page path")
-		}
-		includeKey := slug
-		if heading != "" {
-			includeKey += "#" + md.HeadingID(heading)
-		}
-		if seen[includeKey] {
-			return "", fmt.Errorf("recursive page include %q", includeKey)
-		}
-		page, err := content.GetPage(ctx, slug)
-		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				return "", fmt.Errorf("included page %q not found: %w", slug, err)
-			}
-			return "", err
-		}
-		markdown := page.Markdown
-		if heading != "" {
-			markdown, err = markdownSection(markdown, heading)
-			if err != nil {
-				return "", fmt.Errorf("include section %s#%s: %w", slug, heading, err)
-			}
-		}
-		nextSeen := maps.Clone(seen)
-		nextSeen[includeKey] = true
-		expanded, err := expandKnowledgeMarkdown(ctx, content, markdown, nextSeen, depth+1)
-		if err != nil {
-			return "", fmt.Errorf("expand include %s: %w", slug, err)
-		}
-		return expanded, nil
+		return expandPageInclude(ctx, content, name, seen, depth)
 	default:
 		return "", fmt.Errorf("unsupported knowledge macro %q", kind)
 	}
+}
+
+// expandStoredKnowledge resolves a stored variable or snippet.
+func expandStoredKnowledge(ctx context.Context, content knowledgeContent, kind, name string) (string, error) {
+	storedKind := kind
+	if kind == "var" {
+		storedKind = "variable"
+	}
+
+	item, err := content.KnowledgeSnippetByName(ctx, storedKind, name)
+	if errors.Is(err, domain.ErrNotFound) {
+		return "", fmt.Errorf("%s %q not found: %w", kind, name, err)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return item.Content, nil
+}
+
+// expandPageInclude resolves and recursively expands one whole-page or heading include.
+func expandPageInclude(
+	ctx context.Context,
+	content knowledgeContent,
+	name string,
+	seen map[string]bool,
+	depth int,
+) (string, error) {
+	pageTarget, heading := md.SplitHeadingTarget(name)
+	slug := strings.Trim(pageTarget, "/")
+	if slug == "" {
+		return "", fmt.Errorf("include requires a page path")
+	}
+
+	includeKey := includeTargetKey(slug, heading)
+	if seen[includeKey] {
+		return "", fmt.Errorf("recursive page include %q", includeKey)
+	}
+
+	page, err := content.GetPage(ctx, slug)
+	if errors.Is(err, domain.ErrNotFound) {
+		return "", fmt.Errorf("included page %q not found: %w", slug, err)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	markdown, err := includedMarkdown(page.Markdown, slug, heading)
+	if err != nil {
+		return "", err
+	}
+
+	nextSeen := maps.Clone(seen)
+	nextSeen[includeKey] = true
+
+	expanded, err := expandKnowledgeMarkdown(ctx, content, markdown, nextSeen, depth+1)
+	if err != nil {
+		return "", fmt.Errorf("expand include %s: %w", slug, err)
+	}
+
+	return expanded, nil
+}
+
+// includeTargetKey returns the recursion key for a whole-page or heading include.
+func includeTargetKey(slug, heading string) string {
+	if heading == "" {
+		return slug
+	}
+
+	return slug + "#" + md.HeadingID(heading)
+}
+
+// includedMarkdown selects the requested heading section when one is present.
+func includedMarkdown(source, slug, heading string) (string, error) {
+	if heading == "" {
+		return source, nil
+	}
+
+	section, err := markdownSection(source, heading)
+	if err != nil {
+		return "", fmt.Errorf("include section %s#%s: %w", slug, heading, err)
+	}
+
+	return section, nil
 }
 
 // markdownSection returns one ATX-heading section, including its heading, through the next sibling or ancestor heading.
@@ -220,11 +261,12 @@ func markdownSection(source, requested string) (string, error) {
 		if !ok {
 			continue
 		}
+		if start < 0 && md.HeadingID(title) != requestedID {
+			continue
+		}
 		if start < 0 {
-			if md.HeadingID(title) == requestedID {
-				start = index
-				level = headingLevel
-			}
+			start = index
+			level = headingLevel
 			continue
 		}
 		if headingLevel <= level {

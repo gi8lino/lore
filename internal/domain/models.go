@@ -210,9 +210,12 @@ type ExternalLink struct {
 }
 
 const (
+	// ExternalLinkHoverHighlight highlights a link without moving it.
 	ExternalLinkHoverHighlight = "highlight"
-	ExternalLinkHoverLift      = "lift"
-	ExternalLinkHoverNone      = "none"
+	// ExternalLinkHoverLift raises a link slightly on pointer hover.
+	ExternalLinkHoverLift = "lift"
+	// ExternalLinkHoverNone disables visual hover treatment.
+	ExternalLinkHoverNone = "none"
 )
 
 // ExternalLinkHoverEffects returns the supported external-link hover presentations.
@@ -241,41 +244,56 @@ func EffectiveExternalLinkHoverEffect(value string) string {
 
 // ExternalLinkHoverTitle resolves a link's hover text template.
 func ExternalLinkHoverTitle(link ExternalLink) string {
+	label := strings.TrimSpace(link.Label)
+	description := strings.TrimSpace(link.Description)
 	template := strings.TrimSpace(link.HoverText)
+
+	if template == "" && description == "" {
+		return label
+	}
 	if template == "" {
-		if strings.TrimSpace(link.Description) == "" {
-			return strings.TrimSpace(link.Label)
-		}
-		return strings.TrimSpace(link.Label) + " — " + strings.TrimSpace(link.Description)
+		return label + " — " + description
 	}
 
+	return strings.TrimSpace(expandExternalLinkHoverTemplate(template, link))
+}
+
+// expandExternalLinkHoverTemplate replaces supported placeholders and preserves unknown ones.
+func expandExternalLinkHoverTemplate(value string, link ExternalLink) string {
 	var output strings.Builder
-	for len(template) > 0 {
-		start := strings.Index(template, "{{")
+
+	for value != "" {
+		start := strings.Index(value, "{{")
 		if start < 0 {
-			output.WriteString(template)
+			output.WriteString(value)
 			break
 		}
-		output.WriteString(template[:start])
-		end := strings.Index(template[start+2:], "}}")
+
+		output.WriteString(value[:start])
+
+		rest := value[start+2:]
+		end := strings.Index(rest, "}}")
 		if end < 0 {
-			output.WriteString(template[start:])
+			output.WriteString(value[start:])
 			break
 		}
-		end += start + 2
-		name := strings.TrimSpace(template[start+2 : end])
+
+		placeholderEnd := start + 2 + end
+		name := strings.TrimSpace(value[start+2 : placeholderEnd])
+
 		switch name {
 		case "label":
 			output.WriteString(link.Label)
 		case "description":
 			output.WriteString(link.Description)
 		default:
-			output.WriteString(template[start : end+2])
+			output.WriteString(value[start : placeholderEnd+2])
 		}
-		template = template[end+2:]
+
+		value = value[placeholderEnd+2:]
 	}
 
-	return strings.TrimSpace(output.String())
+	return output.String()
 }
 
 // PDFHeader describes one configurable request header sent to the external PDF service.
@@ -457,7 +475,6 @@ type PageAccessRule struct {
 	UpdatedAt time.Time
 }
 
-// Notification is a lightweight user inbox item.
 // Webhook is one administrator-configured outgoing event destination.
 type Webhook struct {
 	ID               int64
@@ -482,6 +499,7 @@ type WebhookDelivery struct {
 	CreatedAt   time.Time
 }
 
+// Notification is a lightweight user inbox item.
 type Notification struct {
 	ID        int64      `json:"id"`
 	Kind      string     `json:"kind"`

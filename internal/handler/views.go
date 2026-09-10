@@ -353,18 +353,22 @@ type webhookView struct {
 	AvailableEvents []string
 }
 
+// webhookContext combines one webhook with the events available to the template.
 func webhookContext(item domain.Webhook, events []string) webhookView {
 	return webhookView{Webhook: item, AvailableEvents: events}
 }
 
+// pageTemplateContext combines one blueprint with groups and lifecycle choices.
 func pageTemplateContext(item domain.PageTemplate, groups []domain.Group, statuses []string) pageTemplateView {
 	return pageTemplateView{PageTemplate: item, Groups: groups, PageStatuses: statuses}
 }
 
+// blankPageTemplate returns the defaults used for a new blueprint form.
 func blankPageTemplate() domain.PageTemplate {
 	return domain.PageTemplate{Status: "verified", Properties: map[string]string{}}
 }
 
+// templatePropertiesText serializes blueprint properties for the administration form.
 func templatePropertiesText(properties map[string]string) string {
 	keys := make([]string, 0, len(properties))
 	for key := range properties {
@@ -380,6 +384,7 @@ func templatePropertiesText(properties map[string]string) string {
 	return strings.Join(lines, "\n")
 }
 
+// templateFieldsText serializes blueprint fields for the administration form.
 func templateFieldsText(fields []domain.PageTemplateField) string {
 	lines := make([]string, 0, len(fields))
 	for _, field := range fields {
@@ -679,6 +684,7 @@ type pagePathOption struct {
 	Label string
 }
 
+// pagePathOptions flattens the navigation tree into selectable parent paths.
 func pagePathOptions(tree []navigation.Node, excludedSlug string) []pagePathOption {
 	var options []pagePathOption
 	var appendNodes func([]navigation.Node, []string)
@@ -703,6 +709,7 @@ func pagePathOptions(tree []navigation.Node, excludedSlug string) []pagePathOpti
 	return options
 }
 
+// hasPagePathOption reports whether a parent path can be selected.
 func hasPagePathOption(options []pagePathOption, slug string) bool {
 	if slug == "" {
 		return true

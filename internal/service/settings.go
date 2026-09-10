@@ -246,43 +246,12 @@ func (s *Settings) SavePDFSettings(
 
 	resolved, err := s.resolvePDFHeaderInputs(inputs, existing)
 	if err != nil {
-		if errors.Is(err, secrets.ErrNotConfigured) {
-			return &domain.ValidationError{
-				Fields: []domain.FieldError{{
-					Field:   "pdf_headers",
-					Message: "Configure LORE__ENCRYPTION_KEY before saving sensitive PDF headers.",
-				}},
-				Cause: err,
-			}
-		}
-
-		return err
+		return pdfHeaderEncryptionError(err)
 	}
 
-	stored := make([]domain.PDFHeader, 0, len(resolved))
-	for _, header := range resolved {
-		if header.Sensitive {
-			value, err := s.secrets.Encrypt(header.Value)
-			if err != nil {
-				if errors.Is(err, secrets.ErrNotConfigured) {
-					return &domain.ValidationError{
-						Fields: []domain.FieldError{{
-							Field:   "pdf_headers",
-							Message: "Configure LORE__ENCRYPTION_KEY before saving sensitive PDF headers.",
-						}},
-						Cause: err,
-					}
-				}
-
-				return err
-			}
-
-			header.Value = value
-		}
-
-		header.ID = 0
-		header.Configured = false
-		stored = append(stored, header)
+	stored, err := s.preparePDFHeadersForStorage(resolved)
+	if err != nil {
+		return err
 	}
 
 	if err := s.repository.SavePDFSettings(ctx, pdfURL, stored); err != nil {
@@ -299,6 +268,56 @@ func (s *Settings) SavePDFSettings(
 	)
 
 	return nil
+}
+
+// preparePDFHeadersForStorage encrypts sensitive header values and strips persisted row state.
+func (s *Settings) preparePDFHeadersForStorage(headers []domain.PDFHeader) ([]domain.PDFHeader, error) {
+	stored := make([]domain.PDFHeader, 0, len(headers))
+
+	for _, header := range headers {
+		prepared, err := s.preparePDFHeaderForStorage(header)
+		if err != nil {
+			return nil, err
+		}
+
+		stored = append(stored, prepared)
+	}
+
+	return stored, nil
+}
+
+// preparePDFHeaderForStorage encrypts one sensitive value and resets database-managed fields.
+func (s *Settings) preparePDFHeaderForStorage(header domain.PDFHeader) (domain.PDFHeader, error) {
+	header.ID = 0
+	header.Configured = false
+
+	if !header.Sensitive {
+		return header, nil
+	}
+
+	value, err := s.secrets.Encrypt(header.Value)
+	if err != nil {
+		return domain.PDFHeader{}, pdfHeaderEncryptionError(err)
+	}
+
+	header.Value = value
+
+	return header, nil
+}
+
+// pdfHeaderEncryptionError converts a missing deployment key into an actionable validation error.
+func pdfHeaderEncryptionError(err error) error {
+	if !errors.Is(err, secrets.ErrNotConfigured) {
+		return err
+	}
+
+	return &domain.ValidationError{
+		Fields: []domain.FieldError{{
+			Field:   "pdf_headers",
+			Message: "Configure LORE__ENCRYPTION_KEY before saving sensitive PDF headers.",
+		}},
+		Cause: err,
+	}
 }
 
 // resolvePDFHeaderInputs validates request-header form input and resolves masked stored values.
@@ -323,18 +342,9 @@ func (s *Settings) resolvePDFHeaderInputs(inputs []PDFHeaderInput, existing []do
 		}
 		seenNames[nameKey] = struct{}{}
 
-		var previous domain.PDFHeader
-		if input.ID != 0 {
-			if _, exists := seenIDs[input.ID]; exists {
-				return nil, domain.NewValidationError("pdf_headers", "PDF header rows must be unique.")
-			}
-			seenIDs[input.ID] = struct{}{}
-
-			var exists bool
-			previous, exists = existingByID[input.ID]
-			if !exists {
-				return nil, domain.NewValidationError("pdf_headers", "One PDF header no longer exists. Reload the page and try again.")
-			}
+		previous, err := existingPDFHeader(input.ID, existingByID, seenIDs)
+		if err != nil {
+			return nil, err
 		}
 
 		value := input.Value
@@ -360,6 +370,28 @@ func (s *Settings) resolvePDFHeaderInputs(inputs []PDFHeaderInput, existing []do
 	}
 
 	return resolved, nil
+}
+
+// existingPDFHeader resolves an existing row and rejects duplicate submitted identifiers.
+func existingPDFHeader(
+	id int64,
+	existing map[int64]domain.PDFHeader,
+	seen map[int64]struct{},
+) (domain.PDFHeader, error) {
+	if id == 0 {
+		return domain.PDFHeader{}, nil
+	}
+	if _, exists := seen[id]; exists {
+		return domain.PDFHeader{}, domain.NewValidationError("pdf_headers", "PDF header rows must be unique.")
+	}
+	seen[id] = struct{}{}
+
+	header, exists := existing[id]
+	if !exists {
+		return domain.PDFHeader{}, domain.NewValidationError("pdf_headers", "One PDF header no longer exists. Reload the page and try again.")
+	}
+
+	return header, nil
 }
 
 // decryptPDFHeaders decrypts sensitive values while leaving ordinary headers unchanged.

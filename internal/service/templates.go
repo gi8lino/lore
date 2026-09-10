@@ -74,16 +74,50 @@ func (s *Templates) DeletePageTemplate(ctx context.Context, id int64) error {
 	return s.repository.DeletePageTemplate(ctx, id)
 }
 
+// validatePageTemplate normalizes and validates a page-blueprint input.
 func validatePageTemplate(input PageTemplateInput) (domain.PageTemplate, error) {
 	input.Name = strings.TrimSpace(input.Name)
 	input.Description = strings.TrimSpace(input.Description)
 	input.PathPrefix = md.Slug(input.PathPrefix)
 	input.Icon = strings.TrimSpace(input.Icon)
-	if input.Status == "" {
-		input.Status = "verified"
+	input.Status = defaultPageTemplateStatus(input.Status)
+
+	fields, fieldProblems := normalizeTemplateFields(input.Fields)
+	validation := validatePageTemplateSettings(input)
+	validation.Fields = append(validation.Fields, fieldProblems...)
+
+	if len(validation.Fields) > 0 {
+		return domain.PageTemplate{}, validation
 	}
 
+	return domain.PageTemplate{
+		Name:               input.Name,
+		Description:        input.Description,
+		Markdown:           input.Markdown,
+		PathPrefix:         input.PathPrefix,
+		Icon:               input.Icon,
+		Tags:               normalizeTags(input.Tags),
+		Status:             input.Status,
+		OwnerGroupID:       input.OwnerGroupID,
+		ReviewIntervalDays: input.ReviewIntervalDays,
+		Properties:         normalizeTemplateProperties(input.Properties),
+		Fields:             fields,
+	}, nil
+}
+
+// defaultPageTemplateStatus applies the verified default to an unspecified blueprint status.
+func defaultPageTemplateStatus(status string) string {
+	if status == "" {
+		return "verified"
+	}
+
+	return status
+}
+
+// validatePageTemplateSettings validates blueprint settings outside prompted fields.
+func validatePageTemplateSettings(input PageTemplateInput) *ValidationError {
 	validation := &ValidationError{}
+
 	if input.Name == "" {
 		validation.Fields = append(validation.Fields, FieldError{Field: "name", Message: "A template name is required."})
 	}
@@ -97,58 +131,62 @@ func validatePageTemplate(input PageTemplateInput) (domain.PageTemplate, error) 
 		validation.Fields = append(validation.Fields, FieldError{Field: "review_interval_days", Message: "Choose valid review defaults."})
 	}
 
-	seenFields := map[string]bool{}
-	fields := make([]domain.PageTemplateField, 0, len(input.Fields))
-	for _, field := range input.Fields {
+	return validation
+}
+
+// normalizeTemplateFields normalizes prompted fields and returns field-specific problems.
+func normalizeTemplateFields(values []domain.PageTemplateField) ([]domain.PageTemplateField, []FieldError) {
+	fields := make([]domain.PageTemplateField, 0, len(values))
+	problems := make([]FieldError, 0)
+	seen := map[string]bool{}
+
+	for _, field := range values {
 		field.Name = strings.TrimSpace(field.Name)
 		field.Label = strings.TrimSpace(field.Label)
 		field.Default = strings.TrimSpace(field.Default)
+
 		if field.Name == "" && field.Label == "" {
 			continue
 		}
 		if !validTemplateFieldName(field.Name) {
-			validation.Fields = append(validation.Fields, FieldError{Field: "fields", Message: "Field names may contain letters, numbers, underscores, and hyphens."})
+			problems = append(problems, FieldError{Field: "fields", Message: "Field names may contain letters, numbers, underscores, and hyphens."})
 			continue
 		}
+
 		key := strings.ToLower(field.Name)
-		if seenFields[key] {
-			validation.Fields = append(validation.Fields, FieldError{Field: "fields", Message: "Template field names must be unique."})
+		if seen[key] {
+			problems = append(problems, FieldError{Field: "fields", Message: "Template field names must be unique."})
 			continue
 		}
-		seenFields[key] = true
+		seen[key] = true
+
 		if field.Label == "" {
 			field.Label = field.Name
 		}
+
 		fields = append(fields, field)
 	}
 
-	if len(validation.Fields) > 0 {
-		return domain.PageTemplate{}, validation
-	}
-
-	properties := map[string]string{}
-	for key, value := range input.Properties {
-		key = strings.TrimSpace(key)
-		if key != "" {
-			properties[key] = strings.TrimSpace(value)
-		}
-	}
-
-	return domain.PageTemplate{
-		Name:               input.Name,
-		Description:        input.Description,
-		Markdown:           input.Markdown,
-		PathPrefix:         input.PathPrefix,
-		Icon:               input.Icon,
-		Tags:               normalizeTags(input.Tags),
-		Status:             input.Status,
-		OwnerGroupID:       input.OwnerGroupID,
-		ReviewIntervalDays: input.ReviewIntervalDays,
-		Properties:         properties,
-		Fields:             fields,
-	}, nil
+	return fields, problems
 }
 
+// normalizeTemplateProperties trims property names and values and drops empty names.
+func normalizeTemplateProperties(values map[string]string) map[string]string {
+	properties := make(map[string]string, len(values))
+
+	for key, value := range values {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+
+		properties[key] = strings.TrimSpace(value)
+	}
+
+	return properties
+}
+
+// validTemplateFieldName reports whether a blueprint field name is portable.
 func validTemplateFieldName(value string) bool {
 	if value == "" {
 		return false
@@ -165,6 +203,7 @@ func validTemplateFieldName(value string) bool {
 	return true
 }
 
+// normalizeTags canonicalizes and deduplicates blueprint tags.
 func normalizeTags(values []string) []string {
 	result := make([]string, 0, len(values))
 	seen := map[string]bool{}

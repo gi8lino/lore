@@ -100,30 +100,40 @@ type templateRow interface {
 	Scan(...any) error
 }
 
+// scanPageTemplate decodes one page-blueprint row and its JSON metadata.
 func scanPageTemplate(row templateRow) (domain.PageTemplate, error) {
 	var item domain.PageTemplate
 	var properties, fields []byte
-	err := row.Scan(
+
+	if err := row.Scan(
 		&item.ID, &item.Name, &item.Description, &item.Markdown, &item.PathPrefix, &item.Icon,
 		&item.Tags, &item.Status, &item.OwnerGroupID, &item.ReviewIntervalDays, &properties, &fields,
-	)
-	if err != nil {
+	); err != nil {
 		return domain.PageTemplate{}, err
 	}
+
 	item.Properties = map[string]string{}
-	if len(properties) != 0 {
-		if err := json.Unmarshal(properties, &item.Properties); err != nil {
-			return domain.PageTemplate{}, err
-		}
+
+	if err := decodeTemplateJSON(properties, &item.Properties); err != nil {
+		return domain.PageTemplate{}, err
 	}
-	if len(fields) != 0 {
-		if err := json.Unmarshal(fields, &item.Fields); err != nil {
-			return domain.PageTemplate{}, err
-		}
+	if err := decodeTemplateJSON(fields, &item.Fields); err != nil {
+		return domain.PageTemplate{}, err
 	}
+
 	return item, nil
 }
 
+// decodeTemplateJSON ignores empty database values and decodes populated JSON values.
+func decodeTemplateJSON(data []byte, target any) error {
+	if len(data) == 0 {
+		return nil
+	}
+
+	return json.Unmarshal(data, target)
+}
+
+// templateJSON encodes blueprint properties and prompted fields for persistence.
 func templateJSON(item domain.PageTemplate) ([]byte, []byte, error) {
 	properties, err := json.Marshal(item.Properties)
 	if err != nil {

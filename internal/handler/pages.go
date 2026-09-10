@@ -570,6 +570,7 @@ func SavePageForm(
 	}
 }
 
+// resolvePageTemplateFields validates and materializes creation-time blueprint fields.
 func resolvePageTemplateFields(
 	ctx context.Context,
 	r *http.Request,
@@ -650,7 +651,6 @@ func FavoritePage(
 	}
 }
 
-// splitTags normalizes a comma-separated tag list.
 // WatchPage updates the current user's page or subtree subscription.
 func WatchPage(
 	catalogUseCases pageWatchService,
@@ -679,6 +679,7 @@ func WatchPage(
 	}
 }
 
+// splitTags normalizes a comma-separated tag list.
 func splitTags(value string) []string {
 	result := make([]string, 0)
 

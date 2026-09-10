@@ -404,6 +404,7 @@ func UpdateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 	}
 }
 
+// pageTemplateInputFromForm translates the blueprint form into a service input.
 func pageTemplateInputFromForm(r *http.Request) service.PageTemplateInput {
 	ownerGroupID, _ := strconv.ParseInt(strings.TrimSpace(r.FormValue("owner_group_id")), 10, 64)
 	reviewIntervalDays, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("review_interval_days")))
@@ -423,38 +424,54 @@ func pageTemplateInputFromForm(r *http.Request) service.PageTemplateInput {
 	}
 }
 
+// parseBlueprintProperties parses one key=value blueprint property per line.
 func parseBlueprintProperties(value string) map[string]string {
 	properties := map[string]string{}
+
 	for line := range strings.SplitSeq(value, "\n") {
 		key, content, ok := strings.Cut(line, "=")
 		key = strings.TrimSpace(key)
-		if ok && key != "" {
-			properties[key] = strings.TrimSpace(content)
+
+		if !ok || key == "" {
+			continue
 		}
+
+		properties[key] = strings.TrimSpace(content)
 	}
+
 	return properties
 }
 
+// parseBlueprintFields parses the compact blueprint field definition format.
 func parseBlueprintFields(value string) []domain.PageTemplateField {
 	fields := make([]domain.PageTemplateField, 0)
+
 	for line := range strings.SplitSeq(value, "\n") {
-		parts := strings.Split(line, "|")
-		if len(parts) == 0 || strings.TrimSpace(parts[0]) == "" {
+		field, ok := parseBlueprintField(line)
+		if !ok {
 			continue
 		}
-		field := domain.PageTemplateField{Name: strings.TrimSpace(parts[0])}
-		if len(parts) > 1 {
-			field.Label = strings.TrimSpace(parts[1])
-		}
-		if len(parts) > 2 {
-			field.Default = strings.TrimSpace(parts[2])
-		}
-		if len(parts) > 3 {
-			field.Required = strings.EqualFold(strings.TrimSpace(parts[3]), "required")
-		}
+
 		fields = append(fields, field)
 	}
+
 	return fields
+}
+
+// parseBlueprintField parses one name|label|default|required blueprint field line.
+func parseBlueprintField(value string) (domain.PageTemplateField, bool) {
+	parts := strings.Split(value, "|")
+	name := formValueAt(parts, 0)
+	if name == "" {
+		return domain.PageTemplateField{}, false
+	}
+
+	return domain.PageTemplateField{
+		Name:     name,
+		Label:    formValueAt(parts, 1),
+		Default:  formValueAt(parts, 2),
+		Required: strings.EqualFold(formValueAt(parts, 3), "required"),
+	}, true
 }
 
 // DeleteAdminPageTemplate deletes one reusable page template.
@@ -1631,6 +1648,7 @@ func SaveAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) 
 	}
 }
 
+// DeleteAdminWebhook removes one configured outgoing webhook.
 func DeleteAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -1646,6 +1664,7 @@ func DeleteAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger
 	}
 }
 
+// TestAdminWebhook sends a diagnostic delivery to one configured webhook.
 func TestAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

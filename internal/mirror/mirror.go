@@ -144,66 +144,134 @@ func Export(ctx context.Context, repository repository, outputDir string) error 
 	return os.Rename(temporary, absolute)
 }
 
+// exportInto writes a complete mirror snapshot into an already-created directory.
 func exportInto(ctx context.Context, repository repository, outputDir string) error {
+	if err := createMirrorDirectories(outputDir); err != nil {
+		return err
+	}
+
+	pages, err := exportPages(ctx, repository, outputDir)
+	if err != nil {
+		return err
+	}
+
+	images, err := exportImages(ctx, repository, outputDir)
+	if err != nil {
+		return err
+	}
+
+	attachments, err := exportAttachments(ctx, repository, outputDir)
+	if err != nil {
+		return err
+	}
+
+	return writeJSON(filepath.Join(outputDir, "manifest.json"), manifest{
+		Format:      1,
+		Pages:       pages,
+		Images:      images,
+		Attachments: attachments,
+	})
+}
+
+// createMirrorDirectories creates the fixed directory layout used by a snapshot.
+func createMirrorDirectories(outputDir string) error {
 	for _, directory := range []string{"pages", "metadata", "media", "attachments"} {
 		if err := os.MkdirAll(filepath.Join(outputDir, directory), 0o755); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+// exportPages writes every active page and returns its stable path inventory.
+func exportPages(ctx context.Context, repository repository, outputDir string) ([]string, error) {
 	inventory, err := repository.PageInventory(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	slices.SortFunc(inventory, func(left, right domain.Page) int { return strings.Compare(left.Slug, right.Slug) })
 
-	result := manifest{Format: 1, Pages: make([]string, 0, len(inventory))}
+	slices.SortFunc(inventory, func(left, right domain.Page) int {
+		return strings.Compare(left.Slug, right.Slug)
+	})
+
+	pages := make([]string, 0, len(inventory))
+
 	for _, summary := range inventory {
 		page, err := repository.GetPage(ctx, summary.Slug)
 		if err != nil {
-			return fmt.Errorf("read page %q: %w", summary.Slug, err)
+			return nil, fmt.Errorf("read page %q: %w", summary.Slug, err)
 		}
+
 		if err := writePage(outputDir, page); err != nil {
-			return err
+			return nil, err
 		}
-		result.Pages = append(result.Pages, page.Slug)
+
+		pages = append(pages, page.Slug)
 	}
 
+	return pages, nil
+}
+
+// exportImages writes every stored image and returns its stable identifier inventory.
+func exportImages(ctx context.Context, repository repository, outputDir string) ([]int64, error) {
 	images, err := repository.Images(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	slices.SortFunc(images, func(left, right domain.Image) int { return compareID(left.ID, right.ID) })
+
+	slices.SortFunc(images, func(left, right domain.Image) int {
+		return compareID(left.ID, right.ID)
+	})
+
+	ids := make([]int64, 0, len(images))
+
 	for _, image := range images {
 		data, err := repository.ImageContent(ctx, image.ID)
 		if err != nil {
-			return fmt.Errorf("read image %d: %w", image.ID, err)
+			return nil, fmt.Errorf("read image %d: %w", image.ID, err)
 		}
+
 		if err := writeBinary(outputDir, "media", image.ID, data.Filename, data.Data); err != nil {
-			return err
+			return nil, err
 		}
-		result.Images = append(result.Images, image.ID)
+
+		ids = append(ids, image.ID)
 	}
 
+	return ids, nil
+}
+
+// exportAttachments writes every stored attachment and returns its stable identifier inventory.
+func exportAttachments(ctx context.Context, repository repository, outputDir string) ([]int64, error) {
 	attachments, err := repository.Attachments(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	slices.SortFunc(attachments, func(left, right domain.Attachment) int { return compareID(left.ID, right.ID) })
+
+	slices.SortFunc(attachments, func(left, right domain.Attachment) int {
+		return compareID(left.ID, right.ID)
+	})
+
+	ids := make([]int64, 0, len(attachments))
+
 	for _, attachment := range attachments {
 		data, err := repository.AttachmentContent(ctx, attachment.ID)
 		if err != nil {
-			return fmt.Errorf("read attachment %d: %w", attachment.ID, err)
+			return nil, fmt.Errorf("read attachment %d: %w", attachment.ID, err)
 		}
+
 		if err := writeBinary(outputDir, "attachments", attachment.ID, data.Filename, data.Data); err != nil {
-			return err
+			return nil, err
 		}
-		result.Attachments = append(result.Attachments, attachment.ID)
+
+		ids = append(ids, attachment.ID)
 	}
 
-	return writeJSON(filepath.Join(outputDir, "manifest.json"), result)
+	return ids, nil
 }
 
+// writePage writes one page Markdown file and its metadata sidecar.
 func writePage(outputDir string, page domain.Page) error {
 	relative := cleanSlug(page.Slug)
 	markdownPath := filepath.Join(outputDir, "pages", filepath.FromSlash(relative)+".md")
@@ -238,6 +306,7 @@ func writePage(outputDir string, page domain.Page) error {
 	return writeJSON(filepath.Join(outputDir, "metadata", filepath.FromSlash(relative)+".json"), metadata)
 }
 
+// writeBinary writes one uploaded object below its stable identifier.
 func writeBinary(outputDir, kind string, id int64, filename string, data []byte) error {
 	name := filepath.Base(filepath.FromSlash(filename))
 	if name == "." || name == string(filepath.Separator) || name == "" {
@@ -246,6 +315,7 @@ func writeBinary(outputDir, kind string, id int64, filename string, data []byte)
 	return writeFile(filepath.Join(outputDir, kind, fmt.Sprint(id), name), data)
 }
 
+// writeJSON writes deterministic indented JSON with a trailing newline.
 func writeJSON(filename string, value any) error {
 	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
@@ -255,6 +325,7 @@ func writeJSON(filename string, value any) error {
 	return writeFile(filename, data)
 }
 
+// writeFile creates parent directories and writes one regular mirror file.
 func writeFile(filename string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 		return err
@@ -262,6 +333,7 @@ func writeFile(filename string, data []byte) error {
 	return os.WriteFile(filename, data, 0o644)
 }
 
+// cleanSlug converts a Lore page path into a safe mirror-relative path.
 func cleanSlug(slug string) string {
 	cleaned := strings.Trim(strings.TrimSpace(slug), "/")
 	if cleaned == "" {
@@ -270,6 +342,7 @@ func cleanSlug(slug string) string {
 	return cleaned
 }
 
+// compareID orders integer identifiers in ascending order.
 func compareID(left, right int64) int {
 	switch {
 	case left < right:
@@ -281,6 +354,7 @@ func compareID(left, right int64) int {
 	}
 }
 
+// validateOutputDir rejects empty or destructive mirror destinations.
 func validateOutputDir(outputDir string) error {
 	if strings.TrimSpace(outputDir) == "" {
 		return errors.New("mirror output directory is required")

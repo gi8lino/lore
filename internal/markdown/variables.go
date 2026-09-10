@@ -66,7 +66,10 @@ type variableNode struct {
 	name string
 }
 
+// Kind returns the Goldmark node kind for variable annotations.
 func (n *variableNode) Kind() ast.NodeKind { return kindVariable }
+
+// Dump writes a diagnostic representation of a variable annotation node.
 func (n *variableNode) Dump(source []byte, level int) {
 	ast.DumpHelper(n, source, level, map[string]string{"Name": n.name}, nil)
 }
@@ -98,6 +101,7 @@ func (v variableTransformer) Transform(document *ast.Document, _ text.Reader, _ 
 	}
 }
 
+// wrapText replaces annotated text ranges with variable nodes.
 func (v variableTransformer) wrapText(node *ast.Text) {
 	start, stop := node.Segment.Start, node.Segment.Stop
 	if start == stop || node.Segment.Padding != 0 {
@@ -143,6 +147,7 @@ func (v variableTransformer) wrapText(node *ast.Text) {
 
 type variableNodeRenderer struct{ ranges []variableRange }
 
+// RegisterFuncs installs variable-aware renderers with Goldmark.
 func (v variableNodeRenderer) RegisterFuncs(register renderer.NodeRendererFuncRegisterer) {
 	register.Register(kindVariable, v.renderVariable)
 	if len(v.ranges) != 0 {
@@ -150,10 +155,12 @@ func (v variableNodeRenderer) RegisterFuncs(register renderer.NodeRendererFuncRe
 	}
 }
 
+// writeVariableStart writes the opening HTML wrapper for a variable annotation.
 func writeVariableStart(w util.BufWriter, name string) {
 	_, _ = w.WriteString(`<span class="page-variable" data-page-variable="` + html.EscapeString(name) + `">`)
 }
 
+// renderVariable writes the HTML wrapper around a variable node.
 func (v variableNodeRenderer) renderVariable(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		writeVariableStart(w, node.(*variableNode).name)
@@ -213,6 +220,7 @@ func equivalentVariableHTML(annotated, normal string) bool {
 	return err == nil && left == right
 }
 
+// normalizedVariableHTML canonicalizes rendered variable markup for comparison.
 func normalizedVariableHTML(value string) (string, error) {
 	root := &xhtml.Node{Type: xhtml.ElementNode, Data: "div", DataAtom: atom.Div}
 	nodes, err := xhtml.ParseFragment(strings.NewReader(value), root)

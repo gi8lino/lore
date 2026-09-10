@@ -490,6 +490,7 @@ func preprocessFunctions(
 	return strings.Join(output, "\n"), invocations
 }
 
+// functionPlaceholder returns a stable sentinel for deferred page-function rendering.
 func functionPlaceholder(kind string, index int) string {
 	return `<div class="lore-function-` + kind + ` lore-function-` + kind + `-` + strconv.Itoa(index) + `"></div>`
 }

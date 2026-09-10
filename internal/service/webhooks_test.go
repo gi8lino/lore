@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,7 +70,7 @@ func TestWebhooks(t *testing.T) {
 		encrypted, err := cipher.Encrypt("hook-secret")
 		require.NoError(t, err)
 		repository := &webhookRepositoryStub{items: []domain.Webhook{{ID: 1, Name: "build", URL: server.URL, Events: []string{"page.updated"}, Secret: encrypted, Enabled: true}}}
-		err = NewWebhooks(repository, cipher, slog.Default()).Emit(context.Background(), OutgoingEvent{Event: "page.updated", ObjectType: "page", ObjectKey: "guide"})
+		err = NewWebhooks(repository, cipher).Emit(context.Background(), OutgoingEvent{Event: "page.updated", ObjectType: "page", ObjectKey: "guide"})
 		require.NoError(t, err)
 		assert.Equal(t, "page.updated", gotEvent)
 		assert.Contains(t, gotSignature, "sha256=")
@@ -82,7 +81,7 @@ func TestWebhooks(t *testing.T) {
 	t.Run("requires encryption key for signing secret", func(t *testing.T) {
 		t.Parallel()
 		repository := &webhookRepositoryStub{}
-		_, err := NewWebhooks(repository, &secrets.Cipher{}, slog.Default()).SaveWebhook(context.Background(), 0, WebhookInput{Name: "hook", URL: "https://example.test/hook", Events: []string{"page.updated"}, Secret: "secret", Enabled: true})
+		_, err := NewWebhooks(repository, &secrets.Cipher{}).SaveWebhook(context.Background(), 0, WebhookInput{Name: "hook", URL: "https://example.test/hook", Events: []string{"page.updated"}, Secret: "secret", Enabled: true})
 		validation, ok := err.(*ValidationError)
 		require.True(t, ok)
 		assert.Equal(t, "secret", validation.Fields[0].Field)

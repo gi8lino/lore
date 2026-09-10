@@ -15,6 +15,7 @@ type ValidationError struct {
 	Cause  error
 }
 
+// Error returns the validation failure summary and diagnostic cause when present.
 func (e *ValidationError) Error() string {
 	if e.Cause != nil {
 		return fmt.Sprintf("validation failed: %v", e.Cause)
@@ -44,7 +45,10 @@ func NewValidationError(field, message string) *ValidationError {
 // It deliberately does not distinguish a hidden group from a nonexistent group.
 type GroupAssignmentError struct{ Field string }
 
+// Error returns the stable forbidden-assignment message.
 func (e *GroupAssignmentError) Error() string { return "page group assignment is forbidden" }
+
+// Unwrap classifies a group assignment failure as forbidden.
 func (e *GroupAssignmentError) Unwrap() error { return ErrForbidden }
 
 // Specific missing-resource errors preserve compatibility with ErrNotFound.

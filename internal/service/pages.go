@@ -532,6 +532,7 @@ func compareMoveSlugs(left, right string) int {
 	return cmp.Compare(len(right), len(left))
 }
 
+// actionTitle returns the notification title for a page mutation event.
 func actionTitle(action, title string) string {
 	switch action {
 	case "page.created":

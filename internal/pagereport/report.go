@@ -35,21 +35,37 @@ type Source interface {
 
 // Parse recognizes one standalone {{pages ...}} invocation.
 func Parse(line string) (Options, bool) {
+	body, ok := pageReportBody(line)
+	if !ok {
+		return Options{}, false
+	}
+
+	arguments, ok := parseArguments(body)
+	if !ok {
+		return Options{}, false
+	}
+
+	return optionsFromArguments(arguments)
+}
+
+// pageReportBody extracts the option text from a standalone {{pages ...}} invocation.
+func pageReportBody(line string) (string, bool) {
 	value := strings.TrimSpace(line)
 	body, ok := strings.CutPrefix(value, "{{pages")
 	if !ok {
-		return Options{}, false
+		return "", false
 	}
+
 	body, ok = strings.CutSuffix(body, "}}")
 	if !ok || (body != "" && body[0] != ' ' && body[0] != '\t') {
-		return Options{}, false
+		return "", false
 	}
 
-	arguments, ok := parseArguments(strings.TrimSpace(body))
-	if !ok {
-		return Options{}, false
-	}
+	return strings.TrimSpace(body), true
+}
 
+// optionsFromArguments normalizes parsed arguments and validates report options.
+func optionsFromArguments(arguments map[string]string) (Options, bool) {
 	options := Options{
 		Query:   strings.TrimSpace(arguments["query"]),
 		Columns: []string{"title", "status", "owner", "updated"},
@@ -57,35 +73,62 @@ func Parse(line string) (Options, bool) {
 		Sort:    cmp.Or(strings.TrimSpace(arguments["sort"]), "relevance"),
 		Limit:   defaultLimit,
 	}
+
 	if options.Query == "" {
 		return Options{}, false
 	}
+
 	if value := strings.TrimSpace(arguments["columns"]); value != "" {
 		options.Columns = splitColumns(value)
-		if len(options.Columns) == 0 {
-			return Options{}, false
-		}
 	}
-	if value := strings.TrimSpace(arguments["limit"]); value != "" {
-		limit, err := strconv.Atoi(value)
-		if err != nil || limit < 1 || limit > maxLimit {
-			return Options{}, false
-		}
-		options.Limit = limit
-	}
-	if options.View != "table" && options.View != "list" && options.View != "cards" {
+	if len(options.Columns) == 0 {
 		return Options{}, false
 	}
-	if options.Sort != "relevance" && options.Sort != "updated" && options.Sort != "title" && options.Sort != "path" {
+
+	limit, ok := reportLimit(arguments["limit"])
+	if !ok {
 		return Options{}, false
 	}
-	for _, column := range options.Columns {
-		if !validColumn(column) {
-			return Options{}, false
-		}
+	options.Limit = limit
+
+	if !validOptions(options) {
+		return Options{}, false
 	}
 
 	return options, true
+}
+
+// reportLimit parses an optional bounded report limit.
+func reportLimit(value string) (int, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return defaultLimit, true
+	}
+
+	limit, err := strconv.Atoi(value)
+	if err != nil || limit < 1 || limit > maxLimit {
+		return 0, false
+	}
+
+	return limit, true
+}
+
+// validOptions reports whether the report presentation and columns are supported.
+func validOptions(options Options) bool {
+	if options.View != "table" && options.View != "list" && options.View != "cards" {
+		return false
+	}
+	if options.Sort != "relevance" && options.Sort != "updated" && options.Sort != "title" && options.Sort != "path" {
+		return false
+	}
+
+	for _, column := range options.Columns {
+		if !validColumn(column) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // NewRenderer returns a request-bound renderer backed by the page catalog.
@@ -114,6 +157,7 @@ type argumentParser struct {
 	index int
 }
 
+// parseArguments parses key=value options without using regular expressions.
 func parseArguments(value string) (map[string]string, bool) {
 	result := map[string]string{}
 	parser := argumentParser{value: value}
@@ -146,12 +190,14 @@ func parseArguments(value string) (map[string]string, bool) {
 	}
 }
 
+// skipSpace advances past spaces and horizontal tabs.
 func (p *argumentParser) skipSpace() {
 	for p.index < len(p.value) && (p.value[p.index] == ' ' || p.value[p.index] == '\t') {
 		p.index++
 	}
 }
 
+// readName consumes one lowercase option name.
 func (p *argumentParser) readName() string {
 	start := p.index
 	for p.index < len(p.value) {
@@ -165,40 +211,59 @@ func (p *argumentParser) readName() string {
 	return p.value[start:p.index]
 }
 
+// readValue consumes one quoted or unquoted option value.
 func (p *argumentParser) readValue() (string, bool) {
 	if p.index >= len(p.value) {
 		return "", false
 	}
-	if p.value[p.index] == '"' {
-		start := p.index
-		p.index++
-		escaped := false
-		for p.index < len(p.value) {
-			character := p.value[p.index]
-			p.index++
-			if escaped {
-				escaped = false
-				continue
-			}
-			if character == '\\' {
-				escaped = true
-				continue
-			}
-			if character == '"' {
-				decoded, err := strconv.Unquote(p.value[start:p.index])
-				return decoded, err == nil
-			}
-		}
-		return "", false
+	if p.value[p.index] != '"' {
+		return p.readBareValue()
 	}
 
+	return p.readQuotedValue()
+}
+
+// readBareValue consumes a value up to the next horizontal whitespace.
+func (p *argumentParser) readBareValue() (string, bool) {
 	start := p.index
+
 	for p.index < len(p.value) && p.value[p.index] != ' ' && p.value[p.index] != '\t' {
 		p.index++
 	}
+
 	return p.value[start:p.index], p.index > start
 }
 
+// readQuotedValue consumes and unquotes a double-quoted option value.
+func (p *argumentParser) readQuotedValue() (string, bool) {
+	start := p.index
+	p.index++
+	escaped := false
+
+	for p.index < len(p.value) {
+		character := p.value[p.index]
+		p.index++
+
+		if escaped {
+			escaped = false
+			continue
+		}
+		if character == '\\' {
+			escaped = true
+			continue
+		}
+		if character != '"' {
+			continue
+		}
+
+		decoded, err := strconv.Unquote(p.value[start:p.index])
+		return decoded, err == nil
+	}
+
+	return "", false
+}
+
+// splitColumns normalizes a comma-separated report column list.
 func splitColumns(value string) []string {
 	columns := make([]string, 0)
 	for column := range strings.SplitSeq(value, ",") {
@@ -210,6 +275,7 @@ func splitColumns(value string) []string {
 	return columns
 }
 
+// validColumn reports whether a report column is supported.
 func validColumn(column string) bool {
 	switch column {
 	case "title", "path", "status", "owner", "updated", "author", "tags", "views":
@@ -219,6 +285,7 @@ func validColumn(column string) bool {
 	return ok && strings.TrimSpace(key) != ""
 }
 
+// sortPages applies the configured deterministic report ordering.
 func sortPages(pages []domain.Page, sort string) {
 	switch sort {
 	case "title":
@@ -255,6 +322,7 @@ var reportTemplate = template.Must(template.New("page-report").Parse(`{{ define 
 {{ define "list" }}<div class="lore-page-report"><ul class="lore-page-report-list">{{ range .Rows }}<li><a href="/pages/{{ .Slug }}">{{ index .Cells 0 }}</a>{{ range $index, $cell := .Cells }}{{ if gt $index 0 }}<span>{{ $cell }}</span>{{ end }}{{ end }}</li>{{ else }}<li class="muted">No pages match this query.</li>{{ end }}</ul></div>{{ end }}
 {{ define "cards" }}<div class="lore-page-report lore-page-report-cards">{{ range .Rows }}<a class="lore-page-report-card" href="/pages/{{ .Slug }}"><strong>{{ index .Cells 0 }}</strong>{{ range $index, $cell := .Cells }}{{ if gt $index 0 }}<span>{{ $cell }}</span>{{ end }}{{ end }}</a>{{ else }}<p class="muted">No pages match this query.</p>{{ end }}</div>{{ end }}`))
 
+// render executes the selected report presentation for the resolved pages.
 func render(options Options, pages []domain.Page) (string, error) {
 	data := tableData{Columns: make([]columnData, 0, len(options.Columns)), Rows: make([]rowData, 0, len(pages))}
 	for _, column := range options.Columns {
@@ -275,6 +343,7 @@ func render(options Options, pages []domain.Page) (string, error) {
 	return output.String(), nil
 }
 
+// columnLabel returns the human-readable heading for a report column.
 func columnLabel(column string) string {
 	if key, ok := strings.CutPrefix(column, "property:"); ok {
 		return key
@@ -282,6 +351,7 @@ func columnLabel(column string) string {
 	return strings.ToUpper(column[:1]) + column[1:]
 }
 
+// pageValue resolves one report cell from page metadata.
 func pageValue(page domain.Page, column string) string {
 	switch column {
 	case "title":

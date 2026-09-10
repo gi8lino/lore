@@ -9,7 +9,9 @@ import (
 )
 
 const (
+	// PageAccessView grants read access to a protected page path.
 	PageAccessView = "view"
+	// PageAccessEdit grants read and edit access to a protected page path.
 	PageAccessEdit = "edit"
 )
 
@@ -24,8 +26,12 @@ type accessRepository interface {
 // form an allow-list; paths without rules remain open to authenticated users.
 type Access struct{ repository accessRepository }
 
-func NewAccess(repository accessRepository) *Access { return &Access{repository: repository} }
+// NewAccess constructs inherited page-path authorization use cases.
+func NewAccess(repository accessRepository) *Access {
+	return &Access{repository: repository}
+}
 
+// CanView reports whether a user may read the requested page path.
 func (s *Access) CanView(ctx context.Context, user domain.User, path string) (bool, error) {
 	if isAdministrator(user) {
 		return true, nil
@@ -37,6 +43,7 @@ func (s *Access) CanView(ctx context.Context, user domain.User, path string) (bo
 	return !access.Restricted || access.CanView, nil
 }
 
+// CanEdit reports whether a user may modify the requested page path.
 func (s *Access) CanEdit(ctx context.Context, user domain.User, path string) (bool, error) {
 	if isAdministrator(user) {
 		return true, nil
@@ -51,24 +58,31 @@ func (s *Access) CanEdit(ctx context.Context, user domain.User, path string) (bo
 	return !access.Restricted || access.CanEdit, nil
 }
 
+// FilterPages removes pages the user may not view.
 func (s *Access) FilterPages(ctx context.Context, user domain.User, pages []domain.Page) ([]domain.Page, error) {
 	result := make([]domain.Page, 0, len(pages))
+
 	for _, page := range pages {
 		allowed, err := s.CanView(ctx, user, page.Slug)
 		if err != nil {
 			return nil, err
 		}
-		if allowed {
-			result = append(result, page)
+		if !allowed {
+			continue
 		}
+
+		result = append(result, page)
 	}
+
 	return result, nil
 }
 
+// PageAccessRules returns all configured inherited path rules.
 func (s *Access) PageAccessRules(ctx context.Context) ([]domain.PageAccessRule, error) {
 	return s.repository.PageAccessRules(ctx)
 }
 
+// SavePageAccessRule validates and persists one inherited path rule.
 func (s *Access) SavePageAccessRule(ctx context.Context, path string, groupID int64, access string) error {
 	path = normalizeAccessPath(path)
 	if path == "" {
@@ -83,6 +97,7 @@ func (s *Access) SavePageAccessRule(ctx context.Context, path string, groupID in
 	return s.repository.SavePageAccessRule(ctx, path, groupID, access)
 }
 
+// DeletePageAccessRule removes one inherited path rule.
 func (s *Access) DeletePageAccessRule(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return newValidationError("rule", "Choose a valid access rule.")
@@ -90,10 +105,12 @@ func (s *Access) DeletePageAccessRule(ctx context.Context, id int64) error {
 	return s.repository.DeletePageAccessRule(ctx, id)
 }
 
+// normalizeAccessPath canonicalizes a page path for authorization lookups.
 func normalizeAccessPath(path string) string {
 	return strings.Trim(md.Slug(path), "/")
 }
 
+// isAdministrator reports whether the user has effective administrator access.
 func isAdministrator(user domain.User) bool {
 	return user.Role == "admin" || user.ExternalAdmin
 }

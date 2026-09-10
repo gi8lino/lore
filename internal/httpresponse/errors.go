@@ -16,10 +16,12 @@ type RequestWriter struct {
 	Status         int
 }
 
+// NewRequestWriter wraps a response writer with request and status diagnostics.
 func NewRequestWriter(w http.ResponseWriter, r *http.Request) *RequestWriter {
 	return &RequestWriter{ResponseWriter: w, method: r.Method, path: r.URL.Path}
 }
 
+// Unwrap returns the underlying response writer for response controllers.
 func (w *RequestWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // WriteHeader records the final status without treating informational headers as committed.
@@ -33,6 +35,7 @@ func (w *RequestWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+// Write records an implicit successful status before writing response data.
 func (w *RequestWriter) Write(data []byte) (int, error) {
 	if w.Status == 0 {
 		w.WriteHeader(http.StatusOK)
@@ -40,6 +43,7 @@ func (w *RequestWriter) Write(data []byte) (int, error) {
 	return w.ResponseWriter.Write(data)
 }
 
+// FlushError flushes the underlying response while preserving recorded status.
 func (w *RequestWriter) FlushError() error {
 	if w.Status == 0 {
 		w.WriteHeader(http.StatusOK)
