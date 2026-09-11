@@ -8,7 +8,6 @@
     <time>{{ timeago .UpdatedAt }}</time>
   </a>
 {{ end }}
-
 {{ define "compact-row" }}
   <a class="compact-row" href="/pages/{{ .Slug }}">
     <span>{{ if .Icon }}{{ icon .Icon 15 }}{{ else }}{{ icon "file-text-lucide" 15 }}{{ end }}</span>
@@ -16,5 +15,3 @@
     <small>{{ .ViewCount }} views</small>
   </a>
 {{ end }}
-
-

@@ -8,7 +8,6 @@
         permanently deletes them.
       </p>
     </div>
-
     <section class="panel settings-panel">
       <div class="panel-title">
         <h2>Deleted pages</h2>
@@ -19,21 +18,17 @@
           <div class="admin-list-row recycle-bin-row">
             <span>
               <strong>{{ .Title }}</strong>
-              <small
-                >{{ .Slug }} · deleted {{ timeago .DeletedAt }}{{ if .DeletedBy }}by {{ .DeletedBy }}{{ end }}</small
-              >
+              <small>{{ .Slug }} · deleted {{ timeago .DeletedAt }}{{ if .DeletedBy }}by {{ .DeletedBy }}{{ end }}</small>
             </span>
             <div class="recycle-bin-actions">
               <form action="/admin/bin/restore/{{ .Slug }}" method="post">
                 <button class="button" type="submit">{{ icon "rotate-ccw-lucide" 16 }}<span>Restore</span></button>
               </form>
-              <form
-                action="/admin/bin/delete/{{ .Slug }}"
-                method="post"
-                data-confirm="Permanently delete {{ .Title }}? Its content and revision history cannot be recovered."
-                data-confirm-title="Permanently delete page"
-                data-confirm-label="Delete permanently"
-              >
+              <form action="/admin/bin/delete/{{ .Slug }}"
+                    method="post"
+                    data-confirm="Permanently delete {{ .Title }}? Its content and revision history cannot be recovered."
+                    data-confirm-title="Permanently delete page"
+                    data-confirm-label="Delete permanently">
                 <button class="button danger" type="submit">
                   {{ icon "trash-2-lucide" 16 }}<span>Delete permanently</span>
                 </button>
@@ -42,13 +37,10 @@
           </div>
         {{ else }}
           <div class="empty recycle-bin-empty">
-            {{ icon "trash-2-lucide" 24 }}<strong>Recycle bin is empty</strong
-            ><span>Deleted pages will appear here and can be restored by an administrator.</span>
+            {{ icon "trash-2-lucide" 24 }}<strong>Recycle bin is empty</strong><span>Deleted pages will appear here and can be restored by an administrator.</span>
           </div>
         {{ end }}
       </div>
     </section>
   </section>
 {{ end }}
-
-

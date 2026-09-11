@@ -1,12 +1,10 @@
 {{ define "account-menu" }}
   <div class="sidebar-account" data-account-menu>
-    <button
-      class="sidebar-account-trigger"
-      type="button"
-      data-account-menu-trigger
-      aria-haspopup="menu"
-      aria-expanded="false"
-    >
+    <button class="sidebar-account-trigger"
+            type="button"
+            data-account-menu-trigger
+            aria-haspopup="menu"
+            aria-expanded="false">
       <span class="avatar">{{ icon "user-round-lucide" 17 }}</span>
       <span class="sidebar-account-info">
         <strong>{{ .User.DisplayName }}</strong>
@@ -14,8 +12,10 @@
       </span>
       <span class="sidebar-account-chevron" aria-hidden="true">{{ icon "chevrons-up-down-lucide" 16 }}</span>
     </button>
-
-    <div class="sidebar-account-popover" data-account-menu-popover role="menu" hidden>
+    <div class="sidebar-account-popover"
+         data-account-menu-popover
+         role="menu"
+         hidden>
       <a class="sidebar-account-item" href="/settings" role="menuitem">
         {{ icon "settings-lucide" 17 }}
         <span>Settings</span>
@@ -28,7 +28,9 @@
       {{ end }}
       <div class="sidebar-account-separator" role="separator"></div>
       <form action="/auth/logout" method="post">
-        <button class="sidebar-account-item sidebar-account-signout" type="submit" role="menuitem">
+        <button class="sidebar-account-item sidebar-account-signout"
+                type="submit"
+                role="menuitem">
           {{ icon "log-out-lucide" 17 }}
           <span>Sign out</span>
         </button>
@@ -36,5 +38,3 @@
     </div>
   </div>
 {{ end }}
-
-

@@ -210,19 +210,30 @@ clean: ## Clean up generated application files.
 ##@ Formatting
 
 .PHONY: fmt
-fmt: fmt-web fmt-go fmt-md ## Format all supported files.
+fmt: fmt-web fmt-templates fmt-go fmt-md ## Format all supported files.
 
 .PHONY: fmt-web
 fmt-web: $(NODE_MODULES) ## Format CSS and TypeScript source files.
-	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write "web/src/**/*.css" "web/src/**/*.ts" "test/**/*.ts"
+	$(NPX) prettier --write \
+		"web/src/**/*.css" \
+		"web/src/**/*.ts" \
+		"test/**/*.ts"
+
+.PHONY: fmt-templates
+fmt-templates: ## Format Go HTML templates.
+	djlint web/src/templates internal/site/templates --reformat
 
 .PHONY: fmt-go
 fmt-go: generate web ## Format Go code.
 	go fmt ./...
 
 .PHONY: fmt-md
-fmt-md: ## Format Markdown files with Prettier.
-	$(NPX) --yes prettier@$(PRETTIER_VERSION) --write $(PRETTIER_MD_SOURCES)
+fmt-md: $(NODE_MODULES) ## Format Markdown files.
+	$(NPX) prettier --write $(PRETTIER_MD_SOURCES)
+
+.PHONY: check-templates
+check-templates: ## Check Go HTML template formatting.
+	djlint web/src/templates internal/site/templates --check
 
 .PHONY: lint
 lint: typecheck check-web lint-go ## Run all linters and formatting checks.

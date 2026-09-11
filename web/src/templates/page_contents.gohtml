@@ -1,11 +1,15 @@
 {{ define "page-contents" }}
   {{ if .PageContents }}
-    <aside class="page-contents" id="page-contents" data-page-contents aria-label="Page contents">
+    <aside class="page-contents"
+           id="page-contents"
+           data-page-contents
+           aria-label="Page contents">
       <div class="page-contents-heading">
         <strong>Contents</strong>
-        <button class="page-contents-close" type="button" data-page-contents-close aria-label="Close page contents">
-          {{ icon "x-lucide" 18 }}
-        </button>
+        <button class="page-contents-close"
+                type="button"
+                data-page-contents-close
+                aria-label="Close page contents">{{ icon "x-lucide" 18 }}</button>
       </div>
       <nav>
         {{ range .PageContents }}
@@ -15,5 +19,3 @@
     </aside>
   {{ end }}
 {{ end }}
-
-

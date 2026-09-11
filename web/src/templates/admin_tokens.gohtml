@@ -5,24 +5,29 @@
       <h1>Access tokens</h1>
       <p class="muted">Issue and revoke personal access tokens for any account.</p>
     </div>
-
     <section class="panel settings-panel">
       <p class="settings-note">
         Tokens authenticate as the selected user and inherit that user's current role. Choose an administrator account
         for full API access.
       </p>
-      <form class="token-create-form" data-token-form action="/admin/tokens" method="post">
-        <label>Name<input name="name" required maxlength="120" placeholder="automation" /></label>
-        <label
-          >User<select name="user_id" required>
-            {{ range .AdminUsers }}
-              <option value="{{ .User.ID }}" {{ if eq .User.ID $.User.ID }}selected{{ end }}>
-                {{ .User.Username }} ({{ .User.Role }})
-              </option>
-            {{ end }}
-          </select></label
-        >
-        <label>Expires <span class="optional">optional</span><input type="date" name="expires" /></label>
+      <form class="token-create-form"
+            data-token-form
+            action="/admin/tokens"
+            method="post">
+        <label>
+          Name<input name="name" required maxlength="120" placeholder="automation" />
+        </label>
+        <label>
+          User<select name="user_id" required>
+          {{ range .AdminUsers }}
+            <option value="{{ .User.ID }}"
+                    {{ if eq .User.ID $.User.ID }}selected{{ end }}>{{ .User.Username }} ({{ .User.Role }})</option>
+          {{ end }}
+          </select>
+        </label>
+        <label>
+          Expires <span class="optional">optional</span><input type="date" name="expires" />
+        </label>
         <button class="button primary" type="submit">Create token</button>
       </form>
       <div class="token-secret" data-token-secret hidden></div>
@@ -53,14 +58,10 @@
                 </td>
                 <td>{{ if .ExpiresAt }}{{ .ExpiresAt.Format "2006-01-02" }}{{ else }}Never{{ end }}</td>
                 <td>
-                  <button
-                    class="button danger"
-                    type="button"
-                    data-token-delete
-                    data-delete-url="/admin/tokens/{{ .ID }}"
-                  >
-                    Revoke
-                  </button>
+                  <button class="button danger"
+                          type="button"
+                          data-token-delete
+                          data-delete-url="/admin/tokens/{{ .ID }}">Revoke</button>
                 </td>
               </tr>
             {{ else }}

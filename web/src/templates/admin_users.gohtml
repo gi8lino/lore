@@ -5,7 +5,6 @@
       <h1>Users</h1>
       <p class="muted">Manage roles, group memberships, and external identities.</p>
     </div>
-
     <section class="panel settings-panel" id="pending-identities">
       <div class="panel-title">
         <div>
@@ -18,7 +17,6 @@
           <span class="admin-registration-state closed">Registration closed</span>
         {{ end }}
       </div>
-
       {{ if .PendingOIDCIdentities }}
         <div class="admin-identity-requests">
           {{ range .PendingOIDCIdentities }}
@@ -32,9 +30,7 @@
                     <span class="admin-identity-status pending">Pending</span>
                   {{ end }}
                 </div>
-                <small>
-                  {{ .Username }}{{ if .Email }} · {{ .Email }}{{ end }}
-                </small>
+                <small>{{ .Username }}{{ if .Email }} · {{ .Email }}{{ end }}</small>
                 <div class="admin-identity-request-meta">
                   <span><strong>Issuer</strong><code>{{ .Issuer }}</code></span>
                   <span><strong>Subject</strong><code>{{ .Subject }}</code></span>
@@ -52,19 +48,17 @@
                     <button class="button compact" type="submit">Reopen</button>
                   </form>
                 {{ else }}
-                  <button
-                    class="button compact"
-                    type="button"
-                    data-pending-oidc-review
-                    data-pending-id="{{ .ID }}"
-                    data-pending-name="{{ .DisplayName }}"
-                    data-pending-username="{{ .Username }}"
-                    data-pending-email="{{ .Email }}"
-                    data-pending-issuer="{{ .Issuer }}"
-                    data-pending-subject="{{ .Subject }}"
-                    data-suggested-user-id="{{ .SuggestedUserID }}"
-                    data-suggested-user-name="{{ .SuggestedDisplayName }}"
-                  >
+                  <button class="button compact"
+                          type="button"
+                          data-pending-oidc-review
+                          data-pending-id="{{ .ID }}"
+                          data-pending-name="{{ .DisplayName }}"
+                          data-pending-username="{{ .Username }}"
+                          data-pending-email="{{ .Email }}"
+                          data-pending-issuer="{{ .Issuer }}"
+                          data-pending-subject="{{ .Subject }}"
+                          data-suggested-user-id="{{ .SuggestedUserID }}"
+                          data-suggested-user-name="{{ .SuggestedDisplayName }}">
                     {{ icon "link-lucide" 15 }}<span>Review</span>
                   </button>
                 {{ end }}
@@ -76,7 +70,6 @@
         <p class="muted admin-identity-empty">No OIDC identities are waiting for review.</p>
       {{ end }}
     </section>
-
     <section class="panel settings-panel">
       <div class="panel-title">
         <h2>Users</h2>
@@ -148,31 +141,16 @@
                 </td>
                 <td class="admin-user-action">
                   <div class="admin-user-actions">
-                    <button
-                      class="button compact"
-                      type="button"
-                      data-admin-user-edit
-                      data-user-id="{{ .User.ID }}"
-                      data-user-name="{{ .User.DisplayName }}"
-                      data-user-username="{{ .User.Username }}"
-                      data-user-email="{{ .User.Email }}"
-                      data-user-role="{{ .User.Role }}"
-                      data-user-enabled="{{ .User.Enabled }}"
-                      data-user-has-local-credential="{{ .HasLocalCredential }}"
-                      data-user-local-credential-enabled="{{ .LocalCredentialEnabled }}"
-                      data-group-ids="{{ range $.Groups }}
+                    <button class="button compact" type="button" data-admin-user-edit data-user-id="{{ .User.ID }}" data-user-name="{{ .User.DisplayName }}" data-user-username="{{ .User.Username }}" data-user-email="{{ .User.Email }}" data-user-role="{{ .User.Role }}" data-user-enabled="{{ .User.Enabled }}" data-user-has-local-credential="{{ .HasLocalCredential }}" data-user-local-credential-enabled="{{ .LocalCredentialEnabled }}" data-group-ids="{{ range $.Groups }}
                         {{ if hasgroup $adminUser.Groups .Name }}{{ .ID }}{{ end }}
-                      {{ end }}"
-                    >
+                      {{ end }}">
                       {{ icon "pencil-lucide" 15 }}<span>Edit</span>
                     </button>
-                    <form
-                      action="/admin/users/{{ .User.ID }}/sessions/revoke"
-                      method="post"
-                      data-confirm="Sign out {{ .User.DisplayName }}? Local and OIDC browser sessions will be revoked. Trusted-proxy authentication resumes on the next request unless the account is disabled."
-                      data-confirm-title="Sign out user"
-                      data-confirm-label="Sign out"
-                    >
+                    <form action="/admin/users/{{ .User.ID }}/sessions/revoke"
+                          method="post"
+                          data-confirm="Sign out {{ .User.DisplayName }}? Local and OIDC browser sessions will be revoked. Trusted-proxy authentication resumes on the next request unless the account is disabled."
+                          data-confirm-title="Sign out user"
+                          data-confirm-label="Sign out">
                       <button class="button compact" type="submit" title="Revoke browser sessions">
                         {{ icon "log-out-lucide" 15 }}<span class="sr-only">Sign out</span>
                       </button>
@@ -185,7 +163,6 @@
         </table>
       </div>
     </section>
-
     <section class="panel settings-panel" id="oidc-identities">
       <div class="panel-title">
         <div>
@@ -214,13 +191,11 @@
                     <td><code>{{ .Issuer }}</code></td>
                     <td><code>{{ .Subject }}</code></td>
                     <td class="admin-user-action">
-                      <form
-                        action="/admin/users/{{ $user.ID }}/oidc/remove"
-                        method="post"
-                        data-confirm="Disconnect this OIDC identity from {{ $user.DisplayName }}? Existing sessions using it will stop working."
-                        data-confirm-title="Disconnect OIDC identity"
-                        data-confirm-label="Disconnect"
-                      >
+                      <form action="/admin/users/{{ $user.ID }}/oidc/remove"
+                            method="post"
+                            data-confirm="Disconnect this OIDC identity from {{ $user.DisplayName }}? Existing sessions using it will stop working."
+                            data-confirm-title="Disconnect OIDC identity"
+                            data-confirm-label="Disconnect">
                         <input type="hidden" name="issuer" value="{{ .Issuer }}" />
                         <input type="hidden" name="subject" value="{{ .Subject }}" />
                         <button class="button compact danger" type="submit">Disconnect</button>
@@ -237,121 +212,148 @@
       {{ end }}
     </section>
   </section>
-
-  <dialog
-    class="app-dialog admin-user-dialog"
-    data-admin-user-dialog
-    data-external-auth-active="{{ if .Runtime.AuthModeOverride }}{{ or (eq .Runtime.AuthModeOverride "oidc") (eq .Runtime.AuthModeOverride "trusted-proxy") }}{{ else }}{{ or (eq .ApplicationSettings.Authentication.Mode "oidc") (eq .ApplicationSettings.Authentication.Mode "trusted-proxy") }}{{ end }}"
-    aria-labelledby="admin-user-dialog-title"
-  >
-    <form method="post" data-admin-user-form data-validate-form novalidate>
-      <div class="app-dialog-header">
+<dialog class="app-dialog admin-user-dialog"
+        data-admin-user-dialog
+        data-external-auth-active="{{ if .Runtime.AuthModeOverride }}{{ or (eq .Runtime.AuthModeOverride "oidc") (eq .Runtime.AuthModeOverride "trusted-proxy") }}{{ else }}{{ or (eq .ApplicationSettings.Authentication.Mode "oidc") (eq .ApplicationSettings.Authentication.Mode "trusted-proxy") }}{{ end }}"
+        aria-labelledby="admin-user-dialog-title">
+  <form method="post" data-admin-user-form data-validate-form novalidate>
+    <div class="app-dialog-header">
+      <div>
+        <p class="eyebrow">User access</p>
+        <h2 id="admin-user-dialog-title" data-admin-user-name>Edit user</h2>
+        <p class="admin-user-dialog-identity" data-admin-user-identity></p>
+      </div>
+      <button class="icon-button app-dialog-close"
+              type="button"
+              data-admin-user-close
+              aria-label="Close user editor">{{ icon "x-lucide" 20 }}</button>
+    </div>
+    <div class="app-dialog-body admin-user-dialog-body">
+      <label class="admin-user-field">
+        <span>Role</span>
+        <small>Controls the account's application-wide permissions.</small>
+        <select name="role" data-admin-user-role aria-label="User role">
+          <option value="viewer">Viewer</option>
+          <option value="editor">Editor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </label>
+      <label class="toggle-row admin-user-account-state">
+        <span>
+          <strong>Account enabled</strong>
+          <small>Disabling blocks local login, OIDC, trusted-proxy authentication, and API tokens, and revokes browser sessions.</small>
+        </span>
+        <input type="checkbox" name="account_enabled" data-admin-user-enabled />
+      </label>
+      <label class="toggle-row admin-user-local-login"
+             data-admin-user-local-login
+             hidden>
+        <span>
+          <strong>Local login</strong>
+          <small>Password sign-in only. Disabling it revokes local sessions but does not affect OIDC, trusted-proxy access, or API tokens.</small>
+        </span>
+        <input type="checkbox"
+               name="local_credential_enabled"
+               data-admin-user-local-credential-enabled />
+        <input type="hidden"
+               name="update_local_credential"
+               value="true"
+               data-admin-user-local-credential-update
+               disabled />
+      </label>
+      <details class="admin-user-local-password" data-admin-user-local-password>
+        <summary>Set local password</summary>
         <div>
-          <p class="eyebrow">User access</p>
-          <h2 id="admin-user-dialog-title" data-admin-user-name>Edit user</h2>
-          <p class="admin-user-dialog-identity" data-admin-user-identity></p>
+          <small>Setting a password enables local sign-in for this account and revokes its existing local sessions.</small>
         </div>
-        <button class="icon-button app-dialog-close" type="button" data-admin-user-close aria-label="Close user editor">
-          {{ icon "x-lucide" 20 }}
-        </button>
-      </div>
-
-      <div class="app-dialog-body admin-user-dialog-body">
-        <label class="admin-user-field">
-          <span>Role</span>
-          <small>Controls the account's application-wide permissions.</small>
-          <select name="role" data-admin-user-role aria-label="User role">
-            <option value="viewer">Viewer</option>
-            <option value="editor">Editor</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
-
-        <label class="toggle-row admin-user-account-state">
-          <span>
-            <strong>Account enabled</strong>
-            <small>Disabling blocks local login, OIDC, trusted-proxy authentication, and API tokens, and revokes browser sessions.</small>
-          </span>
-          <input type="checkbox" name="account_enabled" data-admin-user-enabled />
-        </label>
-
-        <label class="toggle-row admin-user-local-login" data-admin-user-local-login hidden>
-          <span>
-            <strong>Local login</strong>
-            <small>Password sign-in only. Disabling it revokes local sessions but does not affect OIDC, trusted-proxy access, or API tokens.</small>
-          </span>
-          <input type="checkbox" name="local_credential_enabled" data-admin-user-local-credential-enabled />
-          <input type="hidden" name="update_local_credential" value="true" data-admin-user-local-credential-update disabled />
-        </label>
-
-        <details class="admin-user-local-password" data-admin-user-local-password>
-          <summary>Set local password</summary>
-          <div>
-            <small>Setting a password enables local sign-in for this account and revokes its existing local sessions.</small>
+        <div class="form-grid">
+          <label>
+            New password
+            <input type="password"
+                   name="local_password"
+                   autocomplete="new-password"
+                   minlength="12"
+                   data-validate-password
+                   data-error-minlength="Use at least 12 characters."
+                   data-admin-user-local-password-input
+                   disabled />
+          </label>
+          <label>
+            Confirm password
+            <input type="password"
+                   name="local_password_confirm"
+                   autocomplete="new-password"
+                   data-validate-match="local_password"
+                   data-error-required="Confirm the password."
+                   data-error-match="Passwords do not match."
+                   data-admin-user-local-password-confirm
+                   disabled />
+          </label>
+        </div>
+        <p class="muted">Password sign-in must be enabled in the authentication configuration to use this password.</p>
+      </details>
+      <fieldset class="admin-user-group-fieldset">
+        <legend>Groups</legend>
+        <p class="muted">Choose the collaboration groups this account belongs to.</p>
+        {{ if .Groups }}
+          <div class="admin-user-group-options">
+            {{ range .Groups }}
+              <label class="admin-user-group-option">
+                <input type="checkbox" name="group_id" value="{{ .ID }}" />
+                <span>{{ .Name }}</span>
+              </label>
+            {{ end }}
           </div>
-          <div class="form-grid">
-            <label>
-              New password
-              <input type="password" name="local_password" autocomplete="new-password" minlength="12" data-validate-password data-error-minlength="Use at least 12 characters." data-admin-user-local-password-input disabled />
-            </label>
-            <label>
-              Confirm password
-              <input type="password" name="local_password_confirm" autocomplete="new-password" data-validate-match="local_password" data-error-required="Confirm the password." data-error-match="Passwords do not match." data-admin-user-local-password-confirm disabled />
-            </label>
-          </div>
-          <p class="muted">Password sign-in must be enabled in the authentication configuration to use this password.</p>
-        </details>
-
-        <fieldset class="admin-user-group-fieldset">
-          <legend>Groups</legend>
-          <p class="muted">Choose the collaboration groups this account belongs to.</p>
-          {{ if .Groups }}
-            <div class="admin-user-group-options">
-              {{ range .Groups }}
-                <label class="admin-user-group-option">
-                  <input type="checkbox" name="group_id" value="{{ .ID }}" />
-                  <span>{{ .Name }}</span>
-                </label>
-              {{ end }}
-            </div>
-          {{ else }}
-            <p class="muted admin-user-group-empty">No groups have been created yet.</p>
-          {{ end }}
-        </fieldset>
-      </div>
-
-      <div class="app-dialog-actions">
-        <button class="button" type="button" data-admin-user-close>Cancel</button>
-        <button class="button primary" type="submit">{{ icon "save-lucide" 15 }}<span>Save changes</span></button>
-      </div>
-    </form>
+        {{ else }}
+          <p class="muted admin-user-group-empty">No groups have been created yet.</p>
+        {{ end }}
+      </fieldset>
+    </div>
+    <div class="app-dialog-actions">
+      <button class="button" type="button" data-admin-user-close>Cancel</button>
+      <button class="button primary" type="submit">{{ icon "save-lucide" 15 }}<span>Save changes</span></button>
+    </div>
+  </form>
   </dialog>
-
-  <dialog class="app-dialog admin-identity-dialog" data-pending-oidc-dialog aria-labelledby="pending-oidc-dialog-title">
+  <dialog class="app-dialog admin-identity-dialog"
+          data-pending-oidc-dialog
+          aria-labelledby="pending-oidc-dialog-title">
     <div class="app-dialog-header">
       <div>
         <p class="eyebrow">External identity</p>
         <h2 id="pending-oidc-dialog-title" data-pending-oidc-name>Review OIDC identity</h2>
         <p class="admin-user-dialog-identity" data-pending-oidc-profile></p>
       </div>
-      <button class="icon-button app-dialog-close" type="button" data-pending-oidc-close aria-label="Close identity review">
-        {{ icon "x-lucide" 20 }}
-      </button>
+      <button class="icon-button app-dialog-close"
+              type="button"
+              data-pending-oidc-close
+              aria-label="Close identity review">{{ icon "x-lucide" 20 }}</button>
     </div>
-
     <div class="app-dialog-body admin-identity-dialog-body">
       <dl class="admin-identity-details">
-        <div><dt>Issuer</dt><dd><code data-pending-oidc-issuer></code></dd></div>
-        <div><dt>Subject</dt><dd><code data-pending-oidc-subject></code></dd></div>
+        <div>
+          <dt>Issuer</dt>
+          <dd>
+            <code data-pending-oidc-issuer></code>
+          </dd>
+        </div>
+        <div>
+          <dt>Subject</dt>
+          <dd>
+            <code data-pending-oidc-subject></code>
+          </dd>
+        </div>
       </dl>
-
       <section class="admin-identity-action-card">
         <div>
           <strong>Link to existing user</strong>
           <small>Use this after an identity-provider rebuild. The old OIDC binding for this issuer is replaced.</small>
         </div>
         <form method="post" data-pending-oidc-link-form>
-          <select name="user_id" data-pending-oidc-user required aria-label="Existing Lore user">
+          <select name="user_id"
+                  data-pending-oidc-user
+                  required
+                  aria-label="Existing Lore user">
             <option value="">Choose a Lore user…</option>
             {{ range .AdminUsers }}
               <option value="{{ .User.ID }}">{{ .User.DisplayName }} · {{ .User.Username }}</option>
@@ -361,7 +363,6 @@
           <button class="button primary" type="submit">{{ icon "link-lucide" 15 }}<span>Link identity</span></button>
         </form>
       </section>
-
       <section class="admin-identity-action-card">
         <div>
           <strong>Create new Lore user</strong>
@@ -371,7 +372,6 @@
           <button class="button" type="submit">{{ icon "user-plus-lucide" 15 }}<span>Create user</span></button>
         </form>
       </section>
-
       <section class="admin-identity-action-card danger-zone">
         <div>
           <strong>Reject identity</strong>
@@ -382,11 +382,8 @@
         </form>
       </section>
     </div>
-
     <div class="app-dialog-actions">
       <button class="button" type="button" data-pending-oidc-close>Cancel</button>
     </div>
   </dialog>
 {{ end }}
-
-

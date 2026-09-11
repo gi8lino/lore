@@ -1,23 +1,26 @@
 {{ define "public-layout" }}
-  <!doctype html>
+  <!DOCTYPE html>
   <html lang="en" data-theme="{{ .ActiveTheme }}">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width,initial-scale=1" />
       <meta name="color-scheme" content="light" />
       <title>{{ .Title }} · Lore</title>
-      <link rel="icon" href="/assets/v-{{ .AssetVersion }}/favicon.svg" type="image/svg+xml" />
+      <link rel="icon"
+            href="/assets/v-{{ .AssetVersion }}/favicon.svg"
+            type="image/svg+xml" />
       <link rel="stylesheet" href="/assets/v-{{ .AssetVersion }}/css/app.css" />
-      <script type="module" src="/assets/v-{{ .AssetVersion }}/js/form-validation.js"></script>
+      <script type="module"
+              src="/assets/v-{{ .AssetVersion }}/js/form-validation.js"></script>
     </head>
     <body class="auth-page">
       <main class="auth-shell">
         <div class="auth-brand" aria-label="Lore">{{ logo }}</div>
         {{ template "content" . }}
       </main>
-      <footer>Lore {{ .Version }} · Markdown-first knowledge</footer>
+      <footer>
+        Lore {{ .Version }} · Markdown-first knowledge
+      </footer>
     </body>
   </html>
 {{ end }}
-
-
