@@ -20,33 +20,41 @@ const defaultConfigPath = "lore-site.toml"
 
 // Config contains filesystem-backed static site build settings.
 type Config struct {
-	Logo          string                `toml:"logo"`
-	Favicon       string                `toml:"favicon"`
-	FaviconICO    string                `toml:"favicon_ico"`
-	AssetsDir     string                `toml:"assets_dir"`
-	SiteName      string                `toml:"site_name"`
-	SiteURL       string                `toml:"site_url"`
-	SourceDir     string                `toml:"source_dir"`
-	OutputDir     string                `toml:"output_dir"`
-	Theme         string                `toml:"theme"`
-	Language      string                `toml:"language"`
-	Mermaid       bool                  `toml:"mermaid"`
-	RobotsPolicy  string                `toml:"robots"`
-	ExternalLinks []domain.ExternalLink `toml:"external_links"`
-	logFormat     logging.LogFormat
+	Logo              string                `toml:"logo"`
+	Favicon           string                `toml:"favicon"`
+	FaviconICO        string                `toml:"favicon_ico"`
+	AssetsDir         string                `toml:"assets_dir"`
+	SiteName          string                `toml:"site_name"`
+	SiteURL           string                `toml:"site_url"`
+	SourceDir         string                `toml:"source_dir"`
+	OutputDir         string                `toml:"output_dir"`
+	Theme             string                `toml:"theme"`
+	Language          string                `toml:"language"`
+	NavigationStyle   string                `toml:"navigation_style"`
+	NavigationDensity string                `toml:"navigation_density"`
+	SidebarWidth      int                   `toml:"sidebar_width"`
+	Mermaid           bool                  `toml:"mermaid"`
+	RobotsPolicy      string                `toml:"robots"`
+	ExternalLinks     []domain.ExternalLink `toml:"external_links"`
+	logFormat         logging.LogFormat
 }
 
 // defaultConfig returns generic zero-infrastructure static site defaults.
 func defaultConfig() Config {
+	preferences := domain.DefaultUserPreferences()
+
 	return Config{
-		SiteName:     "Documentation",
-		SourceDir:    "docs",
-		OutputDir:    "site",
-		Theme:        themes.DefaultTheme,
-		Language:     "en",
-		Mermaid:      true,
-		RobotsPolicy: domain.RobotsPolicyAllow,
-		logFormat:    logging.LogFormatJSON,
+		SiteName:          "Documentation",
+		SourceDir:         "docs",
+		OutputDir:         "site",
+		Theme:             themes.DefaultTheme,
+		Language:          "en",
+		NavigationStyle:   preferences.NavigationStyle,
+		NavigationDensity: preferences.NavigationDensity,
+		SidebarWidth:      preferences.SidebarWidth,
+		Mermaid:           true,
+		RobotsPolicy:      domain.RobotsPolicyAllow,
+		logFormat:         logging.LogFormatJSON,
 	}
 }
 
@@ -102,6 +110,15 @@ func (c *Config) validate() error {
 	}
 	if err := c.validateBrandingFormats(); err != nil {
 		return err
+	}
+	if !domain.ValidNavigationStyle(c.NavigationStyle) {
+		return errors.New("navigation_style must be sidebar, topbar, or tree")
+	}
+	if !domain.ValidNavigationDensity(c.NavigationDensity) {
+		return errors.New("navigation_density must be comfortable or compact")
+	}
+	if !domain.ValidSidebarWidth(c.SidebarWidth) {
+		return fmt.Errorf("sidebar_width must be between %d and %d pixels", domain.MinSidebarWidth, domain.MaxSidebarWidth)
 	}
 	if !domain.ValidRobotsPolicy(c.RobotsPolicy) {
 		return errors.New("robots must be allow, disallow, or none")
@@ -294,6 +311,13 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 	output := flags.String("output", defaults.OutputDir, "Generated site directory").Placeholder("DIR")
 	theme := flags.String("theme", defaults.Theme, "Theme").Placeholder("THEME")
 	language := flags.String("language", defaults.Language, "HTML content language").Placeholder("LANG")
+	navigationStyle := flags.String("navigation-style", defaults.NavigationStyle, "Desktop navigation style").
+		Choices(domain.NavigationStyleSidebar, domain.NavigationStyleTopbar, domain.NavigationStyleTree).
+		Placeholder("STYLE")
+	navigationDensity := flags.String("navigation-density", defaults.NavigationDensity, "Navigation density").
+		Choices(domain.NavigationDensityComfortable, domain.NavigationDensityCompact).
+		Placeholder("DENSITY")
+	sidebarWidth := flags.Int("sidebar-width", defaults.SidebarWidth, "Desktop sidebar width in pixels").Placeholder("PIXELS")
 	mermaid := flags.Bool("mermaid", defaults.Mermaid, "Enable Mermaid rendering").Strict()
 	robots := flags.String("robots", defaults.RobotsPolicy, "robots.txt policy").
 		Choices(domain.RobotsPolicyAllow, domain.RobotsPolicyDisallow, domain.RobotsPolicyNone).
@@ -326,6 +350,15 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 		}
 		if language.Changed() {
 			cfg.Language = *language.Value()
+		}
+		if navigationStyle.Changed() {
+			cfg.NavigationStyle = *navigationStyle.Value()
+		}
+		if navigationDensity.Changed() {
+			cfg.NavigationDensity = *navigationDensity.Value()
+		}
+		if sidebarWidth.Changed() {
+			cfg.SidebarWidth = *sidebarWidth.Value()
 		}
 		if mermaid.Changed() {
 			cfg.Mermaid = *mermaid.Value()

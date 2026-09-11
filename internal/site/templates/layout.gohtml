@@ -18,10 +18,11 @@
     data-static-base-path="{{ .BasePath }}"
     data-render-mermaid="{{ if .RenderMermaid }}true{{ else }}false{{ end }}"
     data-coding-ligatures="false"
-    data-navigation-density="comfortable"
+    data-navigation-style="{{ .NavigationStyle }}"
+    data-navigation-density="{{ .NavigationDensity }}"
     data-navigation-guides="true"
     data-current-page="{{ .CurrentRoute }}"
-    style="--sidebar: 280px"
+    style="--sidebar: {{ .SidebarWidth }}px"
   >
     <header class="topbar">
       <button
@@ -66,6 +67,8 @@
         </nav>
       {{ end }}
     </header>
+
+    {{ template "top-navigation" . }}
 
     <div class="shell">
       <aside class="sidebar" id="lore-sidebar" data-sidebar>
@@ -139,6 +142,7 @@
   </body>
 </html>
 {{ end }}
+
 
 
 

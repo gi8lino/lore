@@ -18,7 +18,7 @@ From the source repository the convenience target builds the frontend first and 
 make site
 ```
 
-The default `lore-site.toml` configuration file is optional. Without it, Lore uses `Documentation` as the site name, `docs` as the source directory, and `site` as the output directory. Command-line flags can override the configuration.
+The default `lore-site.toml` configuration file is optional. Without it, Lore uses `Documentation` as the site name, `docs` as the source directory, and `site` as the output directory. Static presentation defaults to sidebar navigation, comfortable density, and a 280-pixel sidebar. Command-line flags can override the configuration.
 
 ## Configuration
 
@@ -33,6 +33,9 @@ output_dir = "site"
 
 theme = "Light"
 language = "en"
+navigation_style = "sidebar"
+navigation_density = "comfortable"
+sidebar_width = 280
 mermaid = true
 robots = "allow"
 
@@ -53,6 +56,8 @@ hover_text = "{{label}} | {{description}}"
 `logo`, `favicon`, `favicon_ico`, and `assets_dir` are resolved relative to the configuration file. Normal relative paths, including `../`, are supported, so assets may live in a parent directory. Absolute paths are supported too. `source_dir` and `output_dir` are resolved relative to the process working directory.
 
 `site_url` determines the URL prefix used by generated links. This matters for project sites such as GitHub Pages, where a site may be hosted below a repository path rather than at the domain root.
+
+`navigation_style` controls the desktop navigation layout and accepts `sidebar` (the default), `topbar`, or `tree`. `navigation_density` accepts `comfortable` (the default) or `compact`. `sidebar_width` sets the navigation width in pixels and must be between 220 and 420; the default is 280. The width is used by sidebar/tree navigation and by the mobile navigation drawer; desktop top-bar navigation does not use it. The same values can be overridden for one build with `--navigation-style`, `--navigation-density`, and `--sidebar-width`.
 
 `robots` controls generated crawler guidance. `allow` writes a `robots.txt` that permits crawling and links to `sitemap.xml` when `site_url` is absolute. `disallow` writes `Disallow: /`, while `none` omits the file entirely. Static builds default to `allow`; the regular Lore application has its own administrator-controlled setting and defaults to `disallow`.
 

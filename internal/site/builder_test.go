@@ -178,6 +178,9 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	config.SiteURL = "https://example.com/docs/"
 	config.SourceDir = source
 	config.OutputDir = output
+	config.NavigationStyle = domain.NavigationStyleTopbar
+	config.NavigationDensity = domain.NavigationDensityCompact
+	config.SidebarWidth = 360
 	config.ExternalLinks = []domain.ExternalLink{{
 		Label:       "Repository",
 		URL:         "https://github.com/gi8lino/lore",
@@ -196,6 +199,11 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 	assert.Contains(t, string(home), `href="/docs/guide/"`)
 	assert.Contains(t, string(home), `src="/docs/images/logo.png"`)
 	assert.Contains(t, string(home), "Read-only static site")
+	assert.Contains(t, string(home), `data-navigation-style="topbar"`)
+	assert.Contains(t, string(home), `data-navigation-density="compact"`)
+	assert.Contains(t, string(home), `style="--sidebar: 360px"`)
+	assert.Contains(t, string(home), `class="desktop-top-navigation"`)
+	assert.Contains(t, string(home), `class="top-navigation-page`)
 	assert.NotContains(t, string(home), "/edit/")
 	assert.NotContains(t, string(home), "/auth/")
 	assert.Contains(t, string(home), "Related pages")

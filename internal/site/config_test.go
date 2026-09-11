@@ -171,6 +171,9 @@ source_dir = "docs"
 output_dir = "site"
 theme = "Light"
 language = "en"
+navigation_style = "tree"
+navigation_density = "compact"
+sidebar_width = 360
 mermaid = true
 `), 0o600))
 
@@ -180,6 +183,9 @@ mermaid = true
 	require.NoError(t, flags.Parse([]string{
 		"--config", configPath,
 		"--site-name", "From CLI",
+		"--navigation-style", "topbar",
+		"--navigation-density", "comfortable",
+		"--sidebar-width", "320",
 		"--mermaid=false",
 		"--robots=disallow",
 	}))
@@ -189,6 +195,9 @@ mermaid = true
 	require.NoError(t, err)
 	assert.Equal(t, "From CLI", cfg.SiteName)
 	assert.Equal(t, "https://example.com/docs/", cfg.SiteURL)
+	assert.Equal(t, domain.NavigationStyleTopbar, cfg.NavigationStyle)
+	assert.Equal(t, domain.NavigationDensityComfortable, cfg.NavigationDensity)
+	assert.Equal(t, 320, cfg.SidebarWidth)
 	assert.False(t, cfg.Mermaid)
 	assert.Equal(t, domain.RobotsPolicyDisallow, cfg.RobotsPolicy)
 }
@@ -202,7 +211,69 @@ func TestDefaultConfigUsesGenericBranding(t *testing.T) {
 	assert.Empty(t, config.Logo)
 	assert.Empty(t, config.Favicon)
 	assert.Empty(t, config.FaviconICO)
+	assert.Equal(t, domain.NavigationStyleSidebar, config.NavigationStyle)
+	assert.Equal(t, domain.NavigationDensityComfortable, config.NavigationDensity)
+	assert.Equal(t, domain.DefaultSidebarWidth, config.SidebarWidth)
 	assert.Equal(t, domain.RobotsPolicyAllow, config.RobotsPolicy)
+}
+
+func TestNavigationPresentationConfiguration(t *testing.T) {
+	t.Parallel()
+
+	t.Run("loads presentation settings", func(t *testing.T) {
+		t.Parallel()
+
+		root := t.TempDir()
+		filename := filepath.Join(root, "site.toml")
+		require.NoError(t, os.WriteFile(filename, []byte(`
+navigation_style = "tree"
+navigation_density = "compact"
+sidebar_width = 360
+`), 0o600))
+
+		config, err := loadConfig(filename, true)
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.NavigationStyleTree, config.NavigationStyle)
+		assert.Equal(t, domain.NavigationDensityCompact, config.NavigationDensity)
+		assert.Equal(t, 360, config.SidebarWidth)
+	})
+
+	t.Run("rejects unknown navigation style", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.NavigationStyle = "columns"
+
+		assert.ErrorContains(t, config.validate(), "navigation_style must be sidebar, topbar, or tree")
+	})
+
+	t.Run("rejects unknown navigation density", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.NavigationDensity = "dense"
+
+		assert.ErrorContains(t, config.validate(), "navigation_density must be comfortable or compact")
+	})
+
+	t.Run("rejects sidebar width below range", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.SidebarWidth = domain.MinSidebarWidth - 1
+
+		assert.ErrorContains(t, config.validate(), "sidebar_width must be between 220 and 420 pixels")
+	})
+
+	t.Run("rejects sidebar width above range", func(t *testing.T) {
+		t.Parallel()
+
+		config := defaultConfig()
+		config.SidebarWidth = domain.MaxSidebarWidth + 1
+
+		assert.ErrorContains(t, config.validate(), "sidebar_width must be between 220 and 420 pixels")
+	})
 }
 
 func TestRobotsConfiguration(t *testing.T) {

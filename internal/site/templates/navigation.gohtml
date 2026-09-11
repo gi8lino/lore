@@ -33,3 +33,33 @@
 {{ end }}
 
 
+{{ define "top-navigation" }}
+  <nav class="desktop-top-navigation" aria-label="Page navigation">
+    <div class="desktop-top-navigation-inner">
+      <a class="top-navigation-home" href="{{ pageurl "" }}">
+        {{ icon "house-lucide" 15 }}<span>Home</span>
+      </a>
+      {{ range .Navigation }}
+        {{ if .Children }}
+          <details class="top-navigation-group">
+            <summary{{ if .ContainsActive }} class="contains-active"{{ end }}>
+              <span>{{ .Title }}</span>{{ icon "chevron-down-lucide" 13 }}
+            </summary>
+            <div class="top-navigation-popover">
+              {{ if .Page }}
+                <a class="top-navigation-root-link{{ if .Active }} active{{ end }}" href="{{ pageurl .Slug }}"{{ if .Active }} aria-current="page"{{ end }}>
+                  <span>{{ .Title }}</span>
+                </a>
+              {{ end }}
+              <div class="navigation-tree">{{ range .Children }}{{ template "nav-entry" . }}{{ end }}</div>
+            </div>
+          </details>
+        {{ else if .Page }}
+          <a class="top-navigation-page{{ if .Active }} active{{ end }}" href="{{ pageurl .Slug }}"{{ if .Active }} aria-current="page"{{ end }}>
+            <span>{{ .Title }}</span>
+          </a>
+        {{ end }}
+      {{ end }}
+    </div>
+  </nav>
+{{ end }}

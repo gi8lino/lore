@@ -48,22 +48,25 @@ type searchEntry struct {
 
 // viewData contains the shared data rendered by static site templates.
 type viewData struct {
-	LogoURL       string
-	FaviconURL    string
-	FaviconICOURL string
-	SiteName      string
-	SiteURL       string
-	BasePath      string
-	Language      string
-	Title         string
-	ActiveTheme   string
-	ThemeData     template.JS
-	CurrentRoute  string
-	Navigation    []navigation.Node
-	HTML          template.HTML
-	PageContents  []md.Heading
-	ExternalLinks []domain.ExternalLink
-	RenderMermaid bool
+	LogoURL           string
+	FaviconURL        string
+	FaviconICOURL     string
+	SiteName          string
+	SiteURL           string
+	BasePath          string
+	Language          string
+	Title             string
+	ActiveTheme       string
+	NavigationStyle   string
+	NavigationDensity string
+	SidebarWidth      int
+	ThemeData         template.JS
+	CurrentRoute      string
+	Navigation        []navigation.Node
+	HTML              template.HTML
+	PageContents      []md.Heading
+	ExternalLinks     []domain.ExternalLink
+	RenderMermaid     bool
 }
 
 // buildPlan contains validated and precomputed state shared by one build.
@@ -199,17 +202,20 @@ func buildNavigationPages(pages []sourcePage) []navigation.Page {
 // commonViewData assembles template data shared by every generated page.
 func commonViewData(plan buildPlan, branding brandingData) viewData {
 	return viewData{
-		LogoURL:       branding.LogoURL,
-		FaviconURL:    branding.FaviconURL,
-		FaviconICOURL: branding.FaviconICOURL,
-		SiteName:      plan.config.SiteName,
-		SiteURL:       plan.config.SiteURL,
-		BasePath:      plan.basePath,
-		Language:      plan.config.Language,
-		ActiveTheme:   plan.config.Theme,
-		ThemeData:     plan.themeData,
-		ExternalLinks: slices.Clone(plan.config.ExternalLinks),
-		RenderMermaid: plan.config.Mermaid,
+		LogoURL:           branding.LogoURL,
+		FaviconURL:        branding.FaviconURL,
+		FaviconICOURL:     branding.FaviconICOURL,
+		SiteName:          plan.config.SiteName,
+		SiteURL:           plan.config.SiteURL,
+		BasePath:          plan.basePath,
+		Language:          plan.config.Language,
+		ActiveTheme:       plan.config.Theme,
+		NavigationStyle:   plan.config.NavigationStyle,
+		NavigationDensity: plan.config.NavigationDensity,
+		SidebarWidth:      plan.config.SidebarWidth,
+		ThemeData:         plan.themeData,
+		ExternalLinks:     slices.Clone(plan.config.ExternalLinks),
+		RenderMermaid:     plan.config.Mermaid,
 	}
 }
 
