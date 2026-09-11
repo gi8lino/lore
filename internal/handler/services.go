@@ -201,16 +201,20 @@ type imageContentService interface {
 
 type imageListService interface {
 	Images(context.Context) ([]domain.Image, error)
+	SearchImages(context.Context, string, int, int) ([]domain.Image, error)
 }
 
 type userImageService interface {
 	ImagesByUser(context.Context, int64) ([]domain.Image, error)
+	SearchImagesByUser(context.Context, int64, string, int, int) ([]domain.Image, error)
 }
 
 type imageService interface {
 	imageContentService
 	Images(context.Context) ([]domain.Image, error)
 	ImagesByUser(context.Context, int64) ([]domain.Image, error)
+	SearchImages(context.Context, string, int, int) ([]domain.Image, error)
+	SearchImagesByUser(context.Context, int64, string, int, int) ([]domain.Image, error)
 	UploadImage(context.Context, string, []byte, domain.User) (domain.Image, error)
 	DeleteImage(context.Context, int64, domain.User) error
 }

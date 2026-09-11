@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
@@ -57,13 +58,20 @@ func Settings(
 		}
 
 		if data.CanEdit {
-			images, err := mediaUseCases.ImagesByUser(r.Context(), data.User.ID)
+			data.ImageQuery = strings.TrimSpace(r.URL.Query().Get("image_q"))
+			images, err := mediaUseCases.SearchImagesByUser(
+				r.Context(),
+				data.User.ID,
+				data.ImageQuery,
+				managedImagePageSize+1,
+				0,
+			)
 			if err != nil {
 				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 
-			data.Images = mediaItems(images)
+			data.Images, data.ImagesHasMore = managedImageItems(images)
 		}
 
 		render(views, w, "settings", data)

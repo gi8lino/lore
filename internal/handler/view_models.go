@@ -82,6 +82,10 @@ type ViewData struct {
 	RevisionSlug string
 	// Images contains uploaded media shown in settings or administration.
 	Images []MediaItem
+	// ImageQuery is the active filename/uploader filter for a managed image list.
+	ImageQuery string
+	// ImagesHasMore reports whether another managed image page is available.
+	ImagesHasMore bool
 	// UserTokens contains personal access tokens owned by the current user.
 	UserTokens []domain.APIToken
 	// AdminSection identifies the active administration navigation section.

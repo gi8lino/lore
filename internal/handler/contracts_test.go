@@ -68,6 +68,12 @@ func (emptyContractServices) OpenNotification(context.Context, int64, int64) (st
 	return "", nil
 }
 func (emptyContractServices) Images(context.Context) ([]domain.Image, error) { return nil, nil }
+func (emptyContractServices) SearchImages(context.Context, string, int, int) ([]domain.Image, error) {
+	return nil, nil
+}
+func (emptyContractServices) SearchImagesByUser(context.Context, int64, string, int, int) ([]domain.Image, error) {
+	return nil, nil
+}
 func (emptyContractServices) Attachments(context.Context) ([]domain.Attachment, error) {
 	return nil, nil
 }

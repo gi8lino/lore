@@ -59,6 +59,8 @@ type mediaRepository interface {
 	ImageInfo(context.Context, int64) (domain.Image, error)
 	Images(context.Context) ([]domain.Image, error)
 	ImagesByUser(context.Context, int64) ([]domain.Image, error)
+	SearchImages(context.Context, string, int, int) ([]domain.Image, error)
+	SearchImagesByUser(context.Context, int64, string, int, int) ([]domain.Image, error)
 	SaveAttachment(context.Context, string, string, []byte, int64) (domain.Attachment, error)
 	SaveImage(context.Context, string, string, []byte, int64) (domain.Image, error)
 }
@@ -243,6 +245,21 @@ func (s *Media) Images(ctx context.Context) ([]domain.Image, error) {
 // ImagesByUser returns images uploaded by one user.
 func (s *Media) ImagesByUser(ctx context.Context, userID int64) ([]domain.Image, error) {
 	return s.repository.ImagesByUser(ctx, userID)
+}
+
+// SearchImages returns a bounded set of images matching filename or uploader.
+func (s *Media) SearchImages(ctx context.Context, query string, limit, offset int) ([]domain.Image, error) {
+	return s.repository.SearchImages(ctx, query, limit, offset)
+}
+
+// SearchImagesByUser returns a bounded set of one user's images matching filename.
+func (s *Media) SearchImagesByUser(
+	ctx context.Context,
+	userID int64,
+	query string,
+	limit, offset int,
+) ([]domain.Image, error) {
+	return s.repository.SearchImagesByUser(ctx, userID, query, limit, offset)
 }
 
 // ImageContent returns stored image bytes and metadata.

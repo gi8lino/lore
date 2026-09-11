@@ -20,6 +20,8 @@ Users can issue named personal access tokens with an optional expiration date. T
 
 ## Uploaded images
 
-Editors can review images they uploaded from their settings area. Administrator-wide media cleanup remains in the administration interface.
+Editors can review images they uploaded from their settings area. The list starts with the 30 newest uploads, supports filename search, and loads older matches in additional batches. Only unused owned images can be deleted there.
+
+Administrators can manage uploads across every user under **Administration → Images**. That view also starts with the 30 newest images, supports search by filename or uploader, and loads additional matches on demand.
 
 Static sites have no account settings. Their read-only navigation/page-content toggles use browser-local state only and never call a Lore server.

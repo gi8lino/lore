@@ -361,14 +361,40 @@
         </div>
       </section>
       {{ if .CanEdit }}
-        <section class="panel settings-panel settings-wide" id="media">
+        <section class="panel settings-panel settings-wide"
+                 id="media"
+                 data-media-settings-browser
+                 data-media-list-url="/api/images"
+                 data-media-scope="mine"
+                 data-media-mode="user"
+                 data-media-page-size="30"
+                 data-media-offset="{{ len .Images }}">
           <div class="panel-title">
             <h2>Your images</h2>
+            <span class="muted"
+                  data-media-settings-count>{{ len .Images }} shown{{ if .ImagesHasMore }} · more available{{ end }}</span>
           </div>
           <p class="settings-note">
             Images are stored in PostgreSQL. You can delete your own unused images here. Administrators can manage every
             image from Administration.
           </p>
+          <form class="media-settings-search"
+                method="get"
+                action="/settings#media"
+                data-media-settings-search>
+            <input type="search"
+                   name="image_q"
+                   value="{{ .ImageQuery }}"
+                   maxlength="200"
+                   placeholder="Search your images…"
+                   aria-label="Search your images"
+                   data-media-settings-search-input />
+            <button class="button" type="submit">{{ icon "search-lucide" 16 }}<span>Search</span></button>
+            <a class="button"
+               href="/settings#media"
+               data-media-settings-clear
+               {{ if not .ImageQuery }}hidden{{ end }}>Clear</a>
+          </form>
           <div class="media-settings-list" data-media-settings-list>
             {{ range .Images }}
               <article class="media-settings-row"
@@ -396,8 +422,17 @@
                 </div>
               </article>
             {{ else }}
-              <p class="muted" data-media-settings-empty>No images uploaded yet. Upload one from the page editor.</p>
+              <p class="muted" data-media-settings-empty>
+                {{ if .ImageQuery }}No images match your search.{{ else }}No images uploaded yet. Upload one from the page editor.{{ end }}
+              </p>
             {{ end }}
+          </div>
+          <div class="media-settings-pagination">
+            <button class="button"
+                    type="button"
+                    data-media-load-more
+                    {{ if not .ImagesHasMore }}hidden{{ end }}>Load more</button>
+            <span class="muted" data-media-load-status></span>
           </div>
         </section>
       {{ end }}

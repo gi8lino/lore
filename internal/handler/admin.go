@@ -676,13 +676,19 @@ func AdminImages(
 			return
 		}
 
-		images, err := mediaUseCases.Images(r.Context())
+		data.ImageQuery = strings.TrimSpace(r.URL.Query().Get("image_q"))
+		images, err := mediaUseCases.SearchImages(
+			r.Context(),
+			data.ImageQuery,
+			managedImagePageSize+1,
+			0,
+		)
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
-		data.Images = mediaItems(images)
+		data.Images, data.ImagesHasMore = managedImageItems(images)
 
 		render(views, w, "admin_images", data)
 	}

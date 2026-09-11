@@ -33,6 +33,36 @@ function isImageItem(value: unknown): value is ImageItem {
   );
 }
 
+function formatMediaSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const units = ["KiB", "MiB", "GiB", "TiB"];
+  let value = bytes / 1024;
+  let unit = 0;
+
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+function formatMediaAge(value: string): string {
+  const timestamp = new Date(value);
+  const milliseconds = Date.now() - timestamp.getTime();
+  if (!Number.isFinite(milliseconds)) return "";
+
+  const minutes = Math.floor(milliseconds / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  return timestamp.toISOString().slice(0, 10);
+}
+
 // Builds Markdown for an uploaded image.
 export function imageMarkdown(
   image: Pick<ImageItem, "filename" | "url">,
@@ -148,14 +178,9 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
       name.textContent = image.filename;
 
       const meta = document.createElement("small");
-      const kib = image.size_bytes / 1024;
-      const size =
-        kib >= 1024
-          ? `${(kib / 1024).toFixed(1)} MiB`
-          : `${kib.toFixed(1)} KiB`;
       const references = `reference${image.usage_count === 1 ? "" : "s"}`;
 
-      meta.textContent = `${size} · ${image.usage_count} ${references}`;
+      meta.textContent = `${formatMediaSize(image.size_bytes)} · ${image.usage_count} ${references}`;
       info.append(name, meta);
 
       const insert = document.createElement("button");
@@ -306,6 +331,199 @@ function setupMediaDialog(dialog: HTMLDialogElement): void {
   }
 }
 
+function managedImageEmptyText(mode: string, query: string): string {
+  if (query) return "No images match your search.";
+  if (mode === "admin") return "No images uploaded yet.";
+
+  return "No images uploaded yet. Upload one from the page editor.";
+}
+
+function managedImageRow(image: ImageItem, mode: string): HTMLElement {
+  const item = document.createElement("article");
+
+  item.className = "media-settings-row";
+  item.dataset.mediaSettingsItem = "";
+  item.dataset.mediaId = String(image.id);
+
+  const preview = document.createElement("img");
+
+  preview.src = image.url;
+  preview.alt = "";
+  preview.loading = "lazy";
+
+  const info = document.createElement("div");
+
+  info.className = "media-settings-info";
+
+  const name = document.createElement("strong");
+
+  name.textContent = image.filename;
+
+  const meta = document.createElement("small");
+  const parts = [formatMediaSize(image.size_bytes)];
+
+  if (mode === "admin") parts.push(image.uploader || "Unknown uploader");
+  parts.push(formatMediaAge(image.created_at));
+  meta.textContent = parts.filter(Boolean).join(" · ");
+
+  const usage = document.createElement("small");
+
+  if (image.usage_count > 0) {
+    usage.className = "media-used";
+    usage.textContent = `Referenced ${image.usage_count} time${image.usage_count === 1 ? "" : "s"}`;
+  } else {
+    usage.className = "media-unused";
+    usage.textContent = "Unused";
+  }
+
+  const url = document.createElement("code");
+
+  url.textContent = image.url;
+  info.append(name, meta, usage, url);
+
+  const actions = document.createElement("div");
+
+  actions.className = "media-settings-actions";
+  if (mode === "admin" || image.usage_count === 0) {
+    const remove = document.createElement("button");
+
+    remove.type = "button";
+    remove.className = "button danger";
+    remove.dataset.mediaDelete = "";
+    remove.dataset.mediaUsage = String(image.usage_count);
+    remove.dataset.deleteUrl = `/api/images/${image.id}`;
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => void deleteMediaImage(remove));
+    actions.append(remove);
+  }
+
+  item.append(preview, info, actions);
+  return item;
+}
+
+function updateManagedImageSummary(root: HTMLElement, hasMore: boolean): void {
+  const count = root.querySelectorAll("[data-media-settings-item]").length;
+  const summary = root.querySelector<HTMLElement>(
+    "[data-media-settings-count]",
+  );
+
+  root.dataset.mediaOffset = String(count);
+  root.dataset.mediaHasMore = String(hasMore);
+  if (summary)
+    summary.textContent = `${count} shown${hasMore ? " · more available" : ""}`;
+}
+
+function renderManagedImageEmpty(root: HTMLElement): void {
+  const list = requiredElement<HTMLElement>(root, "[data-media-settings-list]");
+  const input = root.querySelector<HTMLInputElement>(
+    "[data-media-settings-search-input]",
+  );
+  const empty = document.createElement("p");
+
+  empty.className = "muted";
+  empty.dataset.mediaSettingsEmpty = "";
+  empty.textContent = managedImageEmptyText(
+    root.dataset.mediaMode || "user",
+    input?.value.trim() || "",
+  );
+  list.append(empty);
+}
+
+function updateManagedImageURL(root: HTMLElement, query: string): void {
+  const url = new URL(window.location.href);
+
+  if (query) url.searchParams.set("image_q", query);
+  else url.searchParams.delete("image_q");
+  if (root.id) url.hash = root.id;
+
+  window.history.replaceState(null, "", url);
+}
+
+function setupManagedImageBrowser(root: HTMLElement): void {
+  const listURL = requiredAttribute(root, "data-media-list-url");
+  const list = requiredElement<HTMLElement>(root, "[data-media-settings-list]");
+  const input = requiredElement<HTMLInputElement>(
+    root,
+    "[data-media-settings-search-input]",
+  );
+  const form = requiredElement<HTMLFormElement>(
+    root,
+    "[data-media-settings-search]",
+  );
+  const clear = requiredElement<HTMLAnchorElement>(
+    root,
+    "[data-media-settings-clear]",
+  );
+  const loadMore = requiredElement<HTMLButtonElement>(
+    root,
+    "[data-media-load-more]",
+  );
+  const status = requiredElement<HTMLElement>(root, "[data-media-load-status]");
+  const pageSize = Number(root.dataset.mediaPageSize) || 30;
+  const mode = root.dataset.mediaMode || "user";
+  const scope = root.dataset.mediaScope || "all";
+  let loading = false;
+
+  root.dataset.mediaHasMore = String(!loadMore.hidden);
+
+  async function load(reset: boolean): Promise<void> {
+    if (loading) return;
+
+    loading = true;
+    loadMore.disabled = true;
+    status.textContent = reset ? "Searching…" : "Loading…";
+
+    const query = input.value.trim();
+    const offset = reset ? 0 : Number(root.dataset.mediaOffset || 0);
+    const url = new URL(listURL, window.location.origin);
+
+    url.searchParams.set("limit", String(pageSize + 1));
+    url.searchParams.set("offset", String(offset));
+    if (query) url.searchParams.set("q", query);
+    if (scope === "mine") url.searchParams.set("scope", "mine");
+
+    try {
+      const payload = await requestJSON(url);
+      const page = requireArrayOf(payload, isImageItem, "image list response");
+      const hasMore = page.length > pageSize;
+      const visible = hasMore ? page.slice(0, pageSize) : page;
+
+      if (reset) list.replaceChildren();
+      for (const image of visible) list.append(managedImageRow(image, mode));
+      if (!list.querySelector("[data-media-settings-item]"))
+        renderManagedImageEmpty(root);
+
+      updateManagedImageSummary(root, hasMore);
+      loadMore.hidden = !hasMore;
+      clear.hidden = query === "";
+      status.textContent = "";
+      updateManagedImageURL(root, query);
+    } catch (error) {
+      console.error("managed image list failed", error);
+      status.textContent = "";
+      await showNotice(errorMessage(error) || "Images could not be loaded.", {
+        title: "Image search failed",
+      });
+    } finally {
+      loading = false;
+      loadMore.disabled = false;
+    }
+  }
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void load(true);
+  });
+
+  clear.addEventListener("click", (event) => {
+    event.preventDefault();
+    input.value = "";
+    void load(true);
+  });
+
+  loadMore.addEventListener("click", () => void load(false));
+}
+
 async function deleteMediaImage(button: HTMLButtonElement): Promise<void> {
   const item = button.closest<HTMLElement>("[data-media-settings-item]");
   if (!item) return;
@@ -330,19 +548,20 @@ async function deleteMediaImage(button: HTMLButtonElement): Promise<void> {
   try {
     await requestJSON(deleteURL, { method: "DELETE" });
 
+    const root = item.closest<HTMLElement>("[data-media-settings-browser]");
+
     item.remove();
 
-    const list = document.querySelector<HTMLElement>(
-      "[data-media-settings-list]",
-    );
-    if (list && !list.querySelector("[data-media-settings-item]")) {
-      const empty = document.createElement("p");
+    if (root) {
+      const list = requiredElement<HTMLElement>(
+        root,
+        "[data-media-settings-list]",
+      );
+      const hasMore = root.dataset.mediaHasMore === "true";
 
-      empty.className = "muted";
-      empty.dataset.mediaSettingsEmpty = "";
-      empty.textContent =
-        "No images uploaded yet. Upload one from the page editor.";
-      list.append(empty);
+      if (!list.querySelector("[data-media-settings-item]"))
+        renderManagedImageEmpty(root);
+      updateManagedImageSummary(root, hasMore);
     }
   } catch (error) {
     console.error("image deletion failed", error);
@@ -360,6 +579,12 @@ export function initMedia(): void {
   );
 
   if (mediaDialog) setupMediaDialog(mediaDialog);
+
+  for (const browser of document.querySelectorAll<HTMLElement>(
+    "[data-media-settings-browser]",
+  )) {
+    setupManagedImageBrowser(browser);
+  }
 
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-media-delete]",

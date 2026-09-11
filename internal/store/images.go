@@ -31,16 +31,36 @@ RETURNING id,filename,content_type,size_bytes,coalesce(uploaded_by,0),created_at
 
 // Images returns all uploaded image metadata with exact Markdown reference counts.
 func (s *Store) Images(ctx context.Context) ([]domain.Image, error) {
-	return s.images(ctx, "")
+	return s.searchImages(ctx, 0, "", 0, 0)
 }
 
-// ImagesByUser returns image metadata uploaded by one user.
+// ImagesByUser returns all image metadata uploaded by one user.
 func (s *Store) ImagesByUser(ctx context.Context, userID int64) ([]domain.Image, error) {
-	return s.images(ctx, `WHERE i.uploaded_by=$1`, userID)
+	return s.searchImages(ctx, userID, "", 0, 0)
 }
 
-// images queries image metadata with an optional WHERE clause and arguments.
-func (s *Store) images(ctx context.Context, where string, args ...any) ([]domain.Image, error) {
+// SearchImages returns a bounded slice of images matching filename or uploader.
+func (s *Store) SearchImages(ctx context.Context, query string, limit, offset int) ([]domain.Image, error) {
+	return s.searchImages(ctx, 0, query, limit, offset)
+}
+
+// SearchImagesByUser returns a bounded slice of one user's images matching filename.
+func (s *Store) SearchImagesByUser(
+	ctx context.Context,
+	userID int64,
+	query string,
+	limit, offset int,
+) ([]domain.Image, error) {
+	return s.searchImages(ctx, userID, query, limit, offset)
+}
+
+// searchImages queries image metadata. A zero user ID selects every uploader and a zero limit is unbounded.
+func (s *Store) searchImages(
+	ctx context.Context,
+	userID int64,
+	query string,
+	limit, offset int,
+) ([]domain.Image, error) {
 	rows, err := s.pool.Query(ctx, `
 WITH image_references AS (
   SELECT m.captures[1]::bigint AS image_id,count(*) AS usage_count
@@ -60,8 +80,16 @@ SELECT
 FROM images i
 LEFT JOIN users u ON u.id=i.uploaded_by
 LEFT JOIN image_references refs ON refs.image_id=i.id
-`+where+`
-ORDER BY i.created_at DESC,i.id DESC`, args...)
+WHERE ($1::bigint=0 OR i.uploaded_by=$1)
+  AND (
+    $2::text=''
+    OR position(lower($2) in lower(i.filename))>0
+    OR ($1::bigint=0 AND position(lower($2) in lower(coalesce(u.display_name,'')))>0)
+    OR ($1::bigint=0 AND position(lower($2) in lower(coalesce(u.username,'')))>0)
+  )
+ORDER BY i.created_at DESC,i.id DESC
+LIMIT NULLIF($3,0)
+OFFSET $4`, userID, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}

@@ -53,6 +53,14 @@ func (s *mediaRepositoryStub) ImagesByUser(context.Context, int64) ([]domain.Ima
 	return nil, nil
 }
 
+func (s *mediaRepositoryStub) SearchImages(context.Context, string, int, int) ([]domain.Image, error) {
+	return nil, nil
+}
+
+func (s *mediaRepositoryStub) SearchImagesByUser(context.Context, int64, string, int, int) ([]domain.Image, error) {
+	return nil, nil
+}
+
 func (s *mediaRepositoryStub) SaveAttachment(
 	context.Context,
 	string,
