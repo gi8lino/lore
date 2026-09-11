@@ -60,7 +60,53 @@ a {
 }
 button,
 input,
+select,
 textarea {
   font: inherit;
   color: inherit;
+}
+
+/* Low-specificity defaults also cover controls outside dedicated form layouts. */
+:where(
+  input:not([type]),
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="url"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"],
+  select,
+  textarea
+) {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+:where(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+:where(input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }

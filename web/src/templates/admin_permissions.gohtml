@@ -1,5 +1,5 @@
 {{ define "content" }}
-  <section class="admin-page">
+  <section class="admin-page page-access">
     <div class="settings-heading">
       <p class="eyebrow">Administration</p>
       <h1>Page access</h1>
@@ -8,10 +8,10 @@
 
     <section class="panel">
       <div class="panel-title"><div><h2>Add access rule</h2><p class="muted">Paths without rules remain available according to normal Lore roles.</p></div></div>
-      <form action="/admin/permissions" method="post" class="settings-grid" data-validate-form data-error-title="Could not save access rule">
-        <label>Path
-          <input name="path" required placeholder="platform/production" autocomplete="off" />
-          <small>The rule also applies below this path until a more specific path has its own rules.</small>
+      <form action="/admin/permissions" method="post" class="settings-grid page-access-form" data-validate-form data-error-title="Could not save access rule">
+        <label class="page-access-path">Path
+          <input name="path" required placeholder="platform/production" autocomplete="off" aria-describedby="page-access-path-help" />
+          <small id="page-access-path-help">The rule also applies below this path until a more specific path has its own rules.</small>
         </label>
         <label>Group
           <select name="group_id" required>
