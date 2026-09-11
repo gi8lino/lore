@@ -213,6 +213,10 @@ func viewData(r *http.Request, loader viewDataService, views *Views, title strin
 
 // pagesWithout returns up to limit pages excluding any page present in excluded.
 func pagesWithout(pages, excluded []domain.Page, limit int) []domain.Page {
+	if limit <= 0 {
+		return nil
+	}
+
 	excludedIDs := make(map[int64]bool, len(excluded))
 
 	for _, page := range excluded {
