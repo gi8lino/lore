@@ -13,12 +13,71 @@ make lint
 make fmt
 make build
 make site
+make site-serve
 make screenshots
 ```
 
 `make run`, `make build`, and frontend-related checks ensure npm dependencies exist before invoking TypeScript. `web/dist` is generated and ignored by Git.
 
-Local startup requires Python 3 for `bin/dev-port`. Named ports are saved in the Git-ignored `.dev-ports.json` and reused across Make invocations. This supports starting components separately:
+## Development tools
+
+Shared development tools come from [gi8lino/dev-tools](https://github.com/gi8lino/dev-tools).
+
+Lore keeps only the dev-tools bootstrap file in the repository:
+
+```text
+bin/dev-tools.mk
+```
+
+The Makefile pins the dev-tools release:
+
+```makefile
+# renovate: datasource=github-releases depName=gi8lino/dev-tools
+DEV_TOOLS_VERSION ?= v0.7.0
+```
+
+and includes only the modules it needs:
+
+```makefile
+include bin/dev-tools.mk
+include $(call dev-tools-module,tag)
+include $(call dev-tools-module,port)
+include $(call dev-tools-module,browser)
+include $(call dev-tools-module,help)
+```
+
+Missing modules and their executables are downloaded automatically from the pinned GitHub release when Make needs them. They are cached below:
+
+```text
+bin/.dev-tools/<DEV_TOOLS_VERSION>/
+```
+
+Changing `DEV_TOOLS_VERSION` selects a separate versioned cache, so upgrades and rollbacks do not depend on file modification times.
+
+The shared modules provide:
+
+- semantic-version tagging targets such as `make current`, `make patch`, `make minor`, `make major`, and `make push`;
+- persistent named development ports through `dev-port`;
+- browser startup through `open-browser`;
+- generated Make help through `make-help`;
+- generic helpers such as `go-install-tool` and `github-release-install`.
+
+Project-specific tools such as `golangci-lint` remain installed in `bin/`. `go-install-tool` maintains their versioned binaries and stable symlinks.
+
+## Local ports
+
+Local startup requires Python 3 because `dev-port` is implemented in Python.
+
+Named ports are stored in the Git-ignored `.dev-ports.json` and reused across Make invocations. Lore uses separate assignments for the application, PostgreSQL, PDF service, and documentation site.
+
+```makefile
+LORE_ASSIGNED_PORT ?= $(call dev-port,app)
+DB_ASSIGNED_PORT ?= $(call dev-port,postgres)
+PDF_ASSIGNED_PORT ?= $(call dev-port,pdf)
+SITE_PORT ?= $(call dev-port,site)
+```
+
+This supports starting components independently:
 
 ```sh
 make dev-build
@@ -27,21 +86,75 @@ make html-pdf
 make serve
 ```
 
-`make run` builds and starts everything together and opens the browser once Lore responds. `make open` can also be run from another terminal. `make ports` prints saved addresses.
+`make run` builds and starts everything together and opens the browser once Lore responds. `make open` can also be run from another terminal.
 
-Override and save fixed ports:
+`make ports` prints the saved application, PostgreSQL, and PDF addresses.
+
+Override and save fixed service ports when necessary:
 
 ```sh
-make ports LORE_ASSIGNED_PORT=8080 DB_ASSIGNED_PORT=5433 PDF_ASSIGNED_PORT=8081
+make ports \
+  LORE_ASSIGNED_PORT=8080 \
+  DB_ASSIGNED_PORT=5433 \
+  PDF_ASSIGNED_PORT=8081
 ```
 
-The helper can also be used directly: `bin/dev-port postgres` retrieves a saved port, and `bin/dev-port postgres --port 5433` saves an explicit assignment. Stop services before `make ports-reset`. Saved ports are reused even when occupied, and are not reserved between runs.
+The port helper can also be used directly through the path provided by the dev-tools port module:
 
-Shared development tools come from [gi8lino/dev-tools](https://github.com/gi8lino/dev-tools).
-`make dev-tools` downloads the pinned `DEV_TOOLS_VERSION` into `bin/`; startup
-targets install them automatically. To upgrade, change that version in the
-Makefile and run `make dev-tools`. `make open` opens the browser once the app responds.
-`make run` starts the app and opens the browser automatically.
+```sh
+$(make -s --no-print-directory -f - <<'EOF'
+include bin/dev-tools.mk
+include $(call dev-tools-module,port)
+
+print:
+	@echo "$(DEV_PORT)"
+EOF
+) postgres
+```
+
+Normally there is no reason to invoke it directly; the Make targets handle persistent assignments.
+
+Stop services before `make ports-reset`. Saved ports are reused even while occupied and are not reservations: another process can still take a free port between allocation and service startup.
+
+## Documentation site
+
+Lore builds its own documentation using the static-site generator:
+
+```sh
+make site
+```
+
+The source and site configuration live under:
+
+```text
+docs/
+├── content/
+└── site.toml
+```
+
+The generated output is written to `docs/site/`.
+
+To build, serve, and automatically open the documentation locally:
+
+```sh
+make site-serve
+```
+
+The documentation server receives a persistent dynamic port through the shared `dev-port` module:
+
+```makefile
+SITE_PORT ?= $(call dev-port,site)
+```
+
+The site URL is therefore stable across Make invocations for the current checkout without requiring a globally fixed development port.
+
+An explicit port can still be selected when useful:
+
+```sh
+make site-serve SITE_PORT=8081
+```
+
+`open-browser` starts in the background before the local HTTP server and waits until the site responds before opening the default browser.
 
 ## Frontend
 
