@@ -152,7 +152,7 @@ func (s *Webhooks) Webhooks(ctx context.Context) ([]domain.Webhook, error) {
 	}
 	for index := range items {
 		normalizeStoredWebhook(&items[index])
-		maskWebhookHeaders(items[index].Headers)
+		items[index].Headers = maskedWebhookHeaders(items[index].Headers)
 	}
 	return items, nil
 }
@@ -199,7 +199,7 @@ func (s *Webhooks) SaveWebhook(ctx context.Context, id int64, input WebhookInput
 	}
 
 	normalizeStoredWebhook(&item)
-	maskWebhookHeaders(item.Headers)
+	item.Headers = maskedWebhookHeaders(item.Headers)
 
 	return item, nil
 }
@@ -541,15 +541,17 @@ func normalizeStoredWebhook(item *domain.Webhook) {
 	}
 }
 
-// maskWebhookHeaders removes sensitive values while preserving whether they are configured.
-func maskWebhookHeaders(headers []domain.WebhookHeader) {
-	for index := range headers {
-		if !headers[index].Sensitive {
+// maskedWebhookHeaders returns a redacted copy without mutating repository-owned values.
+func maskedWebhookHeaders(headers []domain.WebhookHeader) []domain.WebhookHeader {
+	masked := slices.Clone(headers)
+	for index := range masked {
+		if !masked[index].Sensitive {
 			continue
 		}
-		headers[index].Configured = headers[index].Value != ""
-		headers[index].Value = ""
+		masked[index].Configured = masked[index].Value != ""
+		masked[index].Value = ""
 	}
+	return masked
 }
 
 // parseWebhookBodyTemplate parses one JSON body template with Notifykit's safe helper set.
