@@ -496,26 +496,42 @@ type PageAccessRule struct {
 	UpdatedAt time.Time
 }
 
-// Webhook is one administrator-configured outgoing event destination.
-type Webhook struct {
-	ID               int64
-	Name             string
-	URL              string
-	Events           []string
-	Secret           string `json:"-"`
-	SecretConfigured bool
-	Enabled          bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+// WebhookHeader is one configurable HTTP header sent with a webhook request.
+type WebhookHeader struct {
+	ID        int64
+	Name      string
+	Value     string `json:"-"`
+	Sensitive bool
+	// Configured reports whether a sensitive header has a stored value without exposing it.
+	Configured bool
 }
 
-// WebhookDelivery records the latest attempt to deliver an outgoing event.
+// Webhook is one administrator-configured outgoing event destination.
+type Webhook struct {
+	ID              int64
+	Name            string
+	URL             string
+	Events          []string
+	BodyTemplate    string
+	Headers         []WebhookHeader
+	RetryEnabled    bool
+	RetryCount      int
+	RetryBackoff    time.Duration
+	RetryMaxBackoff time.Duration
+	RetryJitter     bool
+	Enabled         bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// WebhookDelivery records the latest outcome of delivering an outgoing event.
 type WebhookDelivery struct {
 	ID          int64
 	WebhookID   int64
 	WebhookName string
 	Event       string
 	StatusCode  int
+	Attempts    int
 	Error       string
 	CreatedAt   time.Time
 }

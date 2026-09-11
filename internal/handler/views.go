@@ -354,12 +354,17 @@ type pageTemplateView struct {
 
 type webhookView struct {
 	domain.Webhook
-	AvailableEvents []string
+	AvailableEvents         []string
+	EncryptionKeyConfigured bool
 }
 
-// webhookContext combines one webhook with the events available to the template.
-func webhookContext(item domain.Webhook, events []string) webhookView {
-	return webhookView{Webhook: item, AvailableEvents: events}
+// webhookContext combines one webhook with template metadata required by the form.
+func webhookContext(item domain.Webhook, events []string, encryptionKeyConfigured bool) webhookView {
+	return webhookView{
+		Webhook:                 item,
+		AvailableEvents:         events,
+		EncryptionKeyConfigured: encryptionKeyConfigured,
+	}
 }
 
 // pageTemplateContext combines one blueprint with groups and lifecycle choices.

@@ -1,5 +1,5 @@
 {{ define "webhook-fields" }}
-  <div class="webhook-fields">
+  <div class="webhook-fields" data-webhook-form-fields>
     <div class="webhook-field-grid">
       <label>
         <span>Name</span>
@@ -7,39 +7,181 @@
       </label>
       <label class="webhook-endpoint-field">
         <span>Endpoint</span>
-        <input name="url" type="url" required value="{{ .URL }}" placeholder="https://example.test/hooks/lore" />
+        <input name="url" type="url" required value="{{ .URL }}" placeholder="https://hooks.slack.com/services/..." />
       </label>
-    </div>
-
-    <div class="webhook-secret-grid">
-      <label>
-        <span>Signing secret <span class="optional">Optional</span></span>
-        <input
-          name="secret"
-          type="password"
-          autocomplete="new-password"
-          placeholder="{{ if .SecretConfigured }}Keep existing secret{{ else }}HMAC secret{{ end }}"
-        />
-        <small>Encrypted with <code>LORE__ENCRYPTION_KEY</code> and never displayed again.</small>
-      </label>
-      {{ if .SecretConfigured }}
-        <label class="webhook-clear-secret">
-          <input type="checkbox" name="clear_secret" />
-          <span>
-            <strong>Remove secret</strong>
-            <small>Stop signing future deliveries.</small>
-          </span>
-        </label>
-      {{ end }}
     </div>
 
     <label class="webhook-enabled-row">
       <span>
         <strong>Enabled</strong>
-        <small>Deliver matching events to this endpoint.</small>
+        <small>Deliver matching Lore events to this endpoint.</small>
       </span>
       <input type="checkbox" name="enabled" {{ if .Enabled }}checked{{ end }} />
     </label>
+
+    <section class="webhook-payload-settings">
+      <div class="webhook-section-heading">
+        <div>
+          <strong>JSON payload</strong>
+          <small>Transform Lore events into the JSON body expected by the receiver.</small>
+        </div>
+        <span class="webhook-template-badge">Go template</span>
+      </div>
+      <label class="webhook-template-field">
+        <textarea
+          name="body_template"
+          rows="13"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+        >{{ .BodyTemplate }}</textarea>
+      </label>
+      <p class="webhook-template-help">
+        Use <code>{{ "{{ .Input.Event | json }}" }}</code> for the event name and
+        <code>.Payload.ActorID</code>, <code>.Payload.ObjectType</code>, <code>.Payload.ObjectKey</code>,
+        <code>.Payload.Detail</code>, <code>.Payload.OccurredAt</code>, or <code>.Payload.URL</code> for event data.
+        Pipe JSON values through <code>| json</code>. Notifykit's default template helpers are available.
+      </p>
+    </section>
+
+    <section class="webhook-header-settings">
+      <div class="webhook-section-heading">
+        <div>
+          <strong>Request headers</strong>
+          <small>Add authentication or receiver-specific HTTP headers. Lore manages transport headers such as Content-Type.</small>
+        </div>
+        <button class="button compact" type="button" data-webhook-header-add>{{ icon "plus-lucide" 14 }}<span>Add header</span></button>
+      </div>
+
+      {{ if not .EncryptionKeyConfigured }}
+        <p class="webhook-header-note warning">Configure <code>LORE__ENCRYPTION_KEY</code> before storing sensitive header values.</p>
+      {{ else }}
+        <p class="webhook-header-note">Mark secrets with the key icon. Sensitive values are encrypted at rest.</p>
+      {{ end }}
+
+      <div class="webhook-header-list" data-webhook-header-list>
+        {{ range .Headers }}
+          <div class="webhook-header-row" data-webhook-header-row data-webhook-header-existing="true">
+            <input type="hidden" name="webhook_header_row" value="h{{ .ID }}" />
+            <input type="hidden" name="webhook_header_h{{ .ID }}_id" value="{{ .ID }}" />
+            <label class="webhook-header-name">
+              <span>Name</span>
+              <input
+                type="text"
+                name="webhook_header_h{{ .ID }}_name"
+                value="{{ .Name }}"
+                autocomplete="off"
+                placeholder="Authorization"
+                data-webhook-header-name
+              />
+            </label>
+            <label class="webhook-header-value">
+              <span>Value</span>
+              <input
+                type="{{ if and .Sensitive .Configured }}password{{ else }}text{{ end }}"
+                name="webhook_header_h{{ .ID }}_value"
+                value="{{ .Value }}"
+                autocomplete="off"
+                placeholder="{{ if and .Sensitive .Configured }}Stored encrypted value{{ else }}Bearer token{{ end }}"
+                data-webhook-header-value
+              />
+            </label>
+            <div class="webhook-header-actions">
+              <label class="webhook-header-sensitive" title="Sensitive: encrypt this header value at rest">
+                <input
+                  type="checkbox"
+                  name="webhook_header_h{{ .ID }}_sensitive"
+                  data-webhook-header-sensitive
+                  aria-label="Encrypt this header value at rest"
+                  {{ if .Sensitive }}checked{{ end }}
+                />
+                <span class="webhook-header-sensitive-icon" aria-hidden="true">{{ icon "key-round-lucide" 14 }}</span>
+              </label>
+              {{ if and .Sensitive .Configured }}
+                <button
+                  class="button compact"
+                  type="button"
+                  data-webhook-header-reveal
+                  data-webhook-id="{{ $.ID }}"
+                  data-webhook-header-id="{{ .ID }}"
+                  {{ if not $.EncryptionKeyConfigured }}disabled{{ end }}
+                >Reveal</button>
+              {{ end }}
+              <button class="icon-button" type="button" data-webhook-header-remove aria-label="Remove webhook request header">
+                {{ icon "trash-2-lucide" 15 }}
+              </button>
+            </div>
+          </div>
+        {{ end }}
+      </div>
+
+      <template data-webhook-header-template>
+        <div class="webhook-header-row" data-webhook-header-row data-webhook-header-existing="false">
+          <input type="hidden" data-webhook-header-row-key />
+          <input type="hidden" data-webhook-header-id />
+          <label class="webhook-header-name">
+            <span>Name</span>
+            <input type="text" autocomplete="off" placeholder="Authorization" data-webhook-header-name />
+          </label>
+          <label class="webhook-header-value">
+            <span>Value</span>
+            <input type="text" autocomplete="off" placeholder="Bearer token" data-webhook-header-value />
+          </label>
+          <div class="webhook-header-actions">
+            <label class="webhook-header-sensitive" title="Sensitive: encrypt this header value at rest">
+              <input type="checkbox" data-webhook-header-sensitive aria-label="Encrypt this header value at rest" />
+              <span class="webhook-header-sensitive-icon" aria-hidden="true">{{ icon "key-round-lucide" 14 }}</span>
+            </label>
+            <button class="icon-button" type="button" data-webhook-header-remove aria-label="Remove webhook request header">
+              {{ icon "trash-2-lucide" 15 }}
+            </button>
+          </div>
+        </div>
+      </template>
+      <p class="webhook-header-status" data-webhook-header-status aria-live="polite"></p>
+    </section>
+
+    <section class="webhook-retry-settings">
+      <div class="webhook-section-heading">
+        <div>
+          <strong>Retries</strong>
+          <small>Use Notifykit's default transient-failure policy for timeouts, network errors, HTTP 408/429, and 5xx responses.</small>
+        </div>
+      </div>
+
+      <label class="webhook-enabled-row webhook-retry-enabled">
+        <span>
+          <strong>Retry transient failures</strong>
+          <small>Disable this to make exactly one delivery attempt.</small>
+        </span>
+        <input type="checkbox" name="retry_enabled" data-webhook-retry-enabled {{ if .RetryEnabled }}checked{{ end }} />
+      </label>
+
+      <div class="webhook-retry-grid" data-webhook-retry-fields>
+        <label>
+          <span>Retries</span>
+          <input name="retry_count" type="number" min="1" max="10" value="{{ .RetryCount }}" />
+          <small>Attempts after the initial request.</small>
+        </label>
+        <label>
+          <span>Initial backoff</span>
+          <input name="retry_backoff" value="{{ .RetryBackoff }}" placeholder="1s" />
+          <small>Examples: <code>500ms</code>, <code>1s</code>.</small>
+        </label>
+        <label>
+          <span>Maximum backoff</span>
+          <input name="retry_max_backoff" value="{{ .RetryMaxBackoff }}" placeholder="30s" />
+          <small>Upper bound for exponential backoff.</small>
+        </label>
+        <label class="webhook-jitter-option">
+          <span>
+            <strong>Jitter</strong>
+            <small>Randomize waits to avoid synchronized retries.</small>
+          </span>
+          <input type="checkbox" name="retry_jitter" {{ if .RetryJitter }}checked{{ end }} />
+        </label>
+      </div>
+    </section>
 
     <fieldset class="webhook-events">
       <legend>
@@ -63,7 +205,7 @@
     <div class="settings-heading webhook-heading">
       <p class="eyebrow">Administration</p>
       <h1>Webhooks</h1>
-      <p class="muted">Send signed Lore events to automation, chat, CI, or indexing systems.</p>
+      <p class="muted">Transform Lore events into JSON and deliver them to chat, automation, CI, or custom APIs.</p>
     </div>
 
     <div class="webhook-workspace">
@@ -72,11 +214,11 @@
           <span class="admin-card-icon">{{ icon "webhook-lucide" 19 }}</span>
           <div>
             <h2>New webhook</h2>
-            <p class="muted">Connect an HTTP endpoint and choose only the events it needs.</p>
+            <p class="muted">Configure an endpoint, payload, headers, retries, and matching events.</p>
           </div>
         </div>
-        <form action="/admin/webhooks" method="post" class="stacked-form" data-validate-form data-error-title="Could not save webhook">
-          {{ template "webhook-fields" (webhookcontext .WebhookDraft .WebhookEvents) }}
+        <form action="/admin/webhooks" method="post" class="stacked-form" data-webhook-form data-validate-form data-error-title="Could not save webhook">
+          {{ template "webhook-fields" (webhookcontext .WebhookDraft .WebhookEvents .Runtime.EncryptionKeyConfigured) }}
           <div class="form-actions">
             <button class="button primary" type="submit">{{ icon "plus-lucide" 15 }}<span>Create webhook</span></button>
           </div>
@@ -104,8 +246,8 @@
                 {{ icon "chevron-down-lucide" 15 }}
               </summary>
               <div class="admin-expand-body webhook-edit-body">
-                <form action="/admin/webhooks/{{ .ID }}" method="post" class="stacked-form" data-validate-form data-error-title="Could not save webhook">
-                  {{ template "webhook-fields" (webhookcontext . $.WebhookEvents) }}
+                <form action="/admin/webhooks/{{ .ID }}" method="post" class="stacked-form" data-webhook-form data-validate-form data-error-title="Could not save webhook">
+                  {{ template "webhook-fields" (webhookcontext . $.WebhookEvents $.Runtime.EncryptionKeyConfigured) }}
                   <div class="form-actions">
                     <button class="button primary" type="submit">{{ icon "save-lucide" 15 }}<span>Save changes</span></button>
                   </div>
@@ -141,7 +283,7 @@
       <div class="panel-title">
         <div>
           <h2>Recent deliveries</h2>
-          <p class="muted">Latest successful and failed HTTP delivery attempts.</p>
+          <p class="muted">Latest successful and failed Notifykit delivery outcomes.</p>
         </div>
         <span class="count-chip">{{ len .WebhookDeliveries }}</span>
       </div>
@@ -154,7 +296,12 @@
               <div>
                 <strong>{{ .WebhookName }}</strong>
                 <code>{{ .Event }}</code>
-                <small>{{ .CreatedAt.Format "2006-01-02 15:04:05" }}{{ if .StatusCode }} · HTTP {{ .StatusCode }}{{ end }}{{ if .Error }} · {{ .Error }}{{ end }}</small>
+                <small>
+                  {{ .CreatedAt.Format "2006-01-02 15:04:05" }}
+                  {{ if .StatusCode }} · HTTP {{ .StatusCode }}{{ end }}
+                  {{ if .Attempts }} · {{ .Attempts }} attempt{{ if ne .Attempts 1 }}s{{ end }}{{ end }}
+                  {{ if .Error }} · {{ .Error }}{{ end }}
+                </small>
               </div>
             </div>
           {{ end }}

@@ -1618,7 +1618,7 @@ func AdminWebhooks(viewDataUseCases viewDataService, webhookUseCases webhookAdmi
 			return
 		}
 		data.WebhookEvents = service.WebhookEvents()
-		data.WebhookDraft = domain.Webhook{Enabled: true}
+		data.WebhookDraft = service.DefaultWebhook()
 		render(views, w, "admin_webhooks", data)
 	}
 }
@@ -1630,22 +1630,136 @@ func SaveAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) 
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook form.")
 			return
 		}
-		var id int64
-		if raw := r.PathValue("id"); raw != "" {
-			parsed, err := strconv.ParseInt(raw, 10, 64)
-			if err != nil || parsed <= 0 {
-				httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+
+		id, err := optionalPositivePathID(r.PathValue("id"))
+		if err != nil {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+			return
+		}
+
+		headers, err := webhookHeadersFromForm(r)
+		if err != nil {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid webhook form.", "headers", err) {
 				return
 			}
-			id = parsed
+			httpresponse.InternalServerError(logger, w, err)
+			return
 		}
-		_, err := webhookUseCases.SaveWebhook(r.Context(), id, service.WebhookInput{Name: r.FormValue("name"), URL: r.FormValue("url"), Events: r.Form["event"], Secret: r.FormValue("secret"), ClearSecret: r.FormValue("clear_secret") == "on", Enabled: r.FormValue("enabled") == "on"})
+
+		retryCount, retryBackoff, retryMaxBackoff, err := webhookRetryFromForm(r)
+		if err != nil {
+			if tryWriteRequestProblem(w, http.StatusBadRequest, "Invalid webhook form.", "retry", err) {
+				return
+			}
+			httpresponse.InternalServerError(logger, w, err)
+			return
+		}
+
+		_, err = webhookUseCases.SaveWebhook(r.Context(), id, service.WebhookInput{
+			Name:            r.FormValue("name"),
+			URL:             r.FormValue("url"),
+			Events:          r.Form["event"],
+			BodyTemplate:    r.FormValue("body_template"),
+			Headers:         headers,
+			RetryEnabled:    r.FormValue("retry_enabled") == "on",
+			RetryCount:      retryCount,
+			RetryBackoff:    retryBackoff,
+			RetryMaxBackoff: retryMaxBackoff,
+			RetryJitter:     r.FormValue("retry_jitter") == "on",
+			Enabled:         r.FormValue("enabled") == "on",
+		})
 		if err != nil {
 			writeAdminProblem(logger, w, err, "Webhook")
 			return
 		}
 		http.Redirect(w, r, "/admin/webhooks", http.StatusSeeOther)
 	}
+}
+
+// optionalPositivePathID parses an optional positive identifier from a route value.
+func optionalPositivePathID(raw string) (int64, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, errors.New("identifier must be a positive integer")
+	}
+	return id, nil
+}
+
+// webhookRetryFromForm parses persisted duration-based retry settings.
+func webhookRetryFromForm(r *http.Request) (int, time.Duration, time.Duration, error) {
+	retryCount, err := strconv.Atoi(strings.TrimSpace(r.FormValue("retry_count")))
+	if err != nil {
+		return 0, 0, 0, newRequestError("retry_count", "Retries must be a number.", err)
+	}
+	retryBackoff, err := time.ParseDuration(strings.TrimSpace(r.FormValue("retry_backoff")))
+	if err != nil {
+		return 0, 0, 0, newRequestError("retry_backoff", "Initial backoff must be a duration such as 1s.", err)
+	}
+	retryMaxBackoff, err := time.ParseDuration(strings.TrimSpace(r.FormValue("retry_max_backoff")))
+	if err != nil {
+		return 0, 0, 0, newRequestError("retry_max_backoff", "Maximum backoff must be a duration such as 30s.", err)
+	}
+
+	return retryCount, retryBackoff, retryMaxBackoff, nil
+}
+
+// webhookHeadersFromForm parses dynamic webhook request-header rows.
+func webhookHeadersFromForm(r *http.Request) ([]service.WebhookHeaderInput, error) {
+	rows := r.Form["webhook_header_row"]
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[string]struct{}, len(rows))
+	headers := make([]service.WebhookHeaderInput, 0, len(rows))
+	for _, row := range rows {
+		if !validWebhookHeaderRow(row) {
+			return nil, newRequestError("headers", "The webhook header form is invalid.", nil)
+		}
+		if _, exists := seen[row]; exists {
+			return nil, newRequestError("headers", "The webhook header form contains a duplicate row.", nil)
+		}
+		seen[row] = struct{}{}
+
+		prefix := "webhook_header_" + row + "_"
+		id := int64(0)
+		if rawID := strings.TrimSpace(r.FormValue(prefix + "id")); rawID != "" {
+			parsed, err := strconv.ParseInt(rawID, 10, 64)
+			if err != nil || parsed <= 0 {
+				return nil, newRequestError("headers", "The webhook header form is invalid.", err)
+			}
+			id = parsed
+		}
+
+		headers = append(headers, service.WebhookHeaderInput{
+			ID:        id,
+			Name:      r.FormValue(prefix + "name"),
+			Value:     r.FormValue(prefix + "value"),
+			Sensitive: r.FormValue(prefix+"sensitive") == "on",
+		})
+	}
+
+	return headers, nil
+}
+
+// validWebhookHeaderRow restricts dynamic form keys to a small identifier alphabet.
+func validWebhookHeaderRow(value string) bool {
+	if value == "" || len(value) > 64 {
+		return false
+	}
+	for _, character := range value {
+		if character >= 'a' && character <= 'z' ||
+			character >= 'A' && character <= 'Z' ||
+			character >= '0' && character <= '9' ||
+			character == '-' || character == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // DeleteAdminWebhook removes one configured outgoing webhook.
@@ -1677,5 +1791,29 @@ func TestAdminWebhook(webhookUseCases webhookAdminService, logger *slog.Logger) 
 			return
 		}
 		http.Redirect(w, r, "/admin/webhooks", http.StatusSeeOther)
+	}
+}
+
+// RevealAdminWebhookHeader decrypts one sensitive webhook header after an explicit administrator action.
+func RevealAdminWebhookHeader(webhookUseCases webhookAdminService, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		webhookID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil || webhookID <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook identifier.")
+			return
+		}
+		headerID, err := strconv.ParseInt(r.PathValue("headerID"), 10, 64)
+		if err != nil || headerID <= 0 {
+			httpresponse.Problem(w, http.StatusBadRequest, "Invalid webhook header identifier.")
+			return
+		}
+
+		value, err := webhookUseCases.RevealWebhookHeader(r.Context(), webhookID, headerID)
+		if err != nil {
+			writeAdminProblem(logger, w, err, "Webhook header")
+			return
+		}
+		httpresponse.Respond(w, http.StatusOK, map[string]string{"value": value})
 	}
 }

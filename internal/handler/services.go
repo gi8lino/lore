@@ -190,6 +190,7 @@ type webhookAdminService interface {
 	SaveWebhook(context.Context, int64, service.WebhookInput) (domain.Webhook, error)
 	DeleteWebhook(context.Context, int64) error
 	TestWebhook(context.Context, int64) error
+	RevealWebhookHeader(context.Context, int64, int64) (string, error)
 }
 
 // Media readers and writers are separated so read-only exports and downloads

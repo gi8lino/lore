@@ -106,7 +106,7 @@ func Run(
 	notificationUseCases := service.NewNotifications(database)
 	mediaUseCases := service.NewMedia(database)
 	navigationUseCases := service.NewNavigation(database)
-	webhookUseCases := service.NewWebhooks(database, secretCipher)
+	webhookUseCases := service.NewWebhooks(database, secretCipher, logger.With("component", "webhooks"), publicURL)
 	pageUseCases := service.NewPages(database, logger, webhookUseCases)
 	preferenceUseCases := service.NewPreferences(database)
 	recycleBinUseCases := service.NewRecycleBin(database)
@@ -156,28 +156,22 @@ func Run(
 
 	bearerAuth := auth.NewBearer(database)
 
-	views, err := handler.NewViews(
-		appFS,
-		logger,
-		version,
-		commit,
-		availableThemes,
-		handler.RuntimeInfo{
-			ListenAddress:                     listenAddress,
-			PublicURL:                         publicURL,
-			PDFURL:                            pdfURL,
-			AuthModeOverride:                  string(authModeOverride),
-			OIDCIssuerOverride:                oidcIssuer,
-			OIDCClientIDOverride:              oidcClientID,
-			TrustedUsernameHeadersOverride:    trustedUsernameHeaders,
-			TrustedEmailHeadersOverride:       trustedEmailHeaders,
-			TrustedDisplayNameHeadersOverride: trustedDisplayNameHeaders,
-			OIDCClientSecretConfigured:        oidcClientSecret != "",
-			OIDCSessionSecretConfigured:       len(oidcSessionSecret) >= 32,
-			EncryptionKeyConfigured:           secretCipher.Configured(),
-			LocalLoginEnabled:                 localLogin,
-			ThemeDirectory:                    themeDirectory,
-		})
+	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
+		ListenAddress:                     listenAddress,
+		PublicURL:                         publicURL,
+		PDFURL:                            pdfURL,
+		AuthModeOverride:                  string(authModeOverride),
+		OIDCIssuerOverride:                oidcIssuer,
+		OIDCClientIDOverride:              oidcClientID,
+		TrustedUsernameHeadersOverride:    trustedUsernameHeaders,
+		TrustedEmailHeadersOverride:       trustedEmailHeaders,
+		TrustedDisplayNameHeadersOverride: trustedDisplayNameHeaders,
+		OIDCClientSecretConfigured:        oidcClientSecret != "",
+		OIDCSessionSecretConfigured:       len(oidcSessionSecret) >= 32,
+		EncryptionKeyConfigured:           secretCipher.Configured(),
+		LocalLoginEnabled:                 localLogin,
+		ThemeDirectory:                    themeDirectory,
+	})
 	if err != nil {
 		setupLogger.Error(
 			"create views",

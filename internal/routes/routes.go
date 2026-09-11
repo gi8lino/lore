@@ -101,6 +101,7 @@ func addRoutes(
 	mux.Handle("POST /admin/webhooks/{id}", browserAuthn(adminAuthz(handler.SaveAdminWebhook(webhookUseCases, logger))))
 	mux.Handle("POST /admin/webhooks/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminWebhook(webhookUseCases, logger))))
 	mux.Handle("POST /admin/webhooks/{id}/test", browserAuthn(adminAuthz(handler.TestAdminWebhook(webhookUseCases, logger))))
+	mux.Handle("POST /admin/webhooks/{id}/headers/{headerID}/reveal", browserAuthn(adminAuthz(handler.RevealAdminWebhookHeader(webhookUseCases, logger))))
 	mux.Handle("POST /admin/permissions", browserAuthn(adminAuthz(handler.SaveAdminPageAccess(accessUseCases, logger))))
 	mux.Handle("POST /admin/permissions/{id}/delete", browserAuthn(adminAuthz(handler.DeleteAdminPageAccess(accessUseCases, logger))))
 	mux.Handle(

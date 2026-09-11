@@ -5,6 +5,7 @@ import { setupGroupMemberPicker } from "./groups.ts";
 import { setupNavigationIconPicker } from "./navigation.ts";
 import { initAdminPages } from "./pages.ts";
 import { setupAdminUserEditor, setupPendingOIDCEditor } from "./users.ts";
+import { initAdminWebhooks } from "./webhooks.ts";
 
 // Initializes administrator features present on the current page.
 export function initAdmin(): void {
@@ -31,4 +32,5 @@ export function initAdmin(): void {
 
   initAdminConfiguration();
   initAdminPages();
+  initAdminWebhooks();
 }
