@@ -367,10 +367,7 @@ func CreateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid template form.")
 			return
 		}
-		if _, err := templateUseCases.CreatePageTemplate(
-			r.Context(),
-			pageTemplateInputFromForm(r),
-		); err != nil {
+		if _, err := templateUseCases.CreatePageTemplate(r.Context(), pageTemplateInputFromForm(r)); err != nil {
 			writeAdminProblem(logger, w, err, "Page template")
 			return
 		}
@@ -391,11 +388,7 @@ func UpdateAdminPageTemplate(templateUseCases templateService, logger *slog.Logg
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid template form.")
 			return
 		}
-		if err := templateUseCases.UpdatePageTemplate(
-			r.Context(),
-			id,
-			pageTemplateInputFromForm(r),
-		); err != nil {
+		if err := templateUseCases.UpdatePageTemplate(r.Context(), id, pageTemplateInputFromForm(r)); err != nil {
 			writeAdminProblem(logger, w, err, "Page template")
 			return
 		}

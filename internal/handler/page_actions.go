@@ -201,8 +201,7 @@ func reviewGroupID(w http.ResponseWriter, value string) (int64, bool) {
 		return id, true
 	}
 
-	httpresponse.Problem(
-		w,
+	httpresponse.Problem(w, 
 		http.StatusUnprocessableEntity,
 		"Review settings are invalid.",
 		httpresponse.NewFieldProblem("reviewer_group_id", "Choose a valid reviewer group."),

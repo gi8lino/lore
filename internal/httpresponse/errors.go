@@ -1,9 +1,10 @@
 package httpresponse
 
 import (
-	"github.com/containeroo/uuidv7"
 	"log/slog"
 	"net/http"
+
+	"github.com/containeroo/uuidv7"
 )
 
 // RequestWriter retains diagnostic context for the request and its access log.

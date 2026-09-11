@@ -27,6 +27,7 @@ type emptyContractServices struct {
 }
 
 func (emptyContractServices) ListPages(context.Context, int) ([]domain.Page, error) { return nil, nil }
+
 func (emptyContractServices) Search(context.Context, string, int) ([]domain.Page, error) {
 	return nil, nil
 }
@@ -34,25 +35,35 @@ func (emptyContractServices) Tags(context.Context) ([]string, error) { return ni
 func (emptyContractServices) AssignableGroups(context.Context, domain.User) ([]domain.Group, error) {
 	return nil, nil
 }
+
 func (emptyContractServices) GroupMembers(context.Context, int64) ([]domain.User, error) {
 	return nil, nil
 }
+
 func (emptyContractServices) SearchUsers(context.Context, string, int) ([]domain.User, error) {
 	return nil, nil
 }
+
 func (emptyContractServices) NavigationPages(context.Context) ([]domain.Page, error) { return nil, nil }
+
 func (emptyContractServices) KnowledgeSnippets(context.Context) ([]domain.KnowledgeSnippet, error) {
 	return nil, nil
 }
+
 func (emptyContractServices) PageAliases(context.Context) (map[string]string, error) { return nil, nil }
+
 func (emptyContractServices) KnowledgeGraph(context.Context, int) (domain.KnowledgeGraph, error) {
 	return domain.KnowledgeGraph{}, nil
 }
+
 func (emptyContractServices) Notifications(context.Context, int64, int) ([]domain.Notification, int, error) {
 	return nil, 0, nil
 }
+
 func (emptyContractServices) MarkNotificationRead(context.Context, int64, int64) error { return nil }
-func (emptyContractServices) MarkAllNotificationsRead(context.Context, int64) error    { return nil }
+
+func (emptyContractServices) MarkAllNotificationsRead(context.Context, int64) error { return nil }
+
 func (emptyContractServices) OpenNotification(context.Context, int64, int64) (string, error) {
 	return "", nil
 }
@@ -64,9 +75,11 @@ func (emptyContractServices) Attachments(context.Context) ([]domain.Attachment, 
 func (emptyContractServices) CanView(context.Context, domain.User, string) (bool, error) {
 	return true, nil
 }
+
 func (emptyContractServices) CanEdit(context.Context, domain.User, string) (bool, error) {
 	return true, nil
 }
+
 func (emptyContractServices) FilterPages(_ context.Context, _ domain.User, pages []domain.Page) ([]domain.Page, error) {
 	return pages, nil
 }
