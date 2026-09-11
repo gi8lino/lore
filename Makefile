@@ -1,11 +1,5 @@
 .DEFAULT_GOAL := help
 
-## Location to install local development tools to
-LOCALBIN ?= bin
-
-$(LOCALBIN):
-	@mkdir -p "$@"
-
 ## Frontend
 WEB_BUILD := scripts/web/build.sh
 CSS_BUILD := scripts/web/build-css.sh
@@ -22,29 +16,20 @@ NODE_MODULES := node_modules/.package-lock.json
 GOLANGCI_LINT_VERSION ?= v2.13.2
 
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
-DEV_TOOLS_VERSION ?= v0.5.0
+DEV_TOOLS_VERSION ?= v0.7.0
 
 # renovate: datasource=npm depName=prettier
 PRETTIER_VERSION ?= 3.9.6
 
-## Tool Binaries
-DEV_TOOL_NAMES := dev-port open-browser dev-tag make-help go-install-tool
-DEV_TOOL_TARGETS := $(addprefix $(LOCALBIN)/,$(DEV_TOOL_NAMES))
-DEV_TOOL_VERSIONED := $(addsuffix -$(DEV_TOOLS_VERSION),$(DEV_TOOL_TARGETS))
+## Shared development tools
+include bin/dev-tools.mk
+include $(call dev-tools-module,tag)
+include $(call dev-tools-module,port)
+include $(call dev-tools-module,browser)
+include $(call dev-tools-module,help)
 
-DEV_PORT := $(LOCALBIN)/dev-port
-OPEN_BROWSER := $(LOCALBIN)/open-browser
-DEV_TAG := $(LOCALBIN)/dev-tag
-MAKE_HELP := $(LOCALBIN)/make-help
-GO_INSTALL_TOOL := $(LOCALBIN)/go-install-tool
-
-GOLANGCI_LINT := $(LOCALBIN)/golangci-lint
-
-# Run a local tool while displaying only its executable name.
-define run-tool
-@printf '%s\n' '$(notdir $(1)) $(2)'
-@$(1) $(2)
-endef
+## Project-local tools
+GOLANGCI_LINT := bin/golangci-lint
 
 ## Build Configuration
 BINARY ?= lore
@@ -60,49 +45,23 @@ COMPOSE_FILE := deploy/compose.yaml
 DB_CONTAINER_NAME ?= postgres
 PDF_CONTAINER_NAME ?= html2pdf
 
-# Named ports persist across separate Make invocations in this checkout.
-dev-port = $(or $(shell $(DEV_PORT) $(1)),$(error Could not resolve port for $(1)))
-
 LORE_ASSIGNED_PORT ?= $(call dev-port,app)
 DB_ASSIGNED_PORT ?= $(call dev-port,postgres)
 PDF_ASSIGNED_PORT ?= $(call dev-port,pdf)
 
 ## Site Configuration
 SITE_CONFIG ?= docs/site.toml
-SITE_PORT ?= 8081
+SITE_PORT ?= $(call dev-port,site)
+SITE_URL = http://127.0.0.1:$(SITE_PORT)/
 SCREENSHOT_SCRIPT := scripts/screenshots/run.sh
 SCREENSHOT_BROWSER_CHANNEL ?= chrome
 
 ## Formatting
 PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
 
-##@ Tagging
-
-VERSION_PREFIX ?= v
-
-.PHONY: current
-current: $(DEV_TAG) ## Show the current semantic version tag.
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" current)
-
-.PHONY: patch
-patch: $(DEV_TAG) ## Create a new patch release (x.y.Z+1).
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" patch)
-
-.PHONY: minor
-minor: $(DEV_TAG) ## Create a new minor release (x.Y+1.0).
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" minor)
-
-.PHONY: major
-major: $(DEV_TAG) ## Create a new major release (X+1.0.0).
-	$(call run-tool,$(DEV_TAG),--prefix "$(VERSION_PREFIX)" major)
-
+# Compatibility alias for the shared current target.
 .PHONY: tag
 tag: current
-
-.PHONY: push
-push: ## Push tags to the configured remote.
-	git push --tags
-
 
 ##@ Development
 
@@ -211,11 +170,14 @@ site: generate web ## Build the published read-only documentation site.
 	go run $(COMMAND) build --config "$(SITE_CONFIG)"
 
 .PHONY: site-serve
-site-serve: generate web ## Build and serve the documentation site locally.
+site-serve: generate web $(DEV_PORT) $(OPEN_BROWSER) ## Build, serve, and open the documentation site locally.
 	go run $(COMMAND) build \
 		--config "$(SITE_CONFIG)" \
-		--site-url "http://127.0.0.1:$(SITE_PORT)/"
-	@echo "Serving Lore documentation at http://127.0.0.1:$(SITE_PORT)"
+		--site-url "$(SITE_URL)"
+	@echo "Serving Lore documentation at $(SITE_URL)"
+	@$(OPEN_BROWSER) "$(SITE_URL)" & \
+	browser_pid=$$!; \
+	trap 'kill "$$browser_pid" 2>/dev/null || true' EXIT; \
 	python3 -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory docs/site
 
 .PHONY: screenshots
@@ -280,29 +242,7 @@ $(NODE_MODULES): package.json package-lock.json
 	$(NPM) ci
 
 .PHONY: dev-tools
-dev-tools: $(DEV_TOOL_TARGETS) ## Download the pinned development tools.
-
-$(DEV_TOOL_TARGETS): $(LOCALBIN)/%: $(LOCALBIN)/%-$(DEV_TOOLS_VERSION)
-	@ln -sf "$(notdir $<)" "$@"
-
-$(DEV_TOOL_VERSIONED): $(LOCALBIN)/%-$(DEV_TOOLS_VERSION): | $(LOCALBIN)
-	$(call download-dev-tool,$*,$@)
-
-# download-dev-tool downloads a versioned tool from gi8lino/dev-tools.
-# $1 - release asset name
-# $2 - versioned destination path
-define download-dev-tool
-	@set -eu; \
-	tmp="$(2).tmp"; \
-	trap 'rm -f "$$tmp"' EXIT INT TERM; \
-	echo "Downloading gi8lino/dev-tools $(DEV_TOOLS_VERSION) $(1)"; \
-	curl --fail --silent --show-error --location \
-		"https://github.com/gi8lino/dev-tools/releases/download/$(DEV_TOOLS_VERSION)/$(1)" \
-		-o "$$tmp"; \
-	chmod +x "$$tmp"; \
-	mv "$$tmp" "$(2)"; \
-	trap - EXIT INT TERM
-endef
+dev-tools: $(DEV_PORT) $(OPEN_BROWSER) $(DEV_TAG) $(MAKE_HELP) $(GO_INSTALL_TOOL) ## Download the pinned development tools.
 
 .PHONY: golangci-lint
 golangci-lint: $(GO_INSTALL_TOOL) ## Download golangci-lint locally if necessary.
@@ -311,9 +251,3 @@ golangci-lint: $(GO_INSTALL_TOOL) ## Download golangci-lint locally if necessary
 		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
 		--tool-version "$(GOLANGCI_LINT_VERSION)"
 
-
-##@ General
-
-.PHONY: help
-help: $(MAKE_HELP) ## Display this help.
-	@$(MAKE_HELP) $(MAKEFILE_LIST)
