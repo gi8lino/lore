@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import {
   editorWordStats,
-  immediateEditorPathOptions,
   preferredEditorMode,
   rememberEditorMode,
   resolvedGuidedEditorPath,
@@ -61,30 +60,6 @@ test("guided editor paths keep an existing final segment while moving", () => {
   assert.equal(
     resolvedGuidedEditorPath("Renamed title", "runbooks", "database-restore"),
     "runbooks/database-restore",
-  );
-});
-
-test("guided locations suggest matching children one level at a time", () => {
-  const options = [
-    { slug: "applications", label: "Applications" },
-    { slug: "platforms", label: "Platforms" },
-    { slug: "platforms/containers", label: "Platforms / Containers" },
-    { slug: "platforms/kubernetes", label: "Platforms / Kubernetes" },
-    {
-      slug: "platforms/kubernetes/tools",
-      label: "Platforms / Kubernetes / Tools",
-    },
-  ];
-
-  assert.deepEqual(immediateEditorPathOptions(options, "", "pla"), [
-    { slug: "platforms", label: "Platforms" },
-  ]);
-  assert.deepEqual(immediateEditorPathOptions(options, "platforms", "k"), [
-    { slug: "platforms/kubernetes", label: "Platforms / Kubernetes" },
-  ]);
-  assert.deepEqual(
-    immediateEditorPathOptions(options, "platforms", "tools"),
-    [],
   );
 });
 

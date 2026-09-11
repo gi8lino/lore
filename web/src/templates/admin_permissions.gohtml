@@ -10,7 +10,7 @@
       <div class="panel-title"><div><h2>Add access rule</h2><p class="muted">Paths without rules remain available according to normal Lore roles.</p></div></div>
       <form action="/admin/permissions" method="post" class="settings-grid page-access-form" data-validate-form data-error-title="Could not save access rule">
         <label class="page-access-path">Path
-          <input name="path" required placeholder="platform/production" autocomplete="off" aria-describedby="page-access-path-help" />
+          <input data-path-input name="path" required placeholder="platform/production" autocomplete="off" aria-describedby="page-access-path-help" />
           <small id="page-access-path-help">The rule also applies below this path until a more specific path has its own rules.</small>
         </label>
         <label>Group

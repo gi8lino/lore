@@ -68,6 +68,9 @@
       </div>
       <footer>Lore {{ .Version }} · Markdown-first knowledge</footer>
       {{ template "app-dialogs" . }}
+      <div data-path-catalog hidden>
+        {{ range .PagePathOptions }}<span data-path-option data-slug="{{ .Slug }}" data-label="{{ .Label }}"></span>{{ end }}
+      </div>
     </body>
   </html>
 {{ end }}

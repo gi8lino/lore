@@ -27,7 +27,7 @@
         <option value="">Choose group…</option>
         {{ range .Groups }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
       </select>
-      <input name="target" data-bulk-field="move" hidden placeholder="archive/2026" />
+      <input data-path-input name="target" data-bulk-field="move" hidden placeholder="archive/2026" />
       <button class="button primary" type="submit" data-bulk-submit disabled>Apply</button>
     </div>
     <div class="admin-page-table-wrap">

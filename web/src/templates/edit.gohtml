@@ -119,7 +119,7 @@
         </div>
       {{ end }}
 
-      {{ if .EditorTemplate.Fields }}
+      {{ if and .EditorTemplate .EditorTemplate.Fields }}
         <section class="editor-blueprint-fields" data-blueprint-fields>
           <div><strong>{{ .EditorTemplate.Name }} fields</strong><span class="muted">Values replace matching <code>{{ "{{field:name}}" }}</code> placeholders when saved.</span></div>
           <div class="form-grid">
@@ -179,34 +179,9 @@
         <div class="form-grid">
           <div class="editor-location-field">
             <label for="editor-page-location">Page location</label>
-            <div class="editor-path-picker" data-editor-path-picker>
-              <div class="editor-path-breadcrumbs" data-editor-path-breadcrumbs aria-label="Selected page location"></div>
-              <input
-                id="editor-page-location"
-                type="text"
-                data-editor-path-input
-                data-error-field="slug"
-                placeholder="Find or create a folder…"
-                autocomplete="off"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-controls="editor-path-suggestions"
-                aria-expanded="false"
-              />
-              <div
-                id="editor-path-suggestions"
-                class="editor-path-suggestions"
-                data-editor-path-suggestions
-                role="listbox"
-                hidden
-              ></div>
-              <input type="hidden" name="parent_path" value="{{ .EditorParentPath }}" data-editor-parent-path />
-              <div data-editor-path-catalog hidden>
-                {{ range .PagePathOptions }}
-                  <span data-editor-path-option data-slug="{{ .Slug }}" data-label="{{ .Label }}"></span>
-                {{ end }}
-              </div>
-            </div>
+            <input id="editor-page-location" type="text" name="parent_path"
+              value="{{ .EditorParentPath }}" data-path-input data-editor-parent-path
+              data-error-field="slug" placeholder="Find or enter a folder path…" autocomplete="off" />
             <input
               type="hidden"
               name="slug"
@@ -214,7 +189,7 @@
               data-editor-path-segment="{{ .EditorPathSegment }}"
               value="{{ if .Page }}{{ .Page.Slug }}{{ else }}{{ .EditorInitialSlug }}{{ end }}"
             />
-            <small>Build the location one level at a time. Press Enter to select a match or create a new folder.</small>
+            <small>Choose an existing location or type a new folder path. Leave empty for the top level.</small>
           </div>
           <label>
             Tags
@@ -342,7 +317,7 @@
         <label class="editor-deprecated-target" data-deprecated-target>
           Replacement page <span class="optional">for deprecated pages</span>
           <input
-            name="deprecated_target"
+            data-path-input name="deprecated_target"
             value="{{ if .Page }}{{ .Page.DeprecatedTarget }}{{ end }}"
             placeholder="applications/new-service"
           />

@@ -1,3 +1,4 @@
+import { initPathPickers } from "./features/path-picker.ts";
 // Browser entry point that initializes Lore UI features.
 
 import { initAdmin } from "./features/admin/index.ts";
@@ -20,6 +21,7 @@ import { initGraph } from "./features/graph.ts";
 import { initNotifications } from "./features/notifications.ts";
 import { initMentionAutocomplete } from "./features/mentions.ts";
 
+initPathPickers();
 initTheme();
 initPWA();
 initLayout();

@@ -63,32 +63,6 @@ export function resolvedGuidedEditorPath(
   return [normalizedParent, segment].filter(Boolean).join("/");
 }
 
-export type EditorPathOption = { slug: string; label: string };
-
-export function immediateEditorPathOptions(
-  options: EditorPathOption[],
-  parent: string,
-  query: string,
-): EditorPathOption[] {
-  const normalizedParent = parent.trim().replace(/^\/+|\/+$/g, "");
-  const prefix = normalizedParent ? `${normalizedParent}/` : "";
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-
-  return options.filter((option) => {
-    if (!option.slug.startsWith(prefix)) return false;
-
-    const remainder = option.slug.slice(prefix.length);
-    if (!remainder || remainder.includes("/")) return false;
-
-    const label = option.label.split(" / ").at(-1) || remainder;
-    return (
-      !normalizedQuery ||
-      label.toLocaleLowerCase().startsWith(normalizedQuery) ||
-      remainder.toLocaleLowerCase().startsWith(normalizedQuery)
-    );
-  });
-}
-
 // Calculates word, character, and line counts.
 export function editorWordStats(value: string): {
   words: number;
@@ -497,260 +471,36 @@ function setupDrafts(
   return { clearDraft, flushDraft };
 }
 
+// The shared picker owns parent selection; the editor derives the page slug.
 function setupPathPreview(form: HTMLFormElement): void {
   const title = namedControl(form, "title");
   const slug = namedControl(form, "slug");
   const parent = namedControl(form, "parent_path");
-  const picker = form.querySelector<HTMLElement>("[data-editor-path-picker]");
-  const input = form.querySelector<HTMLInputElement>(
-    "[data-editor-path-input]",
-  );
-  const breadcrumbs = form.querySelector<HTMLElement>(
-    "[data-editor-path-breadcrumbs]",
-  );
-  const suggestionList = form.querySelector<HTMLElement>(
-    "[data-editor-path-suggestions]",
-  );
   const preview = form.querySelector<HTMLElement>("[data-editor-path-preview]");
   const chromeTitle = form.querySelector<HTMLElement>(
     "[data-editor-chrome-title]",
   );
-  if (
-    !title ||
-    !slug ||
-    !parent ||
-    !picker ||
-    !input ||
-    !breadcrumbs ||
-    !suggestionList ||
-    !preview
-  )
-    return;
-
-  const titleField = title;
-  const slugField = slug;
-  const parentField = parent;
-  const pathInput = input;
-  const crumbList = breadcrumbs;
-  const pathSuggestions = suggestionList;
-  const pathPreview = preview;
-  const fixedSegment = slugField.dataset.editorPathSegment || "";
-  const options = [
-    ...picker.querySelectorAll<HTMLElement>("[data-editor-path-option]"),
-  ]
-    .map((option): EditorPathOption => ({
-      slug: option.dataset.slug || "",
-      label: option.dataset.label || "",
-    }))
-    .filter((option) => option.slug && option.label);
-  const customLabels = new Map<string, string>();
-  let activeSuggestion = 0;
-
-  function optionLabel(path: string, fallback: string): string {
-    const option = options.find((candidate) => candidate.slug === path);
-    return (
-      customLabels.get(path) || option?.label.split(" / ").at(-1) || fallback
-    );
-  }
-
-  function matchingOptions(): EditorPathOption[] {
-    return immediateEditorPathOptions(
-      options,
-      parentField.value,
-      pathInput.value,
-    );
-  }
-
-  function updatePath(): void {
+  if (!title || !slug || !parent || !preview) return;
+  const fixedSegment = slug.dataset.editorPathSegment || "";
+  const update = (): void => {
     const path = resolvedGuidedEditorPath(
-      titleField.value,
-      parentField.value,
+      title.value,
+      parent.value,
       fixedSegment,
     );
-
-    slugField.value = path;
-
-    pathPreview.textContent = path
+    slug.value = path;
+    preview.textContent = path
       ? `Pages / ${path.split("/").join(" / ")}`
       : "Pages / new-page";
-
-    if (chromeTitle)
-      chromeTitle.textContent = titleField.value.trim() || "Untitled";
-  }
-
-  function setParent(path: string, label = ""): void {
-    parentField.value = path;
-    if (label) customLabels.set(path, label);
-    pathInput.value = "";
-    activeSuggestion = 0;
-    parentField.dispatchEvent(new Event("input", { bubbles: true }));
-    renderBreadcrumbs();
-    updatePath();
-    renderSuggestions();
-  }
-
-  function renderBreadcrumbs(): void {
-    crumbList.replaceChildren();
-
-    const root = document.createElement("button");
-    root.type = "button";
-    root.className = "editor-path-crumb";
-    root.textContent = "Top level";
-    root.addEventListener("click", () => {
-      setParent("");
-      pathInput.focus();
-    });
-    crumbList.append(root);
-
-    const segments = parentField.value.split("/").filter(Boolean);
-    let path = "";
-
-    for (const segment of segments) {
-      path = path ? `${path}/${segment}` : segment;
-      const crumbPath = path;
-      const crumb = document.createElement("button");
-
-      crumb.type = "button";
-      crumb.className = "editor-path-crumb";
-      crumb.textContent = optionLabel(crumbPath, segment);
-      crumb.addEventListener("click", () => {
-        setParent(crumbPath);
-        pathInput.focus();
-      });
-      crumbList.append(crumb);
-    }
-
-    pathInput.placeholder = segments.length
-      ? `Inside ${optionLabel(parentField.value, segments.at(-1) || "folder")}…`
-      : "Find or create at top level…";
-  }
-
-  function chooseOption(option: EditorPathOption): void {
-    setParent(option.slug);
-    pathInput.focus();
-  }
-
-  function createSegment(): void {
-    const label = pathInput.value.trim();
-    const segment = slugifyEditorPath(label).replaceAll("/", "-");
-    if (!segment) return;
-
-    const path = [parentField.value, segment].filter(Boolean).join("/");
-    setParent(path, label);
-    pathInput.focus();
-  }
-
-  function renderSuggestions(): void {
-    const matches = matchingOptions();
-    const query = pathInput.value.trim();
-    activeSuggestion = Math.min(
-      activeSuggestion,
-      Math.max(0, matches.length - 1),
-    );
-    pathSuggestions.replaceChildren();
-
-    for (const [index, option] of matches.entries()) {
-      const button = document.createElement("button");
-      const segment = option.slug.split("/").at(-1) || option.slug;
-
-      button.type = "button";
-      button.id = `editor-path-suggestion-${index}`;
-      button.className = `editor-path-suggestion${index === activeSuggestion ? " active" : ""}`;
-      button.setAttribute("role", "option");
-      button.setAttribute("aria-selected", String(index === activeSuggestion));
-      button.textContent = optionLabel(option.slug, segment);
-      button.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        chooseOption(option);
-      });
-      pathSuggestions.append(button);
-    }
-
-    if (matches.length === 0 && query) {
-      const create = document.createElement("button");
-      const description = document.createElement("small");
-
-      create.type = "button";
-      create.className = "editor-path-suggestion active";
-      create.setAttribute("role", "option");
-      create.setAttribute("aria-selected", "true");
-      create.append(document.createTextNode(query), description);
-      description.textContent = "Create folder";
-      create.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        createSegment();
-      });
-      pathSuggestions.append(create);
-    }
-
-    const open =
-      document.activeElement === pathInput &&
-      (matches.length > 0 || Boolean(query));
-    pathSuggestions.hidden = !open;
-    pathInput.setAttribute("aria-expanded", String(open));
-    if (open && matches.length > 0)
-      pathInput.setAttribute(
-        "aria-activedescendant",
-        `editor-path-suggestion-${activeSuggestion}`,
-      );
-    else pathInput.removeAttribute("aria-activedescendant");
-  }
-
-  function render(): void {
-    renderBreadcrumbs();
-    updatePath();
-    renderSuggestions();
-  }
-
-  titleField.addEventListener("input", updatePath);
-  pathInput.addEventListener("focus", renderSuggestions);
-  pathInput.addEventListener("input", () => {
-    activeSuggestion = 0;
-    renderSuggestions();
-  });
-  pathInput.addEventListener("keydown", (event) => {
-    const matches = matchingOptions();
-
-    switch (event.key) {
-      case "ArrowDown":
-        if (!matches.length) return;
-        event.preventDefault();
-        activeSuggestion = (activeSuggestion + 1) % matches.length;
-        renderSuggestions();
-        break;
-      case "ArrowUp":
-        if (!matches.length) return;
-        event.preventDefault();
-        activeSuggestion =
-          (activeSuggestion - 1 + matches.length) % matches.length;
-        renderSuggestions();
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (matches[activeSuggestion]) chooseOption(matches[activeSuggestion]);
-        else createSegment();
-        break;
-      case "Backspace":
-        if (pathInput.value || !parentField.value) return;
-        event.preventDefault();
-        setParent(parentField.value.split("/").slice(0, -1).join("/"));
-        break;
-      case "Escape":
-        pathSuggestions.hidden = true;
-        pathInput.setAttribute("aria-expanded", "false");
-        break;
-    }
-  });
-  pathInput.addEventListener("blur", () => {
-    setTimeout(() => {
-      pathSuggestions.hidden = true;
-      pathInput.setAttribute("aria-expanded", "false");
-    }, 0);
-  });
+    if (chromeTitle) chromeTitle.textContent = title.value.trim() || "Untitled";
+  };
+  title.addEventListener("input", update);
+  parent.addEventListener("input", update);
+  parent.addEventListener("change", update);
   form.addEventListener("editor:restore-draft", () =>
-    requestAnimationFrame(render),
+    requestAnimationFrame(update),
   );
-  render();
+  update();
 }
 
 function setupStats(form: HTMLFormElement): void {
