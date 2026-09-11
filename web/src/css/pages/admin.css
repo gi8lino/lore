@@ -557,13 +557,17 @@
 .token-secret p {
   margin: 0 0 8px;
 }
-.token-secret code {
-  display: block;
+.token-secret-value {
+  margin: 0;
+}
+.token-secret-value pre {
   overflow: auto;
-  margin-bottom: 10px;
-  padding: 9px;
+  padding: 12px 76px 12px 12px;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-elevated);
+}
+.token-secret-value code {
   user-select: all;
 }
 .export-actions {

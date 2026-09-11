@@ -1,6 +1,6 @@
 // Client-side enhancements for rendered Markdown.
 
-import { copyText } from "../core/clipboard.ts";
+import { setupCopyButton } from "../core/clipboard.ts";
 
 type MarkdownRoot = Document | HTMLElement;
 type SortDirection = "ascending" | "descending";
@@ -480,32 +480,12 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
 
     button.type = "button";
     button.className = "code-copy-button";
-    button.textContent = "Copy";
-    button.setAttribute("aria-label", "Copy code to clipboard");
+    setupCopyButton(
+      button,
+      () => code.textContent ?? "",
+      "Copy code to clipboard",
+    );
     wrapper.append(button);
-
-    let resetTimer: ReturnType<typeof setTimeout> | undefined;
-
-    button.addEventListener("click", async () => {
-      if (resetTimer) clearTimeout(resetTimer);
-
-      button.disabled = true;
-
-      try {
-        await copyText(code.textContent ?? "");
-        button.textContent = "Copied";
-        button.classList.add("copied");
-      } catch (error) {
-        console.error("copy code failed", error);
-        button.textContent = "Copy failed";
-      } finally {
-        button.disabled = false;
-        resetTimer = setTimeout(() => {
-          button.textContent = "Copy";
-          button.classList.remove("copied");
-        }, 1600);
-      }
-    });
   }
 }
 

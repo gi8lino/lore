@@ -1,6 +1,6 @@
 // Personal access token creation and revocation UI.
 
-import { copyText } from "../core/clipboard.ts";
+import { setupCopyButton } from "../core/clipboard.ts";
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
 import { requiredAttribute } from "../core/dom.ts";
 import { isRecord } from "../core/guards.ts";
@@ -47,24 +47,25 @@ function renderTokenSecret(container: HTMLElement, secret: string): void {
 
   const message = document.createElement("p");
 
-  message.innerHTML =
-    "<strong>Copy this token now.</strong> It will not be shown again.";
+  message.textContent = "This token is shown only once.";
 
+  const block = document.createElement("div");
+
+  block.className = "code-block token-secret-value";
+
+  const pre = document.createElement("pre");
   const code = document.createElement("code");
 
   code.textContent = secret;
+  pre.append(code);
 
   const copy = document.createElement("button");
 
   copy.type = "button";
-  copy.className = "button";
-  copy.textContent = "Copy token";
-  copy.addEventListener("click", async () => {
-    await copyText(secret);
-    copy.textContent = "Copied";
-    setTimeout(() => (copy.textContent = "Copy token"), 1600);
-  });
-  container.append(message, code, copy);
+  copy.className = "code-copy-button";
+  setupCopyButton(copy, () => secret, "Copy token to clipboard");
+  block.append(pre, copy);
+  container.append(message, block);
 }
 
 // Prepends token row.
