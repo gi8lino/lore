@@ -50,7 +50,7 @@
           <strong>Request headers</strong>
           <small>Add authentication or receiver-specific HTTP headers. Lore manages transport headers such as Content-Type.</small>
         </div>
-        <button class="button compact" type="button" data-webhook-header-add>{{ icon "plus-lucide" 14 }}<span>Add header</span></button>
+        <button class="button compact" type="button" data-webhook-header-add title="Add request header">{{ icon "plus-lucide" 14 }}<span>Add</span></button>
       </div>
 
       {{ if not .EncryptionKeyConfigured }}
@@ -141,47 +141,53 @@
       <p class="webhook-header-status" data-webhook-header-status aria-live="polite"></p>
     </section>
 
-    <section class="webhook-retry-settings">
-      <div class="webhook-section-heading">
+    <details class="webhook-retry-settings">
+      <summary class="webhook-retry-summary">
         <div>
           <strong>Retries</strong>
           <small>Use Notifykit's default transient-failure policy for timeouts, network errors, HTTP 408/429, and 5xx responses.</small>
         </div>
-      </div>
+        <span class="webhook-retry-summary-chevron" aria-hidden="true">{{ icon "chevron-down-lucide" 14 }}</span>
+      </summary>
 
-      <label class="webhook-enabled-row webhook-retry-enabled">
-        <span>
-          <strong>Retry transient failures</strong>
-          <small>Disable this to make exactly one delivery attempt.</small>
-        </span>
-        <input type="checkbox" name="retry_enabled" data-webhook-retry-enabled {{ if .RetryEnabled }}checked{{ end }} />
-      </label>
-
-      <div class="webhook-retry-grid" data-webhook-retry-fields>
-        <label>
-          <span>Retries</span>
-          <input name="retry_count" type="number" min="1" max="10" value="{{ .RetryCount }}" />
-          <small>Attempts after the initial request.</small>
-        </label>
-        <label>
-          <span>Initial backoff</span>
-          <input name="retry_backoff" value="{{ .RetryBackoff }}" placeholder="1s" />
-          <small>Examples: <code>500ms</code>, <code>1s</code>.</small>
-        </label>
-        <label>
-          <span>Maximum backoff</span>
-          <input name="retry_max_backoff" value="{{ .RetryMaxBackoff }}" placeholder="30s" />
-          <small>Upper bound for exponential backoff.</small>
-        </label>
-        <label class="webhook-jitter-option">
+      <div class="webhook-retry-content">
+        <label class="webhook-enabled-row webhook-retry-enabled">
           <span>
-            <strong>Jitter</strong>
-            <small>Randomize waits to avoid synchronized retries.</small>
+            <strong>Retry transient failures</strong>
+            <small>Disable this to make exactly one delivery attempt.</small>
           </span>
-          <input type="checkbox" name="retry_jitter" {{ if .RetryJitter }}checked{{ end }} />
+          <input type="checkbox" name="retry_enabled" data-webhook-retry-enabled {{ if .RetryEnabled }}checked{{ end }} />
         </label>
+
+        <div class="webhook-retry-fields" data-webhook-retry-fields>
+          <div class="webhook-retry-grid">
+            <label>
+              <span>Retries</span>
+              <input name="retry_count" type="number" min="1" max="10" value="{{ .RetryCount }}" />
+              <small>Attempts after the initial request.</small>
+            </label>
+            <label>
+              <span>Initial backoff</span>
+              <input name="retry_backoff" value="{{ .RetryBackoff }}" placeholder="1s" />
+              <small>Examples: <code>500ms</code>, <code>1s</code>.</small>
+            </label>
+            <label>
+              <span>Maximum backoff</span>
+              <input name="retry_max_backoff" value="{{ .RetryMaxBackoff }}" placeholder="30s" />
+              <small>Upper bound for exponential backoff.</small>
+            </label>
+          </div>
+
+          <label class="webhook-enabled-row webhook-retry-jitter">
+            <span>
+              <strong>Jitter</strong>
+              <small>Randomize waits to avoid synchronized retries.</small>
+            </span>
+            <input type="checkbox" name="retry_jitter" {{ if .RetryJitter }}checked{{ end }} />
+          </label>
+        </div>
       </div>
-    </section>
+    </details>
 
     <fieldset class="webhook-events">
       <legend>

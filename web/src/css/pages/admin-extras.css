@@ -1082,20 +1082,17 @@
   cursor: pointer;
 }
 
-.webhook-enabled-row > span,
-.webhook-jitter-option > span {
+.webhook-enabled-row > span {
   display: grid;
   gap: 1px;
 }
 
-.webhook-enabled-row strong,
-.webhook-jitter-option strong {
+.webhook-enabled-row strong {
   font-size: 11px;
   font-weight: 600;
 }
 
 .webhook-enabled-row small,
-.webhook-jitter-option small,
 .webhook-retry-grid > label small {
   color: var(--text-tertiary);
   font-size: 10px;
@@ -1103,7 +1100,6 @@
 }
 
 .stacked-form .webhook-enabled-row input[type="checkbox"],
-.stacked-form .webhook-jitter-option input[type="checkbox"],
 .stacked-form .webhook-event-option input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -1115,12 +1111,67 @@
 }
 
 .webhook-payload-settings,
-.webhook-header-settings,
-.webhook-retry-settings {
+.webhook-header-settings {
   display: grid;
   gap: 10px;
   padding-top: 14px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.webhook-retry-settings {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.webhook-retry-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.webhook-retry-summary::-webkit-details-marker {
+  display: none;
+}
+
+.webhook-retry-summary::marker {
+  content: "";
+}
+
+.webhook-retry-summary > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.webhook-retry-summary strong {
+  font-size: 12px;
+}
+
+.webhook-retry-summary small {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.webhook-retry-summary-chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  transition: transform 140ms ease;
+}
+
+.webhook-retry-settings[open] .webhook-retry-summary-chevron {
+  transform: rotate(180deg);
+}
+
+.webhook-retry-content {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
 }
 
 .webhook-section-heading {
@@ -1281,21 +1332,13 @@
   gap: 8px;
 }
 
-.webhook-retry-grid[aria-disabled="true"] {
-  opacity: 0.55;
+.webhook-retry-fields {
+  display: grid;
+  gap: 8px;
 }
 
-.webhook-jitter-option {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-elevated);
-  cursor: pointer;
+.webhook-retry-fields[aria-disabled="true"] {
+  opacity: 0.55;
 }
 
 .webhook-events {
