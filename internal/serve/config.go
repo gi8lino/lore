@@ -1,4 +1,5 @@
-package config
+// Package serve configures and runs the database-backed Lore server.
+package serve
 
 import (
 	"errors"
@@ -71,9 +72,9 @@ type Config struct {
 
 // BindFlags registers the lore serve flags and returns a resolver for the parsed Config.
 func BindFlags(flags *tinyflags.FlagSet) func() Config {
-	cfg := Config{}
-
 	flags.EnvPrefix("LORE_")
+
+	cfg := Config{}
 
 	// Server
 	listen := flags.TCPAddr("listen-address", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8080}, "Address on which the web server listens").

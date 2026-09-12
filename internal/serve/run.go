@@ -1,4 +1,4 @@
-package app
+package serve
 
 import (
 	"context"
@@ -21,29 +21,12 @@ import (
 func Run(
 	ctx context.Context,
 	appFS fs.FS,
-	listenAddress string,
-	databaseURL string,
-	publicURL string,
-	pdfURL string,
-	encryptionKey string,
-	authModeOverride auth.AuthMode,
-	trustedUsernameHeaders []string,
-	trustedEmailHeaders []string,
-	trustedDisplayNameHeaders []string,
-	oidcIssuer string,
-	oidcClientID string,
-	oidcClientSecret string,
-	oidcSessionSecret string,
-	localLogin bool,
-	themeDirectory string,
-	logFormat logging.LogFormat,
-	debug bool,
-	accessLog bool,
+	cfg Config,
 	overrides map[string]any,
 	version, commit string,
 	stdout io.Writer,
 ) error {
-	logger := logging.Setup(logFormat, debug, stdout)
+	logger := logging.Setup(cfg.LogFormat, cfg.Debug, stdout)
 	setupLogger := logger.With("component", "setup")
 
 	setupLogger.Info(
@@ -61,7 +44,7 @@ func Run(
 		)
 	}
 
-	availableThemes, err := themes.Load(themeDirectory)
+	availableThemes, err := themes.Load(cfg.ThemeDirectory)
 	if err != nil {
 		setupLogger.Error(
 			"load themes",
@@ -71,7 +54,7 @@ func Run(
 		return err
 	}
 
-	secretCipher, err := secrets.New(encryptionKey)
+	secretCipher, err := secrets.New(cfg.EncryptionKey)
 	if err != nil {
 		setupLogger.Error(
 			"configure application encryption",
@@ -81,7 +64,7 @@ func Run(
 		return err
 	}
 
-	database, err := store.Open(ctx, databaseURL, setupLogger)
+	database, err := store.Open(ctx, cfg.DatabaseURL, setupLogger)
 	if err != nil {
 		setupLogger.Error(
 			"open database",
@@ -94,7 +77,7 @@ func Run(
 
 	defer database.Close()
 
-	// Construct application services here so internal/app remains the single
+	// Construct application services here so internal/serve remains the single
 	// composition root. The routing layer only receives ready-to-use
 	// dependencies and decides which handlers consume them.
 	administrationUseCases := service.NewAdministration(database)
@@ -106,7 +89,7 @@ func Run(
 	notificationUseCases := service.NewNotifications(database)
 	mediaUseCases := service.NewMedia(database)
 	navigationUseCases := service.NewNavigation(database)
-	webhookUseCases := service.NewWebhooks(database, secretCipher, logger.With("component", "webhooks"), publicURL)
+	webhookUseCases := service.NewWebhooks(database, secretCipher, logger.With("component", "webhooks"), cfg.PublicURL)
 	pageUseCases := service.NewPages(database, logger, webhookUseCases)
 	preferenceUseCases := service.NewPreferences(database)
 	recycleBinUseCases := service.NewRecycleBin(database)
@@ -128,20 +111,20 @@ func Run(
 	browserAuth, err := auth.ConfigureBrowserAuth(
 		ctx,
 		auth.BrowserConfig{
-			ModeOverride: authModeOverride,
+			ModeOverride: cfg.AuthModeOverride,
 			TrustedProxy: auth.TrustedProxyHeaders{
-				Username:    trustedUsernameHeaders,
-				Email:       trustedEmailHeaders,
-				DisplayName: trustedDisplayNameHeaders,
+				Username:    cfg.TrustedUsernameHeaders,
+				Email:       cfg.TrustedEmailHeaders,
+				DisplayName: cfg.TrustedDisplayNameHeaders,
 			},
 			OIDC: auth.OIDCConfig{
-				ClientID:      oidcClientID,
-				ClientSecret:  oidcClientSecret,
-				Issuer:        oidcIssuer,
-				SessionSecret: oidcSessionSecret,
-				PublicURL:     publicURL,
+				ClientID:      cfg.OIDCClientID,
+				ClientSecret:  cfg.OIDCClientSecret,
+				Issuer:        cfg.OIDCIssuer,
+				SessionSecret: cfg.OIDCSessionSecret,
+				PublicURL:     cfg.PublicURL,
 			},
-			LocalLoginEnabled: localLogin,
+			LocalLoginEnabled: cfg.LocalLogin,
 		},
 		database,
 	)
@@ -157,20 +140,20 @@ func Run(
 	bearerAuth := auth.NewBearer(database)
 
 	views, err := handler.NewViews(appFS, logger, version, commit, availableThemes, handler.RuntimeInfo{
-		ListenAddress:                     listenAddress,
-		PublicURL:                         publicURL,
-		PDFURL:                            pdfURL,
-		AuthModeOverride:                  string(authModeOverride),
-		OIDCIssuerOverride:                oidcIssuer,
-		OIDCClientIDOverride:              oidcClientID,
-		TrustedUsernameHeadersOverride:    trustedUsernameHeaders,
-		TrustedEmailHeadersOverride:       trustedEmailHeaders,
-		TrustedDisplayNameHeadersOverride: trustedDisplayNameHeaders,
-		OIDCClientSecretConfigured:        oidcClientSecret != "",
-		OIDCSessionSecretConfigured:       len(oidcSessionSecret) >= 32,
+		ListenAddress:                     cfg.ListenAddress,
+		PublicURL:                         cfg.PublicURL,
+		PDFURL:                            cfg.PDFURL,
+		AuthModeOverride:                  string(cfg.AuthModeOverride),
+		OIDCIssuerOverride:                cfg.OIDCIssuer,
+		OIDCClientIDOverride:              cfg.OIDCClientID,
+		TrustedUsernameHeadersOverride:    cfg.TrustedUsernameHeaders,
+		TrustedEmailHeadersOverride:       cfg.TrustedEmailHeaders,
+		TrustedDisplayNameHeadersOverride: cfg.TrustedDisplayNameHeaders,
+		OIDCClientSecretConfigured:        cfg.OIDCClientSecret != "",
+		OIDCSessionSecretConfigured:       len(cfg.OIDCSessionSecret) >= 32,
 		EncryptionKeyConfigured:           secretCipher.Configured(),
-		LocalLoginEnabled:                 localLogin,
-		ThemeDirectory:                    themeDirectory,
+		LocalLoginEnabled:                 cfg.LocalLogin,
+		ThemeDirectory:                    cfg.ThemeDirectory,
 	})
 	if err != nil {
 		setupLogger.Error(
@@ -210,9 +193,9 @@ func Run(
 		webhookUseCases,
 		viewDataUseCases,
 		logger.With("component", "server"),
-		accessLog,
+		cfg.AccessLog,
 	)
-	if err := server.Run(ctx, listenAddress, router, setupLogger, server.WithMaxHeaderValueCount(100)); err != nil {
+	if err := server.Run(ctx, cfg.ListenAddress, router, setupLogger, server.WithMaxHeaderValueCount(100)); err != nil {
 		setupLogger.Error("run server", "event", "server_run_failed", "error", err)
 		return err
 	}

@@ -7,26 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/containeroo/tinyflags"
 	"github.com/gi8lino/lore/internal/domain"
-	"github.com/gi8lino/lore/internal/logging"
-	"github.com/gi8lino/lore/internal/store"
 )
-
-const defaultOutputDir = "lore-mirror"
-
-// Config contains database mirror settings.
-type Config struct {
-	DatabaseURL string
-	OutputDir   string
-	LogFormat   logging.LogFormat
-}
 
 // repository contains the database reads needed by the mirror exporter.
 type repository interface {
@@ -68,50 +55,6 @@ type manifest struct {
 	Pages       []string `json:"pages"`
 	Images      []int64  `json:"images,omitempty"`
 	Attachments []int64  `json:"attachments,omitempty"`
-}
-
-// BindFlags registers lore mirror flags and returns the parsed configuration.
-func BindFlags(flags *tinyflags.FlagSet) func() Config {
-	cfg := Config{OutputDir: defaultOutputDir, LogFormat: logging.LogFormatText}
-	flags.EnvPrefix("LORE_")
-	flags.StringVar(&cfg.DatabaseURL, "database-url", "", "PostgreSQL connection URL").
-		Required().
-		Placeholder("URL").
-		OverriddenValueMaskFn(tinyflags.MaskPostgresURL).
-		Value()
-	flags.StringVar(&cfg.OutputDir, "output", defaultOutputDir, "Directory that receives the Git-friendly mirror").
-		Placeholder("DIR").
-		Value()
-	logFormat := flags.String("log-format", string(cfg.LogFormat), "Log output format").
-		Choices(string(logging.LogFormatText), string(logging.LogFormatJSON)).
-		Short("l").
-		Placeholder("FORMAT")
-
-	return func() Config {
-		cfg.LogFormat = logging.LogFormat(*logFormat.Value())
-		return cfg
-	}
-}
-
-// Run opens PostgreSQL and writes a complete mirror into the configured output directory.
-func Run(ctx context.Context, cfg Config, stdout io.Writer) error {
-	if err := validateOutputDir(cfg.OutputDir); err != nil {
-		return err
-	}
-
-	logger := logging.Setup(cfg.LogFormat, false, stdout).With("component", "mirror")
-	database, err := store.Open(ctx, cfg.DatabaseURL, logger)
-	if err != nil {
-		return err
-	}
-	defer database.Close()
-
-	if err := Export(ctx, database, cfg.OutputDir); err != nil {
-		return err
-	}
-
-	logger.Info("mirror complete", "event", "mirror_complete", "output", cfg.OutputDir)
-	return nil
 }
 
 // Export writes repository content atomically into outputDir.

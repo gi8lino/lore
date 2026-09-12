@@ -8,9 +8,8 @@ import (
 	"io/fs"
 
 	"github.com/containeroo/tinyflags"
-	"github.com/gi8lino/lore/internal/app"
-	"github.com/gi8lino/lore/internal/config"
 	"github.com/gi8lino/lore/internal/mirror"
+	"github.com/gi8lino/lore/internal/serve"
 	"github.com/gi8lino/lore/internal/site"
 )
 
@@ -26,44 +25,26 @@ func Run(
 
 	root.Version(version)
 
-	serve := root.Command("serve", "Run the Lore server")
-	serveConfig := config.BindFlags(serve.FlagSet)
+	serveCommand := root.Command("serve", "Run the Lore server")
+	resolveServeConfig := serve.BindFlags(serveCommand.FlagSet)
 
-	serve.Run(func(ctx context.Context) error {
-		cfg := serveConfig()
-		return app.Run(
+	serveCommand.Run(func(ctx context.Context) error {
+		return serve.Run(
 			ctx,
 			appFS,
-			cfg.ListenAddress,
-			cfg.DatabaseURL,
-			cfg.PublicURL,
-			cfg.PDFURL,
-			cfg.EncryptionKey,
-			cfg.AuthModeOverride,
-			cfg.TrustedUsernameHeaders,
-			cfg.TrustedEmailHeaders,
-			cfg.TrustedDisplayNameHeaders,
-			cfg.OIDCIssuer,
-			cfg.OIDCClientID,
-			cfg.OIDCClientSecret,
-			cfg.OIDCSessionSecret,
-			cfg.LocalLogin,
-			cfg.ThemeDirectory,
-			cfg.LogFormat,
-			cfg.Debug,
-			cfg.AccessLog,
-			serve.OverriddenValues(),
+			resolveServeConfig(),
+			serveCommand.OverriddenValues(),
 			version,
 			commit,
 			stdout,
 		)
 	})
 
-	build := root.Command("build", "Build a read-only static documentation site")
-	buildConfig := site.BindFlags(build.FlagSet)
+	buildCommand := root.Command("build", "Build a read-only static documentation site")
+	resolveBuildConfig := site.BindFlags(buildCommand.FlagSet)
 
-	build.Run(func(ctx context.Context) error {
-		cfg, err := buildConfig()
+	buildCommand.Run(func(ctx context.Context) error {
+		cfg, err := resolveBuildConfig()
 		if err != nil {
 			return err
 		}
@@ -72,16 +53,16 @@ func Run(
 			ctx,
 			appFS,
 			cfg,
-			build.OverriddenValues(),
+			buildCommand.OverriddenValues(),
 			stdout,
 		)
 	})
 
 	mirrorCommand := root.Command("mirror", "Export PostgreSQL content as a Git-friendly Markdown mirror")
-	mirrorConfig := mirror.BindFlags(mirrorCommand.FlagSet)
+	resolveMirrorConfig := mirror.BindFlags(mirrorCommand.FlagSet)
 
 	mirrorCommand.Run(func(ctx context.Context) error {
-		return mirror.Run(ctx, mirrorConfig(), stdout)
+		return mirror.Run(ctx, resolveMirrorConfig(), stdout)
 	})
 
 	runner, err := root.ParseRunner(args)
