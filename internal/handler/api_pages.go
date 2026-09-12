@@ -13,6 +13,7 @@ import (
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/pagereport"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/subpages"
 )
@@ -109,7 +110,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(r.Context(), securedCatalog)},
+			md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))}},
 		)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
@@ -127,7 +128,7 @@ func subpagesRenderer(
 	accessUseCases pageAccessReader,
 	user domain.User,
 	slug string,
-) (func(md.SubpagesOptions) (string, error), error) {
+) (func(subpages.Options) (string, error), error) {
 	pages, err := navigationUseCases.NavigationPages(ctx)
 	if err != nil {
 		return nil, err

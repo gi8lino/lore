@@ -13,6 +13,7 @@ import (
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/pdf"
+	"github.com/gi8lino/lore/internal/plugin"
 )
 
 type exportVariablesRequest struct {
@@ -59,7 +60,7 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Subpages: renderSubpages, PageReport: pagereport.NewRenderer(ctx, securedCatalog)})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(ctx, securedCatalog))}})
 	if err != nil {
 		return "", err
 	}

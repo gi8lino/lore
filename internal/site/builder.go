@@ -11,6 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/subpages"
 	"github.com/gi8lino/lore/themes"
 )
@@ -278,7 +279,7 @@ func (b *builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, err
 		page.Markdown,
 		resolveWiki,
 		options,
-		md.Functions{Subpages: renderSubpages},
+		md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages)}},
 	)
 	if err != nil {
 		return renderedPage{}, fmt.Errorf("render %s: %w", page.SourcePath, err)

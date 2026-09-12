@@ -2,14 +2,15 @@ package markdown
 
 import (
 	"bytes"
+	"errors"
 	stdhtml "html"
 	"slices"
 	"strconv"
 	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
-	"github.com/gi8lino/lore/internal/pagereport"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/internal/markdown/blocksyntax"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -26,10 +27,13 @@ import (
 type Renderer struct {
 	// sanitizer removes unsafe HTML from rendered output.
 	sanitizer *bluemonday.Policy
+	registry  *plugin.Registry
 }
 
 // Options controls optional Markdown rendering features.
 type Options struct {
+	pipeline *renderPipeline
+	depth    int
 	// variables is request-local provenance used only for reading-page inspection.
 	variables []Variable
 	// WikiLinks enables [[Wiki Link]] resolution.
@@ -124,23 +128,11 @@ type RenderedPage struct {
 	Contents []Heading
 }
 
-// SubpagesOptions controls one {{subpages}} invocation.
-type SubpagesOptions = subpages.Options
-
-// Functions contains trusted dynamic HTML and request-local variable provenance.
+// Functions supplies request-local macro capabilities and variable provenance.
+// Bindings cannot activate an unregistered macro.
 type Functions struct {
-	// Variables preserves the identities of server-expanded values for inspection.
 	Variables []Variable
-	// Subpages renders the generated navigation tree inserted by {{subpages}}.
-	Subpages func(SubpagesOptions) (string, error)
-	// PageReport renders a dynamic query inserted by {{pages ...}}.
-	PageReport func(pagereport.Options) (string, error)
-}
-
-type functionInvocation struct {
-	placeholder string
-	subpages    *SubpagesOptions
-	pageReport  *pagereport.Options
+	Macros    map[string]plugin.MacroRenderer
 }
 
 // tabSection contains one parsed Markdown tab label and body.
@@ -152,47 +144,20 @@ type tabSection struct {
 }
 
 // New constructs the package default implementation.
-func New() *Renderer {
-	policy := bluemonday.UGCPolicy()
+func New() *Renderer { return NewWithRegistry(DefaultRegistry()) }
 
-	policy.AllowElements("div", "button", "details", "summary")
-	policy.AllowAttrs("class").
-		OnElements(
-			"aside",
-			"pre",
-			"code",
-			"span",
-			"div",
-			"button",
-			"details",
-			"summary",
-			"table",
-			"thead",
-			"tbody",
-			"tr",
-			"th",
-			"td",
-		)
-	policy.AllowAttrs("role").OnElements("div", "button")
-	policy.AllowAttrs("role", "aria-checked", "aria-disabled").OnElements("span")
-	policy.AllowAttrs("type", "aria-selected").OnElements("button")
-	policy.AllowAttrs("open").OnElements("details")
-	policy.AllowAttrs("data-page-variable").OnElements("span")
-	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
+// NewWithRegistry uses an application-owned registry for every render path.
+// An empty registry enables only the remaining core Markdown features.
+func NewWithRegistry(registry *plugin.Registry) *Renderer {
+	if registry == nil {
+		registry = &plugin.Registry{}
+	}
 
-	// UGCPolicy's Paragraph filter rejects ordinary image text such as '&' and
-	// '{width=50%}'. Keep alt/title as text; the sanitizer still escapes their
-	// values and filters URLs, event handlers and styles separately.
-	policy.AllowAttrs("alt", "title").OnElements("img")
-	policy.AllowStyles("width").
-		MatchingHandler(validImageWidthStyle).
-		OnElements("img")
-
-	return &Renderer{sanitizer: policy}
+	return &Renderer{sanitizer: newSanitizer(), registry: registry}
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
-func engine(options Options, ranges ...variableRange) goldmark.Markdown {
+func engine(options Options, contributed []goldmark.Extender, ranges ...variableRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
 	if options.Tables {
@@ -241,6 +206,7 @@ func engine(options Options, ranges ...variableRange) goldmark.Markdown {
 		)
 	}
 
+	extensions = append(extensions, contributed...)
 	return goldmark.New(
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
@@ -348,6 +314,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	options Options,
 	functions Functions,
 ) (RenderedPage, error) {
+	options.pipeline = newRenderPipeline(r.registry.Snapshot(), options, functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(
 			source,
@@ -357,7 +324,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 		)
 	}
 
-	return r.renderPage(source, resolve, options, functions)
+	return r.renderPage(source, resolve, options)
 }
 
 // renderPageWithVariables annotates expanded variable origins without changing the rendered document.
@@ -373,7 +340,6 @@ func (r *Renderer) renderPageWithVariables(
 		plain,
 		resolve,
 		options,
-		functions,
 	)
 	if err != nil {
 		return RenderedPage{}, err
@@ -385,7 +351,6 @@ func (r *Renderer) renderPageWithVariables(
 		source,
 		resolve,
 		options,
-		functions,
 	)
 	if err != nil {
 		return normal, nil
@@ -403,103 +368,27 @@ func (r *Renderer) renderPage(
 	source string,
 	resolve func(string) string,
 	options Options,
-	functions Functions,
 ) (RenderedPage, error) {
-	source, invocations := preprocessFunctions(source, functions)
-
+	source, invocations, err := options.pipeline.preprocessMacros(source, r.moduleContext(resolve, options))
+	if err != nil {
+		return RenderedPage{}, err
+	}
 	raw, err := r.renderRawResolved(source, resolve, options)
 	if err != nil {
 		return RenderedPage{}, err
 	}
-
-	html := r.sanitizer.Sanitize(raw)
-	contents := extractHeadings(html)
-
-	for _, invocation := range invocations {
-		replacement := ""
-
-		switch {
-		case invocation.subpages != nil && functions.Subpages != nil:
-			replacement, err = functions.Subpages(*invocation.subpages)
-		case invocation.pageReport != nil && functions.PageReport != nil:
-			replacement, err = functions.PageReport(*invocation.pageReport)
-		}
-		if err != nil {
-			return RenderedPage{}, err
-		}
-
-		html = strings.Replace(
-			html,
-			invocation.placeholder,
-			replacement,
-			1,
-		)
+	// Preserve the established contents list: generated macro headings are not
+	// part of the source page's navigation.
+	contents := extractHeadings(r.sanitizer.Sanitize(raw))
+	raw, err = options.pipeline.expandMacros(raw, invocations, r.moduleContext(resolve, options))
+	if err != nil {
+		return RenderedPage{}, err
 	}
-
-	return RenderedPage{
-		HTML:     html,
-		Contents: contents,
-	}, nil
-}
-
-// preprocessFunctions replaces standalone function calls outside fenced code with safe placeholders.
-func preprocessFunctions(
-	source string,
-	functions Functions,
-) (string, []functionInvocation) {
-	lines := strings.Split(source, "\n")
-	output := make([]string, 0, len(lines))
-	invocations := make([]functionInvocation, 0, 1)
-
-	for index := 0; index < len(lines); {
-		if marker := fenceDelimiter(lines[index]); marker != "" {
-			index = appendFencedBlock(
-				lines,
-				index,
-				marker,
-				&output,
-			)
-			continue
-		}
-
-		if options, ok := parseSubpagesFunction(lines[index]); ok {
-			placeholder := functionPlaceholder("subpages", len(invocations))
-			invocations = append(invocations, functionInvocation{
-				placeholder: placeholder,
-				subpages:    &options,
-			})
-			output = append(output, placeholder)
-		} else if functions.PageReport != nil {
-			if options, ok := pagereport.Parse(lines[index]); ok {
-				placeholder := functionPlaceholder("pages", len(invocations))
-				invocations = append(invocations, functionInvocation{
-					placeholder: placeholder,
-					pageReport:  &options,
-				})
-				output = append(output, placeholder)
-			} else {
-				output = append(output, lines[index])
-			}
-		} else {
-			output = append(output, lines[index])
-		}
-
-		index++
+	raw, err = options.pipeline.postprocess(raw, r.moduleContext(resolve, options))
+	if err != nil {
+		return RenderedPage{}, err
 	}
-
-	return strings.Join(output, "\n"), invocations
-}
-
-// functionPlaceholder returns a stable sentinel for deferred page-function rendering.
-func functionPlaceholder(kind string, index int) string {
-	return `<div class="lore-function-` + kind + ` lore-function-` + kind + `-` + strconv.Itoa(index) + `"></div>`
-}
-
-// parseSubpagesFunction parses the supported named options from one standalone invocation.
-func parseSubpagesFunction(
-	line string,
-) (SubpagesOptions, bool) {
-	return subpages.Parse(line)
+	return RenderedPage{HTML: r.sanitizer.Sanitize(raw), Contents: contents}, nil
 }
 
 // renderRawResolved renders Markdown extensions into unsanitized HTML for recursive block rendering.
@@ -508,6 +397,10 @@ func (r *Renderer) renderRawResolved(
 	resolve func(string) string,
 	options Options,
 ) (string, error) {
+	if options.depth >= 64 {
+		return "", errors.New("markdown nesting limit exceeded")
+	}
+	options.depth++
 	var err error
 
 	if options.Tabs {
@@ -524,11 +417,10 @@ func (r *Renderer) renderRawResolved(
 		}
 	}
 
-	if options.Callouts {
-		source, err = r.preprocessCallouts(source, resolve, options)
-		if err != nil {
-			return "", err
-		}
+	ctx := r.moduleContext(resolve, options)
+	source, err = options.pipeline.preprocess(source, ctx)
+	if err != nil {
+		return "", err
 	}
 
 	if options.WikiLinks {
@@ -550,8 +442,15 @@ func (r *Renderer) renderRawResolved(
 
 	var output bytes.Buffer
 
-	if err := engine(options, ranges...).
-		Convert([]byte(source), &output); err != nil {
+	extensions, err := options.pipeline.extensions(ctx)
+	if err != nil {
+		return "", err
+	}
+	// Conversion invokes contributed parsers, transformers, and node renderers.
+	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
+		return struct{}{}, engine(options, extensions, ranges...).Convert([]byte(source), &output)
+	})
+	if err != nil {
 		return "", err
 	}
 
@@ -869,41 +768,11 @@ func stripBlockIndent(
 }
 
 // fenceDelimiter returns the Markdown fence marker when a line starts a fenced code block.
-func fenceDelimiter(line string) string {
-	trimmed := strings.TrimSpace(line)
+func fenceDelimiter(line string) string { return blocksyntax.Fence(line) }
 
-	if strings.HasPrefix(trimmed, "```") {
-		return "```"
-	}
-
-	if strings.HasPrefix(trimmed, "~~~") {
-		return "~~~"
-	}
-
-	return ""
-}
-
-// appendFencedBlock copies a complete fenced code block without interpreting custom block syntax.
-func appendFencedBlock(
-	lines []string,
-	start int,
-	marker string,
-	out *[]string,
-) int {
-	*out = append(*out, lines[start])
-
-	for index := start + 1; index < len(lines); index++ {
-		*out = append(*out, lines[index])
-
-		if strings.HasPrefix(
-			strings.TrimSpace(lines[index]),
-			marker,
-		) {
-			return index + 1
-		}
-	}
-
-	return len(lines)
+// appendFencedBlock copies a complete fenced block without interpreting it.
+func appendFencedBlock(lines []string, start int, marker string, out *[]string) int {
+	return blocksyntax.AppendFence(lines, start, marker, out)
 }
 
 // walkWikiLinks visits wiki links outside fenced code blocks in source order.
@@ -917,7 +786,7 @@ func walkWikiLinks(
 		marker := fenceDelimiter(line)
 
 		if fence != "" {
-			if marker == fence {
+			if blocksyntax.Closes(line, fence) {
 				fence = ""
 			}
 
@@ -1024,7 +893,7 @@ func rewriteWikiLinks(
 		marker := fenceDelimiter(line)
 
 		if fence != "" {
-			if marker == fence {
+			if blocksyntax.Closes(line, fence) {
 				fence = ""
 			}
 
@@ -1135,7 +1004,7 @@ func preprocessTableDirectives(
 		if fence != "" {
 			out = append(out, line)
 
-			if marker == fence {
+			if blocksyntax.Closes(line, fence) {
 				fence = ""
 			}
 
@@ -1738,100 +1607,4 @@ func htmlText(node *xhtml.Node) string {
 	walk(node)
 
 	return output.String()
-}
-
-// preprocessCallouts converts supported callout syntax into sanitized HTML blocks.
-func (r *Renderer) preprocessCallouts(
-	source string,
-	resolve func(string) string,
-	options Options,
-) (string, error) {
-	lines := strings.Split(source, "\n")
-	out := make([]string, 0, len(lines))
-
-	for index := 0; index < len(lines); index++ {
-		if marker := fenceDelimiter(lines[index]); marker != "" {
-			next := appendFencedBlock(
-				lines,
-				index,
-				marker,
-				&out,
-			)
-
-			index = next - 1
-			continue
-		}
-
-		line := strings.TrimSpace(lines[index])
-		kind := ""
-
-		if after, ok := strings.CutPrefix(line, "!!! "); ok {
-			parts := strings.Fields(after)
-
-			if len(parts) > 0 {
-				kind = strings.ToLower(parts[0])
-			}
-		}
-
-		if !supportedCallout(kind) {
-			out = append(out, lines[index])
-			continue
-		}
-
-		body := make([]string, 0)
-
-		index++
-
-		for index < len(lines) &&
-			strings.TrimSpace(lines[index]) != "" {
-			body = append(
-				body,
-				strings.TrimSpace(lines[index]),
-			)
-			index++
-		}
-
-		bodyHTML, err := r.renderRawResolved(
-			strings.Join(body, "\n"),
-			resolve,
-			options,
-		)
-		if err != nil {
-			return "", err
-		}
-
-		label :=
-			strings.ToUpper(kind[:1]) +
-				kind[1:]
-
-		out = append(
-			out,
-			`<aside class="callout `+
-				kind+
-				`"><strong>`+
-				stdhtml.EscapeString(label)+
-				`</strong><div class="callout-body">`+
-				bodyHTML+
-				`</div></aside>`+
-				"\n",
-		)
-	}
-
-	return strings.Join(out, "\n"), nil
-}
-
-// supportedCallout reports whether a callout kind has built-in presentation styling.
-func supportedCallout(kind string) bool {
-	switch kind {
-	case "note",
-		"info",
-		"tip",
-		"success",
-		"warning",
-		"danger",
-		"error":
-		return true
-	default:
-		return false
-	}
 }

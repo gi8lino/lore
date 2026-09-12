@@ -1,6 +1,8 @@
 package markdown
 
 import (
+	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/subpages"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -178,12 +180,12 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 		"Before\n\n{{subpages}}\n\nAfter\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
 			assert.Equal(t, "Pages in this section", options.Title)
 			assert.True(t, options.ShowTitle)
 
 			return `<nav class="subpage-toc">Generated pages</nav>`, nil
-		}},
+		})}},
 	)
 
 	require.NoError(t, err)
@@ -199,12 +201,12 @@ func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 		`{{subpages title="Related pages"}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
 			assert.Equal(t, "Related pages", options.Title)
 			assert.True(t, options.ShowTitle)
 
 			return `<nav>Custom title</nav>`, nil
-		}},
+		})}},
 	)
 
 	require.NoError(t, err)
@@ -219,12 +221,12 @@ func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 		`{{subpages title=""}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: func(options SubpagesOptions) (string, error) {
+		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
 			assert.Empty(t, options.Title)
 			assert.False(t, options.ShowTitle)
 
 			return `<nav>No visible title</nav>`, nil
-		}},
+		})}},
 	)
 
 	require.NoError(t, err)
@@ -239,9 +241,9 @@ func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 		`{{subpages depth=2}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: func(SubpagesOptions) (string, error) {
+		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(subpages.Options) (string, error) {
 			return `<nav>Generated pages</nav>`, nil
-		}},
+		})}},
 	)
 
 	require.NoError(t, err)
@@ -257,9 +259,9 @@ func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 		"```markdown\n{{subpages}}\n```\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Subpages: func(SubpagesOptions) (string, error) {
+		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(subpages.Options) (string, error) {
 			return `<nav>Generated pages</nav>`, nil
-		}},
+		})}},
 	)
 
 	require.NoError(t, err)

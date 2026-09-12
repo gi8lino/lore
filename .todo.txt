@@ -1,0 +1,1 @@
+- the func Fence should be simplified, maybe with helper function so the ifs do not need to be describben

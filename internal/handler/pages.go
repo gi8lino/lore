@@ -17,6 +17,7 @@ import (
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/pagereport"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/internal/service"
 	"github.com/gi8lino/lore/internal/subpages"
@@ -257,9 +258,8 @@ func ViewPage(
 			md.Slug,
 			options,
 			md.Functions{
-				Subpages:   renderSubpages,
-				PageReport: pagereport.NewRenderer(r.Context(), securedCatalog),
-				Variables:  expanded.Annotations,
+				Macros:    map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))},
+				Variables: expanded.Annotations,
 			},
 		)
 		if err != nil {
