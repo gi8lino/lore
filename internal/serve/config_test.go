@@ -109,6 +109,7 @@ func TestOverriddenValuesMaskSecrets(t *testing.T) {
 
 func parseTestConfig(args []string) (Config, error) {
 	flags := tinyflags.NewFlagSet("lore serve", tinyflags.ContinueOnError)
+	flags.EnvPrefix("LORE_")
 	resolve := BindFlags(flags)
 	if err := flags.Parse(args); err != nil {
 		return Config{}, err

@@ -123,7 +123,7 @@ func (b *builder) build(ctx context.Context, config Config) (buildResult, error)
 
 // planBuild validates configuration and prepares immutable state used by rendering.
 func (b *builder) planBuild(config Config) (buildPlan, error) {
-	if err := config.validate(); err != nil {
+	if err := validateResolvedConfig(config); err != nil {
 		return buildPlan{}, err
 	}
 

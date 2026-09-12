@@ -72,8 +72,6 @@ type Config struct {
 
 // BindFlags registers the lore serve flags and returns a resolver for the parsed Config.
 func BindFlags(flags *tinyflags.FlagSet) func() Config {
-	flags.EnvPrefix("LORE_")
-
 	cfg := Config{}
 
 	// Server

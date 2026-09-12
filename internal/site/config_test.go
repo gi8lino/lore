@@ -22,7 +22,7 @@ func TestConfigRejectsOverlappingSourceAndOutput(t *testing.T) {
 		config.SourceDir = filepath.Join(root, "docs")
 		config.OutputDir = filepath.Join(root, "docs", "site")
 
-		assert.Error(t, config.validate())
+		assert.Error(t, validateBuildDirectories(config.SourceDir, config.OutputDir))
 	})
 
 	t.Run("source inside output", func(t *testing.T) {
@@ -33,7 +33,7 @@ func TestConfigRejectsOverlappingSourceAndOutput(t *testing.T) {
 		config.SourceDir = filepath.Join(root, "site", "docs")
 		config.OutputDir = filepath.Join(root, "site")
 
-		assert.Error(t, config.validate())
+		assert.Error(t, validateBuildDirectories(config.SourceDir, config.OutputDir))
 	})
 }
 
@@ -76,7 +76,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.Logo = filepath.Join(root, "missing.svg")
 
-		assert.ErrorContains(t, config.validate(), "logo")
+		assert.ErrorContains(t, validateAssetPaths(config), "logo")
 	})
 
 	t.Run("logo inside output", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.Logo = filepath.Join(config.OutputDir, "image.svg")
 
-		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+		assert.ErrorContains(t, validateAssetPaths(config), "separate from output_dir")
 	})
 
 	t.Run("favicon missing", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.Favicon = filepath.Join(root, "missing.svg")
 
-		assert.ErrorContains(t, config.validate(), "favicon")
+		assert.ErrorContains(t, validateAssetPaths(config), "favicon")
 	})
 
 	t.Run("favicon inside output", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.Favicon = filepath.Join(config.OutputDir, "image.svg")
 
-		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+		assert.ErrorContains(t, validateAssetPaths(config), "separate from output_dir")
 	})
 
 	t.Run("favicon ico missing", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.FaviconICO = filepath.Join(root, "missing.ico")
 
-		assert.ErrorContains(t, config.validate(), "favicon_ico")
+		assert.ErrorContains(t, validateAssetPaths(config), "favicon_ico")
 	})
 
 	t.Run("favicon ico inside output", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.FaviconICO = filepath.Join(config.OutputDir, "favicon.ico")
 
-		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+		assert.ErrorContains(t, validateAssetPaths(config), "separate from output_dir")
 	})
 
 	t.Run("assets directory missing", func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(root, "output")
 		config.AssetsDir = filepath.Join(root, "missing")
 
-		assert.ErrorContains(t, config.validate(), "assets_dir")
+		assert.ErrorContains(t, validateAssetPaths(config), "assets_dir")
 	})
 
 	t.Run("assets directory contains output", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestBrandingValidation(t *testing.T) {
 		config.OutputDir = filepath.Join(config.AssetsDir, "site")
 		require.NoError(t, os.MkdirAll(config.AssetsDir, 0o755))
 
-		assert.ErrorContains(t, config.validate(), "separate from output_dir")
+		assert.ErrorContains(t, validateAssetPaths(config), "separate from output_dir")
 	})
 }
 
@@ -245,7 +245,7 @@ sidebar_width = 360
 		config := defaultConfig()
 		config.NavigationStyle = "columns"
 
-		assert.ErrorContains(t, config.validate(), "navigation_style must be sidebar, topbar, or tree")
+		assert.ErrorContains(t, validateConfigFileValues(config), "navigation_style must be sidebar, topbar, or tree")
 	})
 
 	t.Run("rejects unknown navigation density", func(t *testing.T) {
@@ -254,7 +254,7 @@ sidebar_width = 360
 		config := defaultConfig()
 		config.NavigationDensity = "dense"
 
-		assert.ErrorContains(t, config.validate(), "navigation_density must be comfortable or compact")
+		assert.ErrorContains(t, validateConfigFileValues(config), "navigation_density must be comfortable or compact")
 	})
 
 	t.Run("rejects sidebar width below range", func(t *testing.T) {
@@ -263,7 +263,7 @@ sidebar_width = 360
 		config := defaultConfig()
 		config.SidebarWidth = domain.MinSidebarWidth - 1
 
-		assert.ErrorContains(t, config.validate(), "sidebar_width must be between 220 and 420 pixels")
+		assert.ErrorContains(t, validateConfigFileValues(config), "sidebar_width must be between 220 and 420 pixels")
 	})
 
 	t.Run("rejects sidebar width above range", func(t *testing.T) {
@@ -272,7 +272,7 @@ sidebar_width = 360
 		config := defaultConfig()
 		config.SidebarWidth = domain.MaxSidebarWidth + 1
 
-		assert.ErrorContains(t, config.validate(), "sidebar_width must be between 220 and 420 pixels")
+		assert.ErrorContains(t, validateConfigFileValues(config), "sidebar_width must be between 220 and 420 pixels")
 	})
 }
 
@@ -298,7 +298,102 @@ func TestRobotsConfiguration(t *testing.T) {
 		config := defaultConfig()
 		config.RobotsPolicy = "sometimes"
 
-		assert.ErrorContains(t, config.validate(), "robots must be allow, disallow, or none")
+		assert.ErrorContains(t, validateConfigFileValues(config), "robots must be allow, disallow, or none")
+	})
+}
+
+func TestBuildFlagsAllowDefaults(t *testing.T) {
+	t.Parallel()
+
+	flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+	resolve := BindFlags(flags)
+
+	require.NoError(t, flags.Parse(nil))
+
+	config, err := resolve()
+
+	require.NoError(t, err)
+	assert.Equal(t, defaultConfig(), config)
+}
+
+func TestBuildFlagsValidateValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rejects blank site name", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--site-name", ""})
+
+		require.ErrorContains(t, err, "flag --site-name must not be empty")
+	})
+
+	t.Run("rejects blank source", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--source", ""})
+
+		require.ErrorContains(t, err, "flag --source must not be empty")
+	})
+
+	t.Run("rejects blank output", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--output", ""})
+
+		require.ErrorContains(t, err, "flag --output must not be empty")
+	})
+
+	t.Run("rejects blank theme", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--theme", ""})
+
+		require.ErrorContains(t, err, "flag --theme must not be empty")
+	})
+
+	t.Run("rejects blank language", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--language", ""})
+
+		require.ErrorContains(t, err, "flag --language must not be empty")
+	})
+
+	t.Run("rejects sidebar width below range", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--sidebar-width", "219"})
+
+		require.ErrorContains(t, err, "sidebar_width must be between 220 and 420 pixels")
+	})
+
+	t.Run("rejects sidebar width above range", func(t *testing.T) {
+		t.Parallel()
+
+		flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
+		_ = BindFlags(flags)
+
+		err := flags.Parse([]string{"--sidebar-width", "421"})
+
+		require.ErrorContains(t, err, "sidebar_width must be between 220 and 420 pixels")
 	})
 }
 
@@ -354,7 +449,7 @@ hover_text = " {{label }} | {{description}} "
 		config := defaultConfig()
 		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "javascript:alert(1)"}}
 
-		assert.ErrorContains(t, config.validate(), "HTTP or HTTPS")
+		assert.ErrorContains(t, validateExternalLinks(config.ExternalLinks), "HTTP or HTTPS")
 	})
 
 	t.Run("rejects unknown icon", func(t *testing.T) {
@@ -363,7 +458,7 @@ hover_text = " {{label }} | {{description}} "
 		config := defaultConfig()
 		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", Icon: "not-an-icon"}}
 
-		assert.ErrorContains(t, config.validate(), "available icon")
+		assert.ErrorContains(t, validateExternalLinks(config.ExternalLinks), "available icon")
 	})
 
 	t.Run("rejects unknown hover effect", func(t *testing.T) {
@@ -372,6 +467,6 @@ hover_text = " {{label }} | {{description}} "
 		config := defaultConfig()
 		config.ExternalLinks = []domain.ExternalLink{{Label: "Repository", URL: "https://example.test", HoverEffect: "bounce"}}
 
-		assert.ErrorContains(t, config.validate(), "hover_effect")
+		assert.ErrorContains(t, validateExternalLinks(config.ExternalLinks), "hover_effect")
 	})
 }

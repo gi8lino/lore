@@ -24,6 +24,7 @@ func Run(
 	root := tinyflags.NewCommand("lore", tinyflags.ContinueOnError).RequireCommand()
 
 	root.Version(version)
+	root.EnvPrefix("LORE_")
 
 	serveCommand := root.Command("serve", "Run the Lore server")
 	resolveServeConfig := serve.BindFlags(serveCommand.FlagSet)
