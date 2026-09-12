@@ -71,6 +71,8 @@ export function initPathPickers(): void {
         item.className = className;
         item.textContent = label;
         item.title = path || "Top level";
+        // Keep focus on the input so blur/change cannot replace the clicked button.
+        item.addEventListener("pointerdown", (event) => event.preventDefault());
         item.addEventListener("click", (event) => {
           event.preventDefault();
           choose(path);
@@ -110,9 +112,6 @@ export function initPathPickers(): void {
           option.id = `${suggestions.id}-${index}`;
           option.setAttribute("role", "option");
           option.tabIndex = -1;
-          option.addEventListener("pointerdown", (event) =>
-            event.preventDefault(),
-          );
           const detail = document.createElement("small");
           detail.textContent = path;
           option.append(detail);

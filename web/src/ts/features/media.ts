@@ -1,5 +1,6 @@
 // Image upload, library, and Markdown insertion.
 
+import { createLatestRequest } from "../core/async.ts";
 import { requestConfirmation, showNotice } from "../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../core/dom.ts";
 import { isRecord, requireArrayOf } from "../core/guards.ts";
@@ -463,17 +464,20 @@ function setupManagedImageBrowser(root: HTMLElement): void {
   const mode = root.dataset.mediaMode || "user";
   const scope = root.dataset.mediaScope || "all";
   let loading = false;
+  let activeQuery = input.value.trim();
+  const requests = createLatestRequest();
 
   root.dataset.mediaHasMore = String(!loadMore.hidden);
 
   async function load(reset: boolean): Promise<void> {
-    if (loading) return;
+    if (loading && !reset) return;
 
+    const signal = requests.next();
     loading = true;
     loadMore.disabled = true;
     status.textContent = reset ? "Searching…" : "Loading…";
 
-    const query = input.value.trim();
+    const query = reset ? input.value.trim() : activeQuery;
     const offset = reset ? 0 : Number(root.dataset.mediaOffset || 0);
     const url = new URL(listURL, window.location.origin);
 
@@ -483,12 +487,16 @@ function setupManagedImageBrowser(root: HTMLElement): void {
     if (scope === "mine") url.searchParams.set("scope", "mine");
 
     try {
-      const payload = await requestJSON(url);
+      const payload = await requestJSON(url, { signal });
+      if (signal.aborted) return;
+
       const page = requireArrayOf(payload, isImageItem, "image list response");
       const hasMore = page.length > pageSize;
       const visible = hasMore ? page.slice(0, pageSize) : page;
 
       if (reset) list.replaceChildren();
+      list.querySelector("[data-media-settings-empty]")?.remove();
+      activeQuery = query;
       for (const image of visible) list.append(managedImageRow(image, mode));
       if (!list.querySelector("[data-media-settings-item]"))
         renderManagedImageEmpty(root);
@@ -499,14 +507,18 @@ function setupManagedImageBrowser(root: HTMLElement): void {
       status.textContent = "";
       updateManagedImageURL(root, query);
     } catch (error) {
+      if (signal.aborted) return;
+
       console.error("managed image list failed", error);
       status.textContent = "";
       await showNotice(errorMessage(error) || "Images could not be loaded.", {
         title: "Image search failed",
       });
     } finally {
-      loading = false;
-      loadMore.disabled = false;
+      if (!signal.aborted) {
+        loading = false;
+        loadMore.disabled = false;
+      }
     }
   }
 
