@@ -1,0 +1,55 @@
+package site
+
+import (
+	"encoding/json"
+	"net/url"
+	"path/filepath"
+
+	"github.com/gi8lino/lore/internal/pluginbrowser"
+)
+
+// copyPluginAssets publishes the same active package bytes used by live Lore.
+// Classic scripts keep opaque sandbox frames usable on ordinary static hosts
+// without requiring host-specific CORS configuration.
+func (b *builder) copyPluginAssets(config Config, basePath string) error {
+	manager := b.renderer.PluginManager()
+	if manager == nil {
+		return writeFile(filepath.Join(config.OutputDir, "plugins", "modules.json"), []byte("[]"))
+	}
+	origin, err := url.Parse(config.SiteURL)
+	if err != nil {
+		return err
+	}
+	prefix := basePath + "plugins"
+	runtime := basePath + "assets/js/plugins/frame.js"
+	modules := make([]pluginbrowser.Module, 0)
+	for _, module := range manager.BrowserModules() {
+		names, err := manager.BrowserAssetNames(module.PluginID, module.Digest)
+		if err != nil {
+			return err
+		}
+		directory := filepath.Join(config.OutputDir, "plugins", module.PluginID, module.Digest)
+		for _, name := range names {
+			data, err := manager.BrowserAsset(module.PluginID, module.Digest, name)
+			if err != nil {
+				return err
+			}
+			if err := writeFile(filepath.Join(directory, "assets", filepath.FromSlash(name)), data); err != nil {
+				return err
+			}
+		}
+		frame, _, err := pluginbrowser.Frame(prefix, runtime, []string{origin.Scheme + "://" + origin.Host}, module)
+		if err != nil {
+			return err
+		}
+		if err := writeFile(filepath.Join(directory, "frames", module.ModuleID+".html"), frame); err != nil {
+			return err
+		}
+		modules = append(modules, pluginbrowser.View(prefix, module))
+	}
+	data, err := json.Marshal(modules)
+	if err != nil {
+		return err
+	}
+	return writeFile(filepath.Join(config.OutputDir, "plugins", "modules.json"), data)
+}

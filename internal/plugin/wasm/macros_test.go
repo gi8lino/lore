@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestBundledAndInstalledMacrosUsePublicCapabilities verifies bundled and installed macros use public capabilities behavior.
 func TestBundledAndInstalledMacrosUsePublicCapabilities(t *testing.T) {
 	ctx := context.Background()
 	for _, name := range []string{"subpages", "page-report"} {
@@ -70,6 +71,7 @@ func TestBundledAndInstalledMacrosUsePublicCapabilities(t *testing.T) {
 	}
 }
 
+// TestPageReportPropagatesAuthorizationFailure verifies page report propagates authorization failure behavior.
 func TestPageReportPropagatesAuthorizationFailure(t *testing.T) {
 	ctx := context.Background()
 	renderer, err := markdown.New(ctx)

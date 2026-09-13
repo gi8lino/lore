@@ -8,7 +8,10 @@ import (
 	feature "github.com/gi8lino/lore/plugins/features/subpages"
 )
 
+// main runs the package entry point.
 func main() {}
+
+// transform parses or renders one subpages macro request.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	if request.Stage == "parse" {
 		options, matched := feature.Parse(request.Source)

@@ -13,6 +13,7 @@ var packageCache struct {
 	entries []*Package
 }
 
+// Read validates a package archive or returns a cloned process-local cached package.
 func Read(data []byte) (*Package, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return nil, errors.New("plugin archive exceeds size limit or is empty")

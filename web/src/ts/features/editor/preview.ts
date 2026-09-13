@@ -4,7 +4,8 @@ import { createLatestRequest, isAbortError } from "../../core/async.ts";
 import { requiredAttribute } from "../../core/dom.ts";
 import { isRecord } from "../../core/guards.ts";
 import { errorMessage, requestJSON } from "../../core/http.ts";
-import { renderMermaid, setupMarkdownEnhancements } from "../markdown.ts";
+import { setupMarkdownEnhancements } from "../markdown.ts";
+import { renderPluginModules } from "../../plugins/loader.ts";
 import { preferredEditorMode, rememberEditorMode } from "./experience.ts";
 
 export type EditorMode = "write" | "split" | "preview";
@@ -86,7 +87,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
   const editorWorkspace = workspace;
   const sourceEditor = source;
   const previewPanel = preview;
-  const previewContent = content;
+  let previewContent = content;
   const previewStatus = status;
   const previewRequests = createLatestRequest();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -146,7 +147,7 @@ function setupEditorPreview(form: HTMLFormElement): void {
       if (signal.aborted) return;
 
       if (payload.html !== renderedHTML) {
-        // Mermaid needs a connected, measurable element. Prepare it offscreen
+        // Browser modules need a connected, measurable element. Prepare it offscreen
         // so raw diagram source never replaces the currently visible preview.
         staging = document.createElement("div");
         staging.className = `${previewContent.className} editor-preview-staging`;
@@ -156,11 +157,19 @@ function setupEditorPreview(form: HTMLFormElement): void {
         staging.innerHTML = payload.html;
         previewPanel.append(staging);
         setupMarkdownEnhancements(staging);
-        await renderMermaid(staging);
+        await renderPluginModules(staging);
         if (signal.aborted) return;
 
         const scrollTop = previewPanel.scrollTop;
-        previewContent.replaceChildren(...staging.childNodes);
+        // Keep the staged node in place so moving an iframe cannot restart it.
+        previewContent.remove();
+        staging.className = previewContent.className;
+        staging.style.width = "";
+        staging.removeAttribute("aria-hidden");
+        staging.inert = false;
+        staging.setAttribute("data-editor-preview-content", "");
+        previewContent = staging;
+        staging = undefined;
         previewPanel.scrollTop = scrollTop;
         renderedHTML = payload.html;
       }

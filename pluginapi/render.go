@@ -9,27 +9,39 @@ const Version = 1
 // RenderRequest invokes one declared renderer module. Features contains only
 // presentation preferences, never credentials or implicit host capabilities.
 type RenderRequest struct {
-	APIVersion int             `json:"api_version"`
-	Module     string          `json:"module"`
-	Stage      string          `json:"stage"`
-	Source     string          `json:"source"`
+	// APIVersion identifies the Lore plugin wire protocol version.
+	APIVersion int `json:"api_version"`
+	// Module identifies the manifest module being invoked.
+	Module string `json:"module"`
+	// Stage selects the renderer or macro operation.
+	Stage string `json:"stage"`
+	// Source carries the current Markdown or intermediate HTML input.
+	Source string `json:"source"`
+	// Invocation carries serialized macro arguments between parse and render stages.
 	Invocation json.RawMessage `json:"invocation,omitempty"`
-	Features   map[string]bool `json:"features,omitempty"`
+	// Features contains request-scoped feature flags.
+	Features map[string]bool `json:"features,omitempty"`
 }
 
 // RenderResult returns intermediate output or an error. Markdown fragments are
 // rendered by the host after the WASM call finishes; this avoids reentrant guest
 // calls for nested blocks. Postprocessors may return text fragments only.
 type RenderResult struct {
-	Matched    bool            `json:"matched,omitempty"`
+	// Matched reports whether a macro parser recognized the candidate source.
+	Matched bool `json:"matched,omitempty"`
+	// Invocation carries serialized macro arguments between parse and render stages.
 	Invocation json.RawMessage `json:"invocation,omitempty"`
-	Parts      []RenderPart    `json:"parts,omitempty"`
-	Error      string          `json:"error,omitempty"`
+	// Parts contains ordered intermediate output fragments.
+	Parts []RenderPart `json:"parts,omitempty"`
+	// Error contains a guest-visible rendering error when the operation failed.
+	Error string `json:"error,omitempty"`
 }
 
 // RenderPart is either literal intermediate output or a recursive Markdown
 // fragment. Text and Markdown must not both be set. Empty text is valid.
 type RenderPart struct {
-	Text     string  `json:"text,omitempty"`
+	// Text contains literal intermediate output.
+	Text string `json:"text,omitempty"`
+	// Markdown contains a recursive Markdown fragment for host-side rendering.
 	Markdown *string `json:"markdown,omitempty"`
 }

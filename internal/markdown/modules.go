@@ -17,7 +17,7 @@ func New(ctx context.Context, runtimeOptions ...wasm.Option) (*Renderer, error) 
 // NewWithPluginStore restores durable plugin lifecycle state before rendering.
 func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions ...wasm.Option) (*Renderer, error) {
 	registry := &plugin.Registry{}
-	options := []wasm.Option{wasm.WithPermissions("pages:read")}
+	options := []wasm.Option{wasm.WithPermissions("pages:read", "browser:render")}
 	options = append(options, runtimeOptions...)
 	runtime, err := wasm.New(ctx, wasm.Limits{}, options...)
 	if err != nil {
@@ -40,7 +40,7 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 // moduleFeatures translates legacy settings at the composition boundary. It
 // does not activate modules absent from the registry.
 func moduleFeatures(options Options) map[string]bool {
-	return map[string]bool{"io.lore.callouts": options.Callouts}
+	return map[string]bool{"io.lore.callouts": options.Callouts, "io.lore.mermaid": options.Mermaid}
 }
 
 // PluginManager exposes lifecycle operations to the trusted application layer.

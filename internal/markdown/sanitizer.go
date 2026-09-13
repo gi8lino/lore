@@ -33,6 +33,7 @@ func newSanitizer() *bluemonday.Policy {
 	policy.AllowAttrs("role", "aria-checked", "aria-disabled").OnElements("span")
 	policy.AllowAttrs("type", "aria-selected").OnElements("button")
 	policy.AllowAttrs("open").OnElements("details")
+	policy.AllowAttrs("data-lore-plugin", "data-lore-module").Matching(regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,127}$`)).OnElements("div")
 	policy.AllowAttrs("data-page-variable").OnElements("span")
 	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 

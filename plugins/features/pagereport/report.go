@@ -20,16 +20,23 @@ const (
 
 // Options controls one {{pages}} report invocation.
 type Options struct {
-	Query   string
+	// Query is the required Lore search expression.
+	Query string
+	// Columns contains prepared report columns in display order.
 	Columns []string
-	View    string
-	Sort    string
-	Limit   int
+	// View selects table, list, or cards presentation.
+	View string
+	// Sort selects the page ordering strategy.
+	Sort string
+	// Limit bounds the number of report rows.
+	Limit int
 }
 
 // Source supplies page discovery and full page metadata for a report.
 type Source interface {
+	// Search searches the value.
 	Search(context.Context, string, int) ([]pluginapi.Page, error)
+	// GetPage returns page.
 	GetPage(context.Context, string) (pluginapi.Page, error)
 }
 
@@ -152,8 +159,11 @@ func NewRenderer(ctx context.Context, source Source) func(Options) (string, erro
 	}
 }
 
+// argumentParser incrementally parses a page-report macro argument list.
 type argumentParser struct {
+	// value is the complete argument string being parsed.
 	value string
+	// index is the next unread byte in value.
 	index int
 }
 
@@ -303,18 +313,27 @@ func sortPages(pages []pluginapi.Page, sort string) {
 	}
 }
 
+// tableData contains the template data for a rendered page-report table.
 type tableData struct {
+	// Columns contains prepared report columns in display order.
 	Columns []columnData
-	Rows    []rowData
+	// Rows contains prepared report rows in result order.
+	Rows []rowData
 }
 
+// columnData describes one page-report table column.
 type columnData struct {
-	Key   string
+	// Key identifies the report field represented by this column.
+	Key string
+	// Label is the human-readable report column heading.
 	Label string
 }
 
+// rowData contains one page-report table row.
 type rowData struct {
-	Slug  string
+	// Slug is the canonical page path for this report row.
+	Slug string
+	// Cells contains rendered cell values in column order.
 	Cells []string
 }
 

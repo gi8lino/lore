@@ -16,6 +16,7 @@ import (
 func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	if m.closed || len(m.loaded) != 0 {
 		return errors.New("plugin manager is not empty")
 	}
@@ -23,8 +24,10 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 	if err != nil {
 		return err
 	}
+
 	catalog := make(map[string]managedPlugin)
 	originals := make(map[string][]byte)
+
 	for _, archive := range archives {
 		pkg, err := pluginpackage.Read(archive)
 		if err != nil {
@@ -37,6 +40,7 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 		originals[id] = bytes.Clone(archive)
 		catalog[id] = managedPlugin{archive: originals[id], metadata: LoadedPlugin{Manifest: pkg.Manifest(), Source: SourceBundled, Digest: pkg.Digest(), Enabled: pkg.Manifest().DefaultEnabled}}
 	}
+
 	seen := make(map[string]bool)
 	for _, record := range records {
 		if seen[record.ID] {
@@ -67,10 +71,12 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 			return errors.New("invalid stored plugin source")
 		}
 	}
+
 	order, err := dependencyOrder(catalog)
 	if err != nil {
 		return err
 	}
+
 	candidate := &Registry{}
 	var prepared []Instance
 	success := false
@@ -81,6 +87,7 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 			}
 		}
 	}()
+
 	for _, id := range order {
 		item := catalog[id]
 		if !item.metadata.Enabled {
@@ -101,6 +108,7 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 		item.instance = instance
 		catalog[id] = item
 	}
+
 	if err := m.registry.initialize(candidate.entries); err != nil {
 		return err
 	}
@@ -108,14 +116,18 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 	m.order = order
 	m.bundled = originals
 	success = true
+
 	return nil
 }
+
+// dependencyOrder returns enabled plugins after their dependencies and rejects invalid graphs.
 func dependencyOrder(catalog map[string]managedPlugin) ([]string, error) {
 	names := make([]string, 0, len(catalog))
 	for id := range catalog {
 		names = append(names, id)
 	}
 	sort.Strings(names)
+
 	state := make(map[string]int)
 	var order []string
 	var visit func(string) error
@@ -143,10 +155,12 @@ func dependencyOrder(catalog map[string]managedPlugin) ([]string, error) {
 		order = append(order, id)
 		return nil
 	}
+
 	for _, id := range names {
 		if err := visit(id); err != nil {
 			return nil, err
 		}
 	}
+
 	return order, nil
 }

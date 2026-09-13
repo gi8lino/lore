@@ -2,22 +2,32 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/gi8lino/lore/internal/pluginpackage"
 	"slices"
 	"sync"
+
+	"github.com/gi8lino/lore/internal/pluginpackage"
 )
 
 // A lifetime belongs to one contribution version. Snapshots acquired by a render
 // retain it, so retirement cannot close a reactor while that render still uses it.
 type lifetime struct {
-	mu      sync.Mutex
-	refs    int
+	// mu protects concurrent access to the receiver state.
+	mu sync.Mutex
+	// refs counts active render snapshots using this contribution version.
+	refs int
+	// retired prevents this contribution version from accepting new ownership.
 	retired bool
-	done    chan struct{}
+	// done closes once retirement has no active render references.
+	done chan struct{}
 }
 
+// newLifetime creates a lifetime with an open retirement signal.
 func newLifetime() *lifetime { return &lifetime{done: make(chan struct{})} }
+
+// acquire retains one active reference to this contribution version.
 func (l *lifetime) acquire() { l.mu.Lock(); defer l.mu.Unlock(); l.refs++ }
+
+// release drops one active reference and completes retirement when drained.
 func (l *lifetime) release() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -26,6 +36,8 @@ func (l *lifetime) release() {
 		close(l.done)
 	}
 }
+
+// retire marks this contribution version retired and returns its drain signal.
 func (l *lifetime) retire() <-chan struct{} {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -108,6 +120,7 @@ func (r *Registry) transition(id string, replacement *Entry, replace bool, commi
 	return old, nil
 }
 
+// initialize replaces the registry contents during atomic startup publication.
 func (r *Registry) initialize(entries []Entry) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

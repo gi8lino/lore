@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestPluginStoragePersistsAndIsolatesNamespaces verifies plugin storage persists and isolates namespaces behavior.
 func TestPluginStoragePersistsAndIsolatesNamespaces(t *testing.T) {
 	dsn := integrationDatabase(t)
 	ctx := context.Background()
@@ -35,6 +36,7 @@ func TestPluginStoragePersistsAndIsolatesNamespaces(t *testing.T) {
 	require.Error(t, database.WritePluginValue(ctx, "io.one", "data", "key", make([]byte, 65537)))
 }
 
+// TestPluginStorageQuotaAllowsReplacement verifies plugin storage quota allows replacement behavior.
 func TestPluginStorageQuotaAllowsReplacement(t *testing.T) {
 	ctx := context.Background()
 	database, err := Open(ctx, integrationDatabase(t), slog.New(slog.NewTextHandler(io.Discard, nil)))

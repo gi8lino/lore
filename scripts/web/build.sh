@@ -8,7 +8,6 @@ cp -R web/src/. web/dist/
 # TypeScript is build input only. Remove copied source and emit browser-ready
 # native ES modules plus the root-scoped service worker.
 rm -rf web/dist/ts
-"${MERMAID_VENDOR:-scripts/web/vendor-mermaid.sh}"
 "${TSC:-./node_modules/.bin/tsc}" -p tsconfig.json
 "${TSC:-./node_modules/.bin/tsc}" -p web/src/ts/service-worker/tsconfig.json
 

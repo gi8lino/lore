@@ -15,32 +15,47 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-type callerKey struct{}
+// callerKey identifies the current guest invocation in context.
+type callerKey struct {
+}
+
+// invocationState binds host capabilities and call limits to one guest invocation.
 type invocationState struct {
-	instance  *Instance
+	// instance owns the active executable plugin instance.
+	instance *Instance
+	// remaining limits host capability calls for one guest invocation.
 	remaining int
 }
-type capabilitiesKey struct{}
 
+// capabilitiesKey stores render-scoped capabilities in context without collisions.
+type capabilitiesKey struct {
+}
+
+// decode strictly decodes one capability request payload.
 func decode(data []byte, result any) error {
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.DisallowUnknownFields()
+
 	if err := d.Decode(result); err != nil {
 		return err
 	}
+
 	var extra any
 	if d.Decode(&extra) != io.EOF {
 		return errors.New("expected one JSON value")
 	}
+
 	return nil
 }
 
+// hostCall validates guest buffers and dispatches one capability request.
 func (r *Runtime) hostCall(ctx context.Context, module api.Module, pointer, length, output, capacity uint32) uint32 {
 	// Validate both buffers before executing a side effect. Never let a plugin
 	// probe host addresses or cause a write followed by an invalid-buffer retry.
 	if length == 0 || uint64(length) > uint64(r.limits.WireBytes) || capacity < 256 || uint64(capacity) > uint64(r.limits.WireBytes) {
 		return 0
 	}
+
 	input, ok := module.Memory().Read(pointer, length)
 	if !ok {
 		return 0
@@ -48,6 +63,7 @@ func (r *Runtime) hostCall(ctx context.Context, module api.Module, pointer, leng
 	if _, ok := module.Memory().Read(output, capacity); !ok {
 		return 0
 	}
+
 	response := pluginapi.CapabilityResponse{}
 	value, err := plugin.Guard("host capability", func() (any, error) {
 		var request pluginapi.CapabilityRequest
@@ -71,13 +87,16 @@ func (r *Runtime) hostCall(ctx context.Context, module api.Module, pointer, leng
 	if len(encoded) > int(capacity) || !module.Memory().Write(output, encoded) {
 		return 0
 	}
+
 	return uint32(len(encoded))
 }
 
+// dispatch executes an allowed capability method for the current plugin.
 func (r *Runtime) dispatch(ctx context.Context, module api.Module, request pluginapi.CapabilityRequest) (any, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+
 	state, ok := ctx.Value(callerKey{}).(*invocationState)
 	if !ok || state.instance.module != module {
 		return nil, errors.New("capabilities unavailable outside invocation")
@@ -85,12 +104,14 @@ func (r *Runtime) dispatch(ctx context.Context, module api.Module, request plugi
 	if state.remaining <= 0 {
 		return nil, errors.New("host call quota exceeded")
 	}
+
 	state.remaining--
 	caller := state.instance
 	permission, known := pluginapi.PermissionFor(request.Method)
 	if !known || (permission != "" && (!r.permissions[permission] || !slices.Contains(caller.manifest.Permissions, permission))) {
 		return nil, errors.New("capability denied")
 	}
+
 	if strings.HasPrefix(request.Method, "plugin.") {
 		return r.storageCall(ctx, caller.manifest.ID, request)
 	}
@@ -107,13 +128,16 @@ func (r *Runtime) dispatch(ctx context.Context, module api.Module, request plugi
 	if capability == nil {
 		return nil, errors.New("capability unavailable in this context")
 	}
+
 	return capability(ctx, request.Params)
 }
 
+// storageCall executes namespaced plugin settings or data storage operations.
 func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.CapabilityRequest) (any, error) {
 	if r.storage == nil {
 		return nil, errors.New("plugin storage unavailable")
 	}
+
 	var value pluginapi.StorageValue
 	if err := decode(request.Params, &value); err != nil || len(value.Key) == 0 || len(value.Key) > 256 || strings.ContainsRune(value.Key, 0) || len(value.Value) > 64<<10 {
 		return nil, errors.New("invalid storage value")
@@ -122,6 +146,7 @@ func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.
 	if strings.HasPrefix(request.Method, "plugin.settings.") {
 		namespace = "settings"
 	}
+
 	if strings.HasSuffix(request.Method, ".read") {
 		data, found, err := r.storage.ReadPluginValue(ctx, id, namespace, value.Key)
 		if len(data) > 64<<10 {
@@ -129,5 +154,6 @@ func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.
 		}
 		return pluginapi.StoredValue{Value: data, Found: found}, err
 	}
+
 	return nil, r.storage.WritePluginValue(ctx, id, namespace, value.Key, value.Value)
 }

@@ -22,6 +22,7 @@ modules:
 permissions: []
 `
 
+// testArchive handles the test archive operation.
 func testArchive(t *testing.T, manifest string, extras ...archiveEntry) []byte {
 	t.Helper()
 	var buffer bytes.Buffer
@@ -39,12 +40,17 @@ func testArchive(t *testing.T, manifest string, extras ...archiveEntry) []byte {
 	return buffer.Bytes()
 }
 
+// archiveEntry groups the state and data associated with archive entry.
 type archiveEntry struct {
+	// name stores the value associated with name.
 	name string
+	// data contains the ordered values associated with data.
 	data []byte
+	// mode stores the value associated with mode.
 	mode fs.FileMode
 }
 
+// TestPackageReadAndDefensiveCopies verifies package read and defensive copies behavior.
 func TestPackageReadAndDefensiveCopies(t *testing.T) {
 	data := testArchive(t, testManifest, archiveEntry{"assets/plugin.css", []byte("body{}"), 0644})
 	pkg, err := Read(data)
@@ -69,6 +75,7 @@ func TestPackageReadAndDefensiveCopies(t *testing.T) {
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 }
 
+// TestPackageRejectsUnsafeEntries verifies package rejects unsafe entries behavior.
 func TestPackageRejectsUnsafeEntries(t *testing.T) {
 	for _, name := range []string{"../escape", "/absolute", "assets/../escape", "assets\\escape", "assets/a/../../escape", "C:/escape", "assets/./file", "other.txt", "plugin.yaml"} {
 		t.Run(name, func(t *testing.T) {
@@ -86,6 +93,7 @@ func TestPackageRejectsUnsafeEntries(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestPackageRejectsUnsupportedManifest verifies package rejects unsupported manifest behavior.
 func TestPackageRejectsUnsupportedManifest(t *testing.T) {
 	for _, manifest := range []string{
 		strings.Replace(testManifest, "api_version: 1", "api_version: 999", 1),
@@ -103,6 +111,7 @@ func TestPackageRejectsUnsupportedManifest(t *testing.T) {
 	}
 }
 
+// TestPackageRejectsExpansionAndEntryCountLimits verifies package rejects expansion and entry count limits behavior.
 func TestPackageRejectsExpansionAndEntryCountLimits(t *testing.T) {
 	_, err := Read(testArchive(t, testManifest, archiveEntry{"assets/large.css", bytes.Repeat([]byte{'x'}, MaxAssetBytes+1), 0644}))
 	require.ErrorContains(t, err, "size limit")
@@ -116,6 +125,7 @@ func TestPackageRejectsExpansionAndEntryCountLimits(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestManifestMacroAndPermissionValidation verifies manifest macro and permission validation behavior.
 func TestManifestMacroAndPermissionValidation(t *testing.T) {
 	manifest := strings.Replace(testManifest, "type: renderer-extension", "type: macro", 1)
 	manifest = strings.Replace(manifest, "stage: preprocess", "name: pages\n    capability: pages.search", 1)
@@ -132,4 +142,33 @@ func TestManifestMacroAndPermissionValidation(t *testing.T) {
 		_, err := Read(testArchive(t, invalid))
 		require.Error(t, err)
 	}
+}
+
+func TestBrowserModulesRequireDeclaredPermissionAndPackagedAssets(t *testing.T) {
+	manifest := `api_version: 1
+id: io.example.browser
+name: Browser
+version: 1.0.0
+modules:
+  - type: browser-module
+    id: diagrams
+    javascript: plugin.js
+    css: plugin.css
+permissions: [browser:render]
+`
+	assets := []archiveEntry{{"assets/plugin.js", []byte("globalThis.lorePlugin={}"), 0644}, {"assets/plugin.css", []byte("body{}"), 0644}}
+	_, err := Read(testArchive(t, manifest, assets...))
+	require.NoError(t, err)
+	for _, invalid := range []string{
+		strings.ReplaceAll(manifest, "[browser:render]", "[]"),
+		strings.ReplaceAll(manifest, "javascript: plugin.js", "javascript: ../plugin.js"),
+		strings.ReplaceAll(manifest, "javascript: plugin.js", "javascript: absent.js"),
+		strings.ReplaceAll(manifest, "css: plugin.css", "css: absent.css"),
+		strings.ReplaceAll(manifest, "type: browser-module", "type: renderer-extension\n    stage: postprocess"),
+	} {
+		_, err := Read(testArchive(t, invalid, assets...))
+		require.Error(t, err)
+	}
+	_, err = Read(testArchive(t, manifest))
+	require.Error(t, err)
 }

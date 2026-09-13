@@ -19,13 +19,19 @@ import (
 // Limits bounds individual sandbox calls, guest memory, and wire payloads.
 // Each page is 64 KiB. Zero fields use conservative defaults.
 type Limits struct {
+	// MemoryPages is the maximum guest memory in 64 KiB WebAssembly pages.
 	MemoryPages uint32
+	// CallTimeout bounds one guest invocation.
 	CallTimeout time.Duration
+	// LoadTimeout bounds compilation and module loading.
 	LoadTimeout time.Duration
-	WireBytes   int
-	Parts       int
+	// WireBytes bounds request, response, and assembled output payloads.
+	WireBytes int
+	// Parts bounds the number of render fragments returned by one guest call.
+	Parts int
 }
 
+// defaults fills unset resource limits with conservative runtime defaults.
 func (l Limits) defaults() Limits {
 	if l.MemoryPages == 0 {
 		l.MemoryPages = 1024
@@ -54,16 +60,22 @@ var compilationCache = wazero.NewCompilationCache()
 // This gate never covers rendering or shares guest state.
 var compilationGate = make(chan struct{}, 1)
 
+// Runtime owns the wazero engine and trusted host policy used for plugin instances.
 type Runtime struct {
-	engine      wazero.Runtime
-	limits      Limits
+	// engine owns compiled modules and instantiated WASM guests.
+	engine wazero.Runtime
+	// limits contains effective runtime resource bounds.
+	limits Limits
+	// permissions contains host capabilities explicitly granted by application policy.
 	permissions map[string]bool
-	storage     plugin.Storage
+	// storage provides persistent plugin state storage.
+	storage plugin.Storage
 }
 
 // Option configures trusted application policy, equally for every source.
 type Option func(*Runtime)
 
+// WithPermissions grants host capabilities that packages may declare and request.
 func WithPermissions(permissions ...string) Option {
 	return func(r *Runtime) {
 		for _, p := range permissions {
@@ -71,10 +83,14 @@ func WithPermissions(permissions ...string) Option {
 		}
 	}
 }
+
+// WithStorage provides namespaced persistent settings and data storage to plugins.
 func WithStorage(storage plugin.Storage) Option { return func(r *Runtime) { r.storage = storage } }
 
+// New creates a WASM plugin runtime with bounded resources and explicit host policy.
 func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error) {
 	limits = limits.defaults()
+
 	if limits.MemoryPages > 65536 || limits.WireBytes > 16<<20 || limits.Parts > 4096 {
 		return nil, errors.New("invalid WASM runtime limits")
 	}
@@ -87,52 +103,65 @@ func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error
 		_ = engine.Close(ctx)
 		return nil, err
 	}
+
 	r := &Runtime{engine: engine, limits: limits, permissions: make(map[string]bool)}
 	for _, option := range options {
 		option(r)
 	}
+
 	if _, err := engine.NewHostModuleBuilder("lore_v1").NewFunctionBuilder().WithFunc(r.hostCall).Export("call").Instantiate(ctx); err != nil {
 		_ = engine.Close(ctx)
 		return nil, err
 	}
+
 	return r, nil
 }
 
+// Load validates policy, compiles the guest, and returns an isolated plugin instance.
 func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.Instance, error) {
 	for _, permission := range pkg.Manifest().Permissions {
 		if !r.permissions[permission] {
 			return nil, fmt.Errorf("plugin permission not granted: %s", permission)
 		}
 	}
+
 	ctx, cancel := context.WithTimeout(ctx, r.limits.LoadTimeout)
 	defer cancel()
+
 	select {
 	case compilationGate <- struct{}{}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+
 	binary := pkg.WASM()
 	compiled, err := r.compile(ctx, binary)
 	<-compilationGate
 	if err != nil {
 		return nil, fmt.Errorf("compile WASM: %w", err)
 	}
+
 	instance := &Instance{runtime: r, compiled: compiled, manifest: pkg.Manifest(), gate: make(chan struct{}, 1)}
 	initializeCtx, stop := context.WithTimeout(ctx, r.limits.CallTimeout)
 	defer stop()
+
 	if err := instance.instantiate(initializeCtx); err != nil {
 		_ = compiled.Close(ctx)
 		return nil, err
 	}
+
 	return instance, nil
 }
 
+// Close releases resources held by the receiver.
 func (r *Runtime) Close(ctx context.Context) error { return r.engine.Close(ctx) }
 
+// validateABI verifies the guest exports and API version required by Lore.
 func validateABI(compiled wazero.CompiledModule) error {
 	if len(compiled.ImportedMemories()) != 0 {
 		return errors.New("imported WASM memory is not allowed")
 	}
+
 	for _, imported := range compiled.ImportedFunctions() {
 		namespace, name, _ := imported.Import()
 		if namespace != wasi_snapshot_preview1.ModuleName && !validHostImport(namespace, name, imported) {
@@ -142,6 +171,7 @@ func validateABI(compiled wazero.CompiledModule) error {
 	if compiled.ExportedMemories()["memory"] == nil {
 		return errors.New("plugin must export memory")
 	}
+
 	signatures := []struct {
 		name            string
 		params, results []api.ValueType
@@ -151,15 +181,18 @@ func validateABI(compiled wazero.CompiledModule) error {
 		{"lore_alloc", []api.ValueType{api.ValueTypeI32}, []api.ValueType{api.ValueTypeI32}},
 		{"lore_transform", []api.ValueType{api.ValueTypeI32, api.ValueTypeI32}, []api.ValueType{api.ValueTypeI64}},
 	}
+
 	for _, signature := range signatures {
 		function := compiled.ExportedFunctions()[signature.name]
 		if function == nil || !slices.Equal(function.ParamTypes(), signature.params) || !slices.Equal(function.ResultTypes(), signature.results) {
 			return fmt.Errorf("missing or incompatible WASM export %s", signature.name)
 		}
 	}
+
 	return nil
 }
 
+// instantiate creates one isolated reactor from validated compiled code.
 func (i *Instance) instantiate(ctx context.Context) error {
 	// Anonymous instances cannot be imported by another plugin. Only _initialize
 	// is invoked, and it shares the load/call deadline and memory limit.
@@ -167,15 +200,19 @@ func (i *Instance) instantiate(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("initialize WASM: %w", err)
 	}
+
 	version, err := module.ExportedFunction("lore_api_version").Call(ctx)
 	if err != nil || len(version) != 1 || version[0] != pluginapi.Version {
 		_ = module.Close(context.Background())
 		return errors.New("incompatible WASM plugin API version")
 	}
+
 	i.module = module
+
 	return nil
 }
 
+// validHostImport reports whether an imported function is part of Lore's allowed host ABI.
 func validHostImport(namespace, name string, function api.FunctionDefinition) bool {
 	return namespace == "lore_v1" && name == "call" && slices.Equal(function.ParamTypes(), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32}) && slices.Equal(function.ResultTypes(), []api.ValueType{api.ValueTypeI32})
 }

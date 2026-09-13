@@ -13,9 +13,13 @@ import (
 // next invocation. No host pointers or Go values cross the WASM boundary.
 var input, output []byte
 
+// apiVersion exports the Lore plugin ABI version supported by this guest.
+//
 //go:wasmexport lore_api_version
 func apiVersion() uint32 { return pluginapi.Version }
 
+// allocate reserves guest memory for one host request.
+//
 //go:wasmexport lore_alloc
 func allocate(size uint32) uint32 {
 	if size == 0 || size > 4<<20 {
@@ -25,6 +29,8 @@ func allocate(size uint32) uint32 {
 	return uint32(uintptr(unsafe.Pointer(&input[0])))
 }
 
+// invoke decodes one host request and returns a packed guest response buffer.
+//
 //go:wasmexport lore_transform
 func invoke(pointer, length uint32) uint64 {
 	var result pluginapi.RenderResult

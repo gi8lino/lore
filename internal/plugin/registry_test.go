@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestRegistryRegistrationIsAtomicAndReversible verifies registry registration is atomic and reversible behavior.
 func TestRegistryRegistrationIsAtomicAndReversible(t *testing.T) {
 	r := &Registry{}
 	descriptor := Descriptor{ID: "base", Name: "Base"}
@@ -35,6 +36,7 @@ func TestRegistryRegistrationIsAtomicAndReversible(t *testing.T) {
 	require.Equal(t, "Base", r.Snapshot().Entries[0].Descriptor.Name)
 }
 
+// TestRegistryRejectsInvalidContributions verifies registry rejects invalid contributions behavior.
 func TestRegistryRejectsInvalidContributions(t *testing.T) {
 	for _, modules := range []Contributions{
 		{Macros: []Macro{nil}},
@@ -50,6 +52,7 @@ func TestRegistryRejectsInvalidContributions(t *testing.T) {
 	}
 }
 
+// TestRegistryConcurrentSnapshotsAndRemoval verifies registry concurrent snapshots and removal behavior.
 func TestRegistryConcurrentSnapshotsAndRemoval(t *testing.T) {
 	r := &Registry{}
 	var wg sync.WaitGroup

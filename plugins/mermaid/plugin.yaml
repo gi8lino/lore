@@ -1,0 +1,15 @@
+api_version: 1
+id: io.lore.mermaid
+name: Mermaid
+version: 1.0.0
+description: Render Mermaid diagrams in isolated browser modules.
+default_enabled: true
+modules:
+  - type: renderer-extension
+    id: fences
+    stage: postprocess
+  - type: browser-module
+    id: diagrams
+    javascript: plugin.js
+    css: plugin.css
+permissions: [browser:render]

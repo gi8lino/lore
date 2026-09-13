@@ -30,3 +30,15 @@
 @import "./components/page-report.css";
 @import "./components/page-watches.css";
 @import "./components/path-picker.css";
+
+/* The parent styles only the core-owned frame; plugin CSS stays in its sandbox. */
+.lore-plugin-frame {
+  display: block;
+  width: 100%;
+  height: 0;
+  border: 0;
+  background: transparent;
+}
+.lore-plugin-block > pre[hidden] {
+  display: none;
+}

@@ -2,7 +2,7 @@
 
 import { requiredElement } from "../../core/dom.ts";
 import { errorMessage, responseProblem } from "../../core/http.ts";
-import { renderMermaid } from "../markdown.ts";
+import { renderPluginModules } from "../../plugins/loader.ts";
 
 const sensitivePDFHeaderNames = new Set([
   "authorization",
@@ -474,7 +474,7 @@ function setupMermaidPreview(): void {
   );
   if (!preview) return;
 
-  void renderMermaid(preview, true).catch((error: unknown) => {
+  void renderPluginModules(preview).catch((error: unknown) => {
     console.error("rendering Mermaid preview failed", error);
   });
 }

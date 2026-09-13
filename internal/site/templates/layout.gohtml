@@ -16,7 +16,7 @@
     </head>
 <body class="static-site"
       data-static-base-path="{{ .BasePath }}"
-      data-render-mermaid="{{ if .RenderMermaid }}true{{ else }}false{{ end }}"
+      data-plugin-modules="{{ .BasePath }}plugins/modules.json" data-plugin-live="false"
       data-coding-ligatures="false"
       data-navigation-style="{{ .NavigationStyle }}"
       data-navigation-density="{{ .NavigationDensity }}"

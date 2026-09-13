@@ -8,20 +8,28 @@ import (
 	feature "github.com/gi8lino/lore/plugins/features/pagereport"
 )
 
+// main runs the package entry point.
 func main() {}
 
-type pages struct{}
+// pages adapts the Lore page capability to the page-report feature interface.
+type pages struct {
+}
 
+// Search invokes Lore's page-search host capability.
 func (pages) Search(_ context.Context, query string, limit int) ([]pluginapi.Page, error) {
 	var result []pluginapi.Page
 	err := pluginapi.Call("pages.search", pluginapi.PageQuery{Query: query, Limit: limit}, &result)
 	return result, err
 }
+
+// GetPage invokes Lore's page lookup host capability.
 func (pages) GetPage(_ context.Context, slug string) (pluginapi.Page, error) {
 	var result pluginapi.Page
 	err := pluginapi.Call("pages.get", pluginapi.PageRef{Slug: slug}, &result)
 	return result, err
 }
+
+// transform parses or renders one page-report macro request.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	if request.Stage == "parse" {
 		options, matched := feature.Parse(request.Source)

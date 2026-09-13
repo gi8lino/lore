@@ -44,6 +44,7 @@ func tinyReactor(apiVersion byte, initialization []byte) []byte {
 	return module
 }
 
+// TestRuntimeChecksGuestVersionAndInitializationDeadline verifies runtime checks guest version and initialization deadline behavior.
 func TestRuntimeChecksGuestVersionAndInitializationDeadline(t *testing.T) {
 	for _, scenario := range []struct {
 		name     string
@@ -67,6 +68,7 @@ func TestRuntimeChecksGuestVersionAndInitializationDeadline(t *testing.T) {
 	}
 }
 
+// TestRuntimeRejectsForeignImports verifies runtime rejects foreign imports behavior.
 func TestRuntimeRejectsForeignImports(t *testing.T) {
 	// (module (type (func)) (import "evil" "f" (func (type 0))))
 	module := []byte{0, 'a', 's', 'm', 1, 0, 0, 0, 1, 4, 1, 0x60, 0, 0, 2, 10, 1, 4, 'e', 'v', 'i', 'l', 1, 'f', 0, 0}

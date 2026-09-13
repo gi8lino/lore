@@ -15,19 +15,30 @@ import (
 var retainedCode []*codeEntry
 var codeMu sync.Mutex
 
+// codeEntry owns one cached compiled module and its active lease count.
 type codeEntry struct {
-	digest  [32]byte
-	pages   uint32
-	module  wazero.CompiledModule
-	refs    int
+	// digest identifies the validated plugin package content.
+	digest [32]byte
+	// pages records the guest memory limit used to compile this entry.
+	pages uint32
+	// module holds the active WebAssembly module instance.
+	module wazero.CompiledModule
+	// refs counts active instances leasing this compiled module.
+	refs int
+	// retired marks an evicted entry waiting for active leases to close.
 	retired bool
 }
+
+// compiledLease keeps cached compiled code alive while an instance uses it.
 type compiledLease struct {
 	wazero.CompiledModule
+	// entry points to the cached compiled module being leased.
 	entry *codeEntry
-	once  sync.Once
+	// once guarantees that a compiled lease is released at most once.
+	once sync.Once
 }
 
+// Close releases resources held by the receiver.
 func (l *compiledLease) Close(ctx context.Context) error {
 	var err error
 	l.once.Do(func() {

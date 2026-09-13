@@ -1,0 +1,4 @@
+html, body { margin: 0; padding: 0; background: transparent; }
+body { font: 14px system-ui, sans-serif; }
+.mermaid { text-align: center; overflow: auto; }
+.mermaid svg { max-width: 100%; height: auto; }

@@ -10,14 +10,18 @@ import (
 
 // renderData contains one shared subpages template invocation.
 type renderData struct {
-	Children  []pluginapi.NavigationNode
-	Title     string
+	// Children contains prepared child navigation nodes.
+	Children []pluginapi.NavigationNode
+	// Title is the optional visible subpages heading.
+	Title string
+	// ShowTitle controls whether the heading is emitted.
 	ShowTitle bool
 }
 
 //go:embed template.gohtml
 var templateSource string
 
+// newTemplate parses and returns the subpages rendering template.
 func newTemplate(icon func(string, int) template.HTML) *template.Template {
 	return template.Must(
 		template.New("subpages").

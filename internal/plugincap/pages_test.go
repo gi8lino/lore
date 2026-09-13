@@ -11,19 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// catalog groups the state and data associated with catalog.
 type catalog struct {
-	gets     int
+	// gets stores the value associated with gets.
+	gets int
+	// searches stores the value associated with searches.
 	searches int
 }
 
+// Search searches the value.
 func (c *catalog) Search(context.Context, string, int) ([]domain.Page, error) {
 	c.searches++
 	return []domain.Page{{Slug: "shared"}, {Slug: "private"}}, nil
 }
+
+// GetPage returns page.
 func (c *catalog) GetPage(_ context.Context, slug string) (domain.Page, error) {
 	c.gets++
 	return domain.Page{Slug: slug, Title: "Public title", Markdown: "SECRET BODY"}, nil
 }
+
+// TestSharedCapabilitiesRestrictScopeAndFields verifies shared capabilities restrict scope and fields behavior.
 func TestSharedCapabilitiesRestrictScopeAndFields(t *testing.T) {
 	source := &catalog{}
 	capabilities := Capabilities(SharedPages{Source: source, Slug: "shared"}, nil)

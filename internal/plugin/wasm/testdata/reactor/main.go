@@ -16,17 +16,24 @@ import (
 
 var input, output []byte
 
+// main runs the package entry point.
 func main() {}
 
+// version returns the plugin ABI version implemented by this test reactor.
+//
 //go:wasmexport lore_api_version
 func version() uint32 { return 1 }
 
+// alloc reserves guest memory for one host-provided request.
+//
 //go:wasmexport lore_alloc
 func alloc(n uint32) uint32 {
 	input = make([]byte, n)
 	return uint32(uintptr(unsafe.Pointer(&input[0])))
 }
 
+// transform exercises the requested test behavior and returns a packed response.
+//
 //go:wasmexport lore_transform
 func transform(pointer, length uint32) uint64 {
 	var request pluginapi.RenderRequest
@@ -102,13 +109,19 @@ func transform(pointer, length uint32) uint64 {
 	output, _ = json.Marshal(result)
 	return address()
 }
+
+// denied records whether an intentionally forbidden host call was rejected.
 func denied(err error) string {
 	if err != nil {
 		return "denied"
 	}
 	return "ALLOWED"
 }
+
+// address returns the linear-memory offset of a byte slice.
 func address() uint64 { return uint64(len(output))<<32 | uint64(uintptr(unsafe.Pointer(&output[0]))) }
 
+// rawHost invokes the imported Lore host-call ABI directly.
+//
 //go:wasmimport lore_v1 call
 func rawHost(pointer, length, output, capacity uint32) uint32

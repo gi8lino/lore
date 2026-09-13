@@ -12,25 +12,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// fakeRuntime groups the state and data associated with fake runtime.
 type fakeRuntime struct {
+	// instance owns the active executable plugin instance.
 	instance *fakeInstance
-	err      error
-	closed   bool
+	// err stores the terminal operation error.
+	err error
+	// closed indicates whether the associated resource is closed.
+	closed bool
 }
 
+// Load loads the value.
 func (r *fakeRuntime) Load(context.Context, *pluginpackage.Package) (plugin.Instance, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
 	return r.instance, nil
 }
+
+// Close releases resources held by the receiver.
 func (r *fakeRuntime) Close(context.Context) error { r.closed = true; return nil }
 
-type fakeInstance struct{ closed bool }
+// fakeInstance groups the state and data associated with fake instance.
+type fakeInstance struct {
+	// closed indicates whether the associated resource is closed.
+	closed bool
+}
 
+// Contributions returns the contributions owned by the instance.
 func (i *fakeInstance) Contributions() plugin.Contributions { return plugin.Contributions{} }
-func (i *fakeInstance) Close(context.Context) error         { i.closed = true; return nil }
 
+// Close releases resources held by the receiver.
+func (i *fakeInstance) Close(context.Context) error { i.closed = true; return nil }
+
+// TestManagerRollsBackFailedRegistration verifies manager rolls back failed registration behavior.
 func TestManagerRollsBackFailedRegistration(t *testing.T) {
 	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
@@ -47,6 +62,7 @@ func TestManagerRollsBackFailedRegistration(t *testing.T) {
 	assert.True(t, runtime.closed)
 }
 
+// TestManagerFailuresNeverPublishContributions verifies manager failures never publish contributions behavior.
 func TestManagerFailuresNeverPublishContributions(t *testing.T) {
 	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
@@ -64,6 +80,7 @@ func TestManagerFailuresNeverPublishContributions(t *testing.T) {
 	require.ErrorContains(t, err, "closed")
 }
 
+// TestInstallCannotReplaceAnotherRegistryOwner verifies install cannot replace another registry owner behavior.
 func TestInstallCannotReplaceAnotherRegistryOwner(t *testing.T) {
 	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)

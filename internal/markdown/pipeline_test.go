@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"context"
+
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
@@ -25,26 +26,39 @@ import (
 
 type preprocessorFunc func(plugin.Context, string) (string, error)
 
+// Preprocess transforms Markdown before the core parser runs.
 func (f preprocessorFunc) Preprocess(c plugin.Context, s string) (string, error) { return f(c, s) }
 
 type postprocessorFunc func(plugin.Context, string) (string, error)
 
+// Postprocess transforms rendered HTML before central sanitization.
 func (f postprocessorFunc) Postprocess(c plugin.Context, s string) (string, error) { return f(c, s) }
 
 type extensionFunc func(plugin.Context) goldmark.Extender
 
+// Extension returns a fresh Goldmark extension for the current render.
 func (f extensionFunc) Extension(c plugin.Context) goldmark.Extender { return f(c) }
 
+// testMacro groups the state and data associated with test macro.
 type testMacro struct {
-	parse  func(string) (plugin.Invocation, bool)
+	// parse invokes the callback associated with parse.
+	parse func(string) (plugin.Invocation, bool)
+	// render invokes the callback associated with render.
 	render func(plugin.Context, plugin.Invocation) (string, error)
 }
 
-func (m testMacro) Name() string                             { return "status" }
+// Name returns the registered contribution name.
+func (m testMacro) Name() string { return "status" }
+
+// Parse parses the value.
 func (m testMacro) Parse(s string) (plugin.Invocation, bool) { return m.parse(s) }
+
+// Render renders the value.
 func (m testMacro) Render(c plugin.Context, v plugin.Invocation) (string, error) {
 	return m.render(c, v)
 }
+
+// statusMacro handles the status macro operation.
 func statusMacro(html string) testMacro {
 	return testMacro{
 		parse:  func(s string) (plugin.Invocation, bool) { return []byte(`{}`), strings.TrimSpace(s) == "{{status}}" },
@@ -52,6 +66,7 @@ func statusMacro(html string) testMacro {
 	}
 }
 
+// TestPluginStagesAndMacroOutputShareFinalSanitizer verifies plugin stages and macro output share final sanitizer behavior.
 func TestPluginStagesAndMacroOutputShareFinalSanitizer(t *testing.T) {
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "custom", Name: "Custom"}, plugin.Contributions{
@@ -77,6 +92,7 @@ func TestPluginStagesAndMacroOutputShareFinalSanitizer(t *testing.T) {
 	assert.NotContains(t, rendered, "javascript:")
 }
 
+// TestMacroCodeBoundaries verifies macro code boundaries behavior.
 func TestMacroCodeBoundaries(t *testing.T) {
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "test", Name: "Test"}, plugin.Contributions{Macros: []plugin.Macro{statusMacro("EXPANDED")}}))
@@ -99,6 +115,7 @@ func TestMacroCodeBoundaries(t *testing.T) {
 	}
 }
 
+// TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer verifies callouts can be removed and registered without replacing renderer behavior.
 func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T) {
 	renderer := testRenderer(t)
 	registry := renderer.registry
@@ -130,6 +147,7 @@ func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T)
 	assert.NotContains(t, got, `class="callout`)
 }
 
+// TestRenderSnapshotSurvivesRemovalDuringNestedRender verifies render snapshot survives removal during nested render behavior.
 func TestRenderSnapshotSurvivesRemovalDuringNestedRender(t *testing.T) {
 	renderer := testRenderer(t)
 	registry := renderer.registry
@@ -149,6 +167,7 @@ func TestRenderSnapshotSurvivesRemovalDuringNestedRender(t *testing.T) {
 	assert.NotContains(t, got, `class="callout`)
 }
 
+// TestModulePanicsAndErrorsReturnRenderErrors verifies module panics and errors return render errors behavior.
 func TestModulePanicsAndErrorsReturnRenderErrors(t *testing.T) {
 	failure := errors.New("module failed")
 	panicking := statusMacro("")
@@ -177,6 +196,7 @@ func TestModulePanicsAndErrorsReturnRenderErrors(t *testing.T) {
 	}
 }
 
+// TestModuleRecursionIsBounded verifies module recursion is bounded behavior.
 func TestModuleRecursionIsBounded(t *testing.T) {
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "loop", Name: "Loop"}, plugin.Contributions{
@@ -186,6 +206,7 @@ func TestModuleRecursionIsBounded(t *testing.T) {
 	require.ErrorContains(t, err, "nesting limit")
 }
 
+// TestRemovedMacrosCannotBeActivatedByRequestBindings verifies removed macros cannot be activated by request bindings behavior.
 func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
 	renderer := testRenderer(t)
 	registry := renderer.registry
@@ -197,6 +218,7 @@ func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
 	assert.Contains(t, got.HTML, "{{subpages}}")
 }
 
+// TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer verifies subpages markup and static icons survive central sanitizer behavior.
 func TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer(t *testing.T) {
 	nodes := plugincap.Navigation([]navigation.Node{{Slug: "child", Title: "Child", Page: true, Icon: "book-lucide"}}, func(s string) string { return "/pages/" + s })
 	got, err := testRenderer(t).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
@@ -215,6 +237,7 @@ func TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer(t *testing.T) {
 	assert.Contains(t, newSanitizer().Sanitize(svg), `<path`)
 }
 
+// TestSanitizerRejectsActiveSVGAndUnsafeMacroMarkup verifies sanitizer rejects active svgand unsafe macro markup behavior.
 func TestSanitizerRejectsActiveSVGAndUnsafeMacroMarkup(t *testing.T) {
 	source := `<svg onload="alert(1)"><script>alert(1)</script><foreignObject><iframe src="https://evil.test"></iframe></foreignObject><use href="https://evil.test/icon.svg#x"></use><animate attributeName="href" values="javascript:alert(1)"></animate><path d="M0 0h1" fill="url(https://evil.test/paint)" style="fill:url(https://evil.test)"></path></svg>`
 	got := newSanitizer().Sanitize(source)
@@ -226,21 +249,29 @@ func TestSanitizerRejectsActiveSVGAndUnsafeMacroMarkup(t *testing.T) {
 
 // Native Goldmark adapters can register AST transformers and node renderers;
 // their generated HTML still traverses the same final sanitizer.
-type testASTExtension struct{}
+type testASTExtension struct {
+}
 
+// Extend handles the extend operation.
 func (testASTExtension) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(parser.WithASTTransformers(util.Prioritized(testTransformer{}, 500)))
 	m.Renderer().AddOptions(gmrenderer.WithNodeRenderers(util.Prioritized(testNodeRenderer{}, 50)))
 }
 
-type testTransformer struct{}
+// testTransformer groups the state and data associated with test transformer.
+type testTransformer struct {
+}
 
+// Transform handles the transform operation.
 func (testTransformer) Transform(node *ast.Document, _ text.Reader, _ parser.Context) {
 	node.FirstChild().AppendChild(node.FirstChild(), ast.NewString([]byte("AST")))
 }
 
-type testNodeRenderer struct{}
+// testNodeRenderer groups the state and data associated with test node renderer.
+type testNodeRenderer struct {
+}
 
+// RegisterFuncs registers funcs.
 func (testNodeRenderer) RegisterFuncs(r gmrenderer.NodeRendererFuncRegisterer) {
 	r.Register(ast.KindString, func(w util.BufWriter, _ []byte, _ ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering {
@@ -249,6 +280,8 @@ func (testNodeRenderer) RegisterFuncs(r gmrenderer.NodeRendererFuncRegisterer) {
 		return ast.WalkContinue, nil
 	})
 }
+
+// TestModuleContributesASTAndNodeRenderer verifies module contributes astand node renderer behavior.
 func TestModuleContributesASTAndNodeRenderer(t *testing.T) {
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "ast", Name: "AST"}, plugin.Contributions{MarkdownExtensions: []plugin.MarkdownExtension{extensionFunc(func(plugin.Context) goldmark.Extender { return testASTExtension{} })}}))
@@ -258,6 +291,7 @@ func TestModuleContributesASTAndNodeRenderer(t *testing.T) {
 	assert.NotContains(t, got, "<script")
 }
 
+// TestUnavailableMacroRemainsOrdinaryMarkdown verifies unavailable macro remains ordinary markdown behavior.
 func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 	source := "Before\n{{pages query=\"status:verified\"}}\nAfter"
 	renderer := testRenderer(t)
@@ -270,6 +304,7 @@ func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
+// TestMacroCapabilitiesStayRequestLocal verifies macro capabilities stay request local behavior.
 func TestMacroCapabilitiesStayRequestLocal(t *testing.T) {
 	renderer := testRenderer(t)
 	var wg sync.WaitGroup
@@ -288,6 +323,7 @@ func TestMacroCapabilitiesStayRequestLocal(t *testing.T) {
 	assert.Empty(t, strings.TrimSpace(got))
 }
 
+// testRenderer handles the test renderer operation.
 func testRenderer(t testing.TB) *Renderer {
 	t.Helper()
 	renderer, err := New(context.Background())

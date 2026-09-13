@@ -12,6 +12,8 @@ type Capability func(context.Context, json.RawMessage) (any, error)
 // Storage is a trusted adapter. Identity and namespace are supplied by core,
 // never decoded from plugin arguments.
 type Storage interface {
+	// ReadPluginValue reads plugin value.
 	ReadPluginValue(context.Context, string, string, string) ([]byte, bool, error)
+	// WritePluginValue writes plugin value.
 	WritePluginValue(context.Context, string, string, string, []byte) error
 }

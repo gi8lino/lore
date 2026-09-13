@@ -19,26 +19,39 @@ import (
 // renderPipeline pins an active contribution set for the whole document,
 // including nested Markdown and the variable-provenance rendering pass.
 type renderPipeline struct {
-	context      context.Context
+	// context carries cancellation through the complete render.
+	context context.Context
+	// capabilities contains request-local host capabilities exposed to plugins.
 	capabilities map[string]plugin.Capability
-	snapshot     plugin.Snapshot
-	features     map[string]bool
-	macros       map[string]plugin.MacroRenderer
+	// snapshot pins the active plugin contribution set for this render.
+	snapshot plugin.Snapshot
+	// features contains presentation feature flags visible to plugin modules.
+	features map[string]bool
+	// macros contains request-local macro render bindings.
+	macros map[string]plugin.MacroRenderer
 }
 
+// macroInvocation records one deferred macro expansion and its owner.
 type macroInvocation struct {
-	owner       string
-	macro       plugin.Macro
-	arguments   plugin.Invocation
+	// owner identifies the plugin that recognized this invocation.
+	owner string
+	// macro is the contribution that will render the deferred invocation.
+	macro plugin.Macro
+	// arguments contains serialized macro arguments.
+	arguments plugin.Invocation
+	// placeholder marks the invocation position in intermediate HTML.
 	placeholder string
 }
 
+// newRenderPipeline binds one leased plugin snapshot to request-local rendering state.
 func newRenderPipeline(snapshot plugin.Snapshot, options Options, functions Functions) *renderPipeline {
 	capabilities := plugincap.Capabilities(nil, nil)
 	maps.Copy(capabilities, functions.Capabilities)
+
 	return &renderPipeline{context: functions.Context, capabilities: capabilities, snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
 }
 
+// moduleContext builds the request-local context passed to plugin contributions.
 func (r *Renderer) moduleContext(resolve func(string) string, options Options) plugin.Context {
 	return plugin.Context{
 		Context:        options.pipeline.context,
@@ -49,6 +62,7 @@ func (r *Renderer) moduleContext(resolve func(string) string, options Options) p
 	}
 }
 
+// preprocess runs active plugin preprocessors in registry order.
 func (p *renderPipeline) preprocess(source string, ctx plugin.Context) (string, error) {
 	for _, entry := range p.snapshot.Entries {
 		for _, module := range entry.Contributions.Preprocessors {
@@ -59,9 +73,11 @@ func (p *renderPipeline) preprocess(source string, ctx plugin.Context) (string, 
 			}
 		}
 	}
+
 	return source, nil
 }
 
+// extensions creates active Goldmark extensions for the current render.
 func (p *renderPipeline) extensions(ctx plugin.Context) ([]goldmark.Extender, error) {
 	var result []goldmark.Extender
 	for _, entry := range p.snapshot.Entries {
@@ -79,6 +95,7 @@ func (p *renderPipeline) extensions(ctx plugin.Context) ([]goldmark.Extender, er
 	return result, nil
 }
 
+// postprocess runs active plugin HTML postprocessors in registry order.
 func (p *renderPipeline) postprocess(source string, ctx plugin.Context) (string, error) {
 	for _, entry := range p.snapshot.Entries {
 		for _, module := range entry.Contributions.Postprocessors {
@@ -98,8 +115,10 @@ func (p *renderPipeline) postprocess(source string, ctx plugin.Context) (string,
 func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context) (string, []macroInvocation, error) {
 	lines := strings.Split(source, "\n")
 	protected := codeLines(source)
+
 	var invocations []macroInvocation
 	nonce := rand.Text()
+
 	for index, line := range lines {
 		if protected[index] {
 			continue
@@ -139,9 +158,11 @@ func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context) (st
 			}
 		}
 	}
+
 	return strings.Join(lines, "\n"), invocations, nil
 }
 
+// expandMacros renders deferred macros and replaces their placeholders in order.
 func (p *renderPipeline) expandMacros(source string, invocations []macroInvocation, ctx plugin.Context) (string, error) {
 	for _, invocation := range invocations {
 		replacement, err := plugin.Guard(invocation.owner, func() (string, error) {
@@ -161,11 +182,13 @@ func codeLines(source string) map[int]bool {
 	document := goldmark.New().Parser().Parse(text.NewReader([]byte(source)))
 	protected := make(map[int]bool)
 	starts := []int{0}
+
 	for index, char := range source {
 		if char == '\n' {
 			starts = append(starts, index+1)
 		}
 	}
+
 	_ = ast.Walk(document, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering || (node.Kind() != ast.KindFencedCodeBlock && node.Kind() != ast.KindCodeBlock) {
 			return ast.WalkContinue, nil
@@ -177,5 +200,6 @@ func codeLines(source string) map[int]bool {
 		}
 		return ast.WalkSkipChildren, nil
 	})
+
 	return protected
 }

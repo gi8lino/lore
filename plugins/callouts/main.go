@@ -9,8 +9,10 @@ import (
 	"github.com/gi8lino/lore/pluginapi"
 )
 
+// main runs the package entry point.
 func main() {}
 
+// transform converts supported callout blocks into intermediate HTML fragments.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	if request.APIVersion != pluginapi.Version || request.Module != "callouts" || request.Stage != "preprocess" {
 		return pluginapi.RenderResult{Error: "unsupported render request"}
@@ -48,6 +50,7 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	return pluginapi.RenderResult{Parts: output.parts}
 }
 
+// calloutKind normalizes and validates a supported callout kind.
 func calloutKind(line string) string {
 	body, ok := strings.CutPrefix(strings.TrimSpace(line), "!!! ")
 	if !ok {
@@ -66,12 +69,17 @@ func calloutKind(line string) string {
 	}
 }
 
+// fragments incrementally builds bounded render fragments for one callout transformation.
 type fragments struct {
+	// pending buffers literal text until the next structured fragment.
 	pending strings.Builder
-	parts   []pluginapi.RenderPart
-	lines   int
+	// parts contains completed render fragments in output order.
+	parts []pluginapi.RenderPart
+	// lines tracks buffered literal line count for output limits.
+	lines int
 }
 
+// line appends one literal output line.
 func (f *fragments) line(value string) {
 	if f.lines > 0 {
 		f.text("\n")
@@ -79,7 +87,11 @@ func (f *fragments) line(value string) {
 	f.text(value)
 	f.lines++
 }
+
+// text appends one literal text fragment.
 func (f *fragments) text(value string) { f.pending.WriteString(value) }
+
+// flush emits buffered literal text as one fragment.
 func (f *fragments) flush() {
 	if f.pending.Len() == 0 {
 		return
@@ -88,6 +100,7 @@ func (f *fragments) flush() {
 	f.pending.Reset()
 }
 
+// openingFence recognizes an opening Markdown fence and returns its marker.
 func openingFence(line string) string {
 	line = strings.TrimSpace(line)
 	for _, delimiter := range []string{"`", "~"} {
@@ -98,9 +111,13 @@ func openingFence(line string) string {
 	}
 	return ""
 }
+
+// validFenceInfo validates the optional info string on a fenced code block.
 func validFenceInfo(delimiter, info string) bool {
 	return delimiter != "`" || !strings.ContainsRune(info, '`')
 }
+
+// closesFence reports whether a line closes the active Markdown fence.
 func closesFence(line, marker string) bool {
 	line = strings.TrimSpace(line)
 	return strings.HasPrefix(line, marker) && strings.Trim(line, string(marker[0])) == ""

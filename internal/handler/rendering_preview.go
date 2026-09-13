@@ -51,7 +51,7 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 		},
 		"mermaid": {
 			source:  "```mermaid\nflowchart LR\n  Markdown --> Lore\n```\n",
-			options: md.Options{},
+			options: md.Options{Mermaid: true},
 		},
 		"tables": {
 			source:  "| Command | Purpose |\n| --- | --- |\n| `kubectl get pods` | List pods |\n",

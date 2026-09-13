@@ -13,9 +13,11 @@ import (
 // It is supplied explicitly by the composition root; no global media store is
 // exposed through the rendering pipeline.
 type AttachmentReader interface {
+	// ReadAttachment reads attachment.
 	ReadAttachment(context.Context, pluginapi.AttachmentRead) (pluginapi.Attachment, error)
 }
 
+// Attachments exposes an authorized attachment range reader as a plugin capability.
 func Attachments(reader AttachmentReader) plugin.Capability {
 	return func(ctx context.Context, data json.RawMessage) (any, error) {
 		var request pluginapi.AttachmentRead

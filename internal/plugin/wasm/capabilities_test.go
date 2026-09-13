@@ -17,23 +17,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// memoryStorage groups the state and data associated with memory storage.
 type memoryStorage struct {
-	mu     sync.Mutex
+	// mu protects concurrent access to the receiver state.
+	mu sync.Mutex
+	// values indexes the state associated with values.
 	values map[string][]byte
 }
 
+// ReadPluginValue reads plugin value.
 func (s *memoryStorage) ReadPluginValue(_ context.Context, id, namespace, key string) ([]byte, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.values[id+"/"+namespace+"/"+key]
 	return bytes.Clone(value), ok, nil
 }
+
+// WritePluginValue writes plugin value.
 func (s *memoryStorage) WritePluginValue(_ context.Context, id, namespace, key string, value []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.values[id+"/"+namespace+"/"+key] = bytes.Clone(value)
 	return nil
 }
+
+// capabilityPackage handles the capability package operation.
 func capabilityPackage(t *testing.T, id string, permissions []string) *pluginpackage.Package {
 	t.Helper()
 	binary, err := fixtureWASM()
@@ -53,6 +61,8 @@ func capabilityPackage(t *testing.T, id string, permissions []string) *pluginpac
 	require.NoError(t, err)
 	return pkg
 }
+
+// hostRequest handles the host request operation.
 func hostRequest(t *testing.T, instance plugin.Instance, ctx plugin.Context, method string, params any) string {
 	t.Helper()
 	data, err := json.Marshal(params)
@@ -63,6 +73,8 @@ func hostRequest(t *testing.T, instance plugin.Instance, ctx plugin.Context, met
 	require.NoError(t, err)
 	return result
 }
+
+// TestCapabilityPermissionsAndStorageIsolation verifies capability permissions and storage isolation behavior.
 func TestCapabilityPermissionsAndStorageIsolation(t *testing.T) {
 	ctx := context.Background()
 	permissions := []string{"pages:read", "storage:read", "storage:write", "settings:read", "settings:write"}
@@ -105,6 +117,8 @@ func TestCapabilityPermissionsAndStorageIsolation(t *testing.T) {
 	assert.Contains(t, hostRequest(t, undeclared, scope, "plugin.storage.write", pluginapi.StorageValue{Key: "key"}), "denied")
 	assert.Contains(t, hostRequest(t, undeclared, scope, "pages.get", nil), "denied")
 }
+
+// TestCapabilitiesUseCurrentRequestAndRecoverFromHostPanic verifies capabilities use current request and recover from host panic behavior.
 func TestCapabilitiesUseCurrentRequestAndRecoverFromHostPanic(t *testing.T) {
 	ctx := context.Background()
 	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("pages:read"))

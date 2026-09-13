@@ -38,6 +38,7 @@ var fixtureWASM = sync.OnceValues(func() ([]byte, error) {
 	return os.ReadFile(file)
 })
 
+// archive handles the archive operation.
 func archive(t *testing.T, wasmBytes []byte, stage string) []byte {
 	t.Helper()
 	var buffer bytes.Buffer
@@ -58,6 +59,7 @@ func archive(t *testing.T, wasmBytes []byte, stage string) []byte {
 	return buffer.Bytes()
 }
 
+// runtimeFixture handles the runtime fixture operation.
 func runtimeFixture(t *testing.T, stage string, limits wasm.Limits) (plugin.Instance, []byte) {
 	t.Helper()
 	compiled, err := fixtureWASM()
@@ -74,6 +76,7 @@ func runtimeFixture(t *testing.T, stage string, limits wasm.Limits) (plugin.Inst
 	return instance, data
 }
 
+// TestBundledAndInstalledCalloutsUseSameRuntime verifies bundled and installed callouts use same runtime behavior.
 func TestBundledAndInstalledCalloutsUseSameRuntime(t *testing.T) {
 	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
@@ -108,6 +111,7 @@ func TestBundledAndInstalledCalloutsUseSameRuntime(t *testing.T) {
 	assert.Equal(t, outputs[0], outputs[1])
 }
 
+// TestSandboxDeniesAmbientCapabilities verifies sandbox denies ambient capabilities behavior.
 func TestSandboxDeniesAmbientCapabilities(t *testing.T) {
 	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{})
 	transform := instance.Contributions().Preprocessors[0]
@@ -130,6 +134,7 @@ func TestSandboxDeniesAmbientCapabilities(t *testing.T) {
 	assert.Equal(t, "host secret", string(remaining))
 }
 
+// TestSandboxRejectsTrapsAndMalformedResultsAndRecovers verifies sandbox rejects traps and malformed results and recovers behavior.
 func TestSandboxRejectsTrapsAndMalformedResultsAndRecovers(t *testing.T) {
 	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{})
 	transform := instance.Contributions().Preprocessors[0]
@@ -144,6 +149,7 @@ func TestSandboxRejectsTrapsAndMalformedResultsAndRecovers(t *testing.T) {
 	}
 }
 
+// TestSandboxTimeoutAndCancellation verifies sandbox timeout and cancellation behavior.
 func TestSandboxTimeoutAndCancellation(t *testing.T) {
 	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{CallTimeout: 100 * time.Millisecond})
 	transform := instance.Contributions().Preprocessors[0]
@@ -160,6 +166,7 @@ func TestSandboxTimeoutAndCancellation(t *testing.T) {
 	assert.Equal(t, "healthy", got)
 }
 
+// TestSandboxMemoryLimitAppliesAtInstantiation verifies sandbox memory limit applies at instantiation behavior.
 func TestSandboxMemoryLimitAppliesAtInstantiation(t *testing.T) {
 	compiled, err := fixtureWASM()
 	require.NoError(t, err)
@@ -172,6 +179,7 @@ func TestSandboxMemoryLimitAppliesAtInstantiation(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestSandboxWireLimitAndPostprocessorContract verifies sandbox wire limit and postprocessor contract behavior.
 func TestSandboxWireLimitAndPostprocessorContract(t *testing.T) {
 	instance, _ := runtimeFixture(t, "postprocess", wasm.Limits{WireBytes: 1024})
 	transform := instance.Contributions().Postprocessors[0]
@@ -184,6 +192,7 @@ func TestSandboxWireLimitAndPostprocessorContract(t *testing.T) {
 	assert.Equal(t, "healthy", got)
 }
 
+// TestWASMOutputCannotBypassSanitizer verifies wasmoutput cannot bypass sanitizer behavior.
 func TestWASMOutputCannotBypassSanitizer(t *testing.T) {
 	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{})
 	registry := &plugin.Registry{}
@@ -198,6 +207,7 @@ func TestWASMOutputCannotBypassSanitizer(t *testing.T) {
 	require.ErrorContains(t, err, "nesting limit")
 }
 
+// TestWASMRequestsAreIsolatedAndSerialized verifies wasmrequests are isolated and serialized behavior.
 func TestWASMRequestsAreIsolatedAndSerialized(t *testing.T) {
 	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{})
 	transform := instance.Contributions().Preprocessors[0]
@@ -213,6 +223,7 @@ func TestWASMRequestsAreIsolatedAndSerialized(t *testing.T) {
 	wg.Wait()
 }
 
+// TestRuntimeRejectsMissingABI verifies runtime rejects missing abi behavior.
 func TestRuntimeRejectsMissingABI(t *testing.T) {
 	pkg, err := pluginpackage.Read(archive(t, []byte{0, 'a', 's', 'm', 1, 0, 0, 0}, "preprocess"))
 	require.NoError(t, err)

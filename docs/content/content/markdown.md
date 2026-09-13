@@ -11,9 +11,7 @@ Use ordinary Markdown image syntax, optionally followed immediately by a width:
 ![Diagram](images/diagram.png){width=50%}
 ```
 
-Widths may be whole pixels (with an optional `px` suffix) or a percentage of the
-containing content area. Height scales proportionally. See [Image sizing](media.md#image-sizing)
-for limits, reference-style images, and export behavior.
+Widths may be whole pixels (with an optional `px` suffix) or a percentage of the containing content area. Height scales proportionally. See [Image sizing](media.md#image-sizing) for limits, reference-style images, and export behavior.
 
 ## Wiki links
 
@@ -70,9 +68,7 @@ A standalone function can insert the current page's child navigation:
 {{subpages}}
 ```
 
-The default heading is **Pages in this section**. Set a custom heading with the
-`title` option, or use an empty title to hide the heading while keeping the child
-navigation:
+The default heading is **Pages in this section**. Set a custom heading with the `title` option, or use an empty title to hide the heading while keeping the child navigation:
 
 ```markdown
 {{subpages title="Related pages"}}

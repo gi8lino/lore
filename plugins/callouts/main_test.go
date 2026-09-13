@@ -7,6 +7,7 @@ import (
 	"github.com/gi8lino/lore/pluginapi"
 )
 
+// TestCalloutFragments verifies callout fragments behavior.
 func TestCalloutFragments(t *testing.T) {
 	result := transform(pluginapi.RenderRequest{APIVersion: 1, Module: "callouts", Stage: "preprocess", Source: "Before\n\n!!! warning\n**Body**\n\nAfter\n"})
 	if result.Error != "" {
@@ -19,6 +20,8 @@ func TestCalloutFragments(t *testing.T) {
 		t.Fatalf("unexpected markup: %+v", result.Parts)
 	}
 }
+
+// TestCodeAndOrdinaryMarkdownRemainLiteral verifies code and ordinary markdown remain literal behavior.
 func TestCodeAndOrdinaryMarkdownRemainLiteral(t *testing.T) {
 	for _, source := range []string{"plain\n", "````\n```\n!!! warning\nBody\n`````\n", "~~~\n!!! note\nBody\n~~~", "!!! unsupported\nBody\n"} {
 		result := transform(pluginapi.RenderRequest{APIVersion: 1, Module: "callouts", Stage: "preprocess", Source: source})

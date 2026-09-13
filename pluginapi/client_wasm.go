@@ -9,6 +9,8 @@ import (
 	"unsafe"
 )
 
+// hostCall invokes Lore's imported capability function from a WASM guest.
+//
 //go:wasmimport lore_v1 call
 func hostCall(request, length, response, capacity uint32) uint32
 

@@ -12,6 +12,7 @@ import (
 //go:embed *.loreplugin
 var Packages embed.FS
 
+// Load returns embedded bundled plugin archives in deterministic filename order.
 func Load(ctx context.Context, manager *plugin.Manager) error {
 	names, err := fs.Glob(Packages, "*.loreplugin")
 	if err != nil {

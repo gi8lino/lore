@@ -268,6 +268,7 @@ func (b *builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 // renderPage renders one source page with shared Markdown functions and static URL rewriting.
 func (b *builder) renderPage(ctx context.Context, page sourcePage, plan buildPlan) (renderedPage, error) {
 	options := md.DefaultOptions()
+	options.Mermaid = plan.config.Mermaid
 	options.WikiLinkPrefix = plan.basePath
 	resolveWiki := func(target string) string {
 		normalized := md.Slug(target)

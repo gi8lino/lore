@@ -1,14 +1,11 @@
 // Client-side enhancements for rendered Markdown.
 
+import { renderPluginModules } from "../plugins/loader.ts";
+
 import { setupCopyButton } from "../core/clipboard.ts";
 
 type MarkdownRoot = Document | HTMLElement;
 type SortDirection = "ascending" | "descending";
-
-type MermaidModule = {
-  initialize(options: Record<string, unknown>): void;
-  run(options: { nodes: NodeListOf<Element> }): Promise<void>;
-};
 
 // Wires markdown tabs behavior.
 function setupMarkdownTabs(group: HTMLElement): void {
@@ -465,7 +462,7 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
     const code = pre.querySelector<HTMLElement>(":scope > code");
     if (
       !code ||
-      code.classList.contains("language-mermaid") ||
+      Boolean(pre.closest("[data-lore-plugin]")) ||
       pre.parentElement?.classList.contains("code-block")
     )
       continue;
@@ -489,87 +486,8 @@ function setupCodeCopyButtons(root: MarkdownRoot = document): void {
   }
 }
 
-type MermaidWindow = Window & { mermaid?: MermaidModule };
-
-let mermaidPromise: Promise<MermaidModule> | undefined;
-
-// Loads the pinned, locally served Mermaid standalone bundle once.
-function loadMermaid(): Promise<MermaidModule> {
-  if (mermaidPromise) return mermaidPromise;
-
-  mermaidPromise = new Promise((resolve, reject) => {
-    const current = (window as MermaidWindow).mermaid;
-    if (current) {
-      resolve(current);
-      return;
-    }
-
-    const script = document.createElement("script");
-
-    script.src = new URL(
-      "../../vendor/mermaid/mermaid.min.js",
-      import.meta.url,
-    ).href;
-    script.async = true;
-    script.addEventListener(
-      "load",
-      () => {
-        const loaded = (window as MermaidWindow).mermaid;
-        if (loaded) {
-          resolve(loaded);
-          return;
-        }
-
-        reject(new Error("Mermaid module is unavailable."));
-      },
-      { once: true },
-    );
-    script.addEventListener(
-      "error",
-      () => reject(new Error("Mermaid module could not be loaded.")),
-      { once: true },
-    );
-    document.head.append(script);
-  });
-
-  return mermaidPromise;
-}
-
-// Renders mermaid.
-export async function renderMermaid(
-  root: MarkdownRoot = document,
-  force = false,
-): Promise<void> {
-  if (!force && document.body?.dataset.renderMermaid !== "true") return;
-
-  const blocks = [
-    ...root.querySelectorAll<HTMLElement>("pre code.language-mermaid"),
-  ];
-  if (!blocks.length) return;
-
-  const mermaid = await loadMermaid();
-
-  for (const block of blocks) {
-    const diagram = document.createElement("div");
-
-    diagram.className = "mermaid";
-    diagram.textContent = block.textContent;
-    block.parentElement?.replaceWith(diagram);
-  }
-
-  mermaid.initialize({
-    startOnLoad: false,
-    theme:
-      document.documentElement.style.colorScheme === "dark"
-        ? "dark"
-        : "default",
-    securityLevel: "strict",
-  });
-  await mermaid.run({ nodes: root.querySelectorAll(".mermaid") });
-}
-
 // Initializes markdown.
 export async function initMarkdown(): Promise<void> {
   setupMarkdownEnhancements(document);
-  await renderMermaid(document);
+  await renderPluginModules(document);
 }

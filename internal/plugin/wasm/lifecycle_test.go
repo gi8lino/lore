@@ -18,12 +18,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// installationStore groups the state and data associated with installation store.
 type installationStore struct {
-	mu      sync.Mutex
+	// mu protects concurrent access to the receiver state.
+	mu sync.Mutex
+	// records indexes the state associated with records.
 	records map[string]plugin.Record
-	fail    bool
+	// fail stores the value associated with fail.
+	fail bool
 }
 
+// ListPlugins lists plugins.
 func (s *installationStore) ListPlugins(context.Context) ([]plugin.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -34,6 +39,8 @@ func (s *installationStore) ListPlugins(context.Context) ([]plugin.Record, error
 	}
 	return result, nil
 }
+
+// SavePlugin saves plugin.
 func (s *installationStore) SavePlugin(_ context.Context, r plugin.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -44,6 +51,8 @@ func (s *installationStore) SavePlugin(_ context.Context, r plugin.Record) error
 	s.records[r.ID] = r
 	return nil
 }
+
+// DeletePlugin deletes plugin.
 func (s *installationStore) DeletePlugin(_ context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -53,6 +62,8 @@ func (s *installationStore) DeletePlugin(_ context.Context, id string) error {
 	delete(s.records, id)
 	return nil
 }
+
+// changedManifest handles the changed manifest operation.
 func changedManifest(t *testing.T, data []byte, change func(string) string) []byte {
 	t.Helper()
 	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -76,6 +87,8 @@ func changedManifest(t *testing.T, data []byte, change func(string) string) []by
 	require.NoError(t, writer.Close())
 	return buffer.Bytes()
 }
+
+// lifecycleManager handles the lifecycle manager operation.
 func lifecycleManager(t *testing.T, store plugin.Store) (*plugin.Manager, *markdown.Renderer, *plugin.Registry) {
 	t.Helper()
 	runtime, err := wasm.New(context.Background(), wasm.Limits{})
@@ -85,6 +98,8 @@ func lifecycleManager(t *testing.T, store plugin.Store) (*plugin.Manager, *markd
 	t.Cleanup(func() { require.NoError(t, manager.Close(context.Background())) })
 	return manager, markdown.NewWithRegistry(registry), registry
 }
+
+// TestRuntimeLifecycleWithoutRestart verifies runtime lifecycle without restart behavior.
 func TestRuntimeLifecycleWithoutRestart(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
@@ -145,6 +160,8 @@ func TestRuntimeLifecycleWithoutRestart(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, records)
 }
+
+// TestUpgradeRetainsAcquiredVersionUntilRenderFinishes verifies upgrade retains acquired version until render finishes behavior.
 func TestUpgradeRetainsAcquiredVersionUntilRenderFinishes(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
@@ -172,6 +189,8 @@ func TestUpgradeRetainsAcquiredVersionUntilRenderFinishes(t *testing.T) {
 	release()
 	require.NoError(t, manager.Close(ctx))
 }
+
+// TestBundledDisableAndInstalledOverrideSurviveRestore verifies bundled disable and installed override survive restore behavior.
 func TestBundledDisableAndInstalledOverrideSurviveRestore(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
@@ -201,16 +220,21 @@ func TestBundledDisableAndInstalledOverrideSurviveRestore(t *testing.T) {
 	assert.Empty(t, records[0].Package)
 }
 
+// blockingPreprocessor groups the state and data associated with blocking preprocessor.
 type blockingPreprocessor struct {
+	// start coordinates the state associated with start and proceed.
 	start, proceed chan struct{}
-	once           sync.Once
+	// once stores the value associated with once.
+	once sync.Once
 }
 
+// Preprocess transforms Markdown before the core parser runs.
 func (p *blockingPreprocessor) Preprocess(_ plugin.Context, source string) (string, error) {
 	p.once.Do(func() { close(p.start); <-p.proceed })
 	return source, nil
 }
 
+// TestUpgradeDuringRenderingKeepsWholeSnapshotAlive verifies upgrade during rendering keeps whole snapshot alive behavior.
 func TestUpgradeDuringRenderingKeepsWholeSnapshotAlive(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
@@ -238,6 +262,7 @@ func TestUpgradeDuringRenderingKeepsWholeSnapshotAlive(t *testing.T) {
 	assert.Equal(t, "2.0.0", manager.Plugins()[0].Manifest.Version)
 }
 
+// TestLifecycleDependenciesAndFailedBootstrapAreAtomic verifies lifecycle dependencies and failed bootstrap are atomic behavior.
 func TestLifecycleDependenciesAndFailedBootstrapAreAtomic(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}

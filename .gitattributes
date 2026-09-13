@@ -1,0 +1,2 @@
+# Preserve the upstream minified distribution byte-for-byte.
+plugins/mermaid/assets/mermaid.min.js -diff -whitespace

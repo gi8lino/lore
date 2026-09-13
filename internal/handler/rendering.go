@@ -25,6 +25,7 @@ func renderingOptionsFromSettings(rendering domain.RenderingSettings) md.Options
 	return md.Options{
 		WikiLinks:          rendering.WikiLinks,
 		Callouts:           rendering.Callouts,
+		Mermaid:            rendering.Mermaid,
 		Tabs:               rendering.Tabs,
 		Details:            rendering.Details,
 		Tables:             rendering.Tables,

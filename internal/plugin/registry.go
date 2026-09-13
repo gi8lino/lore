@@ -11,21 +11,29 @@ import (
 // Registration is atomic; renderers take snapshots rather than hold locks while
 // invoking modules. A removed module may finish an already-started render.
 type Registry struct {
-	mu      sync.RWMutex
+	// mu protects concurrent access to the receiver state.
+	mu sync.RWMutex
+	// entries contains active plugin contributions in deterministic order.
 	entries []Entry
 }
 
 // Entry associates an immutable contribution set with its owner.
 type Entry struct {
-	lifetime      *lifetime
-	Descriptor    Descriptor
+	// lifetime tracks render leases for this contribution version.
+	lifetime *lifetime
+	// Descriptor identifies the plugin that owns these contributions.
+	Descriptor Descriptor
+	// Contributions contains the plugin modules published atomically with this entry.
 	Contributions Contributions
 }
 
 // Snapshot is an isolated view of active modules in deterministic order.
 // Use Acquire for executable snapshots that must survive lifecycle changes.
 // Callbacks are shared and must be concurrency safe; all metadata slices are copied.
-type Snapshot struct{ Entries []Entry }
+type Snapshot struct {
+	// Entries contains cloned active entries in deterministic registry order.
+	Entries []Entry
+}
 
 var validID = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 
@@ -39,6 +47,7 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 	}()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	if !validID.MatchString(descriptor.ID) || descriptor.Name == "" {
 		return fmt.Errorf("invalid plugin descriptor %q", descriptor.ID)
 	}
@@ -50,6 +59,7 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 			names[macro.Name()] = true
 		}
 	}
+
 	if active[descriptor.ID] {
 		return fmt.Errorf("plugin %s is already registered", descriptor.ID)
 	}
@@ -82,9 +92,11 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 			return fmt.Errorf("nil postprocessor in %s", descriptor.ID)
 		}
 	}
+
 	if err := validateIDs(modules); err != nil {
 		return err
 	}
+
 	r.entries = append(r.entries, cloneEntry(Entry{Descriptor: descriptor, Contributions: modules, lifetime: newLifetime()}))
 	return nil
 }
@@ -94,29 +106,36 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 func (r *Registry) Unregister(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	index := slices.IndexFunc(r.entries, func(entry Entry) bool { return entry.Descriptor.ID == id })
 	if index < 0 {
 		return fmt.Errorf("plugin %s is not registered", id)
 	}
+
 	for _, entry := range r.entries {
 		if slices.Contains(entry.Descriptor.Requires, id) {
 			return fmt.Errorf("plugin %s requires %s", entry.Descriptor.ID, id)
 		}
 	}
+
 	r.entries = slices.Delete(r.entries, index, index+1)
 	return nil
 }
 
+// Snapshot returns an inspection snapshot of the current registry state.
 func (r *Registry) Snapshot() Snapshot {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	snapshot := Snapshot{Entries: make([]Entry, len(r.entries))}
 	for index, entry := range r.entries {
 		snapshot.Entries[index] = cloneEntry(entry)
 	}
+
 	return snapshot
 }
 
+// cloneEntry copies contribution metadata slices while sharing immutable callbacks.
 func cloneEntry(entry Entry) Entry {
 	entry.Descriptor.Requires = slices.Clone(entry.Descriptor.Requires)
 	c := &entry.Contributions
@@ -127,11 +146,14 @@ func cloneEntry(entry Entry) Entry {
 	c.BrowserModules = slices.Clone(c.BrowserModules)
 	c.EditorExtensions = slices.Clone(c.EditorExtensions)
 	c.SettingsModules = slices.Clone(c.SettingsModules)
+
 	return entry
 }
 
+// validateIDs validates unique IDs for metadata-only contribution modules.
 func validateIDs(c Contributions) error {
 	seen := make(map[string]bool)
+
 	check := func(kind, id string) error {
 		key := kind + ":" + id
 		if !validID.MatchString(id) || seen[key] {
@@ -140,6 +162,7 @@ func validateIDs(c Contributions) error {
 		seen[key] = true
 		return nil
 	}
+
 	for _, m := range c.BrowserModules {
 		if err := check("browser", m.ID); err != nil {
 			return err
@@ -155,5 +178,6 @@ func validateIDs(c Contributions) error {
 			return err
 		}
 	}
+
 	return nil
 }

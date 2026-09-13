@@ -1,14 +1,15 @@
 package subpages
 
 import (
+	"html/template"
 	"testing"
 
 	"github.com/gi8lino/lore/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"html/template"
 )
 
+// TestParse verifies parse behavior.
 func TestParse(t *testing.T) {
 	t.Parallel()
 
@@ -105,6 +106,7 @@ func TestParse(t *testing.T) {
 	})
 }
 
+// TestNewRenderer verifies new renderer behavior.
 func TestNewRenderer(t *testing.T) {
 	icon := func(string, int) template.HTML { return "" }
 	nodes := []pluginapi.NavigationNode{{Title: "Guide", URL: "/docs/guide/", Icon: "book-open-lucide", Page: true, Children: []pluginapi.NavigationNode{{Title: "Install", URL: "/docs/guide/install/", Page: true}}}}

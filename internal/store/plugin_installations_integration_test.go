@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestPluginInstallationSurvivesDatabaseAndRuntimeRestart verifies plugin installation survives database and runtime restart behavior.
 func TestPluginInstallationSurvivesDatabaseAndRuntimeRestart(t *testing.T) {
 	ctx := context.Background()
 	dsn := integrationDatabase(t)

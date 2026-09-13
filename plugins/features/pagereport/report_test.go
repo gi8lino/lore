@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestParse verifies parse behavior.
 func TestParse(t *testing.T) {
 	t.Parallel()
 

@@ -1,6 +1,8 @@
 # Lore render ABI v1
 
-This is the wire contract through Phase 3, not the full developer SDK. The `pluginapi` package has no dependency on Lore internals. Plugins may be written in any language that can produce a WASI Preview 1 reactor with these exports:
+This is the wire contract through Phase 3, not the full developer SDK. The
+`pluginapi` package has no dependency on Lore internals. Plugins may be written in
+any language that can produce a WASI Preview 1 reactor with these exports:
 
 | Export             | Parameters                      | Result                         |
 | ------------------ | ------------------------------- | ------------------------------ |
@@ -10,19 +12,36 @@ This is the wire contract through Phase 3, not the full developer SDK. The `plug
 | `lore_transform`   | `i32` offset, `i32` byte length | `i64` packed response          |
 | `memory`           | —                               | linear memory                  |
 
-Lore calls `_initialize` before checking the ABI version. For each request it asks the guest to allocate a buffer, writes a JSON `RenderRequest`, and invokes `lore_transform`. The returned `i64` packs the response byte length into its high 32 bits and its guest-memory offset into the low 32 bits. Lore validates both before decoding JSON. The response buffer must remain valid until the next invocation. The host serializes calls to each reactor.
+Lore calls `_initialize` before checking the ABI version. For each request it asks
+the guest to allocate a buffer, writes a JSON `RenderRequest`, and invokes
+`lore_transform`. The returned `i64` packs the response byte length into its high
+32 bits and its guest-memory offset into the low 32 bits. Lore validates both
+before decoding JSON. The response buffer must remain valid until the next
+invocation. The host serializes calls to each reactor.
 
-A renderer module receives its manifest module ID, stage (`preprocess` or `postprocess`), source, and presentation feature flags. A `RenderResult` contains an error or ordered fragments. A fragment is literal intermediate text, or Markdown for the host to render recursively. Only preprocessors may return Markdown fragments. The WASM call completes before the host renders those fragments; nested rendering therefore does not re-enter an executing Go guest.
+A renderer module receives its manifest module ID, stage (`preprocess` or
+`postprocess`), source, and presentation feature flags. A `RenderResult` contains
+an error or ordered fragments. A fragment is literal intermediate text, or Markdown
+for the host to render recursively. Only preprocessors may return Markdown
+fragments. The WASM call completes before the host renders those fragments; nested
+rendering therefore does not re-enter an executing Go guest.
 
-All resulting HTML goes through Lore's central sanitizer. There is no trusted HTML result type. The guest cannot change sanitizer policy or receive request macro callbacks, filesystem handles, database clients, or Lore Go pointers. Unknown JSON fields, trailing JSON, invalid memory ranges, and excessive output are errors.
+All resulting HTML goes through Lore's central sanitizer. There is no trusted HTML
+result type. The guest cannot change sanitizer policy or receive request macro
+callbacks, filesystem handles, database clients, or Lore Go pointers. Unknown JSON
+fields, trailing JSON, invalid memory ranges, and excessive output are errors.
 
-The bundled example in `plugins/callouts` is an independent Go module. Its `main.go` owns callout parsing; `abi_wasm.go` contains the small amount of memory transport code that a later SDK will hide. Standard Go builds it with:
+The bundled example in `plugins/callouts` is an independent Go module. Its
+`main.go` owns callout parsing; `abi_wasm.go` contains the small amount of memory
+transport code that a later SDK will hide. Standard Go builds it with:
 
 ```sh
 GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugin.wasm .
 ```
 
-Go's reactor and export behavior is documented in [Extensible Wasm Applications with Go](https://go.dev/blog/wasmexport). No TinyGo, C compiler, external WASM process, or native plugin loading is required.
+Go's reactor and export behavior is documented in
+[Extensible Wasm Applications with Go](https://go.dev/blog/wasmexport). No TinyGo,
+C compiler, external WASM process, or native plugin loading is required.
 
 ## Macros
 
@@ -87,6 +106,26 @@ of 1,024 keys and 16 MiB per plugin across both namespaces, with transactional
 quota checks. Reads distinguish an absent value from an empty value. Data
 survives renderer/runtime restart. Disabling does not delete plugin data.
 
-Runtime installation, enable/disable, version replacement, and removal are implemented
-in Lore’s manager. These are trusted application operations, not guest host calls.
+Runtime installation, enable/disable, version replacement, and removal are
+implemented in Lore's manager. These are trusted application operations, not guest
+host calls.
 Browser assets remain Phase 5; the full developer SDK and CLI remain Phase 9.
+
+
+
+## Browser rendering
+
+A `browser-module` manifest entry declares `javascript` and optional `css` paths
+relative to package `assets/`, and requires `browser:render`. A renderer module
+can emit a sanitized `div` with `data-lore-plugin="<plugin-id>"` and
+`data-lore-module="<module-id>"`, containing a direct `pre` child as fallback.
+
+Browser JavaScript is a classic script that sets
+`globalThis.lorePlugin = { async render(root, { source, theme }) { ... } }`.
+It executes in its own opaque sandbox frame, receives the block text and
+`light`/`dark` theme, and may modify only its frame DOM. It cannot return HTML
+for insertion into Lore's document. Resolve auxiliary package scripts relative
+to `document.currentScript.src` captured when the entry script runs.
+
+See `internal/plugin/README.md` for lifecycle, static hosting and isolation
+limitations. Browser modules do not expose a general host capability bridge.

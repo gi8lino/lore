@@ -45,6 +45,8 @@ type Options struct {
 	WikiLinkPrefix string
 	// Callouts enables Lore callout blocks.
 	Callouts bool
+	// Mermaid enables the diagram plugin when it is registered.
+	Mermaid bool
 	// Tabs enables Material-style tab blocks.
 	Tabs bool
 	// Details enables collapsible detail blocks.
@@ -80,6 +82,7 @@ func DefaultOptions() Options {
 	return Options{
 		Autolinks:          true,
 		Callouts:           true,
+		Mermaid:            true,
 		DefinitionLists:    true,
 		Details:            true,
 		Footnotes:          true,

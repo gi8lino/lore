@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
+import { block, pluginRoute } from "./plugin-fixture.mjs";
 
 // Run with `make test-browser`.
 // Use the real editor module and stylesheet with controlled preview latency.
@@ -15,6 +16,7 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
     page.setDefaultTimeout(10000);
     const requests = [];
     await page.route("http://preview.test/**", async (route) => {
+      if (await pluginRoute(route, { fake: true })) return;
       const path = new URL(route.request().url()).pathname;
       if (path === "/preview") {
         const { markdown } = route.request().postDataJSON();
@@ -25,7 +27,7 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
           .replaceAll("<", "&lt;");
         await route.fulfill({
           json: {
-            html: `<p>${escaped}</p><pre><code class="language-mermaid">graph LR; A --> B</code></pre>`,
+            html: `<p>${escaped}</p>${block}`,
           },
         });
       } else if (path.startsWith("/assets/")) {
@@ -56,15 +58,6 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
             </form>
             <script type="module">
               import { initEditorPreview } from '/assets/js/features/editor/preview.js';
-              document.body.dataset.renderMermaid = 'true';
-              // Model asynchronous diagram rendering without a network dependency.
-              window.mermaid = {
-                initialize() {},
-                async run({ nodes }) {
-                  await new Promise(resolve => setTimeout(resolve, 150));
-                  for (const node of nodes) node.innerHTML = '<svg aria-label="Diagram"></svg>';
-                },
-              };
               initEditorPreview();
             </script>`,
         });
@@ -75,8 +68,8 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
     const content = page.locator("[data-editor-preview-content]");
     await page.waitForFunction(
       () =>
-        document.querySelector("[data-editor-preview-content]").textContent ===
-        "Original",
+        document.querySelector("[data-editor-preview-content] p")
+          ?.textContent === "Original",
     );
     const originalY = (await content.boundingBox()).y;
     const source = page.locator("textarea");
@@ -92,11 +85,13 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
       const record = () => {
         const content = document.querySelector("[data-editor-preview-content]");
         window.previewFrames.push({
-          text: content.textContent,
+          text: content.querySelector("p")?.textContent,
           y: content.getBoundingClientRect().y,
           statusHidden: document.querySelector("[data-editor-preview-status]")
             .hidden,
-          diagramVisible: Boolean(content.querySelector("svg")),
+          diagramVisible: Boolean(
+            content.querySelector("iframe[data-plugin-ready]"),
+          ),
         });
         if (window.recordPreview) requestAnimationFrame(record);
       };
@@ -107,8 +102,8 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
     await source.fill("Final");
     await page.waitForFunction(
       () =>
-        document.querySelector("[data-editor-preview-content]").textContent ===
-        "Final",
+        document.querySelector("[data-editor-preview-content] p")
+          ?.textContent === "Final",
     );
     const frames = await page.evaluate(() => {
       window.recordPreview = false;
@@ -132,7 +127,7 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
     await source.dispatchEvent("input");
     await page.waitForTimeout(700);
     assert.equal(requests.length, 3, "unchanged content should not refresh");
-    assert.equal(await content.textContent(), "Final");
+    assert.equal(await content.locator("p").textContent(), "Final");
   } finally {
     await browser.close();
   }

@@ -2,9 +2,9 @@
 set -eu
 
 # Mermaid's standalone UMD build is self-contained, so only the package archive
-# is needed at build time. Keep the version pinned for reproducible assets.
+# is needed when updating the plugin. Keep the version pinned for reproducible assets.
 MERMAID_VERSION="${MERMAID_VERSION:-12.0.0}"
-MERMAID_OUTPUT_DIR="${MERMAID_OUTPUT_DIR:-web/dist/vendor/mermaid}"
+MERMAID_OUTPUT_DIR="${MERMAID_OUTPUT_DIR:-plugins/mermaid/assets}"
 NPM="${NPM:-npm}"
 
 workdir=$(mktemp -d)

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// ReadPluginValue reads plugin value.
 func (s *Store) ReadPluginValue(ctx context.Context, id, namespace, key string) ([]byte, bool, error) {
 	var value []byte
 	err := s.pool.QueryRow(ctx, `SELECT value FROM plugin_values WHERE plugin_id=$1 AND namespace=$2 AND key=$3`, id, namespace, key).Scan(&value)

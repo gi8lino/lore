@@ -20,6 +20,8 @@ var staticBrowserAssets = []string{
 	"js/core/http.js",
 	"js/core/theme.js",
 	"js/features/markdown.js",
+	"js/plugins/loader.js",
+	"js/plugins/frame.js",
 	"js/features/static-layout.js",
 	"js/features/static-page.js",
 	"js/features/static-search.js",
@@ -37,6 +39,10 @@ func (b *builder) prepareOutput(config Config, basePath string) (brandingData, e
 		return brandingData{}, err
 	}
 	if err := b.copyBuildAssets(config); err != nil {
+		return brandingData{}, err
+	}
+
+	if err := b.copyPluginAssets(config, basePath); err != nil {
 		return brandingData{}, err
 	}
 
