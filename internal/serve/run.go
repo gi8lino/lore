@@ -10,6 +10,7 @@ import (
 	"github.com/gi8lino/lore/internal/handler"
 	"github.com/gi8lino/lore/internal/logging"
 	"github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/plugin/wasm"
 	"github.com/gi8lino/lore/internal/routes"
 	"github.com/gi8lino/lore/internal/secrets"
 	"github.com/gi8lino/lore/internal/service"
@@ -167,7 +168,7 @@ func Run(
 	ctx, stop := server.SignalContext(ctx)
 	defer stop()
 
-	renderer, err := markdown.New(ctx)
+	renderer, err := markdown.New(ctx, wasm.WithStorage(database), wasm.WithPermissions("settings:read", "settings:write", "storage:read", "storage:write"))
 	if err != nil {
 		return err
 	}

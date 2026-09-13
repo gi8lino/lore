@@ -2,6 +2,8 @@
 // plugins. It intentionally has no dependencies on Lore's internal packages.
 package pluginapi
 
+import "encoding/json"
+
 const Version = 1
 
 // RenderRequest invokes one declared renderer module. Features contains only
@@ -11,6 +13,7 @@ type RenderRequest struct {
 	Module     string          `json:"module"`
 	Stage      string          `json:"stage"`
 	Source     string          `json:"source"`
+	Invocation json.RawMessage `json:"invocation,omitempty"`
 	Features   map[string]bool `json:"features,omitempty"`
 }
 
@@ -18,8 +21,10 @@ type RenderRequest struct {
 // rendered by the host after the WASM call finishes; this avoids reentrant guest
 // calls for nested blocks. Postprocessors may return text fragments only.
 type RenderResult struct {
-	Parts []RenderPart `json:"parts,omitempty"`
-	Error string       `json:"error,omitempty"`
+	Matched    bool            `json:"matched,omitempty"`
+	Invocation json.RawMessage `json:"invocation,omitempty"`
+	Parts      []RenderPart    `json:"parts,omitempty"`
+	Error      string          `json:"error,omitempty"`
 }
 
 // RenderPart is either literal intermediate output or a recursive Markdown

@@ -134,9 +134,10 @@ type RenderedPage struct {
 // Functions supplies request-local macro capabilities and variable provenance.
 // Bindings cannot activate an unregistered macro.
 type Functions struct {
-	Context   context.Context
-	Variables []Variable
-	Macros    map[string]plugin.MacroRenderer
+	Capabilities map[string]plugin.Capability
+	Context      context.Context
+	Variables    []Variable
+	Macros       map[string]plugin.MacroRenderer
 }
 
 // tabSection contains one parsed Markdown tab label and body.

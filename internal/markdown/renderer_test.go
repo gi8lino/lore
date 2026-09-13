@@ -1,8 +1,9 @@
 package markdown
 
 import (
-	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/internal/plugincap"
+	"github.com/gi8lino/lore/pluginapi"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -180,16 +181,13 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 		"Before\n\n{{subpages}}\n\nAfter\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
-			assert.Equal(t, "Pages in this section", options.Title)
-			assert.True(t, options.ShowTitle)
-
-			return `<nav class="subpage-toc">Generated pages</nav>`, nil
-		})}},
+		Functions{Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: "Generated pages", URL: "/pages/child", Page: true}})},
 	)
 
 	require.NoError(t, err)
-	assert.Contains(t, rendered.HTML, "<p>Before</p>\n<nav class=\"subpage-toc\">Generated pages</nav>\n<p>After</p>")
+	assert.Contains(t, rendered.HTML, "Generated pages")
+	assert.Less(t, strings.Index(rendered.HTML, "Before"), strings.Index(rendered.HTML, "Generated pages"))
+	assert.Less(t, strings.Index(rendered.HTML, "Generated pages"), strings.Index(rendered.HTML, "After"))
 	assert.NotContains(t, rendered.HTML, "{{subpages}}")
 }
 
@@ -201,16 +199,11 @@ func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 		`{{subpages title="Related pages"}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
-			assert.Equal(t, "Related pages", options.Title)
-			assert.True(t, options.ShowTitle)
-
-			return `<nav>Custom title</nav>`, nil
-		})}},
+		Functions{Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: "Generated pages", URL: "/pages/child", Page: true}})},
 	)
 
 	require.NoError(t, err)
-	assert.Contains(t, rendered.HTML, "<nav>Custom title</nav>")
+	assert.Contains(t, rendered.HTML, "<h2>Related pages</h2>")
 }
 
 func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
@@ -221,16 +214,12 @@ func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 		`{{subpages title=""}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(options subpages.Options) (string, error) {
-			assert.Empty(t, options.Title)
-			assert.False(t, options.ShowTitle)
-
-			return `<nav>No visible title</nav>`, nil
-		})}},
+		Functions{Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: "Generated pages", URL: "/pages/child", Page: true}})},
 	)
 
 	require.NoError(t, err)
-	assert.Contains(t, rendered.HTML, "<nav>No visible title</nav>")
+	assert.Contains(t, rendered.HTML, "Generated pages")
+	assert.NotContains(t, rendered.HTML, "<h2>")
 }
 
 func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
@@ -241,9 +230,7 @@ func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 		`{{subpages depth=2}}`,
 		Slug,
 		DefaultOptions(),
-		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(subpages.Options) (string, error) {
-			return `<nav>Generated pages</nav>`, nil
-		})}},
+		Functions{Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: "Generated pages", URL: "/pages/child", Page: true}})},
 	)
 
 	require.NoError(t, err)
@@ -259,9 +246,7 @@ func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 		"```markdown\n{{subpages}}\n```\n",
 		Slug,
 		DefaultOptions(),
-		Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(subpages.Options) (string, error) {
-			return `<nav>Generated pages</nav>`, nil
-		})}},
+		Functions{Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: "Generated pages", URL: "/pages/child", Page: true}})},
 	)
 
 	require.NoError(t, err)

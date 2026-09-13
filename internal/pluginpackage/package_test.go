@@ -115,3 +115,21 @@ func TestPackageRejectsExpansionAndEntryCountLimits(t *testing.T) {
 	_, err = Read(make([]byte, MaxArchiveBytes+1))
 	require.Error(t, err)
 }
+
+func TestManifestMacroAndPermissionValidation(t *testing.T) {
+	manifest := strings.Replace(testManifest, "type: renderer-extension", "type: macro", 1)
+	manifest = strings.Replace(manifest, "stage: preprocess", "name: pages\n    capability: pages.search", 1)
+	manifest = strings.Replace(manifest, "permissions: []", "permissions: [pages:read]", 1)
+	pkg, err := Read(testArchive(t, manifest))
+	require.NoError(t, err)
+	assert.Equal(t, "pages", pkg.Manifest().Modules[0].Name)
+	for _, invalid := range []string{
+		strings.Replace(manifest, "pages.search", "database.read", 1),
+		strings.Replace(manifest, "name: pages", "name: ../pages", 1),
+		strings.Replace(manifest, "permissions: [pages:read]", "permissions: [pages:read, pages:read]", 1),
+		strings.Replace(manifest, "name: pages", "stage: preprocess\n    name: pages", 1),
+	} {
+		_, err := Read(testArchive(t, invalid))
+		require.Error(t, err)
+	}
+}

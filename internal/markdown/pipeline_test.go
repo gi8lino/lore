@@ -10,7 +10,8 @@ import (
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/internal/plugincap"
+	"github.com/gi8lino/lore/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
@@ -197,9 +198,9 @@ func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
 }
 
 func TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer(t *testing.T) {
-	render := subpages.NewRenderer([]navigation.Node{{Slug: "child", Title: "Child", Page: true, Icon: "book-lucide"}}, func(s string) string { return "/pages/" + s })
+	nodes := plugincap.Navigation([]navigation.Node{{Slug: "child", Title: "Child", Page: true, Icon: "book-lucide"}}, func(s string) string { return "/pages/" + s })
 	got, err := testRenderer(t).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
-		Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(render)},
+		Capabilities: plugincap.Capabilities(nil, nodes),
 	})
 	require.NoError(t, err)
 	assert.Contains(t, got.HTML, `<nav class="subpage-toc"`)
@@ -269,16 +270,16 @@ func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
-func TestMacroBindingsStayRequestLocal(t *testing.T) {
+func TestMacroCapabilitiesStayRequestLocal(t *testing.T) {
 	renderer := testRenderer(t)
 	var wg sync.WaitGroup
 	for _, title := range []string{"First", "Second"} {
 		wg.Go(func() {
 			got, err := renderer.RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
-				Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(func(subpages.Options) (string, error) { return title, nil })},
+				Capabilities: plugincap.Capabilities(nil, []pluginapi.NavigationNode{{Title: title, Page: true, URL: "/pages/child"}}),
 			})
 			assert.NoError(t, err)
-			assert.Equal(t, title, strings.TrimSpace(got.HTML))
+			assert.Contains(t, got.HTML, ">"+title+"</span>")
 		})
 	}
 	wg.Wait()

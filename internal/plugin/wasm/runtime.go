@@ -55,11 +55,25 @@ var compilationCache = wazero.NewCompilationCache()
 var compilationGate = make(chan struct{}, 1)
 
 type Runtime struct {
-	engine wazero.Runtime
-	limits Limits
+	engine      wazero.Runtime
+	limits      Limits
+	permissions map[string]bool
+	storage     plugin.Storage
 }
 
-func New(ctx context.Context, limits Limits) (*Runtime, error) {
+// Option configures trusted application policy, equally for every source.
+type Option func(*Runtime)
+
+func WithPermissions(permissions ...string) Option {
+	return func(r *Runtime) {
+		for _, p := range permissions {
+			r.permissions[p] = true
+		}
+	}
+}
+func WithStorage(storage plugin.Storage) Option { return func(r *Runtime) { r.storage = storage } }
+
+func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error) {
 	limits = limits.defaults()
 	if limits.MemoryPages > 65536 || limits.WireBytes > 16<<20 || limits.Parts > 4096 {
 		return nil, errors.New("invalid WASM runtime limits")
@@ -73,10 +87,23 @@ func New(ctx context.Context, limits Limits) (*Runtime, error) {
 		_ = engine.Close(ctx)
 		return nil, err
 	}
-	return &Runtime{engine: engine, limits: limits}, nil
+	r := &Runtime{engine: engine, limits: limits, permissions: make(map[string]bool)}
+	for _, option := range options {
+		option(r)
+	}
+	if _, err := engine.NewHostModuleBuilder("lore_v1").NewFunctionBuilder().WithFunc(r.hostCall).Export("call").Instantiate(ctx); err != nil {
+		_ = engine.Close(ctx)
+		return nil, err
+	}
+	return r, nil
 }
 
 func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.Instance, error) {
+	for _, permission := range pkg.Manifest().Permissions {
+		if !r.permissions[permission] {
+			return nil, fmt.Errorf("plugin permission not granted: %s", permission)
+		}
+	}
 	ctx, cancel := context.WithTimeout(ctx, r.limits.LoadTimeout)
 	defer cancel()
 	select {
@@ -116,7 +143,7 @@ func validateABI(compiled wazero.CompiledModule) error {
 	}
 	for _, imported := range compiled.ImportedFunctions() {
 		namespace, name, _ := imported.Import()
-		if namespace != wasi_snapshot_preview1.ModuleName {
+		if namespace != wasi_snapshot_preview1.ModuleName && !validHostImport(namespace, name, imported) {
 			return fmt.Errorf("unsupported WASM import %s.%s", namespace, name)
 		}
 	}
@@ -155,4 +182,8 @@ func (i *Instance) instantiate(ctx context.Context) error {
 	}
 	i.module = module
 	return nil
+}
+
+func validHostImport(namespace, name string, function api.FunctionDefinition) bool {
+	return namespace == "lore_v1" && name == "call" && slices.Equal(function.ParamTypes(), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32}) && slices.Equal(function.ResultTypes(), []api.ValueType{api.ValueTypeI32})
 }

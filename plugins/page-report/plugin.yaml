@@ -1,0 +1,11 @@
+api_version: 1
+id: io.lore.page-report
+name: Page Report
+version: 1.0.0
+default_enabled: true
+modules:
+  - type: macro
+    id: page-report
+    name: pages
+    capability: pages.search
+permissions: [pages:read]

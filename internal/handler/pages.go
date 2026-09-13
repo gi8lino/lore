@@ -16,11 +16,9 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
-	"github.com/gi8lino/lore/internal/pagereport"
-	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugincap"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/internal/service"
-	"github.com/gi8lino/lore/internal/subpages"
 )
 
 // Home renders the dashboard for the current user.
@@ -236,7 +234,7 @@ func ViewPage(
 
 		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
-		renderSubpages := subpages.NewRenderer(
+		pageNavigation := plugincap.Navigation(
 			navigation.Children(data.Navigation, slug),
 			pageURL,
 		)
@@ -258,7 +256,7 @@ func ViewPage(
 			md.Slug,
 			options,
 			md.Functions{
-				Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))},
+				Context: r.Context(), Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
 				Variables: expanded.Annotations,
 			},
 		)

@@ -33,6 +33,29 @@ func transform(pointer, length uint32) uint64 {
 	_ = json.Unmarshal(input, &request)
 	result := pluginapi.RenderResult{Parts: []pluginapi.RenderPart{{Text: request.Source}}}
 	switch {
+	case strings.HasPrefix(request.Source, "host-raw:"):
+		data := []byte(strings.TrimPrefix(request.Source, "host-raw:"))
+		response := make([]byte, 4096)
+		size := rawHost(uint32(uintptr(unsafe.Pointer(&data[0]))), uint32(len(data)), uint32(uintptr(unsafe.Pointer(&response[0]))), uint32(len(response)))
+		result.Parts[0].Text = string(response[:size])
+	case request.Source == "host-invalid-buffer":
+		data := []byte(`{"method":"plugin.storage.write","params":{"Key":"invalid","Value":"YmFk"}}`)
+		size := rawHost(uint32(uintptr(unsafe.Pointer(&data[0]))), uint32(len(data)), 0xffffffff, 4096)
+		if size != 0 {
+			panic("invalid buffer accepted")
+		}
+		result.Parts[0].Text = "rejected"
+
+	case strings.HasPrefix(request.Source, "host:"):
+		var call pluginapi.CapabilityRequest
+		_ = json.Unmarshal([]byte(strings.TrimPrefix(request.Source, "host:")), &call)
+		var value json.RawMessage
+		if err := pluginapi.Call(call.Method, call.Params, &value); err != nil {
+			result.Parts[0].Text = err.Error()
+		} else {
+			result.Parts[0].Text = string(value)
+		}
+
 	case request.Source == "loop":
 		for {
 		}
@@ -86,3 +109,6 @@ func denied(err error) string {
 	return "ALLOWED"
 }
 func address() uint64 { return uint64(len(output))<<32 | uint64(uintptr(unsafe.Pointer(&output[0]))) }
+
+//go:wasmimport lore_v1 call
+func rawHost(pointer, length, output, capacity uint32) uint32

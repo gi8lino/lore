@@ -1,0 +1,10 @@
+api_version: 1
+id: io.lore.subpages
+name: Subpages
+version: 1.0.0
+default_enabled: true
+modules:
+  - type: macro
+    id: subpages
+    name: subpages
+permissions: [pages:read]

@@ -11,8 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
-	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/internal/plugincap"
 	"github.com/gi8lino/lore/themes"
 )
 
@@ -277,14 +276,14 @@ func (b *builder) renderPage(ctx context.Context, page sourcePage, plan buildPla
 	if page.Route != "" {
 		children = navigation.Children(plan.navigationTree, page.Route)
 	}
-	renderSubpages := subpages.NewRenderer(children, func(slug string) string {
+	pageNavigation := plugincap.Navigation(children, func(slug string) string {
 		return pageURL(plan.basePath, slug)
 	})
 	rendered, err := b.renderer.RenderPageResolvedWithFunctions(
 		page.Markdown,
 		resolveWiki,
 		options,
-		md.Functions{Context: ctx, Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages)}},
+		md.Functions{Context: ctx, Capabilities: plugincap.Capabilities(nil, pageNavigation)},
 	)
 	if err != nil {
 		return renderedPage{}, fmt.Errorf("render %s: %w", page.SourcePath, err)

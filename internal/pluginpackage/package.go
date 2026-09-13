@@ -44,9 +44,11 @@ type Manifest struct {
 }
 
 type Module struct {
-	Type  string `yaml:"type"`
-	ID    string `yaml:"id"`
-	Stage string `yaml:"stage"`
+	Type       string `yaml:"type"`
+	ID         string `yaml:"id"`
+	Stage      string `yaml:"stage,omitempty"`
+	Name       string `yaml:"name,omitempty"`
+	Capability string `yaml:"capability,omitempty"`
 }
 
 // Package exposes copies of validated content so callers cannot mutate the
@@ -212,8 +214,12 @@ func (m Manifest) Validate() error {
 	if len(m.Description) > 4096 {
 		return errors.New("plugin description is too long")
 	}
-	if len(m.Permissions) != 0 {
-		return errors.New("plugin permissions are not supported by API v1 yet")
+	permissions := make(map[string]bool)
+	for _, permission := range m.Permissions {
+		if !pluginapi.ValidPermission(permission) || permissions[permission] {
+			return errors.New("invalid or duplicate plugin permission")
+		}
+		permissions[permission] = true
 	}
 	if len(m.Modules) == 0 || len(m.Modules) > 32 {
 		return errors.New("plugin must declare between 1 and 32 modules")
@@ -224,7 +230,7 @@ func (m Manifest) Validate() error {
 			return fmt.Errorf("invalid or duplicate module ID %q", module.ID)
 		}
 		names[module.ID] = true
-		if module.Type != "renderer-extension" || (module.Stage != "preprocess" && module.Stage != "postprocess") {
+		if !validModule(module) {
 			return fmt.Errorf("unsupported plugin module %q", module.ID)
 		}
 	}
@@ -236,4 +242,20 @@ func (m Manifest) Validate() error {
 		dependencies[id] = true
 	}
 	return nil
+}
+
+func validModule(m Module) bool {
+	switch m.Type {
+	case "renderer-extension":
+		return (m.Stage == "preprocess" || m.Stage == "postprocess") && m.Name == "" && m.Capability == ""
+	case "macro":
+		if m.Capability != "" {
+			if _, ok := pluginapi.PermissionFor(m.Capability); !ok {
+				return false
+			}
+		}
+		return identifier.MatchString(m.Name) && m.Stage == ""
+	default:
+		return false
+	}
 }

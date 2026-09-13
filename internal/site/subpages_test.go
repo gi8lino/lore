@@ -3,8 +3,9 @@ package site
 import (
 	"testing"
 
+	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/internal/plugincap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,11 +17,12 @@ func TestStaticSubpagesUseStaticPageURLs(t *testing.T) {
 		{Slug: "guide", Title: "Guide"},
 		{Slug: "guide/install", Title: "Install"},
 	}, navigation.Options{})
-	render := subpages.NewRenderer(navigation.Children(tree, "guide"), func(slug string) string {
+	nodes := plugincap.Navigation(navigation.Children(tree, "guide"), func(slug string) string {
 		return pageURL("/docs/", slug)
 	})
 
-	html, err := render(subpages.Options{Title: "Related pages", ShowTitle: true})
+	rendered, err := testMarkdownRenderer(t).RenderPageResolvedWithFunctions(`{{subpages title="Related pages"}}`, md.Slug, md.DefaultOptions(), md.Functions{Capabilities: plugincap.Capabilities(nil, nodes)})
+	html := rendered.HTML
 
 	require.NoError(t, err)
 	assert.Contains(t, html, "Related pages")

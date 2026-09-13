@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugincap"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -18,10 +19,11 @@ import (
 // renderPipeline pins an active contribution set for the whole document,
 // including nested Markdown and the variable-provenance rendering pass.
 type renderPipeline struct {
-	context  context.Context
-	snapshot plugin.Snapshot
-	features map[string]bool
-	macros   map[string]plugin.MacroRenderer
+	context      context.Context
+	capabilities map[string]plugin.Capability
+	snapshot     plugin.Snapshot
+	features     map[string]bool
+	macros       map[string]plugin.MacroRenderer
 }
 
 type macroInvocation struct {
@@ -32,12 +34,15 @@ type macroInvocation struct {
 }
 
 func newRenderPipeline(snapshot plugin.Snapshot, options Options, functions Functions) *renderPipeline {
-	return &renderPipeline{context: functions.Context, snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
+	capabilities := plugincap.Capabilities(nil, nil)
+	maps.Copy(capabilities, functions.Capabilities)
+	return &renderPipeline{context: functions.Context, capabilities: capabilities, snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
 }
 
 func (r *Renderer) moduleContext(resolve func(string) string, options Options) plugin.Context {
 	return plugin.Context{
 		Context:        options.pipeline.context,
+		Capabilities:   maps.Clone(options.pipeline.capabilities),
 		Features:       maps.Clone(options.pipeline.features),
 		Macros:         maps.Clone(options.pipeline.macros),
 		RenderMarkdown: func(source string) (string, error) { return r.renderRawResolved(source, resolve, options) },
@@ -109,6 +114,10 @@ func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context) (st
 				invocation, err := plugin.Guard(entry.Descriptor.ID, func() (parsed, error) {
 					if conditional, ok := macro.(plugin.ConditionalMacro); ok && !conditional.Available(ctx) {
 						return parsed{}, nil
+					}
+					if contextual, ok := macro.(plugin.ContextualMacro); ok {
+						args, matched, err := contextual.ParseContext(ctx, line)
+						return parsed{args, matched}, err
 					}
 					args, ok := macro.Parse(line)
 					return parsed{args, ok}, nil

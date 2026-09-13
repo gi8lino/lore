@@ -25,12 +25,13 @@ type Descriptor struct {
 // Callbacks must not retain this context or mutate its maps.
 type Context struct {
 	Context        context.Context
+	Capabilities   map[string]Capability
 	Features       map[string]bool
 	Macros         map[string]MacroRenderer
 	RenderMarkdown func(string) (string, error)
 }
 
-// Invocation is a serializable macro argument value suitable for a future ABI.
+// Invocation is a serializable macro argument value carried by the WASM ABI.
 type Invocation = json.RawMessage
 
 // MacroRenderer binds request-local data to a registered macro.
@@ -39,6 +40,10 @@ type MacroRenderer func(Invocation) (string, error)
 // ConditionalMacro optionally controls whether a macro can expand in a
 // particular request. An unavailable invocation stays ordinary Markdown.
 type ConditionalMacro interface{ Available(Context) bool }
+
+type ContextualMacro interface {
+	ParseContext(Context, string) (Invocation, bool, error)
+}
 
 // Macro recognizes a standalone invocation and produces untrusted HTML.
 type Macro interface {
@@ -135,7 +140,7 @@ func (m BoundMacro[T]) Render(ctx Context, value Invocation) (string, error) {
 }
 
 // Guard converts synchronous native module panics into render errors. Native
-// modules remain trusted: goroutines, CPU, and memory need a WASM sandbox later.
+// modules remain trusted; installed contributions execute in the WASM sandbox.
 func Guard[T any](owner string, run func() (T, error)) (result T, err error) {
 	defer func() {
 		if recover() != nil {

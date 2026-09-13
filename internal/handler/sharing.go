@@ -11,8 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/pagereport"
-	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugincap"
 )
 
 type createPageShareLinkResponse struct {
@@ -114,7 +113,7 @@ func renderSharedPage(
 		expanded,
 		md.Slug,
 		options,
-		md.Functions{Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), catalogUseCases))}},
+		md.Functions{Context: r.Context(), Capabilities: plugincap.Capabilities(plugincap.SharedPages{Source: catalogUseCases, Slug: slug}, nil)},
 	)
 	if err != nil {
 		writePublicShareError(logger, w, err)

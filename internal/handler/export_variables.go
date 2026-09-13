@@ -11,9 +11,8 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/gi8lino/lore/internal/pagereport"
 	"github.com/gi8lino/lore/internal/pdf"
-	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugincap"
 )
 
 type exportVariablesRequest struct {
@@ -56,11 +55,11 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	renderSubpages, err := subpagesRenderer(ctx, navigation, access, user, page.Slug)
+	pageNavigation, err := subpageNavigation(ctx, navigation, access, user, page.Slug)
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Context: ctx, Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(ctx, securedCatalog))}})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Context: ctx, Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation)})
 	if err != nil {
 		return "", err
 	}

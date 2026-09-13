@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/pluginapi"
 )
 
 const (
@@ -29,8 +29,8 @@ type Options struct {
 
 // Source supplies page discovery and full page metadata for a report.
 type Source interface {
-	Search(context.Context, string, int) ([]domain.Page, error)
-	GetPage(context.Context, string) (domain.Page, error)
+	Search(context.Context, string, int) ([]pluginapi.Page, error)
+	GetPage(context.Context, string) (pluginapi.Page, error)
 }
 
 // Parse recognizes one standalone {{pages ...}} invocation.
@@ -286,18 +286,18 @@ func validColumn(column string) bool {
 }
 
 // sortPages applies the configured deterministic report ordering.
-func sortPages(pages []domain.Page, sort string) {
+func sortPages(pages []pluginapi.Page, sort string) {
 	switch sort {
 	case "title":
-		slices.SortFunc(pages, func(left, right domain.Page) int {
+		slices.SortFunc(pages, func(left, right pluginapi.Page) int {
 			return strings.Compare(strings.ToLower(left.Title), strings.ToLower(right.Title))
 		})
 	case "path":
-		slices.SortFunc(pages, func(left, right domain.Page) int {
+		slices.SortFunc(pages, func(left, right pluginapi.Page) int {
 			return strings.Compare(strings.ToLower(left.Slug), strings.ToLower(right.Slug))
 		})
 	case "updated":
-		slices.SortFunc(pages, func(left, right domain.Page) int {
+		slices.SortFunc(pages, func(left, right pluginapi.Page) int {
 			return right.UpdatedAt.Compare(left.UpdatedAt)
 		})
 	}
@@ -323,7 +323,7 @@ var reportTemplate = template.Must(template.New("page-report").Parse(`{{ define 
 {{ define "cards" }}<div class="lore-page-report lore-page-report-cards">{{ range .Rows }}<a class="lore-page-report-card" href="/pages/{{ .Slug }}"><strong>{{ index .Cells 0 }}</strong>{{ range $index, $cell := .Cells }}{{ if gt $index 0 }}<span>{{ $cell }}</span>{{ end }}{{ end }}</a>{{ else }}<p class="muted">No pages match this query.</p>{{ end }}</div>{{ end }}`))
 
 // render executes the selected report presentation for the resolved pages.
-func render(options Options, pages []domain.Page) (string, error) {
+func render(options Options, pages []pluginapi.Page) (string, error) {
 	data := tableData{Columns: make([]columnData, 0, len(options.Columns)), Rows: make([]rowData, 0, len(pages))}
 	for _, column := range options.Columns {
 		data.Columns = append(data.Columns, columnData{Key: column, Label: columnLabel(column)})
@@ -352,7 +352,7 @@ func columnLabel(column string) string {
 }
 
 // pageValue resolves one report cell from page metadata.
-func pageValue(page domain.Page, column string) string {
+func pageValue(page pluginapi.Page, column string) string {
 	switch column {
 	case "title":
 		return page.Title

@@ -12,10 +12,9 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
-	"github.com/gi8lino/lore/internal/pagereport"
-	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugincap"
 	"github.com/gi8lino/lore/internal/service"
-	"github.com/gi8lino/lore/internal/subpages"
+	"github.com/gi8lino/lore/pluginapi"
 )
 
 // previewRequest contains Markdown submitted for server-side editor preview.
@@ -88,7 +87,7 @@ func PreviewMarkdown(
 		slug := md.Slug(request.Slug)
 		user := currentUser(r)
 		securedCatalog := accessiblePageCatalog{catalog: catalogUseCases, access: accessUseCases, user: user}
-		renderSubpages, err := subpagesRenderer(r.Context(), navigationUseCases, accessUseCases, user, slug)
+		pageNavigation, err := subpageNavigation(r.Context(), navigationUseCases, accessUseCases, user, slug)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
 			return
@@ -110,7 +109,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))}},
+			md.Functions{Context: r.Context(), Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation)},
 		)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
@@ -121,14 +120,14 @@ func PreviewMarkdown(
 	}
 }
 
-// subpagesRenderer prepares the current navigation subtree for the shared subpages renderer.
-func subpagesRenderer(
+// subpageNavigation prepares the permission-filtered navigation data for plugin capabilities.
+func subpageNavigation(
 	ctx context.Context,
 	navigationUseCases navigationService,
 	accessUseCases pageAccessReader,
 	user domain.User,
 	slug string,
-) (func(subpages.Options) (string, error), error) {
+) ([]pluginapi.NavigationNode, error) {
 	pages, err := navigationUseCases.NavigationPages(ctx)
 	if err != nil {
 		return nil, err
@@ -149,7 +148,7 @@ func subpagesRenderer(
 	}
 
 	tree := navigation.Build(items, navigation.Options{Icons: icons})
-	return subpages.NewRenderer(navigation.Children(tree, slug), pageURL), nil
+	return plugincap.Navigation(navigation.Children(tree, slug), pageURL), nil
 }
 
 // pageURL returns the server route for one page slug.

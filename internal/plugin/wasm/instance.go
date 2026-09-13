@@ -30,6 +30,10 @@ type Instance struct {
 func (i *Instance) Contributions() plugin.Contributions {
 	var result plugin.Contributions
 	for _, module := range i.manifest.Modules {
+		if module.Type == "macro" {
+			result.Macros = append(result.Macros, macroModule{rendererModule{instance: i, module: module}})
+			continue
+		}
 		adapter := rendererModule{instance: i, module: module}
 		switch module.Stage {
 		case "preprocess":
@@ -74,6 +78,7 @@ func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) 
 			return pluginapi.RenderResult{}, err
 		}
 	}
+	ctx = context.WithValue(ctx, callerKey{}, &invocationState{instance: i, remaining: 512})
 	result, err := i.call(ctx, request)
 	if err != nil {
 		// Discard a trapped or malformed reactor. A later request gets a clean
@@ -156,6 +161,7 @@ func (m rendererModule) render(ctx plugin.Context, source string) (string, error
 	if execution == nil {
 		execution = context.Background()
 	}
+	execution = context.WithValue(execution, capabilitiesKey{}, ctx.Capabilities)
 	result, err := m.instance.invoke(execution, pluginapi.RenderRequest{
 		APIVersion: pluginapi.Version, Module: m.module.ID, Stage: m.module.Stage, Source: source, Features: ctx.Features,
 	})

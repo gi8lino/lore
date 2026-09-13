@@ -1,4 +1,4 @@
-# Plugin architecture (Phases 1–2)
+# Plugin architecture (Phases 1–3)
 
 Lore's rendering modules register contributions through an application-owned
 `plugin.Registry`. `markdown.New(ctx)` creates a renderer with an owned manager
@@ -8,7 +8,9 @@ Server pages, preview, sharing, exports, and static builds use the same pipeline
 
 Callouts is now a real bundled `.loreplugin`, compiled from the independent Go
 module in `plugins/callouts`. Its native implementation has been removed.
-Subpages and Page Report still use native adapters pending Phase 3.
+Subpages and Page Report are also bundled WASM macro plugins. Their feature
+implementations live under `plugins/features` and import only public wire types;
+the old native implementations have been removed.
 
 ## Packages and distribution
 
@@ -21,10 +23,10 @@ assets/          # optional; not served or executed yet
 ```
 
 The versioned manifest declares identity, a numeric `major.minor.patch` version,
-modules, dependencies, presentation defaults, and permissions. Phase 2 supports
-`renderer-extension` modules at `preprocess` and `postprocess` stages. Unknown
-fields, unsupported API versions, stages, module types, and nonempty permission
-requests are rejected. No capability is silently granted.
+modules, dependencies, presentation defaults, and permissions. The manifest supports
+`renderer-extension` modules at `preprocess` and `postprocess` stages and `macro`
+modules with parse/render calls. Unknown fields, unsupported versions, stages,
+module types, and permission names are rejected. No capability is silently granted.
 
 `pluginpackage.Read` validates the whole archive before returning immutable
 content. It rejects traversal, absolute paths, backslashes, duplicate paths,
@@ -59,14 +61,15 @@ render error. `Close` releases runtime resources when the server or build ends.
 These are in-memory loading primitives, not a persistent installer or complete
 runtime lifecycle. Phase 4 must add persisted state, install/upgrade/uninstall,
 and instance leases for uninterrupted in-flight snapshots during replacement.
-The manager deliberately has no database/schema or plugin-directory dependency
-in Phase 2.
+The manager still has no plugin-directory dependency. The runtime accepts a
+small trusted storage interface; PostgreSQL implements it using the new
+`plugin_values` table. It is not a plugin-owned schema.
 
 ## Runtime boundary
 
 `internal/plugin/wasm` hosts WASI reactors with wazero. Each instance has its own
 linear memory and serialized invocation gate. No host filesystem, environment,
-arguments, sockets, or streams are configured. Only WASI imports are accepted;
+arguments, sockets, or streams are configured. Only WASI and the signature-checked `lore_v1.call` import are accepted;
 imported memories and cross-plugin module imports are rejected. API export
 signatures and the guest's API version are checked before registration.
 
@@ -124,3 +127,39 @@ the checked-in packages. `make test` and `make test-race` also test the standalo
 plugin sources. Runtime tests execute both real bundled Callouts and an adversarial
 WASM fixture, including ambient-capability denial, traps, malformed output,
 resource limits, request isolation, and sanitizer enforcement.
+
+## Capability and storage boundary
+
+`pluginapi` defines public JSON values and a Go guest transport. It never imports
+`internal/domain`, `internal/store`, or `internal/handler`. `plugincap` is the
+trusted composition adapter: it converts already-authorized catalogs and
+navigation into public values. Normal pages, previews and exports keep the
+viewer's existing access filter. Anonymous share scopes expose only the shared
+page. Static rendering exposes prepared navigation with static URLs and leaves
+unavailable query macros literal.
+
+Runtime policy and manifest declarations must both allow each sensitive host
+call. The caller identity is derived from the executing WASM instance and is
+never accepted in request JSON. Capabilities are bound to the current invocation,
+not stored in the instance; concurrent viewers cannot share callbacks. Calls
+outside an invocation, unknown operations, malformed buffers, and undeclared
+permissions are denied. A host-adapter panic becomes a guest-visible error.
+
+The application explicitly grants page reads and namespaced settings/data
+permissions to requesting packages. The lower-level runtime grants nothing by
+default. Attachments have an optional authorized range-reader adapter and are
+not bound automatically. No network, user directory, general settings, SQL,
+filesystem, or process capability is available. The same grant rules apply to
+both distribution sources.
+
+Storage is keyed by plugin ID, namespace (`settings` or `data`), and key. IDs
+come from the runtime. Limits are 256-byte keys, 64 KiB per value, 1,024 keys and
+16 MiB total per plugin. A PostgreSQL transaction and per-plugin advisory lock
+make quota checks atomic. This storage survives runtime restarts; persistent
+plugin installation and administration remain later phases.
+
+See `pluginapi/README.md` for methods and wire contracts. Tests cover actual WASM
+macro parity between bundled and installed packages, authorization failures,
+request isolation, host panics, malformed requests, namespace forgery, quota
+checks, and PostgreSQL reopen persistence. Rebuild packages with
+`make plugin-packages` after changing either wire types or plugin source.
