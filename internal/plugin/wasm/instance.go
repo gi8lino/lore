@@ -12,7 +12,7 @@ import (
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/pluginpackage"
 	"github.com/gi8lino/lore/pluginapi"
-	"github.com/tetratelabs/wazero"
+
 	"github.com/tetratelabs/wazero/api"
 )
 
@@ -20,7 +20,7 @@ import (
 // Markdown rendering, so recursive blocks never re-enter a suspended guest.
 type Instance struct {
 	runtime  *Runtime
-	compiled wazero.CompiledModule
+	compiled *compiledLease
 	manifest pluginpackage.Manifest
 	gate     chan struct{}
 	module   api.Module

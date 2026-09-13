@@ -85,9 +85,11 @@ become render errors. The bad reactor is closed; a later request can instantiate
 a clean reactor from the compiled module. Nested Markdown fragments are handled
 after the guest invocation, so there is no reentrant call into a Go WASM runtime.
 
-A process-local, memory-only compilation cache shares code, never active
-registries, guest state, or permissions. Up to eight compiled-code references
-are retained for reuse across short-lived renderers and evicted in least-recently-used order.
+Process-local, bounded caches share validated package values and immutable
+compiled modules, never active registries, guest state, or permissions. Eight
+entries are retained in each least-recently-used cache. Compiled-module leases
+keep an evicted entry alive until its active instances close. This avoids both
+repeated ZIP expansion and repeated WASM decoding across renderer scopes.
 A startup gate prevents duplicate
 concurrent compilations, following
 [wazero's compilation-cache guidance](https://pkg.go.dev/github.com/tetratelabs/wazero#CompilationCache).

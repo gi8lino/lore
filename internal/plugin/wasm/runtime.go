@@ -108,28 +108,20 @@ func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.
 	defer cancel()
 	select {
 	case compilationGate <- struct{}{}:
-		defer func() { <-compilationGate }()
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 	binary := pkg.WASM()
-	compiled, err := r.engine.CompileModule(ctx, binary)
+	compiled, err := r.compile(ctx, binary)
+	<-compilationGate
 	if err != nil {
 		return nil, fmt.Errorf("compile WASM: %w", err)
-	}
-	if err := validateABI(compiled); err != nil {
-		_ = compiled.Close(ctx)
-		return nil, err
 	}
 	instance := &Instance{runtime: r, compiled: compiled, manifest: pkg.Manifest(), gate: make(chan struct{}, 1)}
 	initializeCtx, stop := context.WithTimeout(ctx, r.limits.CallTimeout)
 	defer stop()
 	if err := instance.instantiate(initializeCtx); err != nil {
 		_ = compiled.Close(ctx)
-		return nil, err
-	}
-	if err := r.retainCode(ctx, binary); err != nil {
-		_ = instance.Close(context.Background())
 		return nil, err
 	}
 	return instance, nil
@@ -171,7 +163,7 @@ func validateABI(compiled wazero.CompiledModule) error {
 func (i *Instance) instantiate(ctx context.Context) error {
 	// Anonymous instances cannot be imported by another plugin. Only _initialize
 	// is invoked, and it shares the load/call deadline and memory limit.
-	module, err := i.runtime.engine.InstantiateModule(ctx, i.compiled, wazero.NewModuleConfig().WithName("").WithStartFunctions("_initialize"))
+	module, err := i.runtime.engine.InstantiateModule(ctx, i.compiled.CompiledModule, wazero.NewModuleConfig().WithName("").WithStartFunctions("_initialize"))
 	if err != nil {
 		return fmt.Errorf("initialize WASM: %w", err)
 	}

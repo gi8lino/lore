@@ -83,7 +83,7 @@ func (p *Package) Asset(name string) ([]byte, error) {
 
 // Read validates paths, types, decompression limits, CRCs, and manifest fields
 // before returning any package. Asset names are relative to assets/.
-func Read(data []byte) (*Package, error) {
+func read(data []byte) (*Package, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return nil, errors.New("plugin archive exceeds size limit or is empty")
 	}
