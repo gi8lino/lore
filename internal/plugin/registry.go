@@ -17,11 +17,13 @@ type Registry struct {
 
 // Entry associates an immutable contribution set with its owner.
 type Entry struct {
+	lifetime      *lifetime
 	Descriptor    Descriptor
 	Contributions Contributions
 }
 
 // Snapshot is an isolated view of active modules in deterministic order.
+// Use Acquire for executable snapshots that must survive lifecycle changes.
 // Callbacks are shared and must be concurrency safe; all metadata slices are copied.
 type Snapshot struct{ Entries []Entry }
 
@@ -83,7 +85,7 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 	if err := validateIDs(modules); err != nil {
 		return err
 	}
-	r.entries = append(r.entries, cloneEntry(Entry{descriptor, modules}))
+	r.entries = append(r.entries, cloneEntry(Entry{Descriptor: descriptor, Contributions: modules, lifetime: newLifetime()}))
 	return nil
 }
 

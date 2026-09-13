@@ -87,5 +87,6 @@ of 1,024 keys and 16 MiB per plugin across both namespaces, with transactional
 quota checks. Reads distinguish an absent value from an empty value. Data
 survives renderer/runtime restart. Disabling does not delete plugin data.
 
-Installation and persistent enable/disable state remain Phase 4. Browser assets
-remain Phase 5; the full developer SDK and CLI remain Phase 9.
+Runtime installation, enable/disable, version replacement, and removal are implemented
+in Lore’s manager. These are trusted application operations, not guest host calls.
+Browser assets remain Phase 5; the full developer SDK and CLI remain Phase 9.

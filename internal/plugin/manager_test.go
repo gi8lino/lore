@@ -63,3 +63,18 @@ func TestManagerFailuresNeverPublishContributions(t *testing.T) {
 	_, err = manager.Load(context.Background(), data, plugin.SourceBundled)
 	require.ErrorContains(t, err, "closed")
 }
+
+func TestInstallCannotReplaceAnotherRegistryOwner(t *testing.T) {
+	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	require.NoError(t, err)
+	registry := &plugin.Registry{}
+	require.NoError(t, registry.Register(plugin.Descriptor{ID: "io.lore.callouts", Name: "Existing"}, plugin.Contributions{}))
+	runtime := &fakeRuntime{instance: &fakeInstance{}}
+	manager := plugin.NewManager(registry, runtime)
+	_, err = manager.Install(context.Background(), data)
+	require.ErrorContains(t, err, "already registered")
+	assert.True(t, runtime.instance.closed)
+	assert.Empty(t, manager.Plugins())
+	assert.Equal(t, "Existing", registry.Snapshot().Entries[0].Descriptor.Name)
+	require.NoError(t, manager.Close(context.Background()))
+}

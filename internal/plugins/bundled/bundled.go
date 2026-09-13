@@ -4,7 +4,6 @@ package bundled
 import (
 	"context"
 	"embed"
-	"fmt"
 	"io/fs"
 
 	"github.com/gi8lino/lore/internal/plugin"
@@ -18,14 +17,13 @@ func Load(ctx context.Context, manager *plugin.Manager) error {
 	if err != nil {
 		return err
 	}
+	archives := make([][]byte, 0, len(names))
 	for _, name := range names {
 		data, err := Packages.ReadFile(name)
 		if err != nil {
 			return err
 		}
-		if _, err := manager.Load(ctx, data, plugin.SourceBundled); err != nil {
-			return fmt.Errorf("load bundled package %s: %w", name, err)
-		}
+		archives = append(archives, data)
 	}
-	return nil
+	return manager.Bootstrap(ctx, archives)
 }

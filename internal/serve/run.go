@@ -168,7 +168,7 @@ func Run(
 	ctx, stop := server.SignalContext(ctx)
 	defer stop()
 
-	renderer, err := markdown.New(ctx, wasm.WithStorage(database), wasm.WithPermissions("settings:read", "settings:write", "storage:read", "storage:write"))
+	renderer, err := markdown.NewWithPluginStore(ctx, database, wasm.WithStorage(database), wasm.WithPermissions("settings:read", "settings:write", "storage:read", "storage:write"))
 	if err != nil {
 		return err
 	}

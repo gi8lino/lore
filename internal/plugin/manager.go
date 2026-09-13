@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/gi8lino/lore/internal/pluginpackage"
@@ -30,29 +31,38 @@ const (
 )
 
 type LoadedPlugin struct {
+	Enabled  bool
 	Manifest pluginpackage.Manifest
 	Source   Source
 	Digest   [32]byte
 }
 
 type managedPlugin struct {
+	archive  []byte
 	metadata LoadedPlugin
 	instance Instance
 }
 
 // Manager coordinates package validation, runtime ownership, and atomic registry
-// publication. Persistence and user-facing installation belong to later phases.
+// publication. Durable lifecycle state is provided by a small store interface.
 type Manager struct {
-	mu       sync.Mutex
-	registry *Registry
-	runtime  Runtime
-	loaded   map[string]managedPlugin
-	order    []string
-	closed   bool
+	mu          sync.Mutex
+	registry    *Registry
+	runtime     Runtime
+	loaded      map[string]managedPlugin
+	order       []string
+	closed      bool
+	store       Store
+	bundled     map[string][]byte
+	retirements []*retirement
 }
 
-func NewManager(registry *Registry, runtime Runtime) *Manager {
-	return &Manager{registry: registry, runtime: runtime, loaded: make(map[string]managedPlugin)}
+func NewManager(registry *Registry, runtime Runtime, options ...ManagerOption) *Manager {
+	m := &Manager{registry: registry, runtime: runtime, loaded: make(map[string]managedPlugin), bundled: make(map[string][]byte), store: &memoryStore{records: make(map[string]Record)}}
+	for _, option := range options {
+		option(m)
+	}
+	return m
 }
 
 // Load uses the same package reader and runtime for all sources. A failed load
@@ -83,14 +93,17 @@ func (m *Manager) Load(ctx context.Context, archive []byte, source Source) (Load
 		_ = instance.Close(context.Background())
 		return LoadedPlugin{}, err
 	}
-	metadata := LoadedPlugin{Manifest: manifest, Source: source, Digest: pkg.Digest()}
-	m.loaded[manifest.ID] = managedPlugin{metadata, instance}
+	metadata := LoadedPlugin{Manifest: manifest, Source: source, Digest: pkg.Digest(), Enabled: true}
+	m.loaded[manifest.ID] = managedPlugin{metadata: metadata, instance: instance, archive: append([]byte(nil), archive...)}
 	m.order = append(m.order, manifest.ID)
+	if source == SourceBundled {
+		m.bundled[manifest.ID] = append([]byte(nil), archive...)
+	}
 	return cloneLoaded(metadata), nil
 }
 
-// Unload unregisters before closing the instance. In-flight calls drain; a
-// stale snapshot that has not entered the instance receives a closed error.
+// Unload removes a transient entry. Acquired render snapshots retain the old
+// instance until release; unleased inspection snapshots carry no such guarantee.
 func (m *Manager) Unload(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -101,11 +114,16 @@ func (m *Manager) unload(ctx context.Context, id string) error {
 	if !ok {
 		return fmt.Errorf("plugin %s is not loaded", id)
 	}
-	if err := m.registry.Unregister(id); err != nil {
-		return err
+	if loaded.instance != nil {
+		old, err := m.registry.transition(id, nil, true, nil)
+		if err != nil {
+			return err
+		}
+		m.retire(old, loaded.instance)
 	}
 	delete(m.loaded, id)
-	return loaded.instance.Close(ctx)
+	m.order = slices.DeleteFunc(m.order, func(value string) bool { return value == id })
+	return nil
 }
 
 func (m *Manager) Plugins() []LoadedPlugin {
@@ -131,17 +149,27 @@ func cloneLoaded(metadata LoadedPlugin) LoadedPlugin {
 
 func (m *Manager) Close(ctx context.Context) error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.closed {
-		return nil
-	}
-	m.closed = true
-	var result error
-	for index := len(m.order) - 1; index >= 0; index-- {
-		id := m.order[index]
-		if loaded, ok := m.loaded[id]; ok {
-			result = errors.Join(result, m.registry.Unregister(id), loaded.instance.Close(ctx))
+	if !m.closed {
+		m.closed = true
+
+		lives := m.registry.detach(m.loaded)
+		for id, loaded := range m.loaded {
+			if loaded.instance != nil {
+				m.retire(lives[id], loaded.instance)
+			}
 			delete(m.loaded, id)
+		}
+		m.order = nil
+	}
+	pending := append([]*retirement(nil), m.retirements...)
+	m.mu.Unlock()
+	var result error
+	for _, retired := range pending {
+		select {
+		case <-retired.done:
+			result = errors.Join(result, retired.err)
+		case <-ctx.Done():
+			return errors.Join(result, ctx.Err())
 		}
 	}
 	return errors.Join(result, m.runtime.Close(ctx))

@@ -98,12 +98,17 @@ func newBuilder(appFS fs.FS) *builder {
 
 // build renders all configured Markdown files into the configured output directory.
 func (b *builder) build(ctx context.Context, config Config) (buildResult, error) {
-	renderer, err := md.New(ctx)
-	if err != nil {
-		return buildResult{}, err
+	// Copy the builder so a scoped default renderer is never retained after close.
+	local := *b
+	b = &local
+	if b.renderer == nil {
+		renderer, err := md.New(ctx)
+		if err != nil {
+			return buildResult{}, err
+		}
+		defer func() { _ = renderer.Close(context.Background()) }()
+		b.renderer = renderer
 	}
-	defer func() { _ = renderer.Close(context.Background()) }()
-	b.renderer = renderer
 	plan, err := b.planBuild(config)
 	if err != nil {
 		return buildResult{}, err
@@ -354,4 +359,16 @@ func writeNotFoundPage(plan buildPlan, common viewData) error {
 	data.Title = "Page not found"
 	data.Navigation = navigation.Build(plan.navigationPages, navigation.Options{})
 	return writeTemplate(plan.templates.notFound, outputFile(plan.config.OutputDir, "404.html"), data)
+}
+
+// BuildWithRenderer lets an application build a site using its active plugin
+// registry, including runtime-installed plugins. The caller owns the renderer.
+func BuildWithRenderer(ctx context.Context, appFS fs.FS, config Config, renderer *md.Renderer) error {
+	if renderer == nil {
+		return fmt.Errorf("site renderer is required")
+	}
+	b := newBuilder(appFS)
+	b.renderer = renderer
+	_, err := b.build(ctx, config)
+	return err
 }

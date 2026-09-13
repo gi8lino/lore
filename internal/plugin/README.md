@@ -1,8 +1,8 @@
-# Plugin architecture (Phases 1–3)
+# Plugin architecture (Phases 1–4)
 
 Lore's rendering modules register contributions through an application-owned
 `plugin.Registry`. `markdown.New(ctx)` creates a renderer with an owned manager
-and WASM runtime; callers handle startup errors and close the renderer at the end
+and WASM runtime; `NewWithPluginStore` also restores persisted lifecycle state; callers handle startup errors and close the renderer at the end
 of its scope. `markdown.NewWithRegistry` supports an explicitly owned registry.
 Server pages, preview, sharing, exports, and static builds use the same pipeline.
 
@@ -48,22 +48,48 @@ atomically. Duplicate IDs and macro names, invalid metadata, and unavailable
 dependencies fail without publishing partial contributions. Requirements load
 first and unload after dependents.
 
-Each top-level render takes one snapshot. Nested blocks and variable-provenance
+Each top-level render acquires and releases one leased snapshot. Nested blocks and variable-provenance
 passes keep that view; registry locks are not held during rendering. Native
 callbacks must be immutable and concurrency safe. Request macro bindings are
 copied and cannot reactivate an unregistered macro.
 
-`Manager.Load` validates, compiles, instantiates, then registers. It closes the
-new instance if registration fails. `Unload` unregisters and closes it. Current
-WASM calls drain; a stale snapshot that has not entered a closed instance gets a
-render error. `Close` releases runtime resources when the server or build ends.
+`Manager.Install`, `Enable`, `Disable`, `Upgrade`, and `Uninstall` work inside
+one running process. The candidate package is validated and instantiated before
+publication. Registry validation, durable state commit, and publication are
+ordered so validation or persistence failures leave the active version intact.
+Replacement preserves contribution order and checks the complete dependency
+graph, including cycles introduced by upgrades. Required plugins cannot be
+disabled or removed while an enabled dependent still needs them.
 
-These are in-memory loading primitives, not a persistent installer or complete
-runtime lifecycle. Phase 4 must add persisted state, install/upgrade/uninstall,
-and instance leases for uninterrupted in-flight snapshots during replacement.
-The manager still has no plugin-directory dependency. The runtime accepts a
-small trusted storage interface; PostgreSQL implements it using the new
-`plugin_values` table. It is not a plugin-owned schema.
+A render leases every contribution version in its snapshot. Removing or replacing
+an entry affects new renders immediately; the old WASM instance closes after its
+last render releases the lease. Registry locks never cover guest execution.
+Shutdown detaches all owned contributions atomically and waits for retired
+instances. A cancelled shutdown can be retried. `Snapshot()` is an unleased
+inspection API; executable consumers use `Acquire()` and release on every path.
+
+The manager's small `Store` interface persists installation records. Server
+composition supplies PostgreSQL through `NewWithPluginStore`. The
+`plugin_installations` table stores installed ZIP bytes separately from embedded
+bundled packages, alongside source and enabled state. This uses Lore's existing
+persistence abstraction and requires no fixed filesystem path. The default
+in-memory store supports isolated renderers and standalone static builds.
+
+Startup merges bundled packages with persisted overrides, orders enabled plugins
+by dependency, prepares every instance, and publishes the complete registry once.
+A failed startup closes all prepared instances and publishes nothing. Bundled
+state records never contain package bytes. Upgrading a bundled ID creates an
+installed override through the same loader/runtime. Uninstall removes installed
+bytes; if that ID has an embedded copy, the embedded copy remains disabled so a
+restart cannot silently reactivate it. Plugin settings/data are retained for
+reinstallation. Version replacement requires the same ID and preserves enabled
+state; explicit replacements may also restore an earlier version.
+
+`Load`/`Unload` remain transient, low-level helpers for explicitly owned managers;
+application installation uses the durable lifecycle methods. The application
+exposes its manager through `Renderer.PluginManager()`. Administration routes and
+UI remain Phase 7. The standalone site CLI uses bundled defaults;
+`site.BuildWithRenderer` lets an application reuse its live registry for builds.
 
 ## Runtime boundary
 
@@ -157,11 +183,19 @@ both distribution sources.
 Storage is keyed by plugin ID, namespace (`settings` or `data`), and key. IDs
 come from the runtime. Limits are 256-byte keys, 64 KiB per value, 1,024 keys and
 16 MiB total per plugin. A PostgreSQL transaction and per-plugin advisory lock
-make quota checks atomic. This storage survives runtime restarts; persistent
-plugin installation and administration remain later phases.
+make quota checks atomic. This storage survives runtime restarts; plugin installation state is stored separately, and administration remains a later phase.
 
 See `pluginapi/README.md` for methods and wire contracts. Tests cover actual WASM
 macro parity between bundled and installed packages, authorization failures,
 request isolation, host panics, malformed requests, namespace forgery, quota
 checks, and PostgreSQL reopen persistence. Rebuild packages with
 `make plugin-packages` after changing either wire types or plugin source.
+
+## Lifecycle validation
+
+Tests exercise install/disable/re-enable/upgrade/uninstall through real WASM in
+one process, a render spanning an upgrade, dependency and cycle failures,
+persistence failure rollback, bootstrap atomicity, installed overrides of bundled
+IDs, and PostgreSQL/runtime reopen recovery. A static build test reuses the live
+renderer across disable/re-enable. No installation UI, asset server, marketplace,
+or remote package downloader is introduced in this phase.

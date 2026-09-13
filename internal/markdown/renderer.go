@@ -332,7 +332,9 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	execution, cancel := context.WithTimeout(execution, 30*time.Second)
 	defer cancel()
 	functions.Context = execution
-	options.pipeline = newRenderPipeline(r.registry.Snapshot(), options, functions)
+	snapshot, release := r.registry.Acquire()
+	defer release()
+	options.pipeline = newRenderPipeline(snapshot, options, functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(
 			source,
