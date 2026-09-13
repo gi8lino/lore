@@ -114,7 +114,7 @@ func renderSharedPage(
 		expanded,
 		md.Slug,
 		options,
-		md.Functions{Macros: map[string]plugin.MacroRenderer{"pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), catalogUseCases))}},
+		md.Functions{Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), catalogUseCases))}},
 	)
 	if err != nil {
 		writePublicShareError(logger, w, err)

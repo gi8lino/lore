@@ -2,11 +2,13 @@ package markdown
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	stdhtml "html"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/gi8lino/lore/internal/markdown/blocksyntax"
@@ -28,6 +30,7 @@ type Renderer struct {
 	// sanitizer removes unsafe HTML from rendered output.
 	sanitizer *bluemonday.Policy
 	registry  *plugin.Registry
+	manager   *plugin.Manager
 }
 
 // Options controls optional Markdown rendering features.
@@ -131,6 +134,7 @@ type RenderedPage struct {
 // Functions supplies request-local macro capabilities and variable provenance.
 // Bindings cannot activate an unregistered macro.
 type Functions struct {
+	Context   context.Context
 	Variables []Variable
 	Macros    map[string]plugin.MacroRenderer
 }
@@ -143,8 +147,14 @@ type tabSection struct {
 	body string
 }
 
-// New constructs the package default implementation.
-func New() *Renderer { return NewWithRegistry(DefaultRegistry()) }
+// Close releases the owned plugin runtime. Explicit-registry renderers leave
+// ownership with their caller.
+func (r *Renderer) Close(ctx context.Context) error {
+	if r.manager != nil {
+		return r.manager.Close(ctx)
+	}
+	return nil
+}
 
 // NewWithRegistry uses an application-owned registry for every render path.
 // An empty registry enables only the remaining core Markdown features.
@@ -314,6 +324,13 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	options Options,
 	functions Functions,
 ) (RenderedPage, error) {
+	execution := functions.Context
+	if execution == nil {
+		execution = context.Background()
+	}
+	execution, cancel := context.WithTimeout(execution, 30*time.Second)
+	defer cancel()
+	functions.Context = execution
 	options.pipeline = newRenderPipeline(r.registry.Snapshot(), options, functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(
@@ -397,6 +414,9 @@ func (r *Renderer) renderRawResolved(
 	resolve func(string) string,
 	options Options,
 ) (string, error) {
+	if err := options.pipeline.context.Err(); err != nil {
+		return "", err
+	}
 	if options.depth >= 64 {
 		return "", errors.New("markdown nesting limit exceeded")
 	}

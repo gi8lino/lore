@@ -12,7 +12,7 @@ import (
 func TestWikiLinksAndCallouts(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render("See [[Postgres Restore|the runbook]].\n\n!!! warning\nDanger zone\n")
 
 	require.NoError(t, err)
@@ -23,7 +23,7 @@ func TestWikiLinksAndCallouts(t *testing.T) {
 func TestWikiLinksSupportHeadingFragments(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render("See [[operations/postgres#Restore from backup|restore procedure]].")
 
 	require.NoError(t, err)
@@ -34,7 +34,7 @@ func TestWikiLinksSupportHeadingFragments(t *testing.T) {
 func TestWikiLinkPrefix(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.WikiLinkPrefix = "/docs/"
 	got, err := renderer.RenderResolvedWithOptions("[[Hello World]]", func(target string) string {
@@ -56,7 +56,7 @@ func TestLinksAreUnique(t *testing.T) {
 func TestTabsRenderMarkdownPanels(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `=== "Linux"
 
     **apt**
@@ -85,7 +85,7 @@ func TestTabsRenderMarkdownPanels(t *testing.T) {
 func TestDetailsRenderMarkdownBody(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `???+ "Why this works"
 
     This body contains **Markdown** and [[Another Page]].
@@ -103,7 +103,7 @@ func TestDetailsRenderMarkdownBody(t *testing.T) {
 func TestCustomBlocksAreIgnoredInsideFences(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := "```text\n=== \"Not a tab\"\n??? \"Not details\"\n!!! warning\n```\n"
 
 	got, err := renderer.Render(source)
@@ -120,7 +120,7 @@ func TestCustomBlocksAreIgnoredInsideFences(t *testing.T) {
 func TestAdditionalCalloutKinds(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render("!!! info\nInformation\n\n!!! success\nWorked\n\n!!! danger\nStop\n")
 
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestAdditionalCalloutKinds(t *testing.T) {
 func TestCalloutBodyRendersMarkdown(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render("!!! warning\n`$(VAR_NAME)` does not work with **envFrom**!\n")
 
 	require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestCalloutBodyRendersMarkdown(t *testing.T) {
 func TestWikiLinksAreIgnoredInsideFencedCode(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := "Before [[Real Page]]\n\n```text\n[[Literal Link]]\n```\n"
 
 	got, err := renderer.Render(source)
@@ -161,7 +161,7 @@ func TestWikiLinksAreIgnoredInsideFencedCode(t *testing.T) {
 func TestRenderPageExtractsHeadingTextWithoutHTMLMarkup(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolved("# Main *heading*\n\n## Child `code`\n", Slug)
 
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestRenderPageExtractsHeadingTextWithoutHTMLMarkup(t *testing.T) {
 func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		"Before\n\n{{subpages}}\n\nAfter\n",
 		Slug,
@@ -196,7 +196,7 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages title="Related pages"}}`,
 		Slug,
@@ -216,7 +216,7 @@ func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages title=""}}`,
 		Slug,
@@ -236,7 +236,7 @@ func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages depth=2}}`,
 		Slug,
@@ -254,7 +254,7 @@ func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		"```markdown\n{{subpages}}\n```\n",
 		Slug,
@@ -293,7 +293,7 @@ func TestSlugWithoutRegularExpressions(t *testing.T) {
 func TestTableStyleDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `| Service | Status | Owner |
 | --- | --- | --- |
 | API | Healthy | Platform |
@@ -316,7 +316,7 @@ func TestTableStyleDirective(t *testing.T) {
 func TestConfluenceTablePalette(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `| Service | Status | Owner |
 | --- | --- | --- |
 | API | Healthy | Platform |
@@ -338,7 +338,7 @@ func TestConfluenceTablePalette(t *testing.T) {
 func TestInteractiveTableDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `| Service | Replicas |
 | --- | ---: |
 | API | 3 |
@@ -358,7 +358,7 @@ func TestInteractiveTableDirective(t *testing.T) {
 func TestConfluenceInteractiveTableDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `| Column 1 | Column 2 | Column 3 |
 | --- | --- | --- |
 | | | |
@@ -393,7 +393,7 @@ func TestTableDirectiveMarkerUsesNearestPrecedingTable(t *testing.T) {
 func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.TableSorting = false
 	options.TableFiltering = false
@@ -416,7 +416,7 @@ func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 func TestTableStyleDirectiveInsideTab(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	source := `=== "Status"
 
     | Service | Status |
@@ -438,7 +438,7 @@ func TestTableStyleDirectiveInsideTab(t *testing.T) {
 func TestRenderingOptionsDisableExtensions(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.WikiLinks = false
 	options.Callouts = false
@@ -467,7 +467,7 @@ Do not restart.
 func TestOptionalMarkdownExtensions(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.Footnotes = true
 	options.DefinitionLists = true
@@ -489,7 +489,7 @@ Term
 func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.CodingLigatures = true
 
@@ -509,7 +509,7 @@ func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
 func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.SyntaxHighlighting = true
 	got, err := renderer.RenderResolvedWithOptions("```go\nfunc main() { println(\"Lore\") }\n```\n", Slug, options)

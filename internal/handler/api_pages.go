@@ -110,7 +110,7 @@ func PreviewMarkdown(
 			expandedMarkdown,
 			md.Slug,
 			options,
-			md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))}},
+			md.Functions{Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))}},
 		)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)

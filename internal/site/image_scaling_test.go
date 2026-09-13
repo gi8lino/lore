@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +13,7 @@ func TestStaticHTMLPreservesImageWidthsWhenRewritingURLs(t *testing.T) {
 
 	t.Run("640px", func(t *testing.T) {
 		t.Parallel()
-		rendered, err := markdown.New().Render("![Diagram](images/diagram.png){width=640px}")
+		rendered, err := testMarkdownRenderer(t).Render("![Diagram](images/diagram.png){width=640px}")
 		require.NoError(t, err)
 
 		got, searchText, err := processRenderedHTML(rendered, "guide/page.md", false, nil, "/lore/")
@@ -28,7 +27,7 @@ func TestStaticHTMLPreservesImageWidthsWhenRewritingURLs(t *testing.T) {
 
 	t.Run("50%", func(t *testing.T) {
 		t.Parallel()
-		rendered, err := markdown.New().Render("![Diagram](images/diagram.png){width=50%}")
+		rendered, err := testMarkdownRenderer(t).Render("![Diagram](images/diagram.png){width=50%}")
 		require.NoError(t, err)
 
 		got, searchText, err := processRenderedHTML(rendered, "guide/page.md", false, nil, "/lore/")

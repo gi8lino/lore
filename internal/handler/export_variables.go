@@ -60,7 +60,7 @@ func renderExportHTML(
 	if err != nil {
 		return "", err
 	}
-	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(ctx, securedCatalog))}})
+	rendered, err := renderer.RenderPageResolvedWithFunctions(expanded.Markdown, md.Slug, renderingOptionsFromSettings(settings), md.Functions{Context: ctx, Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(ctx, securedCatalog))}})
 	if err != nil {
 		return "", err
 	}

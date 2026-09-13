@@ -6,10 +6,10 @@ import (
 	"sync"
 	"testing"
 
+	"context"
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/plugins/callouts"
 	"github.com/gi8lino/lore/internal/subpages"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,20 +99,26 @@ func TestMacroCodeBoundaries(t *testing.T) {
 }
 
 func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T) {
-	registry := DefaultRegistry()
-	renderer := NewWithRegistry(registry)
+	renderer := testRenderer(t)
+	registry := renderer.registry
+	var callouts plugin.Entry
+	for _, entry := range registry.Snapshot().Entries {
+		if entry.Descriptor.ID == "io.lore.callouts" {
+			callouts = entry
+		}
+	}
 	source := "!!! warning\nSee **this** and [[Page]].\n"
 	got, err := renderer.Render(source)
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="callout warning"`)
 	assert.Contains(t, got, "<strong>this</strong>")
 	assert.Contains(t, got, `href="/pages/page"`)
-	require.NoError(t, registry.Unregister(callouts.ID))
+	require.NoError(t, registry.Unregister("io.lore.callouts"))
 	got, err = renderer.Render(source)
 	require.NoError(t, err)
 	assert.NotContains(t, got, `class="callout`)
 	assert.Contains(t, got, "!!! warning")
-	require.NoError(t, registry.Register(callouts.Descriptor(), plugin.Contributions{Preprocessors: []plugin.Preprocessor{callouts.Module{}}}))
+	require.NoError(t, registry.Register(callouts.Descriptor, callouts.Contributions))
 	got, err = renderer.Render(source)
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="callout warning"`)
@@ -124,15 +130,15 @@ func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T)
 }
 
 func TestRenderSnapshotSurvivesRemovalDuringNestedRender(t *testing.T) {
-	registry := DefaultRegistry()
+	renderer := testRenderer(t)
+	registry := renderer.registry
 	var once sync.Once
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "remove", Name: "Remove"}, plugin.Contributions{
 		Preprocessors: []plugin.Preprocessor{preprocessorFunc(func(_ plugin.Context, source string) (string, error) {
-			once.Do(func() { require.NoError(t, registry.Unregister(callouts.ID)) })
+			once.Do(func() { require.NoError(t, registry.Unregister("io.lore.callouts")) })
 			return source, nil
 		})},
 	}))
-	renderer := NewWithRegistry(registry)
 	got, err := renderer.Render("!!! warning\n!!! note\nNested\n")
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="callout warning"`)
@@ -180,7 +186,8 @@ func TestModuleRecursionIsBounded(t *testing.T) {
 }
 
 func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
-	registry := DefaultRegistry()
+	renderer := testRenderer(t)
+	registry := renderer.registry
 	require.NoError(t, registry.Unregister("io.lore.subpages"))
 	got, err := NewWithRegistry(registry).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
 		Macros: map[string]plugin.MacroRenderer{"subpages": func(plugin.Invocation) (string, error) { t.Fatal("removed macro invoked"); return "", nil }},
@@ -191,7 +198,7 @@ func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
 
 func TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer(t *testing.T) {
 	render := subpages.NewRenderer([]navigation.Node{{Slug: "child", Title: "Child", Page: true, Icon: "book-lucide"}}, func(s string) string { return "/pages/" + s })
-	got, err := New().RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
+	got, err := testRenderer(t).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
 		Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(render)},
 	})
 	require.NoError(t, err)
@@ -252,7 +259,7 @@ func TestModuleContributesASTAndNodeRenderer(t *testing.T) {
 
 func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 	source := "Before\n{{pages query=\"status:verified\"}}\nAfter"
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render(source)
 	require.NoError(t, err)
 	// Compare with a renderer lacking the macro. No placeholder should split
@@ -263,7 +270,7 @@ func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 }
 
 func TestMacroBindingsStayRequestLocal(t *testing.T) {
-	renderer := New()
+	renderer := testRenderer(t)
 	var wg sync.WaitGroup
 	for _, title := range []string{"First", "Second"} {
 		wg.Go(func() {
@@ -278,4 +285,12 @@ func TestMacroBindingsStayRequestLocal(t *testing.T) {
 	got, err := renderer.Render("{{subpages}}")
 	require.NoError(t, err)
 	assert.Empty(t, strings.TrimSpace(got))
+}
+
+func testRenderer(t testing.TB) *Renderer {
+	t.Helper()
+	renderer, err := New(context.Background())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = renderer.Close(context.Background()) })
+	return renderer
 }

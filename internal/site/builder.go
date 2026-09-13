@@ -93,13 +93,18 @@ type renderedPage struct {
 // newBuilder constructs the filesystem-backed static site builder.
 func newBuilder(appFS fs.FS) *builder {
 	return &builder{
-		appFS:    appFS,
-		renderer: md.New(),
+		appFS: appFS,
 	}
 }
 
 // build renders all configured Markdown files into the configured output directory.
 func (b *builder) build(ctx context.Context, config Config) (buildResult, error) {
+	renderer, err := md.New(ctx)
+	if err != nil {
+		return buildResult{}, err
+	}
+	defer func() { _ = renderer.Close(context.Background()) }()
+	b.renderer = renderer
 	plan, err := b.planBuild(config)
 	if err != nil {
 		return buildResult{}, err
@@ -233,7 +238,7 @@ func (b *builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 			return nil, err
 		}
 
-		rendered, err := b.renderPage(*page, plan)
+		rendered, err := b.renderPage(ctx, *page, plan)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +262,7 @@ func (b *builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 }
 
 // renderPage renders one source page with shared Markdown functions and static URL rewriting.
-func (b *builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, error) {
+func (b *builder) renderPage(ctx context.Context, page sourcePage, plan buildPlan) (renderedPage, error) {
 	options := md.DefaultOptions()
 	options.WikiLinkPrefix = plan.basePath
 	resolveWiki := func(target string) string {
@@ -279,7 +284,7 @@ func (b *builder) renderPage(page sourcePage, plan buildPlan) (renderedPage, err
 		page.Markdown,
 		resolveWiki,
 		options,
-		md.Functions{Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages)}},
+		md.Functions{Context: ctx, Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages)}},
 	)
 	if err != nil {
 		return renderedPage{}, fmt.Errorf("render %s: %w", page.SourcePath, err)

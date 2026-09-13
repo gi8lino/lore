@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"maps"
@@ -17,6 +18,7 @@ import (
 // renderPipeline pins an active contribution set for the whole document,
 // including nested Markdown and the variable-provenance rendering pass.
 type renderPipeline struct {
+	context  context.Context
 	snapshot plugin.Snapshot
 	features map[string]bool
 	macros   map[string]plugin.MacroRenderer
@@ -30,11 +32,12 @@ type macroInvocation struct {
 }
 
 func newRenderPipeline(snapshot plugin.Snapshot, options Options, functions Functions) *renderPipeline {
-	return &renderPipeline{snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
+	return &renderPipeline{context: functions.Context, snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
 }
 
 func (r *Renderer) moduleContext(resolve func(string) string, options Options) plugin.Context {
 	return plugin.Context{
+		Context:        options.pipeline.context,
 		Features:       maps.Clone(options.pipeline.features),
 		Macros:         maps.Clone(options.pipeline.macros),
 		RenderMarkdown: func(source string) (string, error) { return r.renderRawResolved(source, resolve, options) },

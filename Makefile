@@ -84,12 +84,24 @@ dev-build: ports
 	$(MAKE) generate web
 
 .PHONY: generate
-generate: ## Generate the Lucide icon catalog from the installed Go dependency.
+generate: plugin-packages ## Generate the icon catalog and bundled WASM packages.
 	go generate ./internal/icons
+
+.PHONY: plugin-packages
+plugin-packages: ## Build reproducible bundled .loreplugin archives with standard Go.
+	go run ./scripts/build-plugins
+
+.PHONY: test-plugins
+test-plugins: ## Test the standalone bundled plugin source modules.
+	@set -eu; for manifest in plugins/*/go.mod; do go -C "$$(dirname "$$manifest")" test ./...; done
+
+.PHONY: test-plugins-race
+test-plugins-race: ## Test bundled plugin source modules with the race detector.
+	@set -eu; for manifest in plugins/*/go.mod; do go -C "$$(dirname "$$manifest")" test -race ./...; done
 
 .PHONY: check-generated
 check-generated: generate ## Verify committed generated files are current.
-	git diff --exit-code -- internal/icons/catalog_gen.go
+	git diff --exit-code -- internal/icons/catalog_gen.go internal/plugins/bundled/*.loreplugin
 
 .PHONY: css
 css: ## Bundle split CSS sources into web/dist/css/app.css.
@@ -189,11 +201,11 @@ vet: generate web ## Run Go static analysis.
 	go vet ./...
 
 .PHONY: test
-test: test-web vet ## Run frontend and backend unit tests.
+test: test-plugins test-web vet ## Run frontend and backend unit tests.
 	go test -covermode=atomic -count=1 -timeout=3m ./...
 
 .PHONY: test-race
-test-race: test-web vet ## Run unit tests with the Go race detector.
+test-race: test-plugins-race test-web vet ## Run unit tests with the Go race detector.
 	go test -race -count=1 -timeout=3m ./...
 
 .PHONY: cover

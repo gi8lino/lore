@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
-	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -111,7 +110,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"environment":"staging"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, testMarkdownRenderer(t), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
 		var result exportPreviewResponse
@@ -129,7 +128,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/export/preview/guide", strings.NewReader(`{"variables":{"contact":"other"}}`))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, testMarkdownRenderer(t), logger)(response, request)
 		assert.Equal(t, http.StatusUnprocessableEntity, response.Code)
 		assert.Contains(t, response.Body.String(), `"variables"`)
 	})
@@ -148,7 +147,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(body)))
 		request.SetPathValue("slug", "guide")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, testMarkdownRenderer(t), logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		var result exportPreviewResponse
 		require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
@@ -161,7 +160,7 @@ func TestPreviewPageExportVariables(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{}`))
 		request.SetPathValue("slug", "missing")
 		response := httptest.NewRecorder()
-		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), logger)(response, request)
+		PreviewPageExport(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, testMarkdownRenderer(t), logger)(response, request)
 		assert.Equal(t, http.StatusNotFound, response.Code)
 	})
 }
@@ -196,7 +195,7 @@ func TestPDFReceivesTemporaryVariables(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/export/pdf/guide", strings.NewReader(`{"variables":{"environment":"staging"}}`))
 	request.SetPathValue("slug", "guide")
 	response := httptest.NewRecorder()
-	ExportPagePDF(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, md.New(), views, logger)(response, request)
+	ExportPagePDF(stub, stub, stub, stub, &exportMediaStub{}, emptyContractServices{}, testMarkdownRenderer(t), views, logger)(response, request)
 	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 	assert.Equal(t, "application/pdf", response.Header().Get("Content-Type"))
 	assert.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))

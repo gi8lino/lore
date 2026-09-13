@@ -14,7 +14,7 @@ const testVariableToken = "lorevariable0123456789abcdef0123456789abcdefn0end"
 
 func renderVariableTestPage(t *testing.T, source, value string) RenderedPage {
 	t.Helper()
-	page, err := New().RenderPageResolvedWithFunctions(source, Slug, DefaultOptions(), Functions{
+	page, err := testRenderer(t).RenderPageResolvedWithFunctions(source, Slug, DefaultOptions(), Functions{
 		Variables: []Variable{{Token: testVariableToken, Name: "environment", Value: value}},
 	})
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestVariableAnnotations(t *testing.T) {
 	})
 	t.Run("escapes variable names as attribute text", func(t *testing.T) {
 		t.Parallel()
-		page, err := New().RenderPageResolvedWithFunctions(testVariableToken, Slug, DefaultOptions(), Functions{Variables: []Variable{
+		page, err := testRenderer(t).RenderPageResolvedWithFunctions(testVariableToken, Slug, DefaultOptions(), Functions{Variables: []Variable{
 			{Token: testVariableToken, Name: `name" onclick="attack`, Value: "value"},
 		}})
 		require.NoError(t, err)

@@ -18,7 +18,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString("A & B") +
 			`" title="` + html.EscapeString("Overview & details") + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -34,7 +34,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString("Outer Inner{width=50%}") +
 			`" title="` + html.EscapeString("Example {width=640}") + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -50,7 +50,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString("A: B; C? D=E | F + G @ H") +
 			`" title="` + html.EscapeString("50% / $20 #1 ~ result") + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -66,7 +66,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString(`"Quoted" <diagram> & 'label'`) +
 			`" title="` + html.EscapeString(`<title> "quoted" & 'single'`) + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -82,7 +82,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString("Gr\u00f6sse \u2192 50% \U0001f4f7") +
 			`" title="` + html.EscapeString("\u6982\u8981 & \u8a73\u7d30") + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -98,7 +98,7 @@ func TestImageTextAttributesSurviveSanitization(t *testing.T) {
 		// policies even when the Markdown parser already emits correct HTML.
 		source := `<img src="diagram.png" alt="` + html.EscapeString("") +
 			`" title="` + html.EscapeString("") + `">`
-		got := New().sanitizer.Sanitize(source)
+		got := testRenderer(t).sanitizer.Sanitize(source)
 		images := renderedImageAttributes(t, got)
 
 		require.Len(t, images, 1)
@@ -114,7 +114,7 @@ func TestImageTextAttributesWithAndWithoutWidths(t *testing.T) {
 	t.Run("unsized image", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := New().Render(`![A & B](diagram.png "Overview & details")`)
+		got, err := testRenderer(t).Render(`![A & B](diagram.png "Overview & details")`)
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 
@@ -128,7 +128,7 @@ func TestImageTextAttributesWithAndWithoutWidths(t *testing.T) {
 	t.Run("sized image", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := New().Render(`![A & B](diagram.png "Overview & details"){width=640}`)
+		got, err := testRenderer(t).Render(`![A & B](diagram.png "Overview & details"){width=640}`)
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 
@@ -142,7 +142,7 @@ func TestImageTextAttributesWithAndWithoutWidths(t *testing.T) {
 	t.Run("width-like alt text", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := New().Render(`![Diagram {width=50%}](diagram.png "Overview & details"){width=640}`)
+		got, err := testRenderer(t).Render(`![Diagram {width=50%}](diagram.png "Overview & details"){width=640}`)
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 
@@ -164,7 +164,7 @@ func TestImageTextAttributesCannotInjectMarkup(t *testing.T) {
 		`" onerror="alert(4)" onload="alert(5)" style="width:50%;position:fixed">` +
 		`<script>alert(6)</script>`
 
-	got, err := New().RenderResolvedWithOptions(source, Slug, Options{})
+	got, err := testRenderer(t).RenderResolvedWithOptions(source, Slug, Options{})
 	require.NoError(t, err)
 	images := renderedImageAttributes(t, got)
 

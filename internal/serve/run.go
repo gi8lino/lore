@@ -167,10 +167,16 @@ func Run(
 	ctx, stop := server.SignalContext(ctx)
 	defer stop()
 
+	renderer, err := markdown.New(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = renderer.Close(context.Background()) }()
+
 	router := routes.New(
 		appFS,
 		views,
-		markdown.New(),
+		renderer,
 		browserAuth,
 		bearerAuth,
 		administrationUseCases,

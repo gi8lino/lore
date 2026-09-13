@@ -10,7 +10,7 @@ import (
 func TestTaskListsRenderVisibleCheckboxes(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render("- [ ] pending\n- [x] completed\n")
 
 	require.NoError(t, err)
@@ -24,7 +24,7 @@ func TestTaskListsRenderVisibleCheckboxes(t *testing.T) {
 func TestTaskListsCanBeDisabled(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	options := DefaultOptions()
 	options.TaskLists = false
 	got, err := renderer.RenderResolvedWithOptions("- [ ] pending\n", Slug, options)
@@ -37,7 +37,7 @@ func TestTaskListsCanBeDisabled(t *testing.T) {
 func TestRawHTMLInputsRemainDisallowed(t *testing.T) {
 	t.Parallel()
 
-	renderer := New()
+	renderer := testRenderer(t)
 	got, err := renderer.Render(`<input type="checkbox" checked disabled>`)
 
 	require.NoError(t, err)

@@ -258,7 +258,7 @@ func ViewPage(
 			md.Slug,
 			options,
 			md.Functions{
-				Macros:    map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))},
+				Context: r.Context(), Macros: map[string]plugin.MacroRenderer{"subpages": plugin.BindMacro(renderSubpages), "pages": plugin.BindMacro(pagereport.NewRenderer(r.Context(), securedCatalog))},
 				Variables: expanded.Annotations,
 			},
 		)

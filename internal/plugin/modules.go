@@ -1,9 +1,10 @@
 // Package plugin defines Lore's in-process module contracts. Only trusted,
-// compiled modules may implement native callbacks; installed code will require
-// a sandboxed runtime adapter. This package grants no persistence or I/O access.
+// compiled modules may implement native callbacks; installed code executes through
+// the sandboxed runtime adapter. This package grants no persistence or I/O access.
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -23,6 +24,7 @@ type Descriptor struct {
 // intermediate HTML: the host must sanitize the complete document afterwards.
 // Callbacks must not retain this context or mutate its maps.
 type Context struct {
+	Context        context.Context
 	Features       map[string]bool
 	Macros         map[string]MacroRenderer
 	RenderMarkdown func(string) (string, error)

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
-	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +29,7 @@ func TestPDFMediaInliningPreservesRenderedImageWidths(t *testing.T) {
 	t.Parallel()
 
 	media := &exportMediaStub{}
-	rendered, err := markdown.New().Render(`![Diagram](/media/12/image.png){width=50%}`)
+	rendered, err := testMarkdownRenderer(t).Render(`![Diagram](/media/12/image.png){width=50%}`)
 	require.NoError(t, err)
 
 	got, err := inlineRenderedMedia(context.Background(), media, rendered)

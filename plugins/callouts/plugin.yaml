@@ -1,0 +1,11 @@
+api_version: 1
+id: io.lore.callouts
+name: Callouts
+version: 1.0.0
+description: Note, warning, and other callout blocks
+default_enabled: true
+modules:
+  - type: renderer-extension
+    id: callouts
+    stage: preprocess
+permissions: []
