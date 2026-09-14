@@ -1,1 +1,12 @@
-- the func Fence should be simplified, maybe with helper function so the ifs do not need to be describben
+- move highlighting to plugin, so user can deactive this and provide another?
+- move variables to plugin
+- revision plugin? move it into a plugin?
+- pdf plugin? would it make sense to move it into a plugin as well?
+- move icons also as a plugin. than maybe split in 2 plugins, each for a icon set? or do you think some builtins are okay and other can be added as plugins?
+- is it possible to make the syntax highlighter a plugin?
+
+- cleanup Phase stuff in READMEs
+
+- internal/plugins -> bundlet seems wrong. any idea on how to improve this?
+
+

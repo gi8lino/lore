@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.tabs
+name: Tabs
+version: 1.0.0
+description: Render Material-style tab groups with Markdown content.
+default_enabled: true
+modules:
+  - type: renderer-extension
+    id: tabs
+    stage: preprocess
+permissions: []
