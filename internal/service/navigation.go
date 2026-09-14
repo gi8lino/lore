@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
-	"github.com/gi8lino/lore/internal/icons"
+	"maps"
 	"strings"
+	"sync"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/icons"
 )
 
 // navigationRepository contains navigation tree and icon operations.
@@ -17,7 +19,13 @@ type navigationRepository interface {
 }
 
 // Navigation exposes navigation tree and icon use cases.
-type Navigation struct{ repository navigationRepository }
+type Navigation struct {
+	repository navigationRepository
+
+	iconsMu     sync.RWMutex
+	icons       map[string]string
+	iconsLoaded bool
+}
 
 // NewNavigation constructs the navigation service.
 func NewNavigation(repository navigationRepository) *Navigation {
@@ -34,9 +42,38 @@ func (s *Navigation) NavigationItems(ctx context.Context) ([]domain.NavigationIt
 	return s.repository.NavigationItems(ctx)
 }
 
-// NavigationIcons returns configured icons keyed by navigation path.
+// NavigationIcons returns configured icons keyed by navigation path. The icon
+// set changes only through the navigation administration workflow, so cache it
+// after the first load instead of querying the database for every page view.
 func (s *Navigation) NavigationIcons(ctx context.Context) (map[string]string, error) {
-	return s.repository.NavigationIcons(ctx)
+	s.iconsMu.RLock()
+	if s.iconsLoaded {
+		icons := maps.Clone(s.icons)
+		s.iconsMu.RUnlock()
+		return icons, nil
+	}
+	s.iconsMu.RUnlock()
+
+	// Serialize the first load so concurrent page requests do not all issue the
+	// same database query while the cache is still cold.
+	s.iconsMu.Lock()
+	defer s.iconsMu.Unlock()
+
+	if s.iconsLoaded {
+		return maps.Clone(s.icons), nil
+	}
+
+	icons, err := s.repository.NavigationIcons(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s.icons = maps.Clone(icons)
+	if s.icons == nil {
+		s.icons = make(map[string]string)
+	}
+	s.iconsLoaded = true
+	return maps.Clone(s.icons), nil
 }
 
 // SetNavigationIcon sets or clears the icon for a navigation path.
@@ -45,5 +82,22 @@ func (s *Navigation) SetNavigationIcon(ctx context.Context, path, icon string) e
 	if !icons.IsIcon(icon) {
 		return newValidationError("icon", "Choose an icon from the available icon catalog.")
 	}
-	return s.repository.SetNavigationIcon(ctx, path, icon)
+	if err := s.repository.SetNavigationIcon(ctx, path, icon); err != nil {
+		return err
+	}
+
+	// Keep an already-loaded cache coherent with successful admin writes. A
+	// cold cache remains cold and will load the complete set on first use.
+	cachePath := strings.Trim(strings.TrimSpace(path), "/")
+	s.iconsMu.Lock()
+	if s.iconsLoaded {
+		if icon == "" {
+			delete(s.icons, cachePath)
+		} else {
+			s.icons[cachePath] = icon
+		}
+	}
+	s.iconsMu.Unlock()
+
+	return nil
 }
