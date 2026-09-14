@@ -21,10 +21,6 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 			source:  `See [[Keycloak|Keycloak configuration]].`,
 			options: md.Options{WikiLinks: true},
 		},
-		"autolinks": {
-			source:  `Documentation: https://example.com/docs`,
-			options: md.Options{Autolinks: true},
-		},
 		"syntax_highlighting": {
 			source:  "```go\nfunc main() {\n    fmt.Println(\"Lore\")\n}\n```\n",
 			options: md.Options{SyntaxHighlighting: true},

@@ -145,8 +145,6 @@ type TagInfo struct {
 type RenderingSettings struct {
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
-	// Autolinks enables automatic URL and email links.
-	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
 	SyntaxHighlighting bool
 	// DefaultTypographySize is used when a user has not selected a personal content size.

@@ -22,8 +22,6 @@ type Options struct {
 	TableSorting bool
 	// TableFiltering enables client-side filtering for opted-in tables.
 	TableFiltering bool
-	// Autolinks enables automatic URL and email links.
-	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
 	SyntaxHighlighting bool
 	// Footnotes enables Markdown footnotes.
@@ -39,7 +37,6 @@ type Options struct {
 // DefaultOptions returns the rendering behavior used before administrator customization.
 func DefaultOptions() Options {
 	return Options{
-		Autolinks:          true,
 		Callouts:           true,
 		Mermaid:            true,
 		DefinitionLists:    true,

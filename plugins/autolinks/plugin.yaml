@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.autolinks
+name: Automatic Links
+version: 1.0.0
+description: Turn plain URLs and email addresses into links.
+default_enabled: true
+modules:
+  - type: markdown-syntax
+    id: autolinks
+    syntax: linkify
+permissions: []
