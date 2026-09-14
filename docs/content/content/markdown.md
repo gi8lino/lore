@@ -87,6 +87,8 @@ The Lore server can expand reusable knowledge content before Markdown rendering:
 {{include:path/to/page}}
 ```
 
-Variables and snippets come from the knowledge-snippet store; includes insert another page's Markdown. Expansion is skipped inside fenced code and recursion is bounded. Filesystem static mode does not depend on the database, so these database-backed macros are not expanded there.
+Variables and snippets are provided by bundled plugins; includes insert another page's Markdown. Plugin content expansion is skipped inside fenced code, and includes are recursion-bounded. Disable the corresponding plugin to keep that syntax literal.
 
 See [Tables](tables.md) for Lore's table directive syntax.
+
+

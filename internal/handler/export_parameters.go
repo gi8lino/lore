@@ -92,7 +92,6 @@ func validExportParameterKey(value string) bool {
 func renderExportHTML(
 	ctx context.Context,
 	catalog pageReportCatalogService,
-	knowledge knowledgeContentService,
 	navigation navigationService,
 	media imageContentService,
 	renderer *md.Renderer,
@@ -103,7 +102,7 @@ func renderExportHTML(
 	parameters map[string]map[string]map[string]string,
 ) (string, error) {
 	securedCatalog := accessiblePageCatalog{catalog: catalog, access: access, user: user}
-	expanded, err := expandLegacyKnowledgeMarkdown(ctx, knowledgeContentFrom(securedCatalog, knowledge), page.Markdown)
+	expanded, err := expandLegacyKnowledgeMarkdown(ctx, knowledgeContentFrom(securedCatalog), page.Markdown)
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +132,6 @@ func PreviewPageExport(
 	catalog pageReportCatalogService,
 	settings settingsService,
 	navigation navigationService,
-	knowledge knowledgeContentService,
 	media imageContentService,
 	access pageAccessReader,
 	renderer *md.Renderer,
@@ -164,7 +162,7 @@ func PreviewPageExport(
 			httpresponse.InternalServerError(logger, w, err)
 			return
 		}
-		rendered, err := renderExportHTML(r.Context(), catalog, knowledge, navigation, media, renderer, access, currentUser(r), page, application.Rendering, parameters)
+		rendered, err := renderExportHTML(r.Context(), catalog, navigation, media, renderer, access, currentUser(r), page, application.Rendering, parameters)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)
 			return

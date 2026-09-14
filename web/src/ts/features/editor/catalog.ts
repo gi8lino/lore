@@ -7,13 +7,6 @@ export interface CatalogPage {
   title: string;
 }
 
-// CatalogSnippet is the temporary legacy snippet shape removed when Snippets becomes a plugin.
-export interface CatalogSnippet {
-  kind: string;
-  name: string;
-  description?: string;
-}
-
 export interface CatalogCompletion {
   plugin_id: string;
   module_id: string;
@@ -35,7 +28,6 @@ export interface CatalogInsert {
 export interface EditorCatalog {
   pages: CatalogPage[];
   aliases: Record<string, string>;
-  snippets: CatalogSnippet[];
   completions: CatalogCompletion[];
   inserts: CatalogInsert[];
 }
@@ -45,15 +37,6 @@ function isCatalogPage(value: unknown): value is CatalogPage {
     isRecord(value) &&
     typeof value.slug === "string" &&
     typeof value.title === "string"
-  );
-}
-
-function isCatalogSnippet(value: unknown): value is CatalogSnippet {
-  return (
-    isRecord(value) &&
-    typeof value.kind === "string" &&
-    typeof value.name === "string" &&
-    (value.description === undefined || typeof value.description === "string")
   );
 }
 
@@ -88,11 +71,6 @@ export function parseEditorCatalog(value: unknown): EditorCatalog {
   }
   return {
     pages: requireArrayOf(value.pages, isCatalogPage, "editor catalog pages"),
-    snippets: requireArrayOf(
-      value.snippets,
-      isCatalogSnippet,
-      "editor catalog snippets",
-    ),
     completions: requireArrayOf(
       value.completions,
       isCatalogCompletion,

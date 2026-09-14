@@ -8,10 +8,9 @@ import (
 	"github.com/gi8lino/lore/internal/plugin"
 )
 
-// EditorCatalog returns page, plugin-completion, and legacy snippet metadata used by editor intelligence.
+// EditorCatalog returns page and plugin-owned editor metadata used by editor intelligence.
 func EditorCatalog(
 	navigationUseCases navigationService,
-	knowledgeUseCases knowledgeSnippetReader,
 	catalogUseCases pageAliasService,
 	plugins *plugin.Manager,
 	logger *slog.Logger,
@@ -31,12 +30,6 @@ func EditorCatalog(
 		items := make([]pageItem, 0, len(pages))
 		for _, page := range pages {
 			items = append(items, pageItem{Slug: page.Slug, Title: page.Title})
-		}
-
-		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
-		if err != nil {
-			httpresponse.InternalServerError(logger, w, err)
-			return
 		}
 
 		var completions []plugin.EditorCompletionItem
@@ -61,7 +54,6 @@ func EditorCatalog(
 
 		httpresponse.Respond(w, http.StatusOK, map[string]any{
 			"pages":       items,
-			"snippets":    jsonSlice(snippets),
 			"completions": jsonSlice(completions),
 			"inserts":     jsonSlice(inserts),
 			"aliases":     aliases,

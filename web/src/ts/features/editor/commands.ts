@@ -139,12 +139,6 @@ function setupSlashCommands(form: HTMLFormElement): void {
       const catalog = parseEditorCatalog(
         await requestJSON("/api/editor/catalog"),
       );
-      const legacy: SlashCommand[] = catalog.snippets.map((item) => ({
-        id: `${item.kind}-${item.name}`,
-        label: `Snippet: ${item.name}`,
-        description: item.description || "Insert reusable snippet",
-        markdown: `{{snippet:${item.name}}}`,
-      }));
       const inserts: SlashCommand[] = catalog.inserts.map((item) => ({
         id: `${item.plugin_id}-${item.module_id}`,
         label: item.name,
@@ -157,7 +151,7 @@ function setupSlashCommands(form: HTMLFormElement): void {
         description: item.detail || "Insert reusable content",
         markdown: item.replacement,
       }));
-      availableCommands = [...commands, ...inserts, ...completions, ...legacy];
+      availableCommands = [...commands, ...inserts, ...completions];
     } catch {
       // Plugin and reusable commands are optional; keep built-in commands.
     }

@@ -19,7 +19,6 @@ import (
 // Unused capabilities remain embedded; an unexpected call fails the test.
 type emptyContractServices struct {
 	navigationService
-	knowledgeSnippetReader
 	groupReader
 	userDirectoryService
 	imageService
@@ -45,10 +44,6 @@ func (emptyContractServices) SearchUsers(context.Context, string, int) ([]domain
 }
 
 func (emptyContractServices) NavigationPages(context.Context) ([]domain.Page, error) { return nil, nil }
-
-func (emptyContractServices) KnowledgeSnippets(context.Context) ([]domain.KnowledgeSnippet, error) {
-	return nil, nil
-}
 
 func (emptyContractServices) PageAliases(context.Context) (map[string]string, error) { return nil, nil }
 
@@ -204,7 +199,7 @@ func TestEmptyAPICollectionContracts(t *testing.T) {
 		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/?q=nobody", nil), domain.User{ID: 1, Role: "admin", Enabled: true})
 		request.SetPathValue("id", "1")
 		response := httptest.NewRecorder()
-		EditorCatalog(services, services, services, logger)(response, request)
+		EditorCatalog(services, services, nil, logger)(response, request)
 		require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 		assert.JSONEq(t, string(fixtures["empty_catalog"]), response.Body.String())
 	})

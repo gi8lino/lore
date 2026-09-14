@@ -146,8 +146,6 @@ type ViewData struct {
 	PluginExportFields []plugin.ExportField
 	// EditorInserts contains active plugin-owned Markdown insertion actions.
 	EditorInserts []plugin.EditorInsertContribution
-	// KnowledgeSnippets contains legacy reusable Markdown snippets until Snippets migrates to a plugin.
-	KnowledgeSnippets []domain.KnowledgeSnippet
 	// PageStatuses contains lifecycle statuses available to page editors.
 	PageStatuses []string
 	// EditorTemplate is the selected template used to prefill a new page.

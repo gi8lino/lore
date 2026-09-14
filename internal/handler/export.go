@@ -69,7 +69,6 @@ func ExportPagePDF(
 	catalogUseCases pageReportCatalogService,
 	settingsUseCases settingsService,
 	navigationUseCases navigationService,
-	knowledgeUseCases knowledgeContentService,
 	mediaUseCases imageContentService,
 	accessUseCases pageAccessReader,
 	renderer *md.Renderer,
@@ -123,7 +122,7 @@ func ExportPagePDF(
 		}
 
 		settings := applicationSettings.Rendering
-		rendered, err := renderExportHTML(r.Context(), catalogUseCases, knowledgeUseCases,
+		rendered, err := renderExportHTML(r.Context(), catalogUseCases,
 			navigationUseCases, mediaUseCases, renderer, accessUseCases, currentUser(r), pageData, settings, parameters)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)

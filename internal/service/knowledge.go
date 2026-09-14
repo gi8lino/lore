@@ -2,26 +2,21 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
 )
 
-// knowledgeRepository contains knowledge graph, snippet, and saved-search operations.
+// knowledgeRepository contains knowledge graph and saved-search operations.
 type knowledgeRepository interface {
 	auditRepository
 	KnowledgeGraph(context.Context, int) (domain.KnowledgeGraph, error)
-	KnowledgeSnippets(context.Context) ([]domain.KnowledgeSnippet, error)
-	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
-	SaveKnowledgeSnippet(context.Context, int64, int64, string, string, string, string) (domain.KnowledgeSnippet, error)
-	DeleteKnowledgeSnippet(context.Context, int64) error
 	SavedSearches(context.Context, int64) ([]domain.SavedSearch, error)
 	SaveSavedSearch(context.Context, int64, int64, string, string, bool) error
 	DeleteSavedSearch(context.Context, int64, int64) error
 }
 
-// Knowledge exposes knowledge graph, snippet, and saved-search use cases.
+// Knowledge exposes knowledge graph and saved-search use cases.
 type Knowledge struct{ repository knowledgeRepository }
 
 // NewKnowledge constructs the knowledge tools service.
@@ -32,54 +27,6 @@ func NewKnowledge(repository knowledgeRepository) *Knowledge {
 // KnowledgeGraph returns page nodes and links for graph rendering.
 func (s *Knowledge) KnowledgeGraph(ctx context.Context, limit int) (domain.KnowledgeGraph, error) {
 	return s.repository.KnowledgeGraph(ctx, limit)
-}
-
-// KnowledgeSnippets returns reusable knowledge snippets.
-func (s *Knowledge) KnowledgeSnippets(ctx context.Context) ([]domain.KnowledgeSnippet, error) {
-	return s.repository.KnowledgeSnippets(ctx)
-}
-
-// KnowledgeSnippetByName returns a reusable snippet by kind and name.
-func (s *Knowledge) KnowledgeSnippetByName(
-	ctx context.Context,
-	kind, name string,
-) (domain.KnowledgeSnippet, error) {
-	return s.repository.KnowledgeSnippetByName(ctx, kind, name)
-}
-
-// SaveKnowledgeSnippet persists a snippet and records an audit event.
-func (s *Knowledge) SaveKnowledgeSnippet(
-	ctx context.Context,
-	id, userID int64,
-	kind, name, description, content string,
-) (domain.KnowledgeSnippet, error) {
-	kind = strings.TrimSpace(kind)
-	name = strings.TrimSpace(name)
-	if kind != "variable" && kind != "snippet" {
-		return domain.KnowledgeSnippet{}, newValidationError("kind", "Choose variable or snippet.")
-	}
-	if name == "" {
-		return domain.KnowledgeSnippet{}, newValidationError("name", "A snippet name is required.")
-	}
-	item, err := s.repository.SaveKnowledgeSnippet(ctx, id, userID, kind, name, description, content)
-	if err != nil {
-		return domain.KnowledgeSnippet{}, err
-	}
-
-	_ = audit(s.repository, ctx, userID, "snippet.saved", "snippet", item.Name, item.Kind)
-
-	return item, nil
-}
-
-// DeleteKnowledgeSnippet removes a snippet and records an audit event.
-func (s *Knowledge) DeleteKnowledgeSnippet(ctx context.Context, id, actorID int64) error {
-	if err := s.repository.DeleteKnowledgeSnippet(ctx, id); err != nil {
-		return err
-	}
-
-	_ = audit(s.repository, ctx, actorID, "snippet.deleted", "snippet", fmt.Sprint(id), "")
-
-	return nil
 }
 
 // SavedSearches returns the searches saved by a user.

@@ -118,19 +118,6 @@ func addRoutes(
 		browserAuthn(adminAuthz(handler.AdminAudit(viewDataUseCases, administrationUseCases, views))),
 	)
 	mux.Handle(
-		"GET /admin/snippets",
-		browserAuthn(adminAuthz(handler.AdminSnippets(viewDataUseCases, knowledgeUseCases, views))),
-	)
-	mux.Handle("POST /admin/snippets", browserAuthn(adminAuthz(handler.SaveAdminSnippet(knowledgeUseCases, logger))))
-	mux.Handle(
-		"POST /admin/snippets/{id}",
-		browserAuthn(adminAuthz(handler.SaveAdminSnippet(knowledgeUseCases, logger))),
-	)
-	mux.Handle(
-		"POST /admin/snippets/{id}/delete",
-		browserAuthn(adminAuthz(handler.DeleteAdminSnippet(knowledgeUseCases, logger))),
-	)
-	mux.Handle(
 		"GET /admin/pages",
 		browserAuthn(adminAuthz(handler.AdminPages(viewDataUseCases, catalogUseCases, groupUseCases, views))),
 	)
@@ -288,13 +275,13 @@ func addRoutes(
 		browserAuthn(pageViewAuthz(handler.ExportPageMarkdown(catalogUseCases, mediaUseCases, logger))),
 	)
 	exportPDF := browserAuthn(pageViewAuthz(handler.ExportPagePDF(
-		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
+		catalogUseCases, settingsUseCases, navigationUseCases,
 		mediaUseCases, accessUseCases, renderer, views, logger,
 	)))
 	mux.Handle("GET /export/pdf/{slug...}", exportPDF)
 	mux.Handle("POST /export/pdf/{slug...}", exportPDF)
 	mux.Handle("POST /export/preview/{slug...}", browserAuthn(pageViewAuthz(handler.PreviewPageExport(
-		catalogUseCases, settingsUseCases, navigationUseCases, knowledgeUseCases,
+		catalogUseCases, settingsUseCases, navigationUseCases,
 		mediaUseCases, accessUseCases, renderer, logger,
 	))))
 	mux.Handle("POST /pages/delete/{slug...}", browserAuthn(adminAuthz(handler.DeletePageForm(pageUseCases, views))))
@@ -315,7 +302,6 @@ func addRoutes(
 			viewDataUseCases,
 			catalogUseCases,
 			groupUseCases,
-			knowledgeUseCases,
 			templateUseCases,
 			accessUseCases,
 			views,
@@ -327,7 +313,6 @@ func addRoutes(
 			viewDataUseCases,
 			catalogUseCases,
 			groupUseCases,
-			knowledgeUseCases,
 			templateUseCases,
 			accessUseCases,
 			views,
@@ -352,7 +337,6 @@ func addRoutes(
 			accessUseCases,
 			pageUseCases,
 			settingsUseCases,
-			knowledgeUseCases,
 			renderer,
 			views,
 		))),
@@ -367,7 +351,6 @@ func addRoutes(
 			settingsUseCases,
 			navigationUseCases,
 			catalogUseCases,
-			knowledgeUseCases,
 			accessUseCases,
 			renderer,
 			logger,
@@ -387,7 +370,7 @@ func addRoutes(
 	mux.Handle("GET /api/graph", apiAuthn(handler.KnowledgeGraphAPI(knowledgeUseCases, accessUseCases, logger)))
 	mux.Handle(
 		"GET /api/editor/catalog",
-		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, knowledgeUseCases, catalogUseCases, renderer.PluginManager(), logger))),
+		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, catalogUseCases, renderer.PluginManager(), logger))),
 	)
 	mux.Handle("GET /api/mentions/users", apiAuthn(handler.MentionUsers(userUseCases, logger)))
 	mux.Handle("GET /api/notifications", apiAuthn(handler.NotificationsAPI(notificationUseCases, logger)))

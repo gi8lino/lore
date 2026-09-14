@@ -44,10 +44,23 @@ test("editorDiagnostics reports broken links, heading jumps, macros and link sug
       { slug: "redis", title: "Redis" },
     ],
     aliases: { "old-postgres": "postgresql" },
-    snippets: [
-      { kind: "variable", name: "cluster" },
-      { kind: "snippet", name: "warning" },
+    completions: [
+      {
+        plugin_id: "io.lore.variables",
+        module_id: "variables",
+        trigger: "{{",
+        label: "cluster",
+        replacement: "{{var:cluster}}",
+      },
+      {
+        plugin_id: "io.lore.snippets",
+        module_id: "snippets",
+        trigger: "{{",
+        label: "warning",
+        replacement: "{{snippet:warning}}",
+      },
     ],
+    inserts: [],
   };
   const source = [
     "# Runbook",

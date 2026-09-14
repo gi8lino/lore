@@ -107,7 +107,6 @@ func ViewPage(
 	accessUseCases pageAccessReader,
 	approvalUseCases pageApprovalService,
 	settingsUseCases settingsService,
-	knowledgeUseCases knowledgeContentService,
 	renderer *md.Renderer,
 	views *Views,
 ) http.HandlerFunc {
@@ -241,7 +240,7 @@ func ViewPage(
 
 		expanded, err := expandLegacyKnowledgeMarkdown(
 			r.Context(),
-			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
+			knowledgeContentFrom(securedCatalog),
 			page.Markdown,
 		)
 		if err != nil {
@@ -333,7 +332,6 @@ func EditPage(
 	viewDataUseCases viewDataService,
 	catalogUseCases pageContentService,
 	groupUseCases groupReader,
-	knowledgeUseCases knowledgeSnippetReader,
 	templateUseCases templateService,
 	accessUseCases pageAccessReader,
 	views *Views,
@@ -353,14 +351,7 @@ func EditPage(
 			return
 		}
 
-		snippets, err := knowledgeUseCases.KnowledgeSnippets(r.Context())
-		if err != nil {
-			httpresponse.InternalServerError(views.logger, w, err)
-			return
-		}
-
 		data.Groups = groups
-		data.KnowledgeSnippets = snippets
 		data.ContentLanguages = contentLanguageOptions
 		data.PageStatuses = domain.PageStatuses()
 

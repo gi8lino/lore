@@ -49,7 +49,6 @@ var pageTemplateNames = []string{
 	"admin_permissions",
 	"admin_webhooks",
 	"admin_audit",
-	"admin_snippets",
 	"admin_pages",
 	"admin_import",
 	"graph",

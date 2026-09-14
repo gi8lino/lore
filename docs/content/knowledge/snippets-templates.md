@@ -12,7 +12,7 @@ For example, a service blueprint can provide fields such as `service`, `reposito
 
 ## Knowledge snippets
 
-Administrators can store reusable knowledge items. Variables and Markdown snippets are referenced by name during page rendering:
+The bundled **Variables** and **Snippets** plugins provide reusable content referenced by name during page rendering:
 
 ```text
 {{var:name}}
@@ -28,7 +28,7 @@ A page can also include another page's Markdown:
 
 An include can select an ATX heading (`#` through `######`). Lore inserts that heading and its content through the next heading at the same or higher level, so shared runbooks can expose one canonical section without transcluding the complete page.
 
-Includes can nest, with recursion protection and a maximum expansion depth. Stored variable and snippet values are inserted without recursively evaluating new knowledge macros. These macros are database-backed and therefore belong to normal server mode rather than filesystem static mode.
+The bundled **Includes** feature can nest page includes with recursion protection and a maximum expansion depth. Stored variable and snippet values are inserted without recursively evaluating new plugin macros. Variables and snippets are stored in their plugins; page includes read authorized Lore page content.
 
 ## Inspect variables on a page
 
@@ -51,3 +51,5 @@ The preview and browser print document use the PDF export's HTML and stylesheet.
 Markdown exports remain original source, including macro syntax. This feature does not change macro evaluation: fenced code stays literal, inline code can expand variables, and includes retain their existing recursion limits. Stored snippet contents and temporary values are not recursively evaluated as new knowledge macros.
 
 Temporary values follow the existing Markdown rendering and sanitization rules. Export requests accept at most 128 changed variables, 8 KiB per value, and 64 KiB in total for names and values. Only variables actually used by the page may be overridden. None of these operations writes to the database.
+
+

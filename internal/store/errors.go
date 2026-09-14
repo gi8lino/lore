@@ -16,8 +16,7 @@ func mutationError(err error) error {
 	if databaseError.Code == "23505" {
 		switch databaseError.ConstraintName {
 		case "pages_slug_key", "page_aliases_pkey", "wiki_groups_name_key", "wiki_groups_name_ci_idx",
-			"page_templates_name_key", "page_templates_name_ci_idx", "knowledge_snippets_kind_name_key",
-			"knowledge_snippets_kind_name_ci_idx", "saved_searches_user_id_name_key", "saved_searches_user_name_ci_idx":
+			"page_templates_name_key", "page_templates_name_ci_idx", "saved_searches_user_id_name_key", "saved_searches_user_name_ci_idx":
 			return errors.Join(domain.ErrAlreadyExists, err)
 		case "page_review_requests_pending_idx":
 			return errors.Join(domain.ErrReviewPending, err)

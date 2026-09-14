@@ -62,7 +62,6 @@ func PreviewMarkdown(
 	settingsUseCases settingsService,
 	navigationUseCases navigationService,
 	catalogUseCases pageReportCatalogService,
-	knowledgeUseCases knowledgeContentService,
 	accessUseCases pageAccessReader,
 	renderer *md.Renderer,
 	logger *slog.Logger,
@@ -95,7 +94,7 @@ func PreviewMarkdown(
 
 		expanded, err := expandLegacyKnowledgeMarkdown(
 			r.Context(),
-			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
+			knowledgeContentFrom(securedCatalog),
 			request.Markdown,
 		)
 		if err != nil {

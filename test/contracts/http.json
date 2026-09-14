@@ -16,8 +16,9 @@
   },
   "empty_catalog": {
     "pages": [],
-    "snippets": [],
-    "aliases": {}
+    "aliases": {},
+    "completions": [],
+    "inserts": []
   },
   "empty_notifications": {
     "items": [],

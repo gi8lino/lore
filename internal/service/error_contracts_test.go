@@ -60,28 +60,6 @@ func TestKnownInputFailuresAreValidationErrors(t *testing.T) {
 		assert.Equal(t, "query", validation.Fields[0].Field)
 	})
 
-	t.Run("snippet kind", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "invalid", "name", "", "")
-
-		validation, ok := errors.AsType[*ValidationError](err)
-		require.True(t, ok)
-		require.Len(t, validation.Fields, 1)
-		assert.Equal(t, "kind", validation.Fields[0].Field)
-	})
-
-	t.Run("snippet name", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := NewKnowledge(nil).SaveKnowledgeSnippet(ctx, 0, 1, "snippet", " ", "", "")
-
-		validation, ok := errors.AsType[*ValidationError](err)
-		require.True(t, ok)
-		require.Len(t, validation.Fields, 1)
-		assert.Equal(t, "name", validation.Fields[0].Field)
-	})
-
 	t.Run("group name", func(t *testing.T) {
 		t.Parallel()
 

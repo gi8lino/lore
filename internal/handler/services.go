@@ -144,24 +144,9 @@ type pageAccessAdmin interface {
 	DeletePageAccessRule(context.Context, int64) error
 }
 
-// Knowledge interfaces expose only the reusable-content and graph operations a handler needs.
-type knowledgeContentService interface {
-	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
-}
-
+// Knowledge interfaces expose graph and saved-search operations used by handlers.
 type knowledgeGraphService interface {
 	KnowledgeGraph(context.Context, int) (domain.KnowledgeGraph, error)
-}
-
-type knowledgeSnippetReader interface {
-	knowledgeContentService
-	KnowledgeSnippets(context.Context) ([]domain.KnowledgeSnippet, error)
-}
-
-type knowledgeSnippetService interface {
-	knowledgeSnippetReader
-	SaveKnowledgeSnippet(context.Context, int64, int64, string, string, string, string) (domain.KnowledgeSnippet, error)
-	DeleteKnowledgeSnippet(context.Context, int64, int64) error
 }
 
 type savedSearchReader interface {

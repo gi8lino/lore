@@ -401,16 +401,6 @@ type PageProperty struct {
 	Value string `json:"value"`
 }
 
-// KnowledgeSnippet is a reusable variable or Markdown snippet.
-type KnowledgeSnippet struct {
-	ID          int64     `json:"id"`
-	Kind        string    `json:"kind"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Content     string    `json:"content"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 // SavedSearch is a named user search that can be surfaced in navigation.
 type SavedSearch struct {
 	ID     int64  `json:"id"`

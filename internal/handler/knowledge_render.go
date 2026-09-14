@@ -2,8 +2,6 @@ package handler
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,157 +14,40 @@ import (
 
 const maxKnowledgeExpansionDepth = 5
 
-// legacyKnowledgeExpansion contains the temporary core snippet/include expansion
-// used while those features migrate to their own plugins. Variable macros stay
-// literal for the Variables plugin to own.
+// legacyKnowledgeExpansion contains the temporary core include expansion used
+// until Includes migrates to its own plugin.
 type legacyKnowledgeExpansion struct {
 	Markdown     string
 	Replacements []plugin.Replacement
 }
 
-// expandLegacyKnowledgeMarkdown expands legacy snippets and includes while
-// protecting inserted snippet values from later plugin macro scanning.
+// expandLegacyKnowledgeMarkdown expands legacy page includes while leaving
+// plugin-owned Variables and Snippets macros untouched.
 func expandLegacyKnowledgeMarkdown(
 	ctx context.Context,
 	content knowledgeContent,
 	source string,
 ) (legacyKnowledgeExpansion, error) {
-	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return legacyKnowledgeExpansion{}, err
-	}
-	state := legacyKnowledgeState{
-		content: content,
-		prefix:  "lorelegacyknowledge" + hex.EncodeToString(nonce[:]) + "n",
-	}
-	markdown, err := state.expand(ctx, source, nil, 0)
+	markdown, err := expandPageIncludes(ctx, content, source, nil, 0)
 	if err != nil {
 		return legacyKnowledgeExpansion{}, err
 	}
-	return legacyKnowledgeExpansion{Markdown: markdown, Replacements: state.replacements}, nil
+
+	return legacyKnowledgeExpansion{Markdown: markdown}, nil
 }
 
-type legacyKnowledgeState struct {
-	content      knowledgeContent
-	prefix       string
-	replacements []plugin.Replacement
-}
-
-// expand recursively resolves includes and protects snippets with opaque tokens.
-func (s *legacyKnowledgeState) expand(
-	ctx context.Context,
-	source string,
-	seen map[string]bool,
-	depth int,
-) (string, error) {
-	if depth > maxKnowledgeExpansionDepth {
-		return "", fmt.Errorf("knowledge expansion exceeds maximum depth of %d", maxKnowledgeExpansionDepth)
-	}
-	if seen == nil {
-		seen = map[string]bool{}
-	}
-	lines := strings.Split(source, "\n")
-	fence := ""
-	for index, line := range lines {
-		trimmed := strings.TrimLeft(line, " ")
-		if marker := renderFenceMarker(trimmed); marker != "" {
-			if fence == "" {
-				fence = marker
-			} else if strings.HasPrefix(trimmed, fence) {
-				fence = ""
-			}
-			continue
-		}
-		if fence != "" || !strings.Contains(line, "{{") {
-			continue
-		}
-		var output strings.Builder
-		for {
-			macro, ok := parseKnowledgeMacro(line)
-			if !ok {
-				output.WriteString(line)
-				break
-			}
-			output.WriteString(line[:macro.start])
-			raw := line[macro.start:macro.end]
-			switch macro.kind {
-			case "var":
-				output.WriteString(raw)
-			case "snippet":
-				item, err := s.content.KnowledgeSnippetByName(ctx, "snippet", macro.name)
-				if errors.Is(err, domain.ErrNotFound) {
-					return "", fmt.Errorf("snippet %q not found: %w", macro.name, err)
-				}
-				if err != nil {
-					return "", err
-				}
-				token := fmt.Sprintf("%dend", len(s.replacements))
-				token = s.prefix + token
-				s.replacements = append(s.replacements, plugin.Replacement{Token: token, Value: item.Content})
-				output.WriteString(token)
-			case "include":
-				included, err := s.expandInclude(ctx, macro.name, seen, depth)
-				if err != nil {
-					return "", err
-				}
-				output.WriteString(included)
-			}
-			line = line[macro.end:]
-		}
-		lines[index] = output.String()
-	}
-	return strings.Join(lines, "\n"), nil
-}
-
-// expandInclude resolves one legacy page include while preserving plugin-owned macros.
-func (s *legacyKnowledgeState) expandInclude(
-	ctx context.Context,
-	name string,
-	seen map[string]bool,
-	depth int,
-) (string, error) {
-	pageTarget, heading := md.SplitHeadingTarget(name)
-	slug := strings.Trim(pageTarget, "/")
-	if slug == "" {
-		return "", fmt.Errorf("include requires a page path")
-	}
-	key := includeTargetKey(slug, heading)
-	if seen[key] {
-		return "", fmt.Errorf("recursive page include %q", key)
-	}
-	page, err := s.content.GetPage(ctx, slug)
-	if errors.Is(err, domain.ErrNotFound) {
-		return "", fmt.Errorf("included page %q not found: %w", slug, err)
-	}
-	if err != nil {
-		return "", err
-	}
-	markdown, err := includedMarkdown(page.Markdown, slug, heading)
-	if err != nil {
-		return "", err
-	}
-	nextSeen := maps.Clone(seen)
-	nextSeen[key] = true
-	expanded, err := s.expand(ctx, markdown, nextSeen, depth+1)
-	if err != nil {
-		return "", fmt.Errorf("expand include %s: %w", slug, err)
-	}
-	return expanded, nil
-}
-
+// knowledgeContent exposes the page lookup needed by the temporary include bridge.
 type knowledgeContent interface {
 	GetPage(context.Context, string) (domain.Page, error)
-	KnowledgeSnippetByName(context.Context, string, string) (domain.KnowledgeSnippet, error)
 }
 
 type applicationKnowledgeContent struct {
-	catalogUseCases   pageContentService
-	knowledgeUseCases knowledgeContentService
+	catalogUseCases pageContentService
 }
 
-// knowledgeContentFrom adapts focused application services to the macro expansion contract.
-func knowledgeContentFrom(catalog pageContentService, knowledge knowledgeContentService) knowledgeContent {
-	return applicationKnowledgeContent{catalogUseCases: catalog, knowledgeUseCases: knowledge}
+// knowledgeContentFrom adapts the page catalog to the temporary include contract.
+func knowledgeContentFrom(catalog pageContentService) knowledgeContent {
+	return applicationKnowledgeContent{catalogUseCases: catalog}
 }
 
 // GetPage returns page content for an include macro.
@@ -174,17 +55,8 @@ func (c applicationKnowledgeContent) GetPage(ctx context.Context, slug string) (
 	return c.catalogUseCases.GetPage(ctx, slug)
 }
 
-// KnowledgeSnippetByName returns reusable content for a knowledge macro.
-func (c applicationKnowledgeContent) KnowledgeSnippetByName(
-	ctx context.Context,
-	kind string,
-	name string,
-) (domain.KnowledgeSnippet, error) {
-	return c.knowledgeUseCases.KnowledgeSnippetByName(ctx, kind, name)
-}
-
-// expandKnowledgeMarkdown expands trusted reusable wiki macros outside fenced code blocks.
-func expandKnowledgeMarkdown(
+// expandPageIncludes expands page includes outside fenced code blocks.
+func expandPageIncludes(
 	ctx context.Context,
 	content knowledgeContent,
 	source string,
@@ -194,14 +66,12 @@ func expandKnowledgeMarkdown(
 	if depth > maxKnowledgeExpansionDepth {
 		return "", fmt.Errorf("knowledge expansion exceeds maximum depth of %d", maxKnowledgeExpansionDepth)
 	}
-
 	if seen == nil {
 		seen = map[string]bool{}
 	}
 
 	lines := strings.Split(source, "\n")
 	fence := ""
-
 	for index, line := range lines {
 		trimmed := strings.TrimLeft(line, " ")
 		if marker := renderFenceMarker(trimmed); marker != "" {
@@ -212,102 +82,59 @@ func expandKnowledgeMarkdown(
 			}
 			continue
 		}
-		if fence != "" || !strings.Contains(line, "{{") {
+		if fence != "" || !strings.Contains(line, "{{include:") {
 			continue
 		}
 
-		var expanded strings.Builder
+		var output strings.Builder
 		for {
-			macro, ok := parseKnowledgeMacro(line)
+			macro, ok := parseIncludeMacro(line)
 			if !ok {
-				expanded.WriteString(line)
+				output.WriteString(line)
 				break
 			}
-			expanded.WriteString(line[:macro.start])
-			replacement, err := expandKnowledgeMacro(ctx, content, macro.kind, macro.name, seen, depth)
+			output.WriteString(line[:macro.start])
+			replacement, err := expandPageInclude(ctx, content, macro.name, seen, depth)
 			if err != nil {
 				return "", err
 			}
-			expanded.WriteString(replacement)
+			output.WriteString(replacement)
 			line = line[macro.end:]
 		}
-		lines[index] = expanded.String()
+		lines[index] = output.String()
 	}
 
 	return strings.Join(lines, "\n"), nil
 }
 
-// knowledgeMacro identifies one supported macro within a source line.
-type knowledgeMacro struct {
-	start, end int
-	kind, name string
+type includeMacro struct {
+	start int
+	end   int
+	name  string
 }
 
-// parseKnowledgeMacro finds the next {{kind:name}} without consuming malformed
-// or unknown syntax. Names must contain at least one character and no braces.
-func parseKnowledgeMacro(line string) (macro knowledgeMacro, found bool) {
+// parseIncludeMacro finds the next well-formed {{include:path}} invocation.
+func parseIncludeMacro(line string) (includeMacro, bool) {
+	const opening = "{{include:"
 	for offset := 0; offset < len(line); {
-		opening := strings.Index(line[offset:], "{{")
-		if opening < 0 {
-			break
+		found := strings.Index(line[offset:], opening)
+		if found < 0 {
+			return includeMacro{}, false
 		}
-		start := offset + opening
-		offset = start + 1 // Allow a valid macro inside malformed outer braces.
-		bodyStart := start + 2
-		brace := strings.IndexAny(line[bodyStart:], "{}")
-		if brace < 0 {
-			break
+		start := offset + found
+		bodyStart := start + len(opening)
+		close := strings.Index(line[bodyStart:], "}}")
+		if close < 0 {
+			return includeMacro{}, false
 		}
-		end := bodyStart + brace
-		if !strings.HasPrefix(line[end:], "}}") {
-			continue
+		end := bodyStart + close
+		name := strings.TrimSpace(line[bodyStart:end])
+		if name != "" && !strings.ContainsAny(name, "{}\r\n") {
+			return includeMacro{start: start, end: end + 2, name: name}, true
 		}
-		kind, name, ok := strings.Cut(line[bodyStart:end], ":")
-		if !ok || name == "" {
-			continue
-		}
-		switch kind {
-		case "var", "snippet", "include":
-			return knowledgeMacro{start: start, end: end + 2, kind: kind, name: strings.TrimSpace(name)}, true
-		}
+		offset = end + 2
 	}
-	return knowledgeMacro{}, false
-}
-
-// expandKnowledgeMacro resolves one parsed macro, recursively expanding page includes.
-func expandKnowledgeMacro(
-	ctx context.Context,
-	content knowledgeContent,
-	kind, name string,
-	seen map[string]bool,
-	depth int,
-) (string, error) {
-	switch kind {
-	case "var", "snippet":
-		return expandStoredKnowledge(ctx, content, kind, name)
-	case "include":
-		return expandPageInclude(ctx, content, name, seen, depth)
-	default:
-		return "", fmt.Errorf("unsupported knowledge macro %q", kind)
-	}
-}
-
-// expandStoredKnowledge resolves a stored variable or snippet.
-func expandStoredKnowledge(ctx context.Context, content knowledgeContent, kind, name string) (string, error) {
-	storedKind := kind
-	if kind == "var" {
-		storedKind = "variable"
-	}
-
-	item, err := content.KnowledgeSnippetByName(ctx, storedKind, name)
-	if errors.Is(err, domain.ErrNotFound) {
-		return "", fmt.Errorf("%s %q not found: %w", kind, name, err)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return item.Content, nil
+	return includeMacro{}, false
 }
 
 // expandPageInclude resolves and recursively expands one whole-page or heading include.
@@ -344,8 +171,7 @@ func expandPageInclude(
 
 	nextSeen := maps.Clone(seen)
 	nextSeen[includeKey] = true
-
-	expanded, err := expandKnowledgeMarkdown(ctx, content, markdown, nextSeen, depth+1)
+	expanded, err := expandPageIncludes(ctx, content, markdown, nextSeen, depth+1)
 	if err != nil {
 		return "", fmt.Errorf("expand include %s: %w", slug, err)
 	}
@@ -376,7 +202,7 @@ func includedMarkdown(source, slug, heading string) (string, error) {
 	return section, nil
 }
 
-// markdownSection returns one ATX-heading section, including its heading, through the next sibling or ancestor heading.
+// markdownSection returns one ATX-heading section through the next sibling or ancestor heading.
 func markdownSection(source, requested string) (string, error) {
 	requestedID := md.HeadingID(requested)
 	lines := strings.Split(source, "\n")

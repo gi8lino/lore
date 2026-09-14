@@ -15,23 +15,21 @@ const draft = JSON.parse(
 test("editor accepts the empty Go catalog contract", () => {
   assert.deepEqual(parseEditorCatalog(fixtures.empty_catalog), {
     pages: [],
-    snippets: [],
     aliases: {},
+    completions: [],
+    inserts: [],
   });
 });
 
 test("editor catalog checks every field used by both consumers", () => {
-  const empty = { pages: [], snippets: [], aliases: {} };
+  const empty = { pages: [], aliases: {}, completions: [], inserts: [] };
   for (const value of [
     { ...empty, aliases: [] },
     { ...empty, aliases: { old: 42 } },
     { ...empty, pages: [null] },
     { ...empty, pages: [{ slug: 42, title: "Invalid" }] },
-    {
-      ...empty,
-      snippets: [{ kind: "snippet", name: "example", description: 42 }],
-    },
-    { ...empty, snippets: null },
+    { ...empty, completions: null },
+    { ...empty, inserts: null },
   ]) {
     let caught: unknown;
     try {

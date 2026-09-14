@@ -42,7 +42,6 @@ func SharedPage(
 	sharingUseCases sharingService,
 	catalogUseCases pageReportCatalogService,
 	settingsUseCases settingsService,
-	knowledgeUseCases knowledgeContentService,
 	mediaUseCases imageContentService,
 	renderer *md.Renderer,
 	views *Views,
@@ -62,7 +61,6 @@ func SharedPage(
 			r,
 			catalogUseCases,
 			settingsUseCases,
-			knowledgeUseCases,
 			mediaUseCases,
 			renderer,
 			views,
@@ -78,7 +76,6 @@ func renderSharedPage(
 	r *http.Request,
 	catalogUseCases pageReportCatalogService,
 	settingsUseCases settingsService,
-	knowledgeUseCases knowledgeContentService,
 	mediaUseCases imageContentService,
 	renderer *md.Renderer,
 	views *Views,
@@ -99,7 +96,7 @@ func renderSharedPage(
 
 	expanded, err := expandLegacyKnowledgeMarkdown(
 		r.Context(),
-		knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
+		knowledgeContentFrom(catalogUseCases),
 		page.Markdown,
 	)
 	if err != nil {

@@ -1,0 +1,44 @@
+api_version: 1
+provider: Lore
+id: io.lore.snippets
+name: Snippets
+version: 1.0.0
+description: Reusable Markdown blocks with editor completion.
+default_enabled: true
+modules:
+  - type: admin-resource
+    id: snippets
+    name: Snippets
+    description: Reusable Markdown blocks available to pages.
+    fields:
+      - id: name
+        name: Name
+        type: text
+        required: true
+        key: true
+        max_bytes: 128
+      - id: description
+        name: Description
+        type: text
+        max_bytes: 4096
+      - id: content
+        name: Markdown
+        type: textarea
+        required: true
+        max_bytes: 49152
+  - type: content-substitution
+    id: content
+    resource: snippets
+    prefix: snippet
+    value_field: content
+    label_field: name
+    detail_field: description
+    priority: 200
+  - type: editor-completion
+    id: snippets
+    resource: snippets
+    trigger: "{{"
+    replacement: "{{snippet:${name}}}"
+    label_field: name
+    detail_field: description
+permissions: []

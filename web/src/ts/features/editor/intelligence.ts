@@ -98,7 +98,7 @@ export function editorDiagnostics(
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const catalog = parseEditorCatalog(catalogValue);
-  const { pages, aliases, snippets, completions } = catalog;
+  const { pages, aliases, completions } = catalog;
   const pageBySlug = new Map(
     pages.map((page) => [editorSlug(page.slug), page]),
   );
@@ -137,9 +137,6 @@ export function editorDiagnostics(
   }
 
   const macros = /\{\{(var|snippet|include):([^{}]+)\}\}/gu;
-  const snippetKeys = new Set(
-    snippets.map((item) => `${item.kind}:${item.name.toLocaleLowerCase()}`),
-  );
   const pluginMacros = new Set(
     completions.map((item) => item.replacement.toLocaleLowerCase()),
   );
@@ -151,8 +148,7 @@ export function editorDiagnostics(
       kind === "include"
         ? pageBySlug.has(editorSlug(name)) ||
           Object.hasOwn(aliases, editorSlug(name))
-        : snippetKeys.has(`${kind}:${name.toLocaleLowerCase()}`) ||
-          pluginMacros.has(`{{${kind}:${name}}}`.toLocaleLowerCase());
+        : pluginMacros.has(`{{${kind}:${name}}}`.toLocaleLowerCase());
 
     if (!valid) {
       diagnostics.push({
@@ -343,7 +339,12 @@ function setupIntelligence(form: HTMLFormElement): void {
   const outlinePanel = outline;
   const problemCount = count;
 
-  let catalog: EditorCatalog = { pages: [], aliases: {}, snippets: [] };
+  let catalog: EditorCatalog = {
+    pages: [],
+    aliases: {},
+    completions: [],
+    inserts: [],
+  };
   let diagnostics: Diagnostic[] = [];
   let activeTab: "problems" | "outline" = "problems";
   let timer: ReturnType<typeof setTimeout> | undefined;

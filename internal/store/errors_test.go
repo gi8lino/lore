@@ -79,28 +79,6 @@ func TestMutationErrorPreservesKnownConflictCauses(t *testing.T) {
 		assert.Same(t, cause, databaseError)
 	})
 
-	t.Run("knowledge_snippets_kind_name_key", func(t *testing.T) {
-		t.Parallel()
-		cause := &pgconn.PgError{Code: "23505", ConstraintName: "knowledge_snippets_kind_name_key"}
-		err := mutationError(fmt.Errorf("persist: %w", cause))
-		assert.ErrorIs(t, err, domain.ErrAlreadyExists)
-		assert.ErrorIs(t, err, cause)
-		databaseError, ok := errors.AsType[*pgconn.PgError](err)
-		require.True(t, ok)
-		assert.Same(t, cause, databaseError)
-	})
-
-	t.Run("knowledge_snippets_kind_name_ci_idx", func(t *testing.T) {
-		t.Parallel()
-		cause := &pgconn.PgError{Code: "23505", ConstraintName: "knowledge_snippets_kind_name_ci_idx"}
-		err := mutationError(fmt.Errorf("persist: %w", cause))
-		assert.ErrorIs(t, err, domain.ErrAlreadyExists)
-		assert.ErrorIs(t, err, cause)
-		databaseError, ok := errors.AsType[*pgconn.PgError](err)
-		require.True(t, ok)
-		assert.Same(t, cause, databaseError)
-	})
-
 	t.Run("saved_searches_user_id_name_key", func(t *testing.T) {
 		t.Parallel()
 		cause := &pgconn.PgError{Code: "23505", ConstraintName: "saved_searches_user_id_name_key"}
