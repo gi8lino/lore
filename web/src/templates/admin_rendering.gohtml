@@ -42,16 +42,6 @@
           </article>
           <article class="render-setting-card">
             <label class="toggle-row">
-              <span><strong>Footnotes</strong><small>Enable Markdown footnote references and definitions.</small></span><input type="checkbox"
-       name="footnotes"
-       {{ if .ApplicationSettings.Rendering.Footnotes }}checked{{ end }} />
-            </label>
-            <div class="render-setting-preview prose">
-              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "footnotes" }}
-            </div>
-          </article>
-          <article class="render-setting-card">
-            <label class="toggle-row">
               <span><strong>Definition lists</strong><small>Enable term/definition list syntax.</small></span><input type="checkbox"
        name="definition_lists"
        {{ if .ApplicationSettings.Rendering.DefinitionLists }}checked{{ end }} />

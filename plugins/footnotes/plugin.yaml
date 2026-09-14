@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.footnotes
+name: Footnotes
+version: 1.0.0
+description: Add Markdown footnote references and definitions.
+default_enabled: false
+modules:
+  - type: markdown-syntax
+    id: footnotes
+    syntax: footnote
+permissions: []

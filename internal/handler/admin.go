@@ -155,7 +155,6 @@ func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
 	return domain.RenderingSettings{
 		WikiLinks:          r.FormValue("wiki_links") == "on",
 		SyntaxHighlighting: r.FormValue("syntax_highlighting") == "on",
-		Footnotes:          r.FormValue("footnotes") == "on",
 		DefinitionLists:    r.FormValue("definition_lists") == "on",
 		Typographer:        r.FormValue("typographer") == "on",
 	}

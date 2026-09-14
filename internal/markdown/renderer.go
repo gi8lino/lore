@@ -79,9 +79,6 @@ func NewWithRegistry(registry *plugin.Registry) *Renderer {
 func engine(options Options, contributed []goldmark.Extender, ranges ...variableRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
-	if options.Footnotes {
-		extensions = append(extensions, extension.Footnote)
-	}
 	if options.DefinitionLists {
 		extensions = append(extensions, extension.DefinitionList)
 	}

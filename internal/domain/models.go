@@ -149,8 +149,6 @@ type RenderingSettings struct {
 	SyntaxHighlighting bool
 	// DefaultTypographySize is used when a user has not selected a personal content size.
 	DefaultTypographySize string
-	// Footnotes enables Markdown footnotes.
-	Footnotes bool
 	// DefinitionLists enables Markdown definition lists.
 	DefinitionLists bool
 	// Typographer enables smart punctuation substitutions.

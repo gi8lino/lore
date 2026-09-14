@@ -457,25 +457,29 @@ func TestPluginSettingsDisableTableStyles(t *testing.T) {
 	assert.NotContains(t, got, `table-tone-accent`)
 }
 
-func TestOptionalMarkdownExtensions(t *testing.T) {
+func TestFootnotesCanBeEnabled(t *testing.T) {
+	t.Parallel()
+
+	renderer := testRenderer(t)
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.Enable(context.Background(), "io.lore.footnotes"))
+
+	got, err := renderer.Render("Lore has a note.[^1]\n\n[^1]: Stored with the page.\n")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `footnote`)
+}
+
+func TestDefinitionListsCanBeEnabled(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
 	options := DefaultOptions()
-	options.Footnotes = true
 	options.DefinitionLists = true
-
-	source := `Lore has a note.[^1]
-
-[^1]: Stored with the page.
-
-Term
-: Definition
-`
-	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
+	got, err := renderer.RenderResolvedWithOptions("Term\n: Definition\n", Slug, options)
 
 	require.NoError(t, err)
-	assert.Contains(t, got, `footnote`)
 	assert.Contains(t, got, `<dl>`)
 }
 
