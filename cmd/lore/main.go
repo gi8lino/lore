@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/gi8lino/lore/internal/cli"
@@ -25,7 +24,6 @@ func main() {
 		os.Stdout,
 		os.Stderr,
 	); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

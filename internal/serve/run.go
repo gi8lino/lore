@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"time"
 
 	"github.com/containeroo/httpgrace/server"
 	"github.com/gi8lino/lore/internal/auth"
@@ -158,10 +159,29 @@ func Run(
 	ctx, stop := server.SignalContext(ctx)
 	defer stop()
 
-	renderer, err := markdown.NewWithPluginStore(ctx, database, wasm.WithStorage(database), wasm.WithPermissions("settings:read", "settings:write", "storage:read", "storage:write"))
+	start := time.Now()
+	renderer, err := markdown.NewWithPluginStore(
+		ctx,
+		database,
+		wasm.WithStorage(database),
+		wasm.WithPermissions("settings:read", "settings:write", "storage:read", "storage:write"),
+	)
 	if err != nil {
+		setupLogger.Error(
+			"create plugin store failed",
+			"event",
+			"pluginstore_create_failed",
+			"error",
+			err,
+		)
 		return err
 	}
+	setupLogger.Info(
+		"plugin store created",
+		"event", "pluginstore_created",
+		"duration", time.Since(start),
+	)
+
 	renderer.SetArtifactBuild(version, commit)
 	if cfg.DebugRenderTimings {
 		renderer.EnableRenderTimings(logger.With("component", "markdown"))
