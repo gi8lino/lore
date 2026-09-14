@@ -74,6 +74,7 @@ denied. There are at most 512 host calls per invocation, sharing its deadline.
 | Operation | Manifest permission | Parameters / result |
 | --- | --- | --- |
 | `pages.get` | `pages:read` | `PageRef` / public `Page` metadata |
+| `pages.content` | `pages:content` | `PageRef` / authorized `PageContent` Markdown |
 | `pages.search` | `pages:read` | `PageQuery` (limit 1–100) / `[]Page` |
 | `pages.navigation` | `pages:read` | none / render-scoped `[]NavigationNode` |
 | `attachments.read` | `attachments:read` | `AttachmentRead` / bounded `Attachment` range |
@@ -141,6 +142,10 @@ behavior continues to use WASM preprocessors/postprocessors; arbitrary native
 extensions cannot be installed.
 
 `settings` modules have an `id`, display `name`, optional `description`, and optional `requires` list of module IDs in the same package. Lore renders these declarations as boolean controls on the plugin detail page and persists them in a core-owned namespace. Missing dependencies and cycles are rejected. Request feature keys are `<plugin-id>.<module-id>`; omitted flags default on. Package install/disable/upgrade still operates atomically per plugin.
+
+`admin-resource` modules declare bounded host-rendered record schemas. Exactly one text field is the case-insensitive record key; Lore owns the administrator form, validation, CSRF/authentication boundary, and namespaced persistence. `editor-completion` modules can expose those records to the Markdown editor and `editor-insert` modules add static insertion actions without loading arbitrary plugin code into Lore's editor DOM.
+
+`content-substitution` modules bind an `admin-resource` to an inline `{{prefix:name}}` substitution. Lore replaces matches outside fenced code with opaque request-local tokens, runs all content preprocessors once, and restores values immediately before Markdown parsing. Inserted values are therefore never recursively reinterpreted as new substitutions. A substitution may expose generic page-inspector metadata and temporary export fields. `renderer-extension` modules may additionally use stage `content-preprocess` for executable WASM transformations that must run before the normal Markdown pipeline.
 
 `code-highlighter` modules provide an exclusive fenced-code highlighter. Lore sends the declared module the fenced block source and language with stage `highlight`; the plugin returns sanitized-later HTML and sets `matched` only for languages it supports. At most one code highlighter can be active. An optional `css` asset is filtered to safe code-presentation properties and scoped to that plugin's rendered wrapper, so another plugin can provide different token classes and styling without modifying Lore.
 

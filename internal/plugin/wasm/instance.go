@@ -38,6 +38,23 @@ func (i *Instance) Contributions() plugin.Contributions {
 	var result plugin.Contributions
 
 	for _, module := range i.manifest.Modules {
+		if module.Type == "admin-resource" {
+			result.AdminResources = append(result.AdminResources, plugin.AdminResource{ID: module.ID, Name: module.Name, Description: module.Description})
+			continue
+		}
+		if module.Type == "editor-completion" {
+			result.EditorCompletions = append(result.EditorCompletions, plugin.EditorCompletion{ID: module.ID, Resource: module.Resource, Trigger: module.Trigger, Replacement: module.Replacement, LabelField: module.LabelField, DetailField: module.DetailField})
+			continue
+		}
+		if module.Type == "editor-insert" {
+			result.EditorInserts = append(result.EditorInserts, plugin.EditorInsert{ID: module.ID, Name: module.Name, Description: module.Description, Markdown: module.Markdown, Inline: module.Inline})
+			continue
+		}
+		if module.Type == "content-substitution" {
+			resource := manifestModule(i.manifest, module.Resource)
+			result.ContentPreprocessors = append(result.ContentPreprocessors, resourceSubstitutionModule{owner: i.manifest.ID, module: module, resource: resource, storage: i.runtime.storage})
+			continue
+		}
 		if module.Type == "code-highlighter" {
 			adapter := codeHighlighterModule{rendererModule{instance: i, module: module}}
 			result.CodeHighlighters = append(result.CodeHighlighters, plugin.CodeHighlighterModule{ID: module.ID, CSS: module.CSS, Highlighter: adapter})
@@ -69,6 +86,8 @@ func (i *Instance) Contributions() plugin.Contributions {
 		}
 		adapter := rendererModule{instance: i, module: module}
 		switch module.Stage {
+		case "content-preprocess":
+			result.ContentPreprocessors = append(result.ContentPreprocessors, contentPreprocessorModule{rendererModule: adapter, priority: module.Priority})
 		case "preprocess":
 			result.Preprocessors = append(result.Preprocessors, adapter)
 		case "postprocess":
@@ -77,6 +96,16 @@ func (i *Instance) Contributions() plugin.Contributions {
 	}
 
 	return result
+}
+
+// manifestModule returns one validated module by ID.
+func manifestModule(manifest pluginpackage.Manifest, id string) pluginpackage.Module {
+	for _, module := range manifest.Modules {
+		if module.ID == id {
+			return module
+		}
+	}
+	return pluginpackage.Module{}
 }
 
 // Close releases resources held by the receiver.

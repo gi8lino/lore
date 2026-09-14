@@ -55,6 +55,22 @@ type Manifest struct {
 	Permissions []string `yaml:"permissions"`
 }
 
+// ResourceField declares one field in a plugin-owned admin resource.
+type ResourceField struct {
+	// ID identifies the field in stored records.
+	ID string `yaml:"id"`
+	// Name is the human-readable field label.
+	Name string `yaml:"name"`
+	// Type selects a bounded host-rendered input control.
+	Type string `yaml:"type"`
+	// Required reports whether the field may be empty.
+	Required bool `yaml:"required,omitempty"`
+	// Key identifies the unique record key field. Exactly one field must be the key.
+	Key bool `yaml:"key,omitempty"`
+	// MaxBytes bounds the UTF-8 encoded field value. Zero selects a host default.
+	MaxBytes int `yaml:"max_bytes,omitempty"`
+}
+
 // Module declares one plugin contribution in a package manifest.
 type Module struct {
 	// Type selects the contribution module kind.
@@ -79,6 +95,32 @@ type Module struct {
 	CSS string `yaml:"css,omitempty"`
 	// Policy selects a host rendering policy for render-policy modules.
 	Policy string `yaml:"policy,omitempty"`
+	// Priority orders content preprocessors. Lower values run first.
+	Priority int `yaml:"priority,omitempty"`
+	// Fields declares a bounded schema for admin-resource records.
+	Fields []ResourceField `yaml:"fields,omitempty"`
+	// Resource identifies another module in this package that owns persisted records.
+	Resource string `yaml:"resource,omitempty"`
+	// Prefix identifies the inline macro prefix handled by a content-substitution module.
+	Prefix string `yaml:"prefix,omitempty"`
+	// ValueField selects the resource field inserted into Markdown.
+	ValueField string `yaml:"value_field,omitempty"`
+	// LabelField selects the resource field used as a human-readable label.
+	LabelField string `yaml:"label_field,omitempty"`
+	// DetailField selects optional descriptive resource text.
+	DetailField string `yaml:"detail_field,omitempty"`
+	// Trigger opens a resource-backed editor completion provider.
+	Trigger string `yaml:"trigger,omitempty"`
+	// Replacement formats a selected resource record into Markdown.
+	Replacement string `yaml:"replacement,omitempty"`
+	// Markdown is the static source inserted by an editor-insert module.
+	Markdown string `yaml:"markdown,omitempty"`
+	// Inline reports whether editor insertion should avoid block line breaks.
+	Inline bool `yaml:"inline,omitempty"`
+	// Inspect enables a reading-page inspector for content substitutions.
+	Inspect bool `yaml:"inspect,omitempty"`
+	// Export enables request-local export overrides for content substitutions.
+	Export bool `yaml:"export,omitempty"`
 }
 
 // Package exposes copies of validated content so callers cannot mutate the
@@ -102,6 +144,7 @@ func (p *Package) Manifest() Manifest {
 	m.Modules = slices.Clone(m.Modules)
 	for i := range m.Modules {
 		m.Modules[i].Requires = slices.Clone(m.Modules[i].Requires)
+		m.Modules[i].Fields = slices.Clone(m.Modules[i].Fields)
 	}
 	m.Requires = slices.Clone(m.Requires)
 	m.Permissions = slices.Clone(m.Permissions)
@@ -335,6 +378,9 @@ func (m Manifest) Validate() error {
 	if err := validateModuleDependencies(m.Modules, names); err != nil {
 		return err
 	}
+	if err := validateModuleReferences(m.Modules); err != nil {
+		return err
+	}
 
 	dependencies := make(map[string]bool)
 	for _, id := range m.Requires {
@@ -357,7 +403,14 @@ func validPluginIdentity(m Manifest) bool {
 
 // modulePermissionsAllowed reports whether the manifest grants permissions required by a module type.
 func modulePermissionsAllowed(m Module, permissions map[string]bool) bool {
-	return m.Type != "browser-module" || permissions["browser:render"]
+	if m.Type == "browser-module" && !permissions["browser:render"] {
+		return false
+	}
+	if m.Capability == "" {
+		return true
+	}
+	permission, known := pluginapi.PermissionFor(m.Capability)
+	return known && (permission == "" || permissions[permission])
 }
 
 // validModule validates one declared module type, stage, and identifier.
@@ -383,6 +436,14 @@ func validModule(m Module) bool {
 		return validRendererModule(m)
 	case "macro":
 		return validMacroModule(m)
+	case "admin-resource":
+		return validAdminResourceModule(m)
+	case "content-substitution":
+		return validContentSubstitutionModule(m)
+	case "editor-completion":
+		return validEditorCompletionModule(m)
+	case "editor-insert":
+		return validEditorInsertModule(m)
 	default:
 		return false
 	}
@@ -402,10 +463,49 @@ func validModuleFields(m Module) bool {
 	if m.Type != "render-policy" && m.Policy != "" {
 		return false
 	}
-	if m.Type != "settings" && m.Description != "" {
+	if m.Type != "settings" && m.Type != "admin-resource" && m.Type != "editor-insert" && m.Description != "" {
 		return false
 	}
-	return m.Type == "settings" || len(m.Requires) == 0
+	if m.Type != "settings" && len(m.Requires) != 0 {
+		return false
+	}
+	if m.Type != "renderer-extension" && m.Type != "content-substitution" && m.Priority != 0 {
+		return false
+	}
+	if m.Type != "admin-resource" && len(m.Fields) != 0 {
+		return false
+	}
+	if m.Type != "content-substitution" && m.Type != "editor-completion" && m.Resource != "" {
+		return false
+	}
+	if m.Type != "content-substitution" && m.Prefix != "" {
+		return false
+	}
+	if m.Type != "content-substitution" && m.ValueField != "" {
+		return false
+	}
+	if m.Type != "content-substitution" && m.Type != "editor-completion" && m.LabelField != "" {
+		return false
+	}
+	if m.Type != "content-substitution" && m.Type != "editor-completion" && m.DetailField != "" {
+		return false
+	}
+	if m.Type != "editor-completion" && m.Trigger != "" {
+		return false
+	}
+	if m.Type != "editor-completion" && m.Replacement != "" {
+		return false
+	}
+	if m.Type != "editor-insert" && m.Markdown != "" {
+		return false
+	}
+	if m.Type != "editor-insert" && m.Inline {
+		return false
+	}
+	if m.Type != "content-substitution" && (m.Inspect || m.Export) {
+		return false
+	}
+	return true
 }
 
 // validMarkdownSyntaxModule validates fields specific to a Markdown syntax declaration.
@@ -445,8 +545,11 @@ func validBrowserModule(m Module) bool {
 
 // validRendererModule validates fields specific to a renderer pipeline declaration.
 func validRendererModule(m Module) bool {
-	validStage := m.Stage == "preprocess" || m.Stage == "postprocess"
-	return validStage && m.Name == "" && m.Capability == ""
+	validStage := m.Stage == "preprocess" || m.Stage == "postprocess" || m.Stage == "content-preprocess"
+	if m.Stage != "content-preprocess" && m.Priority != 0 {
+		return false
+	}
+	return validStage && m.Name == ""
 }
 
 // validMacroModule validates fields specific to a macro declaration.
@@ -458,6 +561,99 @@ func validMacroModule(m Module) bool {
 	}
 
 	return identifier.MatchString(m.Name) && m.Stage == ""
+}
+
+// validAdminResourceModule validates one host-rendered plugin record collection.
+func validAdminResourceModule(m Module) bool {
+	if m.Stage != "" || m.Capability != "" || len(m.ID) > 64 || len(m.Name) == 0 || len(m.Name) > 128 || len(m.Description) > 1024 || len(m.Fields) == 0 || len(m.Fields) > 16 {
+		return false
+	}
+	seen := make(map[string]bool)
+	keys := 0
+	for _, field := range m.Fields {
+		if !identifier.MatchString(field.ID) || seen[field.ID] || strings.TrimSpace(field.Name) == "" || len(field.Name) > 128 {
+			return false
+		}
+		seen[field.ID] = true
+		if field.Type != "text" && field.Type != "textarea" {
+			return false
+		}
+		if field.MaxBytes < 0 || field.MaxBytes > 64<<10 {
+			return false
+		}
+		if field.Key {
+			keys++
+			if field.Type != "text" {
+				return false
+			}
+		}
+	}
+	return keys == 1
+}
+
+// validContentSubstitutionModule validates a resource-backed inline Markdown substitution.
+func validContentSubstitutionModule(m Module) bool {
+	return m.Stage == "" && m.Name == "" && m.Capability == "" && identifier.MatchString(m.Resource) &&
+		identifier.MatchString(m.Prefix) && identifier.MatchString(m.ValueField) &&
+		(m.LabelField == "" || identifier.MatchString(m.LabelField)) &&
+		(m.DetailField == "" || identifier.MatchString(m.DetailField)) &&
+		m.Priority >= -10000 && m.Priority <= 10000
+}
+
+// validEditorCompletionModule validates a resource-backed completion provider.
+func validEditorCompletionModule(m Module) bool {
+	return m.Stage == "" && m.Name == "" && m.Capability == "" && identifier.MatchString(m.Resource) &&
+		len(m.Trigger) > 0 && len(m.Trigger) <= 16 && len(m.Replacement) > 0 && len(m.Replacement) <= 512 &&
+		identifier.MatchString(m.LabelField) && (m.DetailField == "" || identifier.MatchString(m.DetailField))
+}
+
+// validEditorInsertModule validates one static editor insertion action.
+func validEditorInsertModule(m Module) bool {
+	return m.Stage == "" && m.Capability == "" && strings.TrimSpace(m.Name) != "" && len(m.Name) <= 128 &&
+		len(m.Description) <= 1024 && len(m.Markdown) > 0 && len(m.Markdown) <= 4096
+}
+
+// validateModuleReferences checks relationships between declarative modules in one package.
+func validateModuleReferences(modules []Module) error {
+	byID := make(map[string]Module, len(modules))
+	for _, module := range modules {
+		byID[module.ID] = module
+	}
+	for _, module := range modules {
+		if module.Resource == "" {
+			continue
+		}
+		resource, ok := byID[module.Resource]
+		if !ok || resource.Type != "admin-resource" {
+			return fmt.Errorf("module %s references unknown admin resource %s", module.ID, module.Resource)
+		}
+		fields := make(map[string]bool, len(resource.Fields))
+		for _, field := range resource.Fields {
+			fields[field.ID] = true
+		}
+		for _, field := range []string{module.ValueField, module.LabelField, module.DetailField} {
+			if field != "" && !fields[field] {
+				return fmt.Errorf("module %s references unknown resource field %s", module.ID, field)
+			}
+		}
+		if module.Type == "editor-completion" {
+			key := resourceKeyField(resource)
+			if !strings.Contains(module.Replacement, "${"+key.ID+"}") {
+				return fmt.Errorf("editor completion %s replacement must contain ${%s}", module.ID, key.ID)
+			}
+		}
+	}
+	return nil
+}
+
+// resourceKeyField returns the validated unique key field for a resource module.
+func resourceKeyField(module Module) ResourceField {
+	for _, field := range module.Fields {
+		if field.Key {
+			return field
+		}
+	}
+	return ResourceField{}
 }
 
 // validateModuleDependencies validates settings-module dependency references and cycles.

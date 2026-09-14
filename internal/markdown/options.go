@@ -1,10 +1,14 @@
 package markdown
 
+import "github.com/gi8lino/lore/internal/plugin"
+
 // Options controls optional Markdown rendering features.
 type Options struct {
 	pipeline *renderPipeline
 	depth    int
-	// variables is request-local provenance used only for reading-page inspection.
+	// annotations contains request-local opaque plugin substitutions for an annotated render pass.
+	annotations []plugin.Replacement
+	// variables is temporary core variable provenance kept until Variables migrates to a plugin.
 	variables []Variable
 	// typographer reports whether an active plugin requested typographic substitutions.
 	typographer bool

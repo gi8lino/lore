@@ -1,11 +1,8 @@
-- why not move variables to plugin
-
+what do you think about to move to plugins:
 - move icons also as a plugin. than maybe split in 2 plugins, each for a icon set? or do you think some builtins are okay and other can be added as plugins?
-
-- revision plugin? move it into a plugin?
-
+- revision plugin?
 - pdf plugin? would it make sense to move it into a plugin as well?
-
+- maybe other actions as plugins?
 
 
 - cleanup Phase stuff in READMEs

@@ -74,6 +74,14 @@ type PageRef struct {
 	Slug string
 }
 
+// PageContent contains authorized Markdown content returned to a plugin.
+type PageContent struct {
+	// Slug is the canonical page path.
+	Slug string
+	// Markdown is the stored page source.
+	Markdown string
+}
+
 // StorageValue carries a namespaced plugin storage key and optional value.
 type StorageValue struct {
 	// Key is the plugin-owned settings or data key.
@@ -110,6 +118,8 @@ func PermissionFor(method string) (string, bool) {
 	switch method {
 	case "pages.get", "pages.search", "pages.navigation":
 		return "pages:read", true
+	case "pages.content":
+		return "pages:content", true
 	case "attachments.read":
 		return "attachments:read", true
 	case "plugin.settings.read":
@@ -130,7 +140,7 @@ func PermissionFor(method string) (string, bool) {
 // ValidPermission reports whether permission is valid.
 func ValidPermission(permission string) bool {
 	switch permission {
-	case "browser:render", "pages:read", "attachments:read", "settings:read", "settings:write", "storage:read", "storage:write":
+	case "browser:render", "pages:read", "pages:content", "attachments:read", "settings:read", "settings:write", "storage:read", "storage:write":
 		return true
 	default:
 		return false

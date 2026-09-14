@@ -37,8 +37,122 @@ type Context struct {
 	Features map[string]bool
 	// Macros contains request-scoped macro renderers.
 	Macros map[string]MacroRenderer
+	// ExportParameters contains request-local values keyed by plugin and field.
+	ExportParameters map[string]map[string]map[string]string
 	// RenderMarkdown renders nested Markdown through the host pipeline.
 	RenderMarkdown func(string) (string, error)
+}
+
+// Replacement binds an opaque source token to Markdown inserted after all content preprocessors run.
+type Replacement struct {
+	// Token is the opaque source marker emitted by a content preprocessor.
+	Token string
+	// Value is the Markdown restored immediately before Goldmark parsing.
+	Value string
+	// Annotation identifies an optional inspector item that owns this replacement.
+	Annotation string
+}
+
+// InspectorItem is one value exposed by a plugin-owned reading-page inspector.
+type InspectorItem struct {
+	// Key identifies the item within the inspector.
+	Key string
+	// Label is the human-readable item name.
+	Label string
+	// Value is the saved value shown by the inspector.
+	Value string
+	// Description is optional explanatory text.
+	Description string
+	// Occurrences is the number of replacements originating from this item.
+	Occurrences int
+	// Annotation identifies rendered spans associated with this item.
+	Annotation string
+}
+
+// Inspector describes one plugin-owned reading-page inspector.
+type Inspector struct {
+	// ID identifies the inspector within its plugin.
+	ID string
+	// PluginID identifies the owning plugin.
+	PluginID string
+	// Name is the human-readable inspector title.
+	Name string
+	// Items contains values used by the current page.
+	Items []InspectorItem
+}
+
+// ExportField describes one request-local plugin parameter exposed by page export UI.
+type ExportField struct {
+	// PluginID identifies the owning plugin.
+	PluginID string
+	// ModuleID identifies the owning content module.
+	ModuleID string
+	// Key identifies the exported resource item.
+	Key string
+	// Label is the human-readable field label.
+	Label string
+	// Value is the saved value used as the initial export value.
+	Value string
+	// Description is optional explanatory text.
+	Description string
+}
+
+// PreparedContent contains Markdown after plugin-owned content preprocessing plus render metadata.
+type PreparedContent struct {
+	// Markdown is the transformed source passed to the Markdown renderer.
+	Markdown string
+	// Replacements restore opaque plugin substitutions immediately before parsing.
+	Replacements []Replacement
+	// Inspectors contains reading-page metadata contributed by enabled plugins.
+	Inspectors []Inspector
+	// ExportFields contains request-local export controls contributed by enabled plugins.
+	ExportFields []ExportField
+}
+
+// ContentPreprocessor transforms page Markdown before the normal render pipeline.
+// Its output is never recursively reprocessed by another pass; preprocessors run once
+// in ascending priority order.
+type ContentPreprocessor interface {
+	// Priority orders content preprocessing. Lower values run first.
+	Priority() int
+	// PreprocessContent transforms source and may contribute render metadata.
+	PreprocessContent(Context, string) (PreparedContent, error)
+}
+
+// AdminResource describes one declarative plugin-owned record collection.
+type AdminResource struct {
+	// ID identifies the resource within its plugin.
+	ID string
+	// Name is the human-readable resource title.
+	Name string
+	// Description explains the resource to administrators.
+	Description string
+}
+
+// EditorCompletion describes one resource-backed editor completion provider.
+type EditorCompletion struct {
+	// ID identifies the contribution within its plugin.
+	ID string
+	// Resource identifies the backing admin-resource module.
+	Resource string
+	// Trigger opens completion in the Markdown editor.
+	Trigger string
+	// Replacement formats one selected record into Markdown.
+	Replacement string
+	// LabelField and DetailField select resource fields shown in completion results.
+	LabelField, DetailField string
+}
+
+// EditorInsert describes one static insert action owned by a plugin.
+type EditorInsert struct {
+	// ID identifies the contribution within its plugin.
+	ID string
+	// Name and Description are shown in editor insertion UI.
+	Name, Description string
+	// Markdown is inserted when the action is selected.
+	Markdown string
+	// Inline reports whether insertion should avoid surrounding line breaks.
+	Inline bool
 }
 
 // Invocation is a serializable macro argument value carried by the WASM ABI.
@@ -157,6 +271,8 @@ type RenderPolicy struct {
 // Contributions is registered and removed atomically under its owner's ID.
 // Order within a stage is registration order, then slice order.
 type Contributions struct {
+	// ContentPreprocessors transform application Markdown before the normal render pipeline.
+	ContentPreprocessors []ContentPreprocessor
 	// Preprocessors run before core Markdown parsing in contribution order.
 	Preprocessors []Preprocessor
 	// MarkdownExtensions contribute fresh Goldmark extensions per render.
@@ -171,6 +287,12 @@ type Contributions struct {
 	BrowserModules []BrowserModule
 	// EditorExtensions declares editor integrations owned by the plugin.
 	EditorExtensions []EditorExtension
+	// AdminResources declares plugin-owned record collections rendered by Lore.
+	AdminResources []AdminResource
+	// EditorCompletions declares resource-backed editor completion providers.
+	EditorCompletions []EditorCompletion
+	// EditorInserts declares static editor insertion actions.
+	EditorInserts []EditorInsert
 	// SettingsModules declares settings integrations owned by the plugin.
 	SettingsModules []SettingsModule
 	// ContentStyles declares safe parent-document styles owned by the plugin.

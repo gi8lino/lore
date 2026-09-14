@@ -9,6 +9,7 @@ import (
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/pluginpackage"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/themes"
 )
@@ -27,6 +28,8 @@ type ViewData struct {
 	PluginREADMEs map[string]template.HTML
 	// PluginFeatures contains enabled plugin and plugin-setting flags for browser UI decisions.
 	PluginFeatures map[string]bool
+	// PluginResources contains generic plugin-owned administrative record collections keyed by plugin ID.
+	PluginResources map[string][]pluginResourceView
 	// Title is the page title displayed in the browser chrome.
 	Title string
 	// User is the authenticated user rendering the page.
@@ -195,6 +198,13 @@ type ViewData struct {
 	ActiveTheme string
 	// CanEdit reports whether the current user may create or edit pages.
 	CanEdit bool
+}
+
+type pluginResourceView struct {
+	// Module contains the validated declarative resource schema.
+	Module pluginpackage.Module
+	// Records contains persisted records in deterministic key order.
+	Records []plugin.ResourceRecord
 }
 
 type pageTemplateView struct {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -34,10 +35,30 @@ func (s *memoryStorage) ReadPluginValue(_ context.Context, id, namespace, key st
 }
 
 // WritePluginValue writes plugin value.
+func (s *memoryStorage) ListPluginValues(_ context.Context, id, namespace, prefix string) (map[string][]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := make(map[string][]byte)
+	wanted := id + "/" + namespace + "/" + prefix
+	for key, value := range s.values {
+		if strings.HasPrefix(key, wanted) {
+			result[strings.TrimPrefix(key, id+"/"+namespace+"/")] = bytes.Clone(value)
+		}
+	}
+	return result, nil
+}
+
 func (s *memoryStorage) WritePluginValue(_ context.Context, id, namespace, key string, value []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.values[id+"/"+namespace+"/"+key] = bytes.Clone(value)
+	return nil
+}
+
+func (s *memoryStorage) DeletePluginValue(_ context.Context, id, namespace, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.values, id+"/"+namespace+"/"+key)
 	return nil
 }
 

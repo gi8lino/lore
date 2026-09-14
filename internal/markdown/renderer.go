@@ -43,15 +43,20 @@ type RenderedPage struct {
 	HTML string
 	// Contents contains headings in document order.
 	Contents []Heading
+	// Inspectors contains plugin-owned reading-page metadata for substitutions used by this page.
+	Inspectors []plugin.Inspector
+	// ExportFields contains plugin-owned request-local export controls used by this page.
+	ExportFields []plugin.ExportField
 }
 
 // Functions supplies request-local macro capabilities and variable provenance.
 // Bindings cannot activate an unregistered macro.
 type Functions struct {
-	Capabilities map[string]plugin.Capability
-	Context      context.Context
-	Variables    []Variable
-	Macros       map[string]plugin.MacroRenderer
+	Capabilities     map[string]plugin.Capability
+	Context          context.Context
+	Variables        []Variable
+	Macros           map[string]plugin.MacroRenderer
+	ExportParameters map[string]map[string]map[string]string
 }
 
 // Close releases the owned plugin runtime. Explicit-registry renderers leave
@@ -74,7 +79,7 @@ func NewWithRegistry(registry *plugin.Registry) *Renderer {
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
-func engine(options Options, contributed []goldmark.Extender, ranges ...variableRange) goldmark.Markdown {
+func engine(options Options, contributed []goldmark.Extender, variableRanges []variableRange, annotationRanges []annotationRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
 	if options.typographer {
@@ -100,19 +105,15 @@ func engine(options Options, contributed []goldmark.Extender, ranges ...variable
 			parser.WithAutoHeadingID(),
 			parser.WithASTTransformers(
 				util.Prioritized(imageWidthTransformer{}, 100),
-				util.Prioritized(
-					variableTransformer{ranges: ranges},
-					200,
-				),
+				util.Prioritized(variableTransformer{ranges: variableRanges}, 200),
+				util.Prioritized(annotationTransformer{ranges: annotationRanges}, 210),
 			),
 		),
 		goldmark.WithRendererOptions(
 			goldhtml.WithUnsafe(),
 			renderer.WithNodeRenderers(
-				util.Prioritized(
-					variableNodeRenderer{ranges: ranges},
-					100,
-				),
+				util.Prioritized(variableNodeRenderer{ranges: variableRanges}, 100),
+				util.Prioritized(annotationNodeRenderer{ranges: annotationRanges}, 110),
 			),
 		),
 	)
@@ -212,16 +213,50 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	options.codingLigatures = snapshot.HasRenderPolicy("coding-ligatures")
 	options.typographer = snapshot.HasRenderPolicy("typographer")
 	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
-	if len(functions.Variables) != 0 {
-		return r.renderPageWithVariables(
-			source,
-			resolve,
-			options,
-			functions,
-		)
+	prepared, err := options.pipeline.prepareContent(source, r.moduleContext(resolve, options))
+	if err != nil {
+		return RenderedPage{}, err
 	}
+	source = prepared.Markdown
+	options.annotations = prepared.Replacements
 
-	return r.renderPage(source, resolve, options)
+	var rendered RenderedPage
+	if len(functions.Variables) != 0 {
+		rendered, err = r.renderPageWithVariables(source, resolve, options, functions)
+	} else if len(prepared.Replacements) != 0 {
+		rendered, err = r.renderPageWithAnnotations(source, resolve, options)
+	} else {
+		rendered, err = r.renderPage(source, resolve, options)
+	}
+	if err != nil {
+		return RenderedPage{}, err
+	}
+	rendered.Inspectors = prepared.Inspectors
+	rendered.ExportFields = prepared.ExportFields
+	return rendered, nil
+}
+
+// renderPageWithAnnotations restores plugin substitutions and adds safe origin wrappers when semantics stay unchanged.
+func (r *Renderer) renderPageWithAnnotations(
+	source string,
+	resolve func(string) string,
+	options Options,
+) (RenderedPage, error) {
+	plain, _ := resolvePluginReplacements(source, options.annotations)
+	plainOptions := options
+	plainOptions.annotations = nil
+	normal, err := r.renderPage(plain, resolve, plainOptions)
+	if err != nil {
+		return RenderedPage{}, err
+	}
+	annotated, err := r.renderPage(source, resolve, options)
+	if err != nil {
+		return normal, nil
+	}
+	if equivalentAnnotationHTML(annotated.HTML, normal.HTML) {
+		normal.HTML = annotated.HTML
+	}
+	return normal, nil
 }
 
 // renderPageWithVariables annotates expanded variable origins without changing the rendered document.
@@ -317,10 +352,8 @@ func (r *Renderer) renderRawResolved(
 		)
 	}
 
-	source, ranges := resolveVariableTokens(
-		source,
-		options.variables,
-	)
+	source, annotationRanges := resolvePluginReplacements(source, options.annotations)
+	source, variableRanges := resolveVariableTokens(source, options.variables)
 
 	var output bytes.Buffer
 
@@ -330,7 +363,7 @@ func (r *Renderer) renderRawResolved(
 	}
 	// Conversion invokes contributed parsers, transformers, and node renderers.
 	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
-		return struct{}{}, engine(options, extensions, ranges...).Convert([]byte(source), &output)
+		return struct{}{}, engine(options, extensions, variableRanges, annotationRanges).Convert([]byte(source), &output)
 	})
 	if err != nil {
 		return "", err

@@ -29,6 +29,8 @@ type renderPipeline struct {
 	features map[string]bool
 	// macros contains request-local macro render bindings.
 	macros map[string]plugin.MacroRenderer
+	// exportParameters contains request-local plugin export overrides.
+	exportParameters map[string]map[string]map[string]string
 }
 
 // macroInvocation records one deferred macro expansion and its owner.
@@ -48,18 +50,76 @@ func newRenderPipeline(snapshot plugin.Snapshot, features map[string]bool, funct
 	capabilities := plugincap.Capabilities(nil, nil)
 	maps.Copy(capabilities, functions.Capabilities)
 
-	return &renderPipeline{context: functions.Context, capabilities: capabilities, snapshot: snapshot, features: maps.Clone(features), macros: maps.Clone(functions.Macros)}
+	return &renderPipeline{
+		context:          functions.Context,
+		capabilities:     capabilities,
+		snapshot:         snapshot,
+		features:         maps.Clone(features),
+		macros:           maps.Clone(functions.Macros),
+		exportParameters: cloneExportParameters(functions.ExportParameters),
+	}
 }
 
 // moduleContext builds the request-local context passed to plugin contributions.
 func (r *Renderer) moduleContext(resolve func(string) string, options Options) plugin.Context {
 	return plugin.Context{
-		Context:        options.pipeline.context,
-		Capabilities:   maps.Clone(options.pipeline.capabilities),
-		Features:       maps.Clone(options.pipeline.features),
-		Macros:         maps.Clone(options.pipeline.macros),
-		RenderMarkdown: func(source string) (string, error) { return r.renderRawResolved(source, resolve, options) },
+		Context:          options.pipeline.context,
+		Capabilities:     maps.Clone(options.pipeline.capabilities),
+		Features:         maps.Clone(options.pipeline.features),
+		Macros:           maps.Clone(options.pipeline.macros),
+		ExportParameters: cloneExportParameters(options.pipeline.exportParameters),
+		RenderMarkdown:   func(source string) (string, error) { return r.renderRawResolved(source, resolve, options) },
 	}
+}
+
+// contentPreprocessorBinding associates a content preprocessor with its plugin owner.
+type contentPreprocessorBinding struct {
+	owner  string
+	module plugin.ContentPreprocessor
+}
+
+// prepareContent runs active content preprocessors once in priority order before normal Markdown rendering.
+func (p *renderPipeline) prepareContent(source string, ctx plugin.Context) (plugin.PreparedContent, error) {
+	var modules []contentPreprocessorBinding
+	for _, entry := range p.snapshot.Entries {
+		for _, module := range entry.Contributions.ContentPreprocessors {
+			modules = append(modules, contentPreprocessorBinding{owner: entry.Descriptor.ID, module: module})
+		}
+	}
+	sort.SliceStable(modules, func(i, j int) bool {
+		return modules[i].module.Priority() < modules[j].module.Priority()
+	})
+
+	prepared := plugin.PreparedContent{Markdown: source}
+	for _, binding := range modules {
+		result, err := plugin.Guard(binding.owner, func() (plugin.PreparedContent, error) {
+			return binding.module.PreprocessContent(ctx, prepared.Markdown)
+		})
+		if err != nil {
+			return plugin.PreparedContent{}, err
+		}
+		prepared.Markdown = result.Markdown
+		prepared.Replacements = append(prepared.Replacements, result.Replacements...)
+		prepared.Inspectors = append(prepared.Inspectors, result.Inspectors...)
+		prepared.ExportFields = append(prepared.ExportFields, result.ExportFields...)
+	}
+	return prepared, nil
+}
+
+// cloneExportParameters deep-copies request-local export values before plugin callbacks receive them.
+func cloneExportParameters(source map[string]map[string]map[string]string) map[string]map[string]map[string]string {
+	if source == nil {
+		return nil
+	}
+	result := make(map[string]map[string]map[string]string, len(source))
+	for pluginID, modules := range source {
+		moduleCopy := make(map[string]map[string]string, len(modules))
+		for moduleID, values := range modules {
+			moduleCopy[moduleID] = maps.Clone(values)
+		}
+		result[pluginID] = moduleCopy
+	}
+	return result
 }
 
 // preprocess runs active plugin preprocessors in registry order.

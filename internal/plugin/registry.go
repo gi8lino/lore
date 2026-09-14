@@ -81,6 +81,11 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 		}
 		names[macro.Name()] = true
 	}
+	for _, module := range modules.ContentPreprocessors {
+		if module == nil {
+			return fmt.Errorf("nil content preprocessor in %s", descriptor.ID)
+		}
+	}
 	for _, module := range modules.Preprocessors {
 		if module == nil {
 			return fmt.Errorf("nil preprocessor in %s", descriptor.ID)
@@ -154,6 +159,7 @@ func (r *Registry) Snapshot() Snapshot {
 func cloneEntry(entry Entry) Entry {
 	entry.Descriptor.Requires = slices.Clone(entry.Descriptor.Requires)
 	c := &entry.Contributions
+	c.ContentPreprocessors = slices.Clone(c.ContentPreprocessors)
 	c.Preprocessors = slices.Clone(c.Preprocessors)
 	c.MarkdownExtensions = slices.Clone(c.MarkdownExtensions)
 	c.CodeHighlighters = slices.Clone(c.CodeHighlighters)
@@ -161,6 +167,9 @@ func cloneEntry(entry Entry) Entry {
 	c.Macros = slices.Clone(c.Macros)
 	c.BrowserModules = slices.Clone(c.BrowserModules)
 	c.EditorExtensions = slices.Clone(c.EditorExtensions)
+	c.AdminResources = slices.Clone(c.AdminResources)
+	c.EditorCompletions = slices.Clone(c.EditorCompletions)
+	c.EditorInserts = slices.Clone(c.EditorInserts)
 	c.SettingsModules = slices.Clone(c.SettingsModules)
 	c.ContentStyles = slices.Clone(c.ContentStyles)
 	c.RenderPolicies = slices.Clone(c.RenderPolicies)
@@ -196,6 +205,21 @@ func validateIDs(c Contributions) error {
 	}
 	for _, m := range c.EditorExtensions {
 		if err := check("editor", m.ID); err != nil {
+			return err
+		}
+	}
+	for _, m := range c.AdminResources {
+		if err := check("admin-resource", m.ID); err != nil {
+			return err
+		}
+	}
+	for _, m := range c.EditorCompletions {
+		if err := check("editor-completion", m.ID); err != nil {
+			return err
+		}
+	}
+	for _, m := range c.EditorInserts {
+		if err := check("editor-insert", m.ID); err != nil {
 			return err
 		}
 	}

@@ -192,6 +192,92 @@
             </form>
           </section>
         {{ end }}
+        {{ with index $.PluginResources .Manifest.ID }}
+          <section class="plugin-detail-section plugin-resource-panel">
+            <div class="panel-title">
+              <div>
+                <h3>Data</h3>
+                <p class="muted">Manage records owned and used by this plugin.</p>
+              </div>
+            </div>
+            {{ range . }}
+              {{ $resource := . }}
+              <div class="plugin-resource">
+                <div class="plugin-resource-heading">
+                  <div>
+                    <h4>{{ .Module.Name }}</h4>
+                    {{ if .Module.Description }}
+                      <p class="muted">{{ .Module.Description }}</p>
+                    {{ end }}
+                  </div>
+                  <span class="count-chip">{{ len .Records }}</span>
+                </div>
+                <details class="plugin-resource-create">
+                  <summary>Add {{ .Module.Name }}</summary>
+                  <form class="stacked-form plugin-resource-form"
+                        method="post"
+                        action="/admin/plugins/{{ $plugin.Manifest.ID }}/resource-save?return=detail">
+                    <input type="hidden" name="resource_id" value="{{ .Module.ID }}" />
+                    {{ range .Module.Fields }}
+                      <label>
+                        <span>{{ .Name }}{{ if .Required }} <small>required</small>{{ end }}</span>
+                        {{ if eq .Type "textarea" }}
+                          <textarea name="resource_{{ .ID }}" {{ if .Required }}required{{ end }}></textarea>
+                        {{ else }}
+                          <input type="text"
+                                 name="resource_{{ .ID }}"
+                                 {{ if .Required }}required{{ end }} />
+                        {{ end }}
+                      </label>
+                    {{ end }}
+                    <div class="settings-actions">
+                      <button class="button primary" type="submit">Add</button>
+                    </div>
+                  </form>
+                </details>
+                <div class="plugin-resource-records">
+                  {{ range .Records }}
+                    {{ $record := . }}
+                    <details class="plugin-resource-record">
+                      <summary>{{ .Key }}</summary>
+                      <form class="stacked-form plugin-resource-form"
+                            method="post"
+                            action="/admin/plugins/{{ $plugin.Manifest.ID }}/resource-save?return=detail">
+                        <input type="hidden" name="resource_id" value="{{ $resource.Module.ID }}" />
+                        <input type="hidden" name="original_key" value="{{ .Key }}" />
+                        <input type="hidden" name="record_key" value="{{ .Key }}" />
+                        {{ range $resource.Module.Fields }}
+                          <label>
+                            <span>{{ .Name }}{{ if .Required }} <small>required</small>{{ end }}</span>
+                            {{ if eq .Type "textarea" }}
+                              <textarea name="resource_{{ .ID }}"
+                                        {{ if .Required }}required{{ end }}>{{ index $record.Values .ID }}</textarea>
+                            {{ else }}
+                              <input type="text"
+                                     name="resource_{{ .ID }}"
+                                     value="{{ index $record.Values .ID }}"
+                                     {{ if .Required }}required{{ end }} />
+                            {{ end }}
+                          </label>
+                        {{ end }}
+                        <div class="settings-actions plugin-resource-actions">
+                          <button class="button primary" type="submit">Save</button>
+                          <button class="button danger"
+                                  type="submit"
+                                  formaction="/admin/plugins/{{ $plugin.Manifest.ID }}/resource-delete?return=detail"
+                                  data-confirm="Delete {{ .Key }}?"
+                                  data-confirm-label="Delete">Delete</button>
+                        </div>
+                      </form>
+                    </details>
+                  {{ else }}
+                    <p class="settings-note">No records yet.</p>
+                  {{ end }}
+                </div>
+              </div>
+            {{ end }}
+          </section>
+        {{ end }}
         <details class="plugin-detail-section plugin-technical">
           <summary>Technical details</summary>
           <div class="plugin-technical-body">

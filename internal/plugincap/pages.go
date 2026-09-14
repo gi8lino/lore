@@ -49,6 +49,15 @@ func (p Pages) GetPage(ctx context.Context, slug string) (pluginapi.Page, error)
 	return pageValue(page), err
 }
 
+// Content returns authorized stored Markdown without exposing internal domain values.
+func (p Pages) Content(ctx context.Context, slug string) (pluginapi.PageContent, error) {
+	page, err := p.Source.GetPage(ctx, slug)
+	if err != nil {
+		return pluginapi.PageContent{}, err
+	}
+	return pluginapi.PageContent{Slug: page.Slug, Markdown: page.Markdown}, nil
+}
+
 // pageValue converts an internal page record into its public plugin representation.
 func pageValue(page domain.Page) pluginapi.Page {
 	result := pluginapi.Page{
@@ -105,6 +114,13 @@ func Capabilities(source Source, nodes []pluginapi.NavigationNode) map[string]pl
 				return nil, errors.New("invalid page reference")
 			}
 			return pages.GetPage(ctx, request.Slug)
+		}
+		result["pages.content"] = func(ctx context.Context, data json.RawMessage) (any, error) {
+			var request pluginapi.PageRef
+			if err := json.Unmarshal(data, &request); err != nil || !validPageRef(request) {
+				return nil, errors.New("invalid page reference")
+			}
+			return pages.Content(ctx, request.Slug)
 		}
 		result["pages.search"] = func(ctx context.Context, data json.RawMessage) (any, error) {
 			var request pluginapi.PageQuery

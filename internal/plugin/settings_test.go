@@ -3,6 +3,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"strings"
 	"sync"
 	"testing"
 
@@ -23,10 +24,30 @@ func (s *settingsStorage) ReadPluginValue(_ context.Context, id, namespace, key 
 	return bytes.Clone(value), ok, nil
 }
 
+func (s *settingsStorage) ListPluginValues(_ context.Context, id, namespace, prefix string) (map[string][]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := make(map[string][]byte)
+	wanted := id + "/" + namespace + "/" + prefix
+	for key, value := range s.values {
+		if strings.HasPrefix(key, wanted) {
+			result[strings.TrimPrefix(key, id+"/"+namespace+"/")] = bytes.Clone(value)
+		}
+	}
+	return result, nil
+}
+
 func (s *settingsStorage) WritePluginValue(_ context.Context, id, namespace, key string, value []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.values[id+"/"+namespace+"/"+key] = bytes.Clone(value)
+	return nil
+}
+
+func (s *settingsStorage) DeletePluginValue(_ context.Context, id, namespace, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.values, id+"/"+namespace+"/"+key)
 	return nil
 }
 
