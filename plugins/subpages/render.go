@@ -1,4 +1,4 @@
-package subpages
+package main
 
 import (
 	_ "embed"

@@ -1,5 +1,5 @@
-// Package subpages parses and renders the configurable {{subpages}} page function.
-package subpages
+// Package main implements the Subpages plugin.
+package main
 
 import (
 	"strconv"

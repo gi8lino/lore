@@ -1,4 +1,4 @@
-package pagereport
+package main
 
 import (
 	"testing"

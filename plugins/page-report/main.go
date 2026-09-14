@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/gi8lino/lore/pluginapi"
-	feature "github.com/gi8lino/lore/plugins/features/pagereport"
 )
 
 // main runs the package entry point.
@@ -32,15 +31,15 @@ func (pages) GetPage(_ context.Context, slug string) (pluginapi.Page, error) {
 // transform parses or renders one page-report macro request.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	if request.Stage == "parse" {
-		options, matched := feature.Parse(request.Source)
+		options, matched := Parse(request.Source)
 		data, _ := json.Marshal(options)
 		return pluginapi.RenderResult{Matched: matched, Invocation: data}
 	}
-	var options feature.Options
+	var options Options
 	if err := json.Unmarshal(request.Invocation, &options); err != nil {
 		return pluginapi.RenderResult{Error: err.Error()}
 	}
-	html, err := feature.NewRenderer(context.Background(), pages{})(options)
+	html, err := NewRenderer(context.Background(), pages{})(options)
 	if err != nil {
 		return pluginapi.RenderResult{Error: err.Error()}
 	}

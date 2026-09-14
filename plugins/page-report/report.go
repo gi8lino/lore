@@ -1,9 +1,10 @@
-// Package pagereport parses and renders dynamic page-query reports.
-package pagereport
+// Package main implements the Page Report plugin.
+package main
 
 import (
 	"cmp"
 	"context"
+	_ "embed"
 	"fmt"
 	"html/template"
 	"slices"
@@ -354,9 +355,12 @@ type rowData struct {
 	Cells []string
 }
 
-var reportTemplate = template.Must(template.New("page-report").Parse(`{{ define "table" }}<div class="lore-page-report lore-table-scroll"><table class="lore-page-report-table"><thead><tr>{{ range .Columns }}<th>{{ .Label }}</th>{{ end }}</tr></thead><tbody>{{ range .Rows }}<tr>{{ $slug := .Slug }}{{ range $index, $cell := .Cells }}<td>{{ if eq $index 0 }}<a href="/pages/{{ $slug }}">{{ $cell }}</a>{{ else }}{{ $cell }}{{ end }}</td>{{ end }}</tr>{{ else }}<tr><td colspan="{{ len .Columns }}"><span class="muted">No pages match this query.</span></td></tr>{{ end }}</tbody></table></div>{{ end }}
-{{ define "list" }}<div class="lore-page-report"><ul class="lore-page-report-list">{{ range .Rows }}<li><a href="/pages/{{ .Slug }}">{{ index .Cells 0 }}</a>{{ range $index, $cell := .Cells }}{{ if gt $index 0 }}<span>{{ $cell }}</span>{{ end }}{{ end }}</li>{{ else }}<li class="muted">No pages match this query.</li>{{ end }}</ul></div>{{ end }}
-{{ define "cards" }}<div class="lore-page-report lore-page-report-cards">{{ range .Rows }}<a class="lore-page-report-card" href="/pages/{{ .Slug }}"><strong>{{ index .Cells 0 }}</strong>{{ range $index, $cell := .Cells }}{{ if gt $index 0 }}<span>{{ $cell }}</span>{{ end }}{{ end }}</a>{{ else }}<p class="muted">No pages match this query.</p>{{ end }}</div>{{ end }}`))
+//go:embed template.gohtml
+var templateSource string
+
+var reportTemplate = template.Must(
+	template.New("page-report").Parse(templateSource),
+)
 
 // render executes the selected report presentation for the resolved pages.
 func render(options Options, pages []pluginapi.Page) (string, error) {
