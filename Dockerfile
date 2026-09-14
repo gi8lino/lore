@@ -35,7 +35,7 @@ ARG COMMIT=none
 ARG LDFLAGS="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}"
 
 # Copy the Go source and templates.
-COPY cmd/ cmd/
+COPY cmd/lore/ cmd/lore/
 COPY internal/ internal/
 COPY pluginapi/ pluginapi/
 COPY scripts/generate-icons/ scripts/generate-icons/
@@ -54,7 +54,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
   -ldflags="$LDFLAGS" \
   -a \
   -o lore \
-  cmd/main.go
+  cmd/lore/main.go
 
 # Create writable runtime directories owned by the root group.
 # The setgid bit keeps new files/directories in group 0, which supports

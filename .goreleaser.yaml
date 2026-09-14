@@ -9,7 +9,7 @@ before:
 
 builds:
   - id: lore
-    main: ./cmd
+    main: ./cmd/lore/
     binary: lore
     env: [CGO_ENABLED=0]
     goos: [linux, darwin]
