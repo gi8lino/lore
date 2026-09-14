@@ -27,7 +27,7 @@ func testArchive(t *testing.T, manifest string, extras ...archiveEntry) []byte {
 	t.Helper()
 	var buffer bytes.Buffer
 	archive := zip.NewWriter(&buffer)
-	entries := append([]archiveEntry{{"plugin.yaml", []byte(manifest), 0644}, {"plugin.wasm", []byte{0, 'a', 's', 'm', 1, 0, 0, 0}, 0644}}, extras...)
+	entries := append([]archiveEntry{{"README.md", []byte("# Test\n"), 0644}, {"plugin.yaml", []byte(manifest), 0644}, {"plugin.wasm", []byte{0, 'a', 's', 'm', 1, 0, 0, 0}, 0644}}, extras...)
 	for _, entry := range entries {
 		header := &zip.FileHeader{Name: entry.name, Method: zip.Deflate}
 		header.SetMode(entry.mode)
@@ -56,6 +56,7 @@ func TestPackageReadAndDefensiveCopies(t *testing.T) {
 	pkg, err := Read(data)
 	require.NoError(t, err)
 	assert.Equal(t, "io.example.test", pkg.Manifest().ID)
+	assert.Equal(t, "# Test\n", pkg.README())
 	assert.Equal(t, []string{"plugin.css"}, pkg.AssetNames())
 	content, err := pkg.Asset("plugin.css")
 	require.NoError(t, err)
@@ -195,6 +196,39 @@ permissions: []
 	assert.Equal(t, "grammar", pkg.Manifest().Modules[1].Requires[0])
 	for _, invalid := range []string{strings.ReplaceAll(manifest, "syntax: tables", "syntax: unknown"), strings.ReplaceAll(manifest, "[grammar]", "[absent]"), strings.ReplaceAll(manifest, "[grammar]", "[colors]")} {
 		_, err = Read(testArchive(t, invalid))
+		require.Error(t, err)
+	}
+}
+
+func TestContentStyleAndRenderPolicyModules(t *testing.T) {
+	manifest := `api_version: 1
+id: io.example.typography
+name: Typography
+version: 1.0.0
+modules:
+  - type: content-style
+    id: typography
+    css: plugin.css
+  - type: render-policy
+    id: operators
+    policy: coding-ligatures
+  - type: settings
+    id: enabled
+    name: Extra typography
+    description: Enable optional typography behavior.
+permissions: []
+`
+	pkg, err := Read(testArchive(t, manifest, archiveEntry{"assets/plugin.css", []byte(".prose{}"), 0644}))
+	require.NoError(t, err)
+	assert.Equal(t, "coding-ligatures", pkg.Manifest().Modules[1].Policy)
+	assert.Equal(t, "Enable optional typography behavior.", pkg.Manifest().Modules[2].Description)
+
+	for _, invalid := range []string{
+		strings.ReplaceAll(manifest, "policy: coding-ligatures", "policy: unknown"),
+		strings.ReplaceAll(manifest, "css: plugin.css", "css: ../plugin.css"),
+		strings.ReplaceAll(manifest, "type: content-style", "type: renderer-extension\n    stage: preprocess"),
+	} {
+		_, err := Read(testArchive(t, invalid, archiveEntry{"assets/plugin.css", []byte(".prose{}"), 0644}))
 		require.Error(t, err)
 	}
 }

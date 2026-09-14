@@ -31,6 +31,16 @@ func PresentationStyles(manager *plugin.Manager) string {
 		}
 		output.WriteString(scopedColors(module.PluginID, string(data)))
 	}
+	for _, module := range manager.ContentStyles() {
+		if module.CSS == "" {
+			continue
+		}
+		data, err := manager.ContentStyleAsset(module.PluginID, module.Digest, module.CSS)
+		if err != nil || len(data) > 256<<10 {
+			continue
+		}
+		output.WriteString(scopedContentStyles(string(data)))
+	}
 	return output.String()
 }
 
@@ -96,6 +106,79 @@ func safeColor(value string) bool {
 		switch match[1] {
 		case "var", "color-mix", "rgb", "rgba", "hsl", "hsla":
 		default:
+			return false
+		}
+	}
+	return true
+}
+
+// scopedContentStyles returns safe typography rules rooted in rendered page content.
+func scopedContentStyles(source string) string {
+	sheet, err := parser.Parse(source)
+	if err != nil {
+		return ""
+	}
+
+	var output strings.Builder
+	for _, rule := range sheet.Rules {
+		if rule.Kind != css.QualifiedRule {
+			continue
+		}
+
+		selectors := make([]string, 0, len(rule.Selectors))
+		for _, selector := range rule.Selectors {
+			selector = strings.TrimSpace(selector)
+			if safeContentSelector(selector) {
+				selectors = append(selectors, selector)
+			}
+		}
+		if len(selectors) == 0 {
+			continue
+		}
+
+		declarations := make([]string, 0, len(rule.Declarations))
+		for _, declaration := range rule.Declarations {
+			if !contentStyleProperty(declaration.Property) || !safeTypographyValue(declaration.Value) {
+				continue
+			}
+			declarations = append(declarations, declaration.Property+":"+declaration.Value+";")
+		}
+		if len(declarations) != 0 {
+			output.WriteString(strings.Join(selectors, ",") + "{" + strings.Join(declarations, "") + "}\n")
+		}
+	}
+
+	return output.String()
+}
+
+// safeContentSelector limits parent-document plugin CSS to rendered prose typography.
+func safeContentSelector(selector string) bool {
+	switch selector {
+	case ".prose", ".prose code", ".prose pre":
+		return true
+	default:
+		return false
+	}
+}
+
+// contentStyleProperty reports whether a property may affect rendered-content typography.
+func contentStyleProperty(property string) bool {
+	switch property {
+	case "font-family", "font-feature-settings", "font-variant-ligatures":
+		return true
+	default:
+		return false
+	}
+}
+
+// safeTypographyValue rejects CSS constructs that can load resources or escape a declaration.
+func safeTypographyValue(value string) bool {
+	if len(value) == 0 || len(value) > 512 {
+		return false
+	}
+	lower := strings.ToLower(value)
+	for _, forbidden := range []string{"url(", "expression(", "@", "{", "}", ";", "<", ">", "\\"} {
+		if strings.Contains(lower, forbidden) {
 			return false
 		}
 	}

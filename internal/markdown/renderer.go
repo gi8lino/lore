@@ -249,7 +249,8 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	functions.Context = execution
 	snapshot, release := r.registry.Acquire()
 	defer release()
-	options.pipeline = newRenderPipeline(snapshot, options, functions)
+	options.CodingLigatures = options.CodingLigatures || snapshot.HasRenderPolicy("coding-ligatures")
+	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(
 			source,

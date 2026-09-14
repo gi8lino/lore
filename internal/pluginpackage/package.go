@@ -26,12 +26,15 @@ const (
 	MaxWASMBytes     = 16 << 20
 	MaxAssetBytes    = 8 << 20
 	MaxManifestBytes = 64 << 10
+	MaxREADMEBytes   = 256 << 10
 	MaxFiles         = 256
 )
 
 // Manifest is the complete v1 package manifest. Unknown fields and unsupported
 // modules or permissions are rejected rather than silently ignored.
 type Manifest struct {
+	// Provider is self-declared package author metadata, not a trust grant.
+	Provider string `yaml:"provider,omitempty"`
 	// APIVersion selects the manifest and runtime contract version.
 	APIVersion int `yaml:"api_version"`
 	// ID is the globally unique plugin identifier.
@@ -62,6 +65,8 @@ type Module struct {
 	Stage string `yaml:"stage,omitempty"`
 	// Name is the human-readable name.
 	Name string `yaml:"name,omitempty"`
+	// Description explains the module to administrators when applicable.
+	Description string `yaml:"description,omitempty"`
 	// Capability names a render-scope capability required by the module.
 	Capability string `yaml:"capability,omitempty"`
 	// JavaScript names the browser module JavaScript asset.
@@ -70,8 +75,10 @@ type Module struct {
 	Syntax string `yaml:"syntax,omitempty"`
 	// Requires names prerequisite modules within this package.
 	Requires []string `yaml:"requires,omitempty"`
-	// CSS names the optional browser module stylesheet asset.
+	// CSS names the stylesheet asset used by browser or content-style modules.
 	CSS string `yaml:"css,omitempty"`
+	// Policy selects a host rendering policy for render-policy modules.
+	Policy string `yaml:"policy,omitempty"`
 }
 
 // Package exposes copies of validated content so callers cannot mutate the
@@ -83,6 +90,8 @@ type Package struct {
 	wasm []byte
 	// assets indexes validated package assets by archive-relative path.
 	assets map[string][]byte
+	// readme contains the package documentation rendered by the administration UI.
+	readme []byte
 	// digest is the SHA-256 digest of the original package archive.
 	digest [32]byte
 }
@@ -101,6 +110,9 @@ func (p *Package) Manifest() Manifest {
 
 // WASM returns a copy of the validated guest module bytes.
 func (p *Package) WASM() []byte { return bytes.Clone(p.wasm) }
+
+// README returns the validated package documentation.
+func (p *Package) README() string { return string(p.readme) }
 
 // Digest returns the package content digest.
 func (p *Package) Digest() [32]byte { return p.digest }
@@ -188,6 +200,11 @@ func read(data []byte) (*Package, error) {
 		return nil, errors.New("missing or invalid plugin.wasm")
 	}
 
+	readme := files["README.md"]
+	if len(bytes.TrimSpace(readme)) == 0 {
+		return nil, errors.New("missing or empty README.md")
+	}
+
 	assets := make(map[string][]byte)
 	for name, content := range files {
 		if asset, ok := strings.CutPrefix(name, "assets/"); ok {
@@ -205,7 +222,7 @@ func read(data []byte) (*Package, error) {
 		}
 	}
 
-	return &Package{manifest: manifest, wasm: wasm, assets: assets, digest: sha256.Sum256(data)}, nil
+	return &Package{manifest: manifest, wasm: wasm, assets: assets, readme: bytes.Clone(readme), digest: sha256.Sum256(data)}, nil
 }
 
 // hasWASMHeader reports whether data starts with the WebAssembly magic and version bytes.
@@ -224,6 +241,8 @@ func entryLimit(name string) (int, error) {
 	switch {
 	case name == "plugin.yaml":
 		return MaxManifestBytes, nil
+	case name == "README.md":
+		return MaxREADMEBytes, nil
 	case name == "plugin.wasm":
 		return MaxWASMBytes, nil
 	case strings.HasPrefix(name, "assets/"):
@@ -283,6 +302,9 @@ func (m Manifest) Validate() error {
 	}
 	if !validPluginIdentity(m) {
 		return errors.New("invalid plugin identity or version")
+	}
+	if len(m.Provider) > 128 {
+		return errors.New("plugin provider is too long")
 	}
 	if len(m.Description) > 4096 {
 		return errors.New("plugin description is too long")
@@ -349,6 +371,10 @@ func validModule(m Module) bool {
 		return validMarkdownSyntaxModule(m)
 	case "settings":
 		return validSettingsModule(m)
+	case "content-style":
+		return validContentStyleModule(m)
+	case "render-policy":
+		return validRenderPolicyModule(m)
 	case "browser-module":
 		return validBrowserModule(m)
 	case "renderer-extension":
@@ -362,10 +388,19 @@ func validModule(m Module) bool {
 
 // validModuleFields rejects fields that are only meaningful for another module type.
 func validModuleFields(m Module) bool {
-	if m.Type != "browser-module" && (m.JavaScript != "" || m.CSS != "") {
+	if m.Type != "browser-module" && m.JavaScript != "" {
+		return false
+	}
+	if m.Type != "browser-module" && m.Type != "content-style" && m.CSS != "" {
 		return false
 	}
 	if m.Type != "markdown-syntax" && m.Syntax != "" {
+		return false
+	}
+	if m.Type != "render-policy" && m.Policy != "" {
+		return false
+	}
+	if m.Type != "settings" && m.Description != "" {
 		return false
 	}
 	return m.Type == "settings" || len(m.Requires) == 0
@@ -378,7 +413,18 @@ func validMarkdownSyntaxModule(m Module) bool {
 
 // validSettingsModule validates fields specific to a settings declaration.
 func validSettingsModule(m Module) bool {
-	return m.Stage == "" && m.Capability == "" && len(m.Name) > 0 && len(m.Name) <= 128
+	return m.Stage == "" && m.Capability == "" && len(m.Name) > 0 && len(m.Name) <= 128 && len(m.Description) <= 1024
+}
+
+// validContentStyleModule validates a stylesheet scoped to rendered page content.
+func validContentStyleModule(m Module) bool {
+	return m.Stage == "" && m.Name == "" && m.Capability == "" &&
+		validPath(m.CSS) && strings.HasSuffix(m.CSS, ".css")
+}
+
+// validRenderPolicyModule validates a host rendering-policy contribution.
+func validRenderPolicyModule(m Module) bool {
+	return m.Stage == "" && m.Name == "" && m.Capability == "" && pluginapi.ValidRenderPolicy(m.Policy)
 }
 
 // validBrowserModule validates fields specific to an isolated browser module.

@@ -44,11 +44,11 @@ type macroInvocation struct {
 }
 
 // newRenderPipeline binds one leased plugin snapshot to request-local rendering state.
-func newRenderPipeline(snapshot plugin.Snapshot, options Options, functions Functions) *renderPipeline {
+func newRenderPipeline(snapshot plugin.Snapshot, features map[string]bool, functions Functions) *renderPipeline {
 	capabilities := plugincap.Capabilities(nil, nil)
 	maps.Copy(capabilities, functions.Capabilities)
 
-	return &renderPipeline{context: functions.Context, capabilities: capabilities, snapshot: snapshot, features: moduleFeatures(options), macros: maps.Clone(functions.Macros)}
+	return &renderPipeline{context: functions.Context, capabilities: capabilities, snapshot: snapshot, features: maps.Clone(features), macros: maps.Clone(functions.Macros)}
 }
 
 // moduleContext builds the request-local context passed to plugin contributions.

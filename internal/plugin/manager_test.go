@@ -95,3 +95,44 @@ func TestInstallCannotReplaceAnotherRegistryOwner(t *testing.T) {
 	assert.Equal(t, "Existing", registry.Snapshot().Entries[0].Descriptor.Name)
 	require.NoError(t, manager.Close(context.Background()))
 }
+
+func TestRequiredPluginsAreOperatorPolicy(t *testing.T) {
+	ctx := context.Background()
+	archive, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	require.NoError(t, err)
+	runtime := &fakeRuntime{instance: &fakeInstance{}}
+	manager := plugin.NewManager(&plugin.Registry{}, runtime, plugin.WithRequiredPlugins("io.lore.callouts"))
+	require.NoError(t, manager.Bootstrap(ctx, [][]byte{archive}))
+	assert.True(t, manager.IsRequired("io.lore.callouts"))
+	require.Error(t, manager.Disable(ctx, "io.lore.callouts"))
+	require.Error(t, manager.Uninstall(ctx, "io.lore.callouts"))
+	require.Error(t, manager.Unload(ctx, "io.lore.callouts"))
+	assert.True(t, manager.Plugins()[0].Enabled)
+	require.NoError(t, manager.Close(ctx))
+}
+
+type disabledPolicyStore struct{}
+
+func (disabledPolicyStore) ListPlugins(context.Context) ([]plugin.Record, error) {
+	return []plugin.Record{{ID: "io.lore.callouts", Source: plugin.SourceBundled, Enabled: false}}, nil
+}
+func (disabledPolicyStore) SavePlugin(context.Context, plugin.Record) error {
+	return errors.New("unexpected policy write")
+}
+func (disabledPolicyStore) DeletePlugin(context.Context, string) error {
+	return errors.New("unexpected policy delete")
+}
+
+func TestRequiredPolicyOverridesDisabledBootstrapRecord(t *testing.T) {
+	ctx := context.Background()
+	archive, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	require.NoError(t, err)
+	runtime := &fakeRuntime{instance: &fakeInstance{}}
+	manager := plugin.NewManager(&plugin.Registry{}, runtime, plugin.WithStore(disabledPolicyStore{}), plugin.WithRequiredPlugins("io.lore.callouts"))
+	require.NoError(t, manager.Bootstrap(ctx, [][]byte{archive}))
+	assert.True(t, manager.Plugins()[0].Enabled)
+	require.NoError(t, manager.Close(ctx))
+	missing := plugin.NewManager(&plugin.Registry{}, &fakeRuntime{}, plugin.WithRequiredPlugins("missing"))
+	require.ErrorContains(t, missing.Bootstrap(ctx, nil), "required plugin missing is missing")
+	require.NoError(t, missing.Close(ctx))
+}

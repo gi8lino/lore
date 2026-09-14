@@ -111,6 +111,23 @@ type SettingsModule struct {
 	Requires []string
 }
 
+// ContentStyle declares a stylesheet that core may expose to rendered page
+// content after applying its parent-document CSS safety filter.
+type ContentStyle struct {
+	// ID identifies the contribution within its plugin.
+	ID string
+	// CSS is the validated package-relative stylesheet asset path.
+	CSS string
+}
+
+// RenderPolicy declares one host rendering behavior requested by an active plugin.
+type RenderPolicy struct {
+	// ID identifies the contribution within its plugin.
+	ID string
+	// Policy is the versioned host policy name.
+	Policy string
+}
+
 // Contributions is registered and removed atomically under its owner's ID.
 // Order within a stage is registration order, then slice order.
 type Contributions struct {
@@ -128,6 +145,10 @@ type Contributions struct {
 	EditorExtensions []EditorExtension
 	// SettingsModules declares settings integrations owned by the plugin.
 	SettingsModules []SettingsModule
+	// ContentStyles declares safe parent-document styles owned by the plugin.
+	ContentStyles []ContentStyle
+	// RenderPolicies declares host rendering behavior owned by the plugin.
+	RenderPolicies []RenderPolicy
 }
 
 // BindMacro adapts a typed, request-scoped renderer to serialized arguments.

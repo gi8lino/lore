@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 
@@ -40,6 +41,10 @@ type LoadedPlugin struct {
 	Enabled bool
 	// Manifest is the validated package manifest for this plugin.
 	Manifest pluginpackage.Manifest
+	// README is the package documentation rendered on the administration detail page.
+	README string
+	// Settings contains persisted boolean settings keyed by settings-module ID.
+	Settings map[string]bool
 	// Source records whether the package is bundled or installed.
 	Source Source
 	// Digest stores the content digest used for identity and caching.
@@ -59,6 +64,7 @@ type managedPlugin struct {
 // Manager coordinates package validation, runtime ownership, and atomic registry
 // publication. Durable lifecycle state is provided by a small store interface.
 type Manager struct {
+	required map[string]bool
 	// mu protects concurrent access to the receiver state.
 	mu sync.Mutex
 	// registry owns the currently published plugin contributions.
@@ -73,6 +79,8 @@ type Manager struct {
 	closed bool
 	// store provides persistent plugin state storage.
 	store Store
+	// values provides namespaced persistent settings and data storage.
+	values Storage
 	// bundled stores embedded package bytes by plugin ID for fallback and overrides.
 	bundled map[string][]byte
 	// retirements tracks instances waiting for active render leases to drain.
@@ -123,7 +131,12 @@ func (m *Manager) Load(ctx context.Context, archive []byte, source Source) (Load
 		return LoadedPlugin{}, err
 	}
 
-	metadata := LoadedPlugin{Manifest: manifest, Source: source, Digest: pkg.Digest(), Enabled: true}
+	settings, err := m.loadSettings(ctx, manifest)
+	if err != nil {
+		_ = instance.Close(context.Background())
+		return LoadedPlugin{}, err
+	}
+	metadata := LoadedPlugin{Manifest: manifest, README: pkg.README(), Settings: settings, Source: source, Digest: pkg.Digest(), Enabled: true}
 	m.loaded[manifest.ID] = managedPlugin{metadata: metadata, instance: instance, archive: append([]byte(nil), archive...)}
 	m.order = append(m.order, manifest.ID)
 	if source == SourceBundled {
@@ -139,6 +152,9 @@ func (m *Manager) Unload(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.required[id] {
+		return errors.New("required system plugin cannot be unloaded")
+	}
 	return m.unload(ctx, id)
 }
 
@@ -188,6 +204,7 @@ func cloneLoaded(metadata LoadedPlugin) LoadedPlugin {
 	}
 	metadata.Manifest.Requires = append([]string(nil), metadata.Manifest.Requires...)
 	metadata.Manifest.Permissions = append([]string(nil), metadata.Manifest.Permissions...)
+	metadata.Settings = maps.Clone(metadata.Settings)
 
 	return metadata
 }

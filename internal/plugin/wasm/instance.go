@@ -46,6 +46,14 @@ func (i *Instance) Contributions() plugin.Contributions {
 			result.SettingsModules = append(result.SettingsModules, plugin.SettingsModule{ID: module.ID, Name: module.Name, Requires: module.Requires})
 			continue
 		}
+		if module.Type == "content-style" {
+			result.ContentStyles = append(result.ContentStyles, plugin.ContentStyle{ID: module.ID, CSS: module.CSS})
+			continue
+		}
+		if module.Type == "render-policy" {
+			result.RenderPolicies = append(result.RenderPolicies, plugin.RenderPolicy{ID: module.ID, Policy: module.Policy})
+			continue
+		}
 		if module.Type == "browser-module" {
 			result.BrowserModules = append(result.BrowserModules, plugin.BrowserModule{ID: module.ID, JavaScript: module.JavaScript, CSS: module.CSS})
 			continue

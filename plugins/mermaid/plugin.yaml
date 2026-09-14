@@ -1,4 +1,5 @@
 api_version: 1
+provider: Lore
 id: io.lore.mermaid
 name: Mermaid
 version: 1.0.0

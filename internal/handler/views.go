@@ -43,6 +43,7 @@ var pageTemplateNames = []string{
 	"admin",
 	"admin_configuration",
 	"admin_rendering",
+	"admin_plugins",
 	"admin_health",
 	"admin_templates",
 	"admin_permissions",

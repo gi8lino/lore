@@ -52,3 +52,16 @@
     display: block !important;
   }
 }
+
+.plugin-metadata {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9rem) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+}
+.plugin-metadata dt {
+  font-weight: 600;
+}
+.plugin-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

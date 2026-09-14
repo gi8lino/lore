@@ -38,7 +38,11 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 			return fmt.Errorf("duplicate bundled plugin %s", id)
 		}
 		originals[id] = bytes.Clone(archive)
-		catalog[id] = managedPlugin{archive: originals[id], metadata: LoadedPlugin{Manifest: pkg.Manifest(), Source: SourceBundled, Digest: pkg.Digest(), Enabled: pkg.Manifest().DefaultEnabled}}
+		settings, err := m.loadSettings(ctx, pkg.Manifest())
+		if err != nil {
+			return err
+		}
+		catalog[id] = managedPlugin{archive: originals[id], metadata: LoadedPlugin{Manifest: pkg.Manifest(), README: pkg.README(), Settings: settings, Source: SourceBundled, Digest: pkg.Digest(), Enabled: pkg.Manifest().DefaultEnabled}}
 	}
 
 	seen := make(map[string]bool)
@@ -66,12 +70,24 @@ func (m *Manager) Bootstrap(ctx context.Context, archives [][]byte) error {
 			if pkg.Manifest().ID != record.ID {
 				return errors.New("stored plugin identity mismatch")
 			}
-			catalog[record.ID] = managedPlugin{archive: bytes.Clone(record.Package), metadata: LoadedPlugin{Manifest: pkg.Manifest(), Source: SourceInstalled, Digest: pkg.Digest(), Enabled: record.Enabled}}
+			settings, err := m.loadSettings(ctx, pkg.Manifest())
+			if err != nil {
+				return err
+			}
+			catalog[record.ID] = managedPlugin{archive: bytes.Clone(record.Package), metadata: LoadedPlugin{Manifest: pkg.Manifest(), README: pkg.README(), Settings: settings, Source: SourceInstalled, Digest: pkg.Digest(), Enabled: record.Enabled}}
 		default:
 			return errors.New("invalid stored plugin source")
 		}
 	}
 
+	for id := range m.required {
+		item, ok := catalog[id]
+		if !ok {
+			return fmt.Errorf("required plugin %s is missing", id)
+		}
+		item.metadata.Enabled = true
+		catalog[id] = item
+	}
 	order, err := dependencyOrder(catalog)
 	if err != nil {
 		return err

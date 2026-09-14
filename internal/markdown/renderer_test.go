@@ -1,10 +1,12 @@
 package markdown
 
 import (
-	"github.com/gi8lino/lore/internal/plugincap"
-	"github.com/gi8lino/lore/pluginapi"
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/gi8lino/lore/internal/plugincap"
+	"github.com/gi8lino/lore/pluginapi"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -365,9 +367,13 @@ func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
-	options := DefaultOptions()
-	options.TableSorting = false
-	options.TableFiltering = false
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.UpdateSettings(context.Background(), "io.lore.tables", map[string]bool{
+		"styles":    true,
+		"sorting":   false,
+		"filtering": false,
+	}))
 
 	source := `| Service | Replicas |
 | --- | ---: |
@@ -376,7 +382,7 @@ func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 {table sortable filterable}
 `
 
-	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
+	got, err := renderer.Render(source)
 
 	require.NoError(t, err)
 	assert.Contains(t, got, `{table sortable filterable}`)
@@ -413,24 +419,40 @@ func TestRenderingOptionsDisableExtensions(t *testing.T) {
 	options := DefaultOptions()
 	options.WikiLinks = false
 	options.Callouts = false
-	options.TableStyles = false
 
 	source := `[[Runbook]]
 
 !!! warning
 Do not restart.
-
-| A | B |
-| --- | --- |
-| one | two |
-
-{table header=accent}
 `
 	got, err := renderer.RenderResolvedWithOptions(source, Slug, options)
 
 	require.NoError(t, err)
 	assert.NotContains(t, got, `href="/pages/runbook"`)
 	assert.NotContains(t, got, `class="callout`)
+}
+
+func TestPluginSettingsDisableTableStyles(t *testing.T) {
+	t.Parallel()
+
+	renderer := testRenderer(t)
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.UpdateSettings(context.Background(), "io.lore.tables", map[string]bool{
+		"styles":    false,
+		"sorting":   true,
+		"filtering": true,
+	}))
+
+	source := `| A | B |
+| --- | --- |
+| one | two |
+
+{table header=accent}
+`
+	got, err := renderer.Render(source)
+
+	require.NoError(t, err)
 	assert.Contains(t, got, `{table header=accent}`)
 	assert.NotContains(t, got, `table-tone-accent`)
 }

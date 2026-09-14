@@ -100,7 +100,7 @@ func PluginBrowserRuntime(appFS fs.FS) http.HandlerFunc {
 	}
 }
 
-// PluginPresentationStyles serves core-filtered, scoped colors for HTML fallbacks.
+// PluginPresentationStyles serves core-filtered plugin presentation styles for rendered content.
 func PluginPresentationStyles(manager *plugin.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")

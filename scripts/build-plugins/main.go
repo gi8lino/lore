@@ -93,7 +93,11 @@ func buildPackage(directory string) error {
 		return fmt.Errorf("build %s: %w\n%s", directory, err, output)
 	}
 
-	files := map[string]string{"plugin.yaml": filepath.Join(directory, "plugin.yaml"), "plugin.wasm": filepath.Join(temporary, "plugin.wasm")}
+	files := map[string]string{
+		"README.md":   filepath.Join(directory, "README.md"),
+		"plugin.yaml": filepath.Join(directory, "plugin.yaml"),
+		"plugin.wasm": filepath.Join(temporary, "plugin.wasm"),
+	}
 	assets := filepath.Join(directory, "assets")
 	if _, err := os.Stat(assets); err == nil {
 		if err := filepath.WalkDir(assets, func(path string, entry fs.DirEntry, err error) error {

@@ -94,13 +94,21 @@ func (m *Manager) Install(ctx context.Context, archive []byte) (LoadedPlugin, er
 
 // prepare validates and instantiates a package before any durable or registry change.
 func (m *Manager) prepare(ctx context.Context, pkg *pluginpackage.Package, archive []byte, source Source, enabled bool) (managedPlugin, error) {
+	if m.required[pkg.Manifest().ID] {
+		enabled = true
+	}
 	// Even disabled upgrades validate executable compatibility before persistence.
 	instance, err := m.runtime.Load(ctx, pkg)
 	if err != nil {
 		return managedPlugin{}, err
 	}
+	settings, err := m.loadSettings(ctx, pkg.Manifest())
+	if err != nil {
+		_ = instance.Close(context.Background())
+		return managedPlugin{}, err
+	}
 
-	item := managedPlugin{metadata: LoadedPlugin{Manifest: pkg.Manifest(), Source: source, Digest: pkg.Digest(), Enabled: enabled}, archive: append([]byte(nil), archive...), instance: instance}
+	item := managedPlugin{metadata: LoadedPlugin{Manifest: pkg.Manifest(), README: pkg.README(), Settings: settings, Source: source, Digest: pkg.Digest(), Enabled: enabled}, archive: append([]byte(nil), archive...), instance: instance}
 	if !enabled {
 		if err := instance.Close(ctx); err != nil {
 			return managedPlugin{}, err
@@ -174,6 +182,10 @@ func (m *Manager) Disable(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.required[id] {
+		return errors.New("required system plugin cannot be disabled or uninstalled")
+	}
+
 	item, err := m.find(id)
 	if err != nil {
 		return err
@@ -238,6 +250,10 @@ func (m *Manager) Uninstall(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if m.required[id] {
+		return errors.New("required system plugin cannot be disabled or uninstalled")
+	}
+
 	item, err := m.find(id)
 	if err != nil {
 		return err
@@ -267,7 +283,11 @@ func (m *Manager) Uninstall(ctx context.Context, id string) error {
 		if err != nil {
 			return err
 		}
-		m.loaded[id] = managedPlugin{archive: archive, metadata: LoadedPlugin{Manifest: pkg.Manifest(), Source: SourceBundled, Digest: pkg.Digest()}}
+		settings, err := m.loadSettings(ctx, pkg.Manifest())
+		if err != nil {
+			return err
+		}
+		m.loaded[id] = managedPlugin{archive: archive, metadata: LoadedPlugin{Manifest: pkg.Manifest(), README: pkg.README(), Settings: settings, Source: SourceBundled, Digest: pkg.Digest()}}
 	}
 	if _, bundled := m.bundled[id]; !bundled {
 		m.order = slices.DeleteFunc(m.order, func(value string) bool { return value == id })

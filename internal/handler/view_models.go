@@ -8,12 +8,25 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/gi8lino/lore/themes"
 )
 
 // ViewData contains the data shared by server-rendered Lore templates.
 type ViewData struct {
+	AdminPlugins   []plugin.LoadedPlugin
+	AdminPlugin    *plugin.LoadedPlugin
+	PluginMessage  string
+	PluginRequired bool
+	// PluginRequiredIDs identifies plugins protected by trusted operator policy.
+	PluginRequiredIDs map[string]bool
+	// PluginHasSettings reports whether the selected plugin exposes administrator settings.
+	PluginHasSettings bool
+	// PluginREADME contains sanitized documentation for the selected plugin.
+	PluginREADME template.HTML
+	// PluginFeatures contains enabled plugin and plugin-setting flags for browser UI decisions.
+	PluginFeatures map[string]bool
 	// Title is the page title displayed in the browser chrome.
 	Title string
 	// User is the authenticated user rendering the page.

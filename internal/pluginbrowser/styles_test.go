@@ -21,3 +21,25 @@ func TestPresentationStylesAreScopedColorsOnly(t *testing.T) {
 		assert.NotContains(t, result, forbidden)
 	}
 }
+
+func TestContentStylesAllowOnlyRenderedTypography(t *testing.T) {
+	result := scopedContentStyles(`
+.prose, .prose code, .admin-page {
+  font-family: "Fira Code", monospace;
+  font-variant-ligatures: contextual;
+  color: red;
+  background: url(https://evil.test/);
+}
+.prose pre { font-feature-settings: "calt" 1, "liga" 1; }
+`)
+
+	assert.Contains(t, result, `.prose`)
+	assert.Contains(t, result, `.prose code`)
+	assert.Contains(t, result, `.prose pre`)
+	assert.Contains(t, result, `font-family:`)
+	assert.Contains(t, result, `font-variant-ligatures:contextual;`)
+	assert.Contains(t, result, `font-feature-settings:`)
+	for _, forbidden := range []string{".admin-page", "color:red", "background", "url("} {
+		assert.NotContains(t, result, forbidden)
+	}
+}

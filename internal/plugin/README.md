@@ -7,20 +7,17 @@ Callers handle startup errors and close the renderer at the end of its scope.
 `markdown.NewWithRegistry` supports an explicitly owned registry.
 Server pages, preview, sharing, exports, and static builds use the same pipeline.
 
-Callouts is now a real bundled `.loreplugin`, compiled from the independent Go
-module in `plugins/callouts`. Its native implementation has been removed.
-Subpages and Page Report are also bundled WASM macro plugins. Their feature
-implementations live under `plugins/features` and import only public wire types;
-the old native implementations have been removed.
+Callouts, Subpages, Page Report, Mermaid, Tables, and Coding Ligatures are bundled `.loreplugin` packages built from independent Go modules under `plugins/`. Bundled and installed packages use the same package reader, manager, registry, runtime, permissions, settings, documentation, and asset paths.
 
 ## Packages and distribution
 
 A `.loreplugin` is a ZIP containing:
 
 ```text
+README.md
 plugin.yaml
 plugin.wasm
-assets/          # optional; not served or executed yet
+assets/          # optional package assets
 ```
 
 The versioned manifest declares identity, a numeric `major.minor.patch` version,
@@ -135,10 +132,7 @@ macros, then runs HTML postprocessors and the central sanitizer. Existing
 Tabs/Details ordering and macro-heading table-of-contents behavior are preserved.
 Browser contributions now run in isolated frames; editor and settings contributions remain metadata.
 
-Callouts' existing administrator preference is translated at the composition
-boundary. The runtime adapter honors a configured plugin feature flag generically;
-there is no switch on Callouts' ID in the runtime. Its existing CSS remains in
-Lore's frontend until browser assets are migrated.
+Plugin lifecycle and declarative settings now own plugin feature state. Core rendering settings only control built-in Markdown behavior; plugin settings are exposed and persisted through the generic plugin administration UI.
 
 Every output path, including WASM fragments and macros, goes through the core
 sanitizer. Plugins cannot mark HTML trusted or change the policy. A restricted,
@@ -183,11 +177,7 @@ not bound automatically. No network, user directory, general settings, SQL,
 filesystem, or process capability is available. The same grant rules apply to
 both distribution sources.
 
-Storage is keyed by plugin ID, namespace (`settings` or `data`), and key. IDs
-come from the runtime. Limits are 256-byte keys, 64 KiB per value, 1,024 keys and
-16 MiB total per plugin. A PostgreSQL transaction and per-plugin advisory lock
-make quota checks atomic. This storage survives runtime restarts. Plugin installation
-state is stored separately, and administration remains a later phase.
+Storage is keyed by plugin ID, namespace, and key. Guest calls can reach only the `settings` and `data` namespaces; declarative administrator settings use a separate core-owned `configuration` namespace. IDs come from the runtime. Limits are 256-byte keys, 64 KiB per value, 1,024 keys and 16 MiB total per plugin. A PostgreSQL transaction and per-plugin advisory lock make quota checks atomic. This storage survives runtime restarts. Plugin installation state is stored separately.
 
 See `pluginapi/README.md` for methods and wire contracts. Tests cover actual WASM
 macro parity between bundled and installed packages, authorization failures,
@@ -241,7 +231,7 @@ from the same manager, with the configured site origin/base path in CSP. Rebuild
 a static site to change its enabled plugins. Export/PDF documents remain
 script-free and preserve diagram source as their existing fallback. The legacy
 Mermaid rendering preference still controls whether blocks are marked; plugin
-lifecycle controls availability independently. Administration UI is Phase 7.
+lifecycle controls availability independently. Administration UI is described under Phase 7 below.
 
 ## Tables and public rendering declarations (Phase 6)
 
@@ -269,3 +259,22 @@ to browser plugins. Same-origin raster images have strict transfer limits.
 `/plugins/styles.css` emits only core-filtered, plugin-scoped color declarations
 from enabled packages. Arbitrary stylesheet rules stay in frames. This preserves
 fallback colors without letting community CSS modify Lore's surrounding UI.
+
+## Administration (Phase 7)
+
+`/admin/plugins` and plugin detail pages use the existing browser authentication
+and administrator authorization middleware. Bounded multipart uploads call the
+same manager methods as runtime callers; handlers neither extract files nor
+instantiate separate runtimes. Invalid packages, permission failures and lifecycle
+errors preserve existing state. Request handlers log successful lifecycle actions
+with actor and plugin IDs; internal failure details remain in server logs.
+
+The optional manifest `provider` is bounded, self-declared display metadata.
+`WithRequiredPlugins` is trusted operator policy, independent of source and
+permissions. Bootstrap enables required IDs (and rejects missing ones), and all
+public disable/remove/unload paths enforce the policy. Shutdown still closes
+required instances normally. No current bundled feature is required by default.
+
+The admin UI renders each package `README.md`, exposes enable/disable lifecycle controls, and renders declarative boolean `settings` modules with their names and descriptions. Settings are stored in a core-owned namespace and reach renderers as generic feature flags. A marketplace and arbitrary custom settings controls remain future work.
+
+

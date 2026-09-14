@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"context"
+	"maps"
 
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
@@ -26,6 +27,9 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 	managerOptions := []plugin.ManagerOption{}
 	if store != nil {
 		managerOptions = append(managerOptions, plugin.WithStore(store))
+		if values, ok := store.(plugin.Storage); ok {
+			managerOptions = append(managerOptions, plugin.WithStorage(values))
+		}
 	}
 	manager := plugin.NewManager(registry, runtime, managerOptions...)
 	if err := bundled.Load(ctx, manager); err != nil {
@@ -41,6 +45,15 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 // does not activate modules absent from the registry.
 func moduleFeatures(options Options) map[string]bool {
 	return map[string]bool{"io.lore.callouts": options.Callouts, "io.lore.mermaid": options.Mermaid, "io.lore.tables": options.Tables, "io.lore.tables.tables": options.Tables, "io.lore.tables.styles": options.TableStyles, "io.lore.tables.sorting": options.TableSorting, "io.lore.tables.filtering": options.TableFiltering}
+}
+
+// pluginFeatures overlays persisted plugin-owned settings on legacy request options.
+func (r *Renderer) pluginFeatures(options Options) map[string]bool {
+	features := moduleFeatures(options)
+	if r.manager != nil {
+		maps.Copy(features, r.manager.FeatureSettings())
+	}
+	return features
 }
 
 // PluginManager exposes lifecycle operations to the trusted application layer.

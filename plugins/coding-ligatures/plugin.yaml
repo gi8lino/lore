@@ -1,0 +1,15 @@
+api_version: 1
+provider: Lore
+id: io.lore.coding-ligatures
+name: Coding Ligatures
+version: 1.0.0
+description: Show programming ligatures in rendered text and code.
+default_enabled: false
+modules:
+  - type: content-style
+    id: typography
+    css: plugin.css
+  - type: render-policy
+    id: operators
+    policy: coding-ligatures
+permissions: []

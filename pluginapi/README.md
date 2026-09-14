@@ -140,11 +140,11 @@ These are public grammar identifiers, not privileged plugin IDs. Custom plugin
 behavior continues to use WASM preprocessors/postprocessors; arbitrary native
 extensions cannot be installed.
 
-`settings` modules have an `id`, display `name`, and optional `requires` list of
-module IDs in the same package. Missing dependencies and cycles are rejected.
-Request feature keys are `<plugin-id>.<module-id>`; omitted flags default on.
-Core's registry validates declared dependencies when saving compatibility
-preferences. Package install/disable/upgrade still operates atomically per plugin.
+`settings` modules have an `id`, display `name`, optional `description`, and optional `requires` list of module IDs in the same package. Lore renders these declarations as boolean controls on the plugin detail page and persists them in a core-owned namespace. Missing dependencies and cycles are rejected. Request feature keys are `<plugin-id>.<module-id>`; omitted flags default on. Package install/disable/upgrade still operates atomically per plugin.
+
+`content-style` modules name a CSS asset that may affect rendered page typography only after Lore filters selectors, properties, and values. `render-policy` modules request a named host rendering behavior from the public policy allowlist. These declarations are metadata contributions; they do not grant filesystem, DOM, or Lore-internal access.
+
+Every `.loreplugin` also contains a bounded `README.md`. Lore sanitizes and renders that documentation on the plugin administration detail page.
 
 For HTML browser inputs, emit a `div` with `data-lore-input="html"` and a direct
 child `div data-lore-fallback`. The core sanitizer processes the complete HTML
@@ -159,3 +159,5 @@ bounded set of validated color variables. A filtered stylesheet exposes only
 scoped foreground/background/border colors to the original fallback; URLs,
 imports, positioning and arbitrary selectors remain excluded. All other package
 CSS runs only inside the frame.
+
+

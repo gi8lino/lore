@@ -1,4 +1,5 @@
 api_version: 1
+provider: Lore
 id: io.lore.tables
 name: Tables
 version: 1.0.0
@@ -21,13 +22,18 @@ modules:
   - type: settings
     id: styles
     name: Table colors
+    description: Allow theme-aware header, row, column, and cell colors.
     requires: [tables]
   - type: settings
     id: sorting
     name: Table sorting
+    description: Allow sortable tables to sort rows from their column headers.
     requires: [tables]
   - type: settings
     id: filtering
     name: Table filtering
+    description: Allow filterable tables to filter rows from each column header.
     requires: [tables]
 permissions: [browser:render]
+
+

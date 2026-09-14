@@ -1,26 +1,24 @@
 # Tables
 
-This package owns `{table ...}` preprocessing, HTML presentation, browser
-sorting/filtering, CSS, and declarative settings dependencies. The WASM guest has
-no internal Lore imports or ambient host capabilities. `browser:render` is the
-only requested permission.
+Tables adds Markdown tables with optional theme-aware colors, client-side sorting, and per-column filtering.
 
-`markdown-syntax` selects a standard core grammar through the public manifest
-API. This keeps inline links, variables, references, and other registered syntax
-in the same Goldmark parse. Core provides these grammars equally to community
-packages; the table package owns activation and the central renderer has no
-table-specific branch. Custom preprocessors/postprocessors execute in WASM.
+## Usage
 
-Plain tables remain semantic HTML in Lore's document. Opted-in sorting/filtering
-runs on a sanitized copy in an opaque frame. The original remains the fallback
-for scripts being unavailable, errors, printing, and plugin disable. Core
-filters the package stylesheet to scoped color declarations for that fallback;
-all other CSS stays inside the isolated frame.
+```markdown
+| Service | Status  | Owner    |
+| ------- | ------- | -------- |
+| API     | Healthy | Platform |
+| DB      | Warning | Data     |
 
-`browser.ts` is compiled separately into `assets/plugin.js` by
-`make plugin-packages`; it never enters Lore's main frontend bundle. The pinned
-TypeScript toolchain is installed with `npm ci`. The guest builds with standard
-Go WASI. Runtime-installed copies use these exact generated package bytes.
+{table header=accent col:2=info row:2=warning cell:2,2=danger sortable filterable}
+```
 
-Existing rendering preferences remain compatibility inputs until plugin
-administration is migrated. Their dependency rules come from this manifest.
+Rows and columns in table directives are one-based. Supported tones are `accent`, `accent-soft`, `info`, `success`, `warning`, `danger`, `neutral`, `gray`, `blue`, `purple`, `green`, `yellow`, `orange`, and `red`.
+
+## Settings
+
+**Table colors** enables directive-based colors. **Table sorting** enables `sortable`. **Table filtering** enables `filterable`. All three settings require the main Tables feature.
+
+## Permissions
+
+This plugin requests `browser:render` for its isolated sorting and filtering browser module. The normal rendered table remains the fallback when browser enhancements are unavailable.

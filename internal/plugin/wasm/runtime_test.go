@@ -47,6 +47,7 @@ func archive(t *testing.T, wasmBytes []byte, stage string) []byte {
 		name string
 		data []byte
 	}{
+		{"README.md", []byte("# Fixture\n")},
 		{"plugin.yaml", []byte("api_version: 1\nid: io.example.fixture\nname: Fixture\nversion: 1.0.0\nmodules:\n  - type: renderer-extension\n    id: fixture\n    stage: " + stage + "\npermissions: []\n")},
 		{"plugin.wasm", wasmBytes},
 	} {

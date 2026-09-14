@@ -50,7 +50,7 @@ func capabilityPackage(t *testing.T, id string, permissions []string) *pluginpac
 	manifest := fmt.Sprintf("api_version: 1\nid: %s\nname: Fixture\nversion: 1.0.0\nmodules:\n  - type: renderer-extension\n    id: fixture\n    stage: preprocess\npermissions: %s\n", id, grants)
 	var output bytes.Buffer
 	archive := zip.NewWriter(&output)
-	for name, data := range map[string][]byte{"plugin.yaml": []byte(manifest), "plugin.wasm": binary} {
+	for name, data := range map[string][]byte{"README.md": []byte("# Fixture\n"), "plugin.yaml": []byte(manifest), "plugin.wasm": binary} {
 		file, err := archive.Create(name)
 		require.NoError(t, err)
 		_, err = file.Write(data)

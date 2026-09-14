@@ -49,6 +49,11 @@ func addRoutes(
 	pageViewAuthz := middleware.RequirePageView(accessUseCases)
 	pageEditAuthz := middleware.RequirePageEdit(accessUseCases)
 
+	pluginsAdmin := handler.NewAdminPlugins(renderer.PluginManager(), viewDataUseCases, views)
+	mux.Handle("GET /admin/plugins", browserAuthn(adminAuthz(http.HandlerFunc(pluginsAdmin.List))))
+	mux.Handle("GET /admin/plugins/{pluginID}", browserAuthn(adminAuthz(http.HandlerFunc(pluginsAdmin.Detail))))
+	mux.Handle("POST /admin/plugins", browserAuthn(adminAuthz(http.HandlerFunc(pluginsAdmin.Install))))
+	mux.Handle("POST /admin/plugins/{pluginID}/{action}", browserAuthn(adminAuthz(http.HandlerFunc(pluginsAdmin.Action))))
 	// Public infrastructure and authentication routes.
 	mux.HandleFunc("GET /plugins/styles.css", handler.PluginPresentationStyles(renderer.PluginManager()))
 	mux.HandleFunc("GET /plugins/modules.json", handler.PluginModules(renderer.PluginManager()))

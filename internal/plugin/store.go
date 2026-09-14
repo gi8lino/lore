@@ -34,6 +34,9 @@ type ManagerOption func(*Manager)
 // WithStore configures durable plugin installation state for a manager.
 func WithStore(store Store) ManagerOption { return func(m *Manager) { m.store = store } }
 
+// WithStorage configures namespaced persistent plugin settings and data.
+func WithStorage(storage Storage) ManagerOption { return func(m *Manager) { m.values = storage } }
+
 // memoryStore provides process-local installation persistence for isolated renderers and tests.
 type memoryStore struct {
 	// mu protects concurrent access to the receiver state.
@@ -72,3 +75,16 @@ func (s *memoryStore) DeletePlugin(_ context.Context, id string) error {
 
 // cloneRecord copies archive bytes so callers cannot mutate stored state.
 func cloneRecord(record Record) Record { record.Package = bytes.Clone(record.Package); return record }
+
+// WithRequiredPlugins protects operator-selected plugin IDs from disable/removal.
+// A package cannot make itself required by declaring manifest metadata.
+func WithRequiredPlugins(ids ...string) ManagerOption {
+	required := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		required[id] = true
+	}
+	return func(m *Manager) { m.required = required }
+}
+
+// IsRequired reports trusted operator policy for a plugin ID.
+func (m *Manager) IsRequired(id string) bool { m.mu.Lock(); defer m.mu.Unlock(); return m.required[id] }

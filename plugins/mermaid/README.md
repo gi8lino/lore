@@ -1,10 +1,18 @@
-# Mermaid plugin
+# Mermaid
 
-A standard-Go WASI postprocessor marks Mermaid fences for the public sandboxed
-browser-module API. Assets ship inside the same package for bundled and manual
-installation. Core has no Mermaid browser loader.
+Mermaid renders fenced `mermaid` code blocks as diagrams in an isolated browser frame. The original code block remains available as a fallback when the browser module is unavailable or the plugin is disabled.
 
-`assets/mermaid.min.js` is the pinned Mermaid 12.0.0 distribution previously
-vendored by Lore; its MIT license is in `assets/LICENSE`. Update it explicitly
-with `scripts/web/vendor-mermaid.sh`, then run `make plugin-packages` to regenerate
-the embedded archive. Ordinary frontend builds do not download or bundle it.
+## Usage
+
+````markdown
+```mermaid
+flowchart LR
+    Start --> Finish
+```
+````
+
+Use `mermaid` as the fenced code-block language. Mermaid source is rendered only in the browser module and remains normal code when the plugin is unavailable.
+
+## Permissions
+
+This plugin requests `browser:render` so its packaged JavaScript and CSS can render diagrams in the isolated plugin frame.

@@ -146,6 +146,8 @@ func cloneEntry(entry Entry) Entry {
 	c.BrowserModules = slices.Clone(c.BrowserModules)
 	c.EditorExtensions = slices.Clone(c.EditorExtensions)
 	c.SettingsModules = slices.Clone(c.SettingsModules)
+	c.ContentStyles = slices.Clone(c.ContentStyles)
+	c.RenderPolicies = slices.Clone(c.RenderPolicies)
 	for i := range c.SettingsModules {
 		c.SettingsModules[i].Requires = slices.Clone(c.SettingsModules[i].Requires)
 	}
@@ -181,6 +183,29 @@ func validateIDs(c Contributions) error {
 			return err
 		}
 	}
+	for _, m := range c.ContentStyles {
+		if err := check("content-style", m.ID); err != nil {
+			return err
+		}
+	}
+	for _, m := range c.RenderPolicies {
+		if err := check("render-policy", m.ID); err != nil {
+			return err
+		}
+	}
 
 	return nil
+}
+
+// HasRenderPolicy reports whether an active plugin contributes policy.
+func (s Snapshot) HasRenderPolicy(policy string) bool {
+	for _, entry := range s.Entries {
+		for _, contribution := range entry.Contributions.RenderPolicies {
+			if contribution.Policy == policy {
+				return true
+			}
+		}
+	}
+
+	return false
 }
