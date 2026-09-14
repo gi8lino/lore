@@ -36,5 +36,3 @@ any bundled copy disabled. Bundled plugins themselves can be disabled; their
 embedded package remains part of Lore.
 
 Plugin-owned rendering features and their settings live in the plugin detail modal. **Administration → Rendering** contains only Lore's built-in Markdown behavior. Declarative plugin settings are boolean controls; arbitrary custom settings editors are not provided yet.
-
-
