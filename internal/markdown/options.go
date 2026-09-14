@@ -6,8 +6,6 @@ type Options struct {
 	depth    int
 	// variables is request-local provenance used only for reading-page inspection.
 	variables []Variable
-	// syntaxHighlighting reports whether an active plugin requested the host highlighting policy.
-	syntaxHighlighting bool
 	// typographer reports whether an active plugin requested typographic substitutions.
 	typographer bool
 	// codingLigatures reports whether an active plugin requested operator-preserving substitutions.

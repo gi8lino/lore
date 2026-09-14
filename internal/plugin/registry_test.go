@@ -69,3 +69,24 @@ func TestRegistryConcurrentSnapshotsAndRemoval(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+type testCodeHighlighter struct{}
+
+// Highlight implements CodeHighlighter for registry validation tests.
+func (testCodeHighlighter) Highlight(Context, string, string) (CodeHighlightResult, error) {
+	return CodeHighlightResult{Matched: true}, nil
+}
+
+// TestRegistryAllowsOnlyOneActiveCodeHighlighter verifies exclusive provider ownership.
+func TestRegistryAllowsOnlyOneActiveCodeHighlighter(t *testing.T) {
+	t.Parallel()
+
+	r := &Registry{}
+	first := Contributions{CodeHighlighters: []CodeHighlighterModule{{ID: "first", Highlighter: testCodeHighlighter{}}}}
+	second := Contributions{CodeHighlighters: []CodeHighlighterModule{{ID: "second", Highlighter: testCodeHighlighter{}}}}
+
+	require.NoError(t, r.Register(Descriptor{ID: "one", Name: "One"}, first))
+	require.ErrorContains(t, r.Register(Descriptor{ID: "two", Name: "Two"}, second), "already provided")
+	require.NoError(t, r.Unregister("one"))
+	require.NoError(t, r.Register(Descriptor{ID: "two", Name: "Two"}, second))
+}

@@ -84,6 +84,32 @@ type MarkdownExtension interface {
 	Extension(Context) goldmark.Extender
 }
 
+// CodeHighlightResult contains one highlighter response. HTML remains untrusted
+// until Lore sanitizes the complete rendered document.
+type CodeHighlightResult struct {
+	// HTML contains highlighted block markup when Matched is true.
+	HTML string
+	// Matched reports whether the provider recognized the fenced-code language.
+	Matched bool
+}
+
+// CodeHighlighter highlights one fenced code block. Only one provider may be
+// active at a time so fenced-code ownership is deterministic.
+type CodeHighlighter interface {
+	// Highlight renders source for language or reports that the language is unsupported.
+	Highlight(Context, string, string) (CodeHighlightResult, error)
+}
+
+// CodeHighlighterModule describes one exclusive code-highlighting contribution.
+type CodeHighlighterModule struct {
+	// ID identifies the module within its plugin.
+	ID string
+	// CSS is an optional package stylesheet filtered and scoped by Lore.
+	CSS string
+	// Highlighter performs the sandboxed highlighting operation.
+	Highlighter CodeHighlighter
+}
+
 // Postprocessor transforms the complete HTML, including macro output, before
 // the trusted central sanitizer. It runs once per document, not per nested block.
 type Postprocessor interface {
@@ -135,6 +161,8 @@ type Contributions struct {
 	Preprocessors []Preprocessor
 	// MarkdownExtensions contribute fresh Goldmark extensions per render.
 	MarkdownExtensions []MarkdownExtension
+	// CodeHighlighters contains an exclusive fenced-code highlighting provider.
+	CodeHighlighters []CodeHighlighterModule
 	// Postprocessors run on rendered HTML before central sanitization.
 	Postprocessors []Postprocessor
 	// Macros contains request-scoped macro renderers.

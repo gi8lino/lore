@@ -1,0 +1,95 @@
+/* Chroma token presentation owned by the bundled highlighter plugin. */
+.prose .chroma {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.prose .chroma .c,
+.prose .chroma .ch,
+.prose .chroma .cm,
+.prose .chroma .c1,
+.prose .chroma .cs,
+.prose .chroma .cp,
+.prose .chroma .cpf {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.prose .chroma .k,
+.prose .chroma .kc,
+.prose .chroma .kd,
+.prose .chroma .kn,
+.prose .chroma .kp,
+.prose .chroma .kr,
+.prose .chroma .kt,
+.prose .chroma .o,
+.prose .chroma .ow {
+  color: var(--accent);
+  font-weight: 600;
+}
+.prose .chroma .na,
+.prose .chroma .nb,
+.prose .chroma .bp,
+.prose .chroma .nc,
+.prose .chroma .no,
+.prose .chroma .nd,
+.prose .chroma .ni,
+.prose .chroma .ne,
+.prose .chroma .nf,
+.prose .chroma .fm,
+.prose .chroma .nl,
+.prose .chroma .nn,
+.prose .chroma .nx,
+.prose .chroma .py,
+.prose .chroma .nt,
+.prose .chroma .nv,
+.prose .chroma .vc,
+.prose .chroma .vg,
+.prose .chroma .vi,
+.prose .chroma .vm {
+  color: var(--accent-secondary);
+}
+.prose .chroma .s,
+.prose .chroma .sa,
+.prose .chroma .sb,
+.prose .chroma .sc,
+.prose .chroma .dl,
+.prose .chroma .sd,
+.prose .chroma .s2,
+.prose .chroma .se,
+.prose .chroma .sh,
+.prose .chroma .si,
+.prose .chroma .sx,
+.prose .chroma .sr,
+.prose .chroma .s1,
+.prose .chroma .ss,
+.prose .chroma .l,
+.prose .chroma .ld {
+  color: var(--success);
+}
+.prose .chroma .m,
+.prose .chroma .mb,
+.prose .chroma .mf,
+.prose .chroma .mh,
+.prose .chroma .mi,
+.prose .chroma .il,
+.prose .chroma .mo {
+  color: var(--warning);
+}
+.prose .chroma .p {
+  color: var(--text-secondary);
+}
+.prose .chroma .gd,
+.prose .chroma .err {
+  color: var(--danger);
+}
+.prose .chroma .gi {
+  color: var(--success);
+}
+.prose .chroma .ge {
+  font-style: italic;
+}
+.prose .chroma .gs {
+  font-weight: 700;
+}
+.prose .chroma .w {
+  color: var(--muted);
+}

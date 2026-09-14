@@ -512,3 +512,29 @@ func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	assert.Contains(t, got, `class="chroma"`)
 	assert.Contains(t, got, `class="kd"`)
 }
+
+// TestSyntaxHighlightingCanBeDisabled verifies fenced code falls back to normal Markdown rendering.
+func TestSyntaxHighlightingCanBeDisabled(t *testing.T) {
+	t.Parallel()
+
+	renderer := testRenderer(t)
+	require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
+
+	got, err := renderer.Render("```go\npackage main\n```\n")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `<pre><code class="language-go">`)
+	assert.NotContains(t, got, `class="chroma"`)
+}
+
+// TestSyntaxHighlightingFallsBackForUnknownLanguage verifies providers can decline a fenced block.
+func TestSyntaxHighlightingFallsBackForUnknownLanguage(t *testing.T) {
+	t.Parallel()
+
+	renderer := testRenderer(t)
+	got, err := renderer.Render("```not-a-real-language\nplain <text>\n```\n")
+
+	require.NoError(t, err)
+	assert.Contains(t, got, `<pre><code class="language-not-a-real-language">plain &lt;text&gt;`)
+	assert.NotContains(t, got, `class="chroma"`)
+}

@@ -232,3 +232,28 @@ permissions: []
 		require.Error(t, err)
 	}
 }
+func TestCodeHighlighterModule(t *testing.T) {
+	manifest := `api_version: 1
+id: io.example.highlight
+name: Highlight
+version: 1.0.0
+modules:
+  - type: code-highlighter
+    id: highlighter
+    css: plugin.css
+permissions: []
+`
+
+	pkg, err := Read(testArchive(t, manifest, archiveEntry{"assets/plugin.css", []byte(".prose .token { color: red; }"), 0644}))
+	require.NoError(t, err)
+	assert.Equal(t, "code-highlighter", pkg.Manifest().Modules[0].Type)
+
+	for _, invalid := range []string{
+		strings.ReplaceAll(manifest, "css: plugin.css", "css: ../plugin.css"),
+		strings.ReplaceAll(manifest, "css: plugin.css", "css: absent.css"),
+		strings.ReplaceAll(manifest, "type: code-highlighter", "type: code-highlighter\n    policy: syntax-highlighting"),
+	} {
+		_, err := Read(testArchive(t, invalid, archiveEntry{"assets/plugin.css", []byte(".prose .token { color: red; }"), 0644}))
+		require.Error(t, err)
+	}
+}

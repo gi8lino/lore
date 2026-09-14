@@ -75,7 +75,7 @@ type Module struct {
 	Syntax string `yaml:"syntax,omitempty"`
 	// Requires names prerequisite modules within this package.
 	Requires []string `yaml:"requires,omitempty"`
-	// CSS names the stylesheet asset used by browser or content-style modules.
+	// CSS names the stylesheet asset used by browser, content-style, or code-highlighter modules.
 	CSS string `yaml:"css,omitempty"`
 	// Policy selects a host rendering policy for render-policy modules.
 	Policy string `yaml:"policy,omitempty"`
@@ -369,6 +369,8 @@ func validModule(m Module) bool {
 	switch m.Type {
 	case "markdown-syntax":
 		return validMarkdownSyntaxModule(m)
+	case "code-highlighter":
+		return validCodeHighlighterModule(m)
 	case "settings":
 		return validSettingsModule(m)
 	case "content-style":
@@ -391,7 +393,7 @@ func validModuleFields(m Module) bool {
 	if m.Type != "browser-module" && m.JavaScript != "" {
 		return false
 	}
-	if m.Type != "browser-module" && m.Type != "content-style" && m.CSS != "" {
+	if m.Type != "browser-module" && m.Type != "content-style" && m.Type != "code-highlighter" && m.CSS != "" {
 		return false
 	}
 	if m.Type != "markdown-syntax" && m.Syntax != "" {
@@ -409,6 +411,12 @@ func validModuleFields(m Module) bool {
 // validMarkdownSyntaxModule validates fields specific to a Markdown syntax declaration.
 func validMarkdownSyntaxModule(m Module) bool {
 	return pluginapi.ValidSyntax(m.Syntax) && m.Stage == "" && m.Name == "" && m.Capability == ""
+}
+
+// validCodeHighlighterModule validates an exclusive fenced-code highlighter declaration.
+func validCodeHighlighterModule(m Module) bool {
+	validCSS := m.CSS == "" || (validPath(m.CSS) && strings.HasSuffix(m.CSS, ".css"))
+	return m.Stage == "" && m.Name == "" && m.Capability == "" && validCSS
 }
 
 // validSettingsModule validates fields specific to a settings declaration.

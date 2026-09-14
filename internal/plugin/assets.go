@@ -39,6 +39,18 @@ type ContentStyleContribution struct {
 	CSS string
 }
 
+// CodeHighlighterContribution is scoped stylesheet metadata for an active highlighter.
+type CodeHighlighterContribution struct {
+	// PluginID identifies the plugin that owns the contribution.
+	PluginID string
+	// ModuleID identifies the module within its plugin.
+	ModuleID string
+	// Digest stores the content digest used for identity and caching.
+	Digest string
+	// CSS is the optional package-relative stylesheet asset path.
+	CSS string
+}
+
 // BrowserModules returns browser modules contributed by active plugins.
 func (m *Manager) BrowserModules() []BrowserContribution {
 	m.mu.Lock()
@@ -56,6 +68,33 @@ func (m *Manager) BrowserModules() []BrowserContribution {
 			result = append(result, BrowserContribution{PluginID: id, ModuleID: module.ID, Name: item.metadata.Manifest.Name, Version: item.metadata.Manifest.Version, Digest: fmt.Sprintf("%x", item.metadata.Digest), JavaScript: module.JavaScript, CSS: module.CSS})
 		}
 	}
+	return result
+}
+
+// CodeHighlighters returns stylesheet metadata for the active highlighter provider.
+func (m *Manager) CodeHighlighters() []CodeHighlighterContribution {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	result := make([]CodeHighlighterContribution, 0, 1)
+	for _, id := range m.order {
+		item, ok := m.loaded[id]
+		if !ok || !item.metadata.Enabled {
+			continue
+		}
+		for _, module := range item.metadata.Manifest.Modules {
+			if module.Type != "code-highlighter" {
+				continue
+			}
+			result = append(result, CodeHighlighterContribution{
+				PluginID: id,
+				ModuleID: module.ID,
+				Digest:   fmt.Sprintf("%x", item.metadata.Digest),
+				CSS:      module.CSS,
+			})
+		}
+	}
+
 	return result
 }
 
@@ -110,6 +149,13 @@ func (m *Manager) BrowserAsset(id, digest, name string) ([]byte, error) {
 		return nil, err
 	}
 	return pkg.Asset(name)
+}
+
+// CodeHighlighterAsset returns an asset declared by an active code-highlighter module.
+func (m *Manager) CodeHighlighterAsset(id, digest, name string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.declaredAsset(id, digest, name, "code-highlighter")
 }
 
 // ContentStyleAsset returns an asset declared by an active content-style module.

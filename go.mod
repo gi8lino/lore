@@ -3,7 +3,6 @@ module github.com/gi8lino/lore
 go 1.27.0
 
 require (
-	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aymerick/douceur v0.2.0
 	github.com/containeroo/httpgrace v0.2.0
 	github.com/containeroo/notifykit v0.2.0
@@ -20,7 +19,6 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/yuin/goldmark v1.8.6
-	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.57.0
 	golang.org/x/net v0.59.0
@@ -29,7 +27,6 @@ require (
 
 require (
 	github.com/containeroo/tmplfuncs v0.0.2 // indirect
-	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

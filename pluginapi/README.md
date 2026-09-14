@@ -142,6 +142,8 @@ extensions cannot be installed.
 
 `settings` modules have an `id`, display `name`, optional `description`, and optional `requires` list of module IDs in the same package. Lore renders these declarations as boolean controls on the plugin detail page and persists them in a core-owned namespace. Missing dependencies and cycles are rejected. Request feature keys are `<plugin-id>.<module-id>`; omitted flags default on. Package install/disable/upgrade still operates atomically per plugin.
 
+`code-highlighter` modules provide an exclusive fenced-code highlighter. Lore sends the declared module the fenced block source and language with stage `highlight`; the plugin returns sanitized-later HTML and sets `matched` only for languages it supports. At most one code highlighter can be active. An optional `css` asset is filtered to safe code-presentation properties and scoped to that plugin's rendered wrapper, so another plugin can provide different token classes and styling without modifying Lore.
+
 `content-style` modules name a CSS asset that may affect rendered page typography only after Lore filters selectors, properties, and values. `render-policy` modules request a named host rendering behavior from the public policy allowlist. These declarations are metadata contributions; they do not grant filesystem, DOM, or Lore-internal access.
 
 Every `.loreplugin` also contains a bounded `README.md`. Lore sanitizes and renders that documentation on the plugin administration detail page.
@@ -159,6 +161,8 @@ bounded set of validated color variables. A filtered stylesheet exposes only
 scoped foreground/background/border colors to the original fallback; URLs,
 imports, positioning and arbitrary selectors remain excluded. All other package
 CSS runs only inside the frame.
+
+
 
 
 

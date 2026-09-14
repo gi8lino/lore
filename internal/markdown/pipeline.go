@@ -92,6 +92,9 @@ func (p *renderPipeline) extensions(ctx plugin.Context) ([]goldmark.Extender, er
 			result = append(result, extender)
 		}
 	}
+	if owner, module, ok := p.snapshot.CodeHighlighter(); ok {
+		result = append(result, codeHighlighterExtension{owner: owner, module: module, context: ctx})
+	}
 	return result, nil
 }
 

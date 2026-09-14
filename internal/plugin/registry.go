@@ -53,8 +53,12 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 	}
 	active := make(map[string]bool)
 	names := make(map[string]bool)
+	activeHighlighter := ""
 	for _, entry := range r.entries {
 		active[entry.Descriptor.ID] = true
+		if len(entry.Contributions.CodeHighlighters) != 0 {
+			activeHighlighter = entry.Descriptor.ID
+		}
 		for _, macro := range entry.Contributions.Macros {
 			names[macro.Name()] = true
 		}
@@ -90,6 +94,17 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 	for _, module := range modules.Postprocessors {
 		if module == nil {
 			return fmt.Errorf("nil postprocessor in %s", descriptor.ID)
+		}
+	}
+	if len(modules.CodeHighlighters) > 1 {
+		return fmt.Errorf("plugin %s contributes more than one code highlighter", descriptor.ID)
+	}
+	if len(modules.CodeHighlighters) == 1 {
+		if modules.CodeHighlighters[0].Highlighter == nil {
+			return fmt.Errorf("nil code highlighter in %s", descriptor.ID)
+		}
+		if activeHighlighter != "" {
+			return fmt.Errorf("code highlighter is already provided by plugin %s", activeHighlighter)
 		}
 	}
 
@@ -141,6 +156,7 @@ func cloneEntry(entry Entry) Entry {
 	c := &entry.Contributions
 	c.Preprocessors = slices.Clone(c.Preprocessors)
 	c.MarkdownExtensions = slices.Clone(c.MarkdownExtensions)
+	c.CodeHighlighters = slices.Clone(c.CodeHighlighters)
 	c.Postprocessors = slices.Clone(c.Postprocessors)
 	c.Macros = slices.Clone(c.Macros)
 	c.BrowserModules = slices.Clone(c.BrowserModules)
@@ -168,6 +184,11 @@ func validateIDs(c Contributions) error {
 		return nil
 	}
 
+	for _, m := range c.CodeHighlighters {
+		if err := check("code-highlighter", m.ID); err != nil {
+			return err
+		}
+	}
 	for _, m := range c.BrowserModules {
 		if err := check("browser", m.ID); err != nil {
 			return err
@@ -195,6 +216,17 @@ func validateIDs(c Contributions) error {
 	}
 
 	return nil
+}
+
+// CodeHighlighter returns the single active highlighter contribution, when present.
+func (s Snapshot) CodeHighlighter() (string, CodeHighlighterModule, bool) {
+	for _, entry := range s.Entries {
+		if len(entry.Contributions.CodeHighlighters) != 0 {
+			return entry.Descriptor.ID, entry.Contributions.CodeHighlighters[0], true
+		}
+	}
+
+	return "", CodeHighlighterModule{}, false
 }
 
 // HasRenderPolicy reports whether an active plugin contributes policy.

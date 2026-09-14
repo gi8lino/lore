@@ -7,12 +7,10 @@ import (
 	"strings"
 	"time"
 
-	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/gi8lino/lore/internal/plugin"
 	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
-	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
@@ -95,18 +93,6 @@ func engine(options Options, contributed []goldmark.Extender, ranges ...variable
 		}
 		extensions = append(extensions, typographer)
 	}
-	if options.syntaxHighlighting {
-		extensions = append(
-			extensions,
-			highlighting.NewHighlighting(
-				highlighting.WithStyle("github-dark"),
-				highlighting.WithFormatOptions(
-					chromahtml.WithClasses(true),
-				),
-			),
-		)
-	}
-
 	extensions = append(extensions, contributed...)
 	return goldmark.New(
 		goldmark.WithExtensions(extensions...),
@@ -224,7 +210,6 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	snapshot, release := r.registry.Acquire()
 	defer release()
 	options.codingLigatures = snapshot.HasRenderPolicy("coding-ligatures")
-	options.syntaxHighlighting = snapshot.HasRenderPolicy("syntax-highlighting")
 	options.typographer = snapshot.HasRenderPolicy("typographer")
 	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
 	if len(functions.Variables) != 0 {

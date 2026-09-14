@@ -38,6 +38,11 @@ func (i *Instance) Contributions() plugin.Contributions {
 	var result plugin.Contributions
 
 	for _, module := range i.manifest.Modules {
+		if module.Type == "code-highlighter" {
+			adapter := codeHighlighterModule{rendererModule{instance: i, module: module}}
+			result.CodeHighlighters = append(result.CodeHighlighters, plugin.CodeHighlighterModule{ID: module.ID, CSS: module.CSS, Highlighter: adapter})
+			continue
+		}
 		if module.Type == "markdown-syntax" {
 			result.MarkdownExtensions = append(result.MarkdownExtensions, syntaxModule{owner: i.manifest.ID, id: module.ID, syntax: module.Syntax})
 			continue

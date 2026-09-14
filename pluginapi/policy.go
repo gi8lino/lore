@@ -4,7 +4,7 @@ package pluginapi
 // the host without receiving access to Lore internals.
 func ValidRenderPolicy(name string) bool {
 	switch name {
-	case "coding-ligatures", "syntax-highlighting", "typographer":
+	case "coding-ligatures", "typographer":
 		return true
 	default:
 		return false

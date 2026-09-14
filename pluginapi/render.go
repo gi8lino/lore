@@ -15,8 +15,10 @@ type RenderRequest struct {
 	Module string `json:"module"`
 	// Stage selects the renderer or macro operation.
 	Stage string `json:"stage"`
-	// Source carries the current Markdown or intermediate HTML input.
+	// Source carries the current Markdown, code, or intermediate HTML input.
 	Source string `json:"source"`
+	// Language carries the fenced-code language for code-highlighter modules.
+	Language string `json:"language,omitempty"`
 	// Invocation carries serialized macro arguments between parse and render stages.
 	Invocation json.RawMessage `json:"invocation,omitempty"`
 	// Features contains request-scoped feature flags.

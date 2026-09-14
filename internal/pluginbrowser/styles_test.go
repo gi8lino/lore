@@ -43,3 +43,18 @@ func TestContentStylesAllowOnlyRenderedTypography(t *testing.T) {
 		assert.NotContains(t, result, forbidden)
 	}
 }
+func TestCodeStylesAreScopedAndPresentationOnly(t *testing.T) {
+	result := scopedCodeStyles("io.example.highlight", `
+.prose .chroma { background: var(--surface-hover); color: var(--text); position: fixed; }
+.prose .chroma .k { color: var(--accent); font-weight: 600; font-style: italic; }
+.prose .bad { background: url(https://evil.test/); display: none; }
+`)
+
+	assert.Contains(t, result, `[data-lore-plugin="io.example.highlight"] .chroma`)
+	assert.Contains(t, result, "background-color:var(--surface-hover);")
+	assert.Contains(t, result, "font-weight:600;")
+	assert.Contains(t, result, "font-style:italic;")
+	for _, forbidden := range []string{"position", "url(", "display"} {
+		assert.NotContains(t, result, forbidden)
+	}
+}
