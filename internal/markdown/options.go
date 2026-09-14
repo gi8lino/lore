@@ -8,6 +8,10 @@ type Options struct {
 	variables []Variable
 	// syntaxHighlighting reports whether an active plugin requested the host highlighting policy.
 	syntaxHighlighting bool
+	// typographer reports whether an active plugin requested typographic substitutions.
+	typographer bool
+	// codingLigatures reports whether an active plugin requested operator-preserving substitutions.
+	codingLigatures bool
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
 	// WikiLinkPrefix is prepended to resolved wiki-link targets. Empty uses /pages/.
@@ -24,10 +28,6 @@ type Options struct {
 	TableSorting bool
 	// TableFiltering enables client-side filtering for opted-in tables.
 	TableFiltering bool
-	// Typographer enables typographic punctuation substitutions.
-	Typographer bool
-	// CodingLigatures preserves ASCII operators when typographic punctuation is enabled.
-	CodingLigatures bool
 }
 
 // DefaultOptions returns the rendering behavior used before administrator customization.
@@ -39,7 +39,6 @@ func DefaultOptions() Options {
 		Tables:         true,
 		TableSorting:   true,
 		TableStyles:    true,
-		Typographer:    true,
 		WikiLinks:      true,
 		WikiLinkPrefix: "/pages/",
 	}

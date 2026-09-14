@@ -21,10 +21,6 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 			source:  `See [[Keycloak|Keycloak configuration]].`,
 			options: md.Options{WikiLinks: true},
 		},
-		"typographer": {
-			source:  `"Lore" -- documentation...`,
-			options: md.Options{Typographer: true},
-		},
 	}
 
 	result := make(map[string]template.HTML, len(previews))

@@ -20,7 +20,7 @@ func (m syntaxModule) Extension(ctx plugin.Context) goldmark.Extender {
 	return map[string]goldmark.Extender{
 		"tables": extension.Table, "strikethrough": extension.Strikethrough,
 		"task-list": extension.TaskList, "definition-list": extension.DefinitionList,
-		"footnote": extension.Footnote, "linkify": extension.Linkify, "typographer": extension.Typographer,
+		"footnote": extension.Footnote, "linkify": extension.Linkify,
 	}[m.syntax]
 }
 

@@ -387,8 +387,7 @@ SELECT
   trusted_display_name_headers,
 	trusted_group_headers,
 	trusted_admin_group,
-	  render_wiki_links,
-  render_typographer
+	  render_wiki_links
 FROM application_settings
 WHERE singleton=true`).Scan(
 		&settings.AllowUserRegistration,
@@ -411,7 +410,6 @@ WHERE singleton=true`).Scan(
 		&settings.Authentication.TrustedGroupHeaders,
 		&settings.Authentication.TrustedAdminGroup,
 		&settings.Rendering.WikiLinks,
-		&settings.Rendering.Typographer,
 	)
 
 	if err != nil {
@@ -585,11 +583,9 @@ func (s *Store) SaveRenderingSettings(ctx context.Context, settings domain.Rende
 	_, err := s.pool.Exec(ctx, `
 UPDATE application_settings
 SET render_wiki_links=$1,
-	    render_typographer=$2,
     updated_at=now()
 WHERE singleton=true`,
 		settings.WikiLinks,
-		settings.Typographer,
 	)
 	return err
 }

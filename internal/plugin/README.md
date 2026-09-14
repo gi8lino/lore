@@ -7,7 +7,7 @@ Callers handle startup errors and close the renderer at the end of its scope.
 `markdown.NewWithRegistry` supports an explicitly owned registry.
 Server pages, preview, sharing, exports, and static builds use the same pipeline.
 
-Callouts, Subpages, Page Report, Mermaid, Tables, and Coding Ligatures are bundled `.loreplugin` packages built from independent Go modules under `plugins/`. Bundled and installed packages use the same package reader, manager, registry, runtime, permissions, settings, documentation, and asset paths.
+Lore's optional rendering and content features are bundled `.loreplugin` packages built from independent Go modules under `plugins/`. Bundled and installed packages use the same package reader, manager, registry, runtime, permissions, settings, documentation, and asset paths.
 
 ## Packages and distribution
 
@@ -276,5 +276,7 @@ public disable/remove/unload paths enforce the policy. Shutdown still closes
 required instances normally. No current bundled feature is required by default.
 
 The admin UI renders each package `README.md`, exposes enable/disable lifecycle controls, and renders declarative boolean `settings` modules with their names and descriptions. Settings are stored in a core-owned namespace and reach renderers as generic feature flags. A marketplace and arbitrary custom settings controls remain future work.
+
+
 
 

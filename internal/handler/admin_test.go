@@ -55,8 +55,7 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	t.Parallel()
 
 	form := url.Values{
-		"wiki_links":  {"on"},
-		"typographer": {"on"},
+		"wiki_links": {"on"},
 	}
 	request := httptest.NewRequest("POST", "/admin/rendering", strings.NewReader(form.Encode()))
 
@@ -66,19 +65,16 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	settings := renderingSettingsFromForm(request)
 
 	assert.True(t, settings.WikiLinks)
-	assert.True(t, settings.Typographer)
 }
 
 func TestRenderingOptionsKeepPluginFeaturesAtDefaults(t *testing.T) {
 	t.Parallel()
 
-	options := renderingOptionsFromSettings(domain.RenderingSettings{Typographer: true})
+	options := renderingOptionsFromSettings(domain.RenderingSettings{})
 
-	assert.True(t, options.Typographer)
 	assert.True(t, options.Callouts)
 	assert.True(t, options.Tables)
 	assert.True(t, options.Mermaid)
-	assert.False(t, options.CodingLigatures)
 }
 
 func TestRenderingLanguageValidation(t *testing.T) {

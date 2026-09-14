@@ -25,23 +25,6 @@
           </article>
         </div>
       </section>
-      <section class="panel settings-panel">
-        <div class="panel-title">
-          <h2>Markdown extensions</h2>
-        </div>
-        <div class="render-setting-list">
-          <article class="render-setting-card">
-            <label class="toggle-row">
-              <span><strong>Typographer</strong><small>Convert common punctuation sequences to typographic characters.</small></span><input type="checkbox"
-       name="typographer"
-       {{ if .ApplicationSettings.Rendering.Typographer }}checked{{ end }} />
-            </label>
-            <div class="render-setting-preview prose">
-              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "typographer" }}
-            </div>
-          </article>
-        </div>
-      </section>
       <div class="settings-actions">
         <button class="button primary" type="submit">Save rendering settings</button>
       </div>

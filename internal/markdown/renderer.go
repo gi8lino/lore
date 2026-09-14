@@ -79,9 +79,9 @@ func NewWithRegistry(registry *plugin.Registry) *Renderer {
 func engine(options Options, contributed []goldmark.Extender, ranges ...variableRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
-	if options.Typographer {
+	if options.typographer {
 		var typographer goldmark.Extender = extension.Typographer
-		if options.CodingLigatures {
+		if options.codingLigatures {
 			typographer = extension.NewTypographer(
 				extension.WithTypographicSubstitutions(
 					extension.TypographicSubstitutions{
@@ -224,8 +224,9 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	functions.Context = execution
 	snapshot, release := r.registry.Acquire()
 	defer release()
-	options.CodingLigatures = options.CodingLigatures || snapshot.HasRenderPolicy("coding-ligatures")
+	options.codingLigatures = snapshot.HasRenderPolicy("coding-ligatures")
 	options.syntaxHighlighting = snapshot.HasRenderPolicy("syntax-highlighting")
+	options.typographer = snapshot.HasRenderPolicy("typographer")
 	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(

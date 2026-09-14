@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.typographer
+name: Typographer
+version: 1.0.0
+description: Convert common ASCII punctuation into typographic characters.
+default_enabled: false
+modules:
+  - type: render-policy
+    id: typographer
+    policy: typographer
+permissions: []

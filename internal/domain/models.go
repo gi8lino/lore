@@ -147,8 +147,6 @@ type RenderingSettings struct {
 	WikiLinks bool
 	// DefaultTypographySize is used when a user has not selected a personal content size.
 	DefaultTypographySize string
-	// Typographer enables smart punctuation substitutions.
-	Typographer bool
 }
 
 // AuthenticationSettings controls browser authentication without storing secrets.

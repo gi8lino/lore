@@ -133,8 +133,8 @@ limitations. Browser modules do not expose a general host capability bridge.
 ## Standard syntax and settings declarations
 
 `markdown-syntax` modules select a standard grammar with a `syntax` field:
-`tables`, `strikethrough`, `task-list`, `definition-list`, `footnote`, `linkify`,
-or `typographer`. Core constructs the parser components in the current render,
+`tables`, `strikethrough`, `task-list`, `definition-list`, `footnote`, or `linkify`.
+Core constructs the parser components in the current render,
 so other inline syntax, references and page variables keep their semantics.
 These are public grammar identifiers, not privileged plugin IDs. Custom plugin
 behavior continues to use WASM preprocessors/postprocessors; arbitrary native
@@ -159,5 +159,7 @@ bounded set of validated color variables. A filtered stylesheet exposes only
 scoped foreground/background/border colors to the original fallback; URLs,
 imports, positioning and arbitrary selectors remain excluded. All other package
 CSS runs only inside the frame.
+
+
 
 

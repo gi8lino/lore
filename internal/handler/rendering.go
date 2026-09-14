@@ -26,6 +26,5 @@ func renderingOptions(
 func renderingOptionsFromSettings(rendering domain.RenderingSettings) md.Options {
 	options := md.DefaultOptions()
 	options.WikiLinks = rendering.WikiLinks
-	options.Typographer = rendering.Typographer
 	return options
 }

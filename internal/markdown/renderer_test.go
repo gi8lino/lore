@@ -488,14 +488,12 @@ func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
-	options := DefaultOptions()
-	options.CodingLigatures = true
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.Enable(context.Background(), "io.lore.typographer"))
+	require.NoError(t, manager.Enable(context.Background(), "io.lore.coding-ligatures"))
 
-	got, err := renderer.RenderResolvedWithOptions(
-		`"quoted" --> -> << >> ...`,
-		Slug,
-		options,
-	)
+	got, err := renderer.Render(`"quoted" --> -> << >> ...`)
 
 	require.NoError(t, err)
 	assert.Contains(t, got, `“quoted”`)
