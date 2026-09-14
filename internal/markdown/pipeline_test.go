@@ -11,7 +11,9 @@ import (
 	"github.com/gi8lino/lore/internal/icons"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugin/wasm"
 	"github.com/gi8lino/lore/internal/plugincap"
+	"github.com/gi8lino/lore/internal/plugins/bundled"
 	"github.com/gi8lino/lore/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,7 +119,7 @@ func TestMacroCodeBoundaries(t *testing.T) {
 
 // TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer verifies callouts can be removed and registered without replacing renderer behavior.
 func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T) {
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	registry := renderer.registry
 	var callouts plugin.Entry
 	for _, entry := range registry.Snapshot().Entries {
@@ -149,7 +151,7 @@ func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T)
 
 // TestRenderSnapshotSurvivesRemovalDuringNestedRender verifies render snapshot survives removal during nested render behavior.
 func TestRenderSnapshotSurvivesRemovalDuringNestedRender(t *testing.T) {
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	registry := renderer.registry
 	var once sync.Once
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "remove", Name: "Remove"}, plugin.Contributions{
@@ -208,7 +210,7 @@ func TestModuleRecursionIsBounded(t *testing.T) {
 
 // TestRemovedMacrosCannotBeActivatedByRequestBindings verifies removed macros cannot be activated by request bindings behavior.
 func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	registry := renderer.registry
 	require.NoError(t, registry.Unregister("io.lore.subpages"))
 	got, err := NewWithRegistry(registry).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
@@ -221,7 +223,7 @@ func TestRemovedMacrosCannotBeActivatedByRequestBindings(t *testing.T) {
 // TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer verifies subpages markup and static icons survive central sanitizer behavior.
 func TestSubpagesMarkupAndStaticIconsSurviveCentralSanitizer(t *testing.T) {
 	nodes := plugincap.Navigation([]navigation.Node{{Slug: "child", Title: "Child", Page: true, Icon: "book-lucide"}}, func(s string) string { return "/pages/" + s })
-	got, err := testRenderer(t).RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
+	got, err := testRenderer(t, "subpages").RenderPageResolvedWithFunctions("{{subpages}}", Slug, DefaultOptions(), Functions{
 		Capabilities: plugincap.Capabilities(nil, nodes),
 	})
 	require.NoError(t, err)
@@ -294,7 +296,7 @@ func TestModuleContributesASTAndNodeRenderer(t *testing.T) {
 // TestUnavailableMacroRemainsOrdinaryMarkdown verifies unavailable macro remains ordinary markdown behavior.
 func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 	source := "Before\n{{pages query=\"status:verified\"}}\nAfter"
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "page-report")
 	got, err := renderer.Render(source)
 	require.NoError(t, err)
 	// Compare with a renderer lacking the macro. No placeholder should split
@@ -306,7 +308,7 @@ func TestUnavailableMacroRemainsOrdinaryMarkdown(t *testing.T) {
 
 // TestMacroCapabilitiesStayRequestLocal verifies macro capabilities stay request local behavior.
 func TestMacroCapabilitiesStayRequestLocal(t *testing.T) {
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	var wg sync.WaitGroup
 	for _, title := range []string{"First", "Second"} {
 		wg.Go(func() {
@@ -323,11 +325,29 @@ func TestMacroCapabilitiesStayRequestLocal(t *testing.T) {
 	assert.Empty(t, strings.TrimSpace(got))
 }
 
-// testRenderer handles the test renderer operation.
-func testRenderer(t testing.TB) *Renderer {
+// testRenderer returns a cheap core renderer unless specific bundled plugins are required.
+func testRenderer(t testing.TB, names ...string) *Renderer {
 	t.Helper()
-	renderer, err := New(context.Background())
+	if len(names) == 0 {
+		return NewWithRegistry(nil)
+	}
+
+	ctx := context.Background()
+	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("pages:read", "pages:content", "browser:render"))
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = renderer.Close(context.Background()) })
+	registry := &plugin.Registry{}
+	manager := plugin.NewManager(registry, runtime)
+	t.Cleanup(func() { require.NoError(t, manager.Close(context.Background())) })
+
+	archives := make([][]byte, 0, len(names))
+	for _, name := range names {
+		archive, err := bundled.Packages.ReadFile(name + ".loreplugin")
+		require.NoError(t, err)
+		archives = append(archives, archive)
+	}
+	require.NoError(t, manager.Bootstrap(ctx, archives))
+
+	renderer := NewWithRegistry(registry)
+	renderer.manager = manager
 	return renderer
 }

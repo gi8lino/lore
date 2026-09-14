@@ -201,8 +201,12 @@ vet: generate web ## Run Go static analysis.
 	go vet ./...
 
 .PHONY: test
-test: test-plugins test-web vet ## Run frontend and backend unit tests.
-	go test -covermode=atomic -count=1 -timeout=3m ./...
+test: test-plugins test-web vet ## Run frontend and backend unit tests, reusing the Go test cache.
+	go test -covermode=set -timeout=3m ./...
+
+.PHONY: test-fresh
+test-fresh: test-plugins test-web vet ## Run frontend and backend unit tests without the Go test cache.
+	go test -covermode=set -count=1 -timeout=3m ./...
 
 .PHONY: test-race
 test-race: test-plugins-race test-web vet ## Run unit tests with the Go race detector.
@@ -210,7 +214,7 @@ test-race: test-plugins-race test-web vet ## Run unit tests with the Go race det
 
 .PHONY: cover
 cover: test-web ## Display Go test coverage.
-	go test -coverprofile=coverage.out -covermode=atomic -count=1 -timeout=3m ./...
+	go test -coverprofile=coverage.out -covermode=set -count=1 -timeout=3m ./...
 	go tool cover -html=coverage.out
 
 .PHONY: clean
@@ -273,4 +277,6 @@ golangci-lint: $(GO_INSTALL_TOOL) ## Download golangci-lint locally if necessary
 		--target "$(GOLANGCI_LINT)" \
 		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
 		--tool-version "$(GOLANGCI_LINT_VERSION)"
+
+
 

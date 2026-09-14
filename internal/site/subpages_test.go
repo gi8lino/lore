@@ -21,7 +21,8 @@ func TestStaticSubpagesUseStaticPageURLs(t *testing.T) {
 		return pageURL("/docs/", slug)
 	})
 
-	rendered, err := testMarkdownRenderer(t).RenderPageResolvedWithFunctions(`{{subpages title="Related pages"}}`, md.Slug, md.DefaultOptions(), md.Functions{Capabilities: plugincap.Capabilities(nil, nodes)})
+	renderer, _ := testPluginMarkdownRenderer(t, "subpages")
+	rendered, err := renderer.RenderPageResolvedWithFunctions(`{{subpages title="Related pages"}}`, md.Slug, md.DefaultOptions(), md.Functions{Capabilities: plugincap.Capabilities(nil, nodes)})
 	html := rendered.HTML
 
 	require.NoError(t, err)

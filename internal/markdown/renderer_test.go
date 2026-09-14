@@ -15,7 +15,7 @@ import (
 func TestWikiLinksAndCallouts(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	got, err := renderer.Render("See [[Postgres Restore|the runbook]].\n\n!!! warning\nDanger zone\n")
 
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestLinksAreUnique(t *testing.T) {
 func TestTabsRenderMarkdownPanels(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tabs")
 	source := `=== "Linux"
 
     **apt**
@@ -88,7 +88,7 @@ func TestTabsRenderMarkdownPanels(t *testing.T) {
 func TestDetailsRenderMarkdownBody(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "details")
 	source := `???+ "Why this works"
 
     This body contains **Markdown** and [[Another Page]].
@@ -106,7 +106,7 @@ func TestDetailsRenderMarkdownBody(t *testing.T) {
 func TestCustomBlocksAreIgnoredInsideFences(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tabs", "details", "callouts")
 	source := "```text\n=== \"Not a tab\"\n??? \"Not details\"\n!!! warning\n```\n"
 
 	got, err := renderer.Render(source)
@@ -123,7 +123,7 @@ func TestCustomBlocksAreIgnoredInsideFences(t *testing.T) {
 func TestAdditionalCalloutKinds(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	got, err := renderer.Render("!!! info\nInformation\n\n!!! success\nWorked\n\n!!! danger\nStop\n")
 
 	require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestAdditionalCalloutKinds(t *testing.T) {
 func TestCalloutBodyRendersMarkdown(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	got, err := renderer.Render("!!! warning\n`$(VAR_NAME)` does not work with **envFrom**!\n")
 
 	require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestRenderPageExtractsHeadingTextWithoutHTMLMarkup(t *testing.T) {
 func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		"Before\n\n{{subpages}}\n\nAfter\n",
 		Slug,
@@ -196,7 +196,7 @@ func TestSubpagesFunctionExpandsAtItsMarkdownPosition(t *testing.T) {
 func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages title="Related pages"}}`,
 		Slug,
@@ -211,7 +211,7 @@ func TestSubpagesFunctionUsesCustomTitle(t *testing.T) {
 func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages title=""}}`,
 		Slug,
@@ -227,7 +227,7 @@ func TestSubpagesFunctionAllowsHiddenTitle(t *testing.T) {
 func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		`{{subpages depth=2}}`,
 		Slug,
@@ -243,7 +243,7 @@ func TestSubpagesFunctionLeavesUnsupportedOptionsLiteral(t *testing.T) {
 func TestSubpagesFunctionRemainsLiteralInsideFencedCode(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "subpages")
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
 		"```markdown\n{{subpages}}\n```\n",
 		Slug,
@@ -280,7 +280,7 @@ func TestSlugWithoutRegularExpressions(t *testing.T) {
 func TestTableStyleDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	source := `| Service | Status | Owner |
 | --- | --- | --- |
 | API | Healthy | Platform |
@@ -303,7 +303,7 @@ func TestTableStyleDirective(t *testing.T) {
 func TestConfluenceTablePalette(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	source := `| Service | Status | Owner |
 | --- | --- | --- |
 | API | Healthy | Platform |
@@ -325,7 +325,7 @@ func TestConfluenceTablePalette(t *testing.T) {
 func TestInteractiveTableDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	source := `| Service | Replicas |
 | --- | ---: |
 | API | 3 |
@@ -345,7 +345,7 @@ func TestInteractiveTableDirective(t *testing.T) {
 func TestConfluenceInteractiveTableDirective(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	source := `| Column 1 | Column 2 | Column 3 |
 | --- | --- | --- |
 | | | |
@@ -366,7 +366,7 @@ func TestConfluenceInteractiveTableDirective(t *testing.T) {
 func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	manager := renderer.PluginManager()
 	require.NotNil(t, manager)
 	require.NoError(t, manager.UpdateSettings(context.Background(), "io.lore.tables", map[string]bool{
@@ -393,7 +393,7 @@ func TestDisabledInteractiveTableDirectiveRemainsMarkdown(t *testing.T) {
 func TestTableStyleDirectiveInsideTab(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tabs", "tables")
 	source := `=== "Status"
 
     | Service | Status |
@@ -415,7 +415,7 @@ func TestTableStyleDirectiveInsideTab(t *testing.T) {
 func TestRenderingOptionsDisableExtensions(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "callouts")
 	options := DefaultOptions()
 	options.WikiLinks = false
 	options.Callouts = false
@@ -435,7 +435,7 @@ Do not restart.
 func TestPluginSettingsDisableTableStyles(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "tables")
 	manager := renderer.PluginManager()
 	require.NotNil(t, manager)
 	require.NoError(t, manager.UpdateSettings(context.Background(), "io.lore.tables", map[string]bool{
@@ -460,7 +460,7 @@ func TestPluginSettingsDisableTableStyles(t *testing.T) {
 func TestFootnotesCanBeEnabled(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "footnotes")
 	manager := renderer.PluginManager()
 	require.NotNil(t, manager)
 	require.NoError(t, manager.Enable(context.Background(), "io.lore.footnotes"))
@@ -474,7 +474,7 @@ func TestFootnotesCanBeEnabled(t *testing.T) {
 func TestDefinitionListsCanBeEnabled(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "definition-lists")
 	manager := renderer.PluginManager()
 	require.NotNil(t, manager)
 	require.NoError(t, manager.Enable(context.Background(), "io.lore.definition-lists"))
@@ -487,7 +487,7 @@ func TestDefinitionListsCanBeEnabled(t *testing.T) {
 func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "typographer", "coding-ligatures")
 	manager := renderer.PluginManager()
 	require.NotNil(t, manager)
 	require.NoError(t, manager.Enable(context.Background(), "io.lore.typographer"))
@@ -505,7 +505,7 @@ func TestCodingLigaturesPreserveTypographerOperatorSequences(t *testing.T) {
 func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "syntax-highlighting")
 	got, err := renderer.Render("```go\nfunc main() { println(\"Lore\") }\n```\n")
 
 	require.NoError(t, err)
@@ -517,7 +517,7 @@ func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 func TestSyntaxHighlightingCanBeDisabled(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "syntax-highlighting")
 	require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 
 	got, err := renderer.Render("```go\npackage main\n```\n")
@@ -531,7 +531,7 @@ func TestSyntaxHighlightingCanBeDisabled(t *testing.T) {
 func TestSyntaxHighlightingFallsBackForUnknownLanguage(t *testing.T) {
 	t.Parallel()
 
-	renderer := testRenderer(t)
+	renderer := testRenderer(t, "syntax-highlighting")
 	got, err := renderer.Render("```not-a-real-language\nplain <text>\n```\n")
 
 	require.NoError(t, err)

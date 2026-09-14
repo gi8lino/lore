@@ -13,7 +13,7 @@ import (
 
 func TestStaticBuildUsesLiveRendererRegistry(t *testing.T) {
 	ctx := context.Background()
-	renderer := testMarkdownRenderer(t)
+	renderer, manager := testPluginMarkdownRenderer(t, "callouts")
 	root := t.TempDir()
 	source := filepath.Join(root, "docs")
 	output := filepath.Join(root, "site")
@@ -31,17 +31,19 @@ func TestStaticBuildUsesLiveRendererRegistry(t *testing.T) {
 	html, err := os.ReadFile(filepath.Join(output, "index.html"))
 	require.NoError(t, err)
 	assert.Contains(t, string(html), `class="callout note"`)
-	require.NoError(t, renderer.PluginManager().Disable(ctx, "io.lore.callouts"))
+	require.NoError(t, manager.Disable(ctx, "io.lore.callouts"))
 	require.NoError(t, BuildWithRenderer(ctx, assets, config, renderer))
 	html, err = os.ReadFile(filepath.Join(output, "index.html"))
 	require.NoError(t, err)
 	assert.NotContains(t, string(html), `class="callout note"`)
-	require.NoError(t, renderer.PluginManager().Enable(ctx, "io.lore.callouts"))
+	require.NoError(t, manager.Enable(ctx, "io.lore.callouts"))
 }
 
 func TestStaticBrowserPackagesFollowLiveRegistry(t *testing.T) {
 	ctx := context.Background()
-	renderer := testMarkdownRenderer(t)
+	renderer := testFullMarkdownRenderer(t)
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
 	root := t.TempDir()
 	source := filepath.Join(root, "docs")
 	require.NoError(t, os.MkdirAll(source, 0755))
@@ -58,7 +60,7 @@ func TestStaticBrowserPackagesFollowLiveRegistry(t *testing.T) {
 	catalog, err := os.ReadFile(filepath.Join(config.OutputDir, "plugins", "modules.json"))
 	require.NoError(t, err)
 	assert.Contains(t, string(catalog), "/docs/plugins/io.lore.mermaid/")
-	module := renderer.PluginManager().BrowserModules()[0]
+	module := manager.BrowserModules()[0]
 	frame, err := os.ReadFile(filepath.Join(config.OutputDir, "plugins", module.PluginID, module.Digest, "frames", "diagrams.html"))
 	require.NoError(t, err)
 	assert.Contains(t, string(frame), "/docs/assets/js/plugins/frame.js")
@@ -67,7 +69,7 @@ func TestStaticBrowserPackagesFollowLiveRegistry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(html), `data-plugin-modules="/docs/plugins/modules.json"`)
 	assert.Contains(t, string(html), `data-plugin-live="false"`)
-	require.NoError(t, renderer.PluginManager().Disable(ctx, module.PluginID))
+	require.NoError(t, manager.Disable(ctx, module.PluginID))
 	require.NoError(t, BuildWithRenderer(ctx, assets, config, renderer))
 	catalog, err = os.ReadFile(filepath.Join(config.OutputDir, "plugins", "modules.json"))
 	require.NoError(t, err)
@@ -75,5 +77,5 @@ func TestStaticBrowserPackagesFollowLiveRegistry(t *testing.T) {
 	assert.Contains(t, string(catalog), "io.lore.tables")
 	_, err = os.Stat(filepath.Join(config.OutputDir, "plugins", module.PluginID))
 	assert.True(t, os.IsNotExist(err))
-	require.NoError(t, renderer.PluginManager().Enable(ctx, module.PluginID))
+	require.NoError(t, manager.Enable(ctx, module.PluginID))
 }

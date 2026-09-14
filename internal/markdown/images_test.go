@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"context"
 	"io"
 	"strings"
 	"testing"
@@ -147,7 +146,7 @@ func TestImageWidthsRenderInMarkdown(t *testing.T) {
 	t.Run("table", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := testRenderer(t).Render("| Diagram |\n| --- |\n| ![Diagram](diagram.png){width=50%} |")
+		got, err := testRenderer(t, "tables").Render("| Diagram |\n| --- |\n| ![Diagram](diagram.png){width=50%} |")
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 		require.Len(t, images, 1)
@@ -160,7 +159,7 @@ func TestImageWidthsRenderInMarkdown(t *testing.T) {
 	t.Run("callout", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := testRenderer(t).Render("!!! info\n![Diagram](diagram.png){width=50%}\n")
+		got, err := testRenderer(t, "callouts").Render("!!! info\n![Diagram](diagram.png){width=50%}\n")
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 		require.Len(t, images, 1)
@@ -173,7 +172,7 @@ func TestImageWidthsRenderInMarkdown(t *testing.T) {
 	t.Run("tab", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := testRenderer(t).Render("=== \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
+		got, err := testRenderer(t, "tabs").Render("=== \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 		require.Len(t, images, 1)
@@ -186,7 +185,7 @@ func TestImageWidthsRenderInMarkdown(t *testing.T) {
 	t.Run("details", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := testRenderer(t).Render("??? \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
+		got, err := testRenderer(t, "details").Render("??? \"Diagram\"\n\n    ![Diagram](diagram.png){width=50%}\n")
 		require.NoError(t, err)
 		images := renderedImageAttributes(t, got)
 		require.Len(t, images, 1)
@@ -417,7 +416,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("inline code", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render("`![Diagram](diagram.png){width=50%}`")
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))
@@ -427,7 +425,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("backtick code fence", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render("```text\n![Diagram](diagram.png){width=50%}\n```")
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))
@@ -437,7 +434,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("tilde code fence", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render("~~~text\n![Diagram](diagram.png){width=50%}\n~~~")
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))
@@ -447,7 +443,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("indented code", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render("    ![Diagram](diagram.png){width=50%}\n")
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))
@@ -457,7 +452,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("escaped image", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render(`\![Diagram](diagram.png){width=50%}`)
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))
@@ -467,7 +461,6 @@ func TestImageWidthDoesNotInterpretCodeOrOrdinaryLinks(t *testing.T) {
 	t.Run("ordinary link", func(t *testing.T) {
 		t.Parallel()
 		renderer := testRenderer(t)
-		require.NoError(t, renderer.PluginManager().Disable(context.Background(), "io.lore.syntax-highlighting"))
 		got, err := renderer.Render(`[Diagram](diagram.png){width=50%}`)
 		require.NoError(t, err)
 		assert.Empty(t, renderedImageAttributes(t, got))

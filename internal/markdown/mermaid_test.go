@@ -2,16 +2,15 @@ package markdown
 
 import (
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestMermaidUsesRuntimeRegistryAndCentralSanitizer(t *testing.T) {
 	ctx := context.Background()
-	r, err := New(ctx)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, r.Close(ctx)) }()
+	r := testRenderer(t, "mermaid")
 	source := "```mermaid\ngraph LR; A --> B\n```"
 	rendered, err := r.Render(source)
 	require.NoError(t, err)

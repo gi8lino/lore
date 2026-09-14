@@ -1,16 +1,13 @@
 package handler
 
 import (
-	"context"
-	md "github.com/gi8lino/lore/internal/markdown"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	md "github.com/gi8lino/lore/internal/markdown"
 )
 
+// testMarkdownRenderer returns a core renderer without starting the plugin runtime.
 func testMarkdownRenderer(t testing.TB) *md.Renderer {
 	t.Helper()
-	renderer, err := md.New(context.Background())
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = renderer.Close(context.Background()) })
-	return renderer
+	return md.NewWithRegistry(nil)
 }

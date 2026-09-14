@@ -188,7 +188,10 @@ func TestBuilderBuildsReadOnlyStaticSite(t *testing.T) {
 		Description: "v2.4.1",
 	}}
 
-	result, err := newBuilder(assets).build(context.Background(), config)
+	renderer, _ := testPluginMarkdownRenderer(t, "subpages")
+	builder := newBuilder(assets)
+	builder.renderer = renderer
+	result, err := builder.build(context.Background(), config)
 
 	require.NoError(t, err)
 	assert.Equal(t, 2, result.pages)
@@ -343,7 +346,9 @@ assets_dir = "assets"
 
 	config, err := loadConfig(configFile, true)
 	require.NoError(t, err)
-	_, err = newBuilder(web.Assets).build(context.Background(), config)
+	builder := newBuilder(web.Assets)
+	builder.renderer = testMarkdownRenderer(t)
+	_, err = builder.build(context.Background(), config)
 	require.NoError(t, err)
 
 	t.Run("home branding", func(t *testing.T) {
@@ -396,7 +401,7 @@ assets_dir = "assets"
 
 	// Invalid branding must not erase the previously generated site.
 	config.Logo = filepath.Join(root, "missing.svg")
-	_, err = newBuilder(web.Assets).build(context.Background(), config)
+	_, err = builder.build(context.Background(), config)
 	require.ErrorContains(t, err, "logo")
 	_, err = os.Stat(filepath.Join(config.OutputDir, "index.html"))
 	require.NoError(t, err)
