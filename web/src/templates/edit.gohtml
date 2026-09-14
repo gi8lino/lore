@@ -389,8 +389,11 @@
         <div class="markdown-toolbar-popover">
           <button type="button"
                   data-markdown-action="mention">{{ icon "at-sign-lucide" 15 }}<span>Mention</span></button>
-          <button type="button"
-                  data-markdown-action="variable">{{ icon "variable-lucide" 15 }}<span>Variable</span></button>
+          {{ range .EditorInserts }}
+            <button type="button"
+                    data-plugin-insert-markdown="{{ .Markdown }}"
+                    data-plugin-insert-inline="{{ .Inline }}">{{ icon "braces-lucide" 15 }}<span>{{ .Name }}</span></button>
+          {{ end }}
         </div>
       </details>
       <button type="button"
@@ -512,7 +515,7 @@
                   placeholder="# Start writing…"
                   data-markdown-editor
                   data-mention-autocomplete
-                  data-variable-autocomplete>{{ if .Page }}{{ .Page.Markdown }}{{ else if .EditorTemplate }}{{ .EditorTemplate.Markdown }}{{ end }}</textarea>
+                  data-plugin-completions>{{ if .Page }}{{ .Page.Markdown }}{{ else if .EditorTemplate }}{{ .EditorTemplate.Markdown }}{{ end }}</textarea>
         <div class="editor-source-statusbar">
           <span data-editor-word-count>0 words</span>
           <span data-editor-character-count>0 characters</span>

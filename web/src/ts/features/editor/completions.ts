@@ -1,17 +1,12 @@
-// Reusable-variable detection and autocomplete for the Markdown editor.
+// Generic plugin-owned editor completion behavior.
 
 import { requestJSON } from "../../core/http.ts";
 import { textareaCaretOffset } from "../../core/textarea.ts";
-import { parseEditorCatalog, type CatalogSnippet } from "./catalog.ts";
+import { parseEditorCatalog, type CatalogCompletion } from "./catalog.ts";
 
-export interface VariableTrigger {
-  start: number;
-  query: string;
-}
-
+type CompletionTrigger = { start: number; query: string; trigger: string };
 type Fence = { character: string; length: number };
 
-// Reports whether a caret offset is inside fenced code, where Lore macros stay literal.
 function fencedCodeAt(value: string, caret: number): boolean {
   const lines = value.slice(0, caret).split("\n");
   let fence: Fence | null = null;
@@ -26,74 +21,74 @@ function fencedCodeAt(value: string, caret: number): boolean {
       fence = next;
       continue;
     }
-
     if (fence.character === next.character && next.length >= fence.length)
       fence = null;
   }
-
   return fence !== null;
 }
 
-// Finds an active {{ variable trigger at the caret.
-export function variableTrigger(
+export function completionTrigger(
   value: string,
   caret: number,
-): VariableTrigger | null {
+  triggers: string[],
+): CompletionTrigger | null {
   if (fencedCodeAt(value, caret)) return null;
 
   const lineStart = value.lastIndexOf("\n", Math.max(0, caret - 1)) + 1;
   const fragment = value.slice(lineStart, caret);
-  const opening = fragment.lastIndexOf("{{");
-  if (opening < 0) return null;
+  let selected = "";
+  let opening = -1;
 
-  const query = fragment.slice(opening + 2);
+  for (const trigger of triggers) {
+    const index = fragment.lastIndexOf(trigger);
+    if (
+      index > opening ||
+      (index === opening && trigger.length > selected.length)
+    ) {
+      opening = index;
+      selected = trigger;
+    }
+  }
+  if (opening < 0 || !selected) return null;
+
+  const query = fragment.slice(opening + selected.length);
   if (/[{}]/u.test(query)) return null;
-
-  // Once an author starts an explicit Lore macro, leave it alone. The short
-  // {{ trigger is intentionally the variable picker shortcut.
-  if (/^(?:var|snippet|include):/iu.test(query)) return null;
-
-  return { start: lineStart + opening, query };
+  return { start: lineStart + opening, query, trigger: selected };
 }
 
-// Builds the canonical variable macro for a stored variable name.
-export function variableReplacement(name: string): string {
-  return `{{var:${name}}}`;
+function matches(
+  items: CatalogCompletion[],
+  trigger: CompletionTrigger,
+): CatalogCompletion[] {
+  const normalized = trigger.query.trim().toLocaleLowerCase();
+  return items
+    .filter((item) => item.trigger === trigger.trigger)
+    .filter(
+      (item) =>
+        !normalized ||
+        `${item.label} ${item.detail ?? ""}`
+          .toLocaleLowerCase()
+          .includes(normalized),
+    );
 }
 
-function matchingVariables(
-  variables: CatalogSnippet[],
-  query: string,
-): CatalogSnippet[] {
-  const normalized = query.trim().toLocaleLowerCase();
-  if (!normalized) return variables;
-
-  return variables.filter((variable) =>
-    `${variable.name} ${variable.description ?? ""}`
-      .toLocaleLowerCase()
-      .includes(normalized),
-  );
-}
-
-// Wires reusable-variable autocomplete behavior.
-function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
+function setupPluginCompletions(source: HTMLTextAreaElement): void {
   const anchor = source.parentElement;
   if (!anchor) return;
+  const completionAnchor = anchor;
 
-  const suggestionAnchor = anchor;
   const menu = document.createElement("div");
-
-  menu.className = "editor-suggestion-menu editor-variable-menu";
-  menu.id = "variable-suggestions";
+  menu.className = "editor-suggestion-menu editor-plugin-completion-menu";
+  menu.id = "plugin-completion-suggestions";
   menu.hidden = true;
   menu.setAttribute("role", "listbox");
-  menu.setAttribute("aria-label", "Insert a variable");
-  suggestionAnchor.append(menu);
+  menu.setAttribute("aria-label", "Insert reusable content");
+  completionAnchor.append(menu);
 
-  let trigger: VariableTrigger | null = null;
-  let variables: CatalogSnippet[] | null = null;
-  let variableLoad: Promise<CatalogSnippet[]> | null = null;
-  let results: CatalogSnippet[] = [];
+  let catalog: CatalogCompletion[] | null = null;
+  let load: Promise<CatalogCompletion[]> | null = null;
+  let trigger: CompletionTrigger | null = null;
+  let results: CatalogCompletion[] = [];
   let active = -1;
   let request = 0;
 
@@ -104,7 +99,6 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
     active = -1;
     menu.hidden = true;
     menu.replaceChildren();
-
     if (source.getAttribute("aria-controls") === menu.id) {
       source.removeAttribute("aria-controls");
       source.setAttribute("aria-expanded", "false");
@@ -113,17 +107,15 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
 
   function position(): void {
     if (menu.hidden) return;
-
     const sourceRect = source.getBoundingClientRect();
-    const anchorRect = suggestionAnchor.getBoundingClientRect();
+    const anchorRect = completionAnchor.getBoundingClientRect();
     const caret = textareaCaretOffset(source, source.selectionStart ?? 0);
     const menuWidth = Math.min(
       390,
-      Math.max(260, suggestionAnchor.clientWidth - 16),
+      Math.max(260, completionAnchor.clientWidth - 16),
     );
+    const maxLeft = Math.max(8, completionAnchor.clientWidth - menuWidth - 8);
     const rawLeft = sourceRect.left - anchorRect.left + caret.left;
-    const maxLeft = Math.max(8, suggestionAnchor.clientWidth - menuWidth - 8);
-
     menu.style.width = `${menuWidth}px`;
     menu.style.left = `${Math.max(8, Math.min(rawLeft, maxLeft))}px`;
     menu.style.top = `${sourceRect.top - anchorRect.top + caret.top}px`;
@@ -131,36 +123,27 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
 
   function render(): void {
     menu.replaceChildren();
-
     if (!results.length) {
       const empty = document.createElement("div");
-
       empty.className = "editor-suggestion-empty";
-      empty.textContent = trigger?.query
-        ? "No matching variables."
-        : "No variables available.";
+      empty.textContent = "No matching items.";
       menu.append(empty);
     } else {
-      for (const [index, variable] of results.entries()) {
+      for (const [index, item] of results.entries()) {
         const option = document.createElement("button");
-
         option.type = "button";
         option.className = "editor-suggestion-option";
-        option.dataset.variableIndex = String(index);
+        option.dataset.pluginCompletionIndex = String(index);
         option.setAttribute("role", "option");
         option.setAttribute("aria-selected", String(index === active));
-
         const name = document.createElement("strong");
         const detail = document.createElement("small");
-
-        name.textContent = variable.name;
-        detail.textContent =
-          variable.description || variableReplacement(variable.name);
+        name.textContent = item.label;
+        detail.textContent = item.detail || item.replacement;
         option.append(name, detail);
         menu.append(option);
       }
     }
-
     menu.hidden = false;
     source.setAttribute("aria-controls", menu.id);
     source.setAttribute("aria-expanded", "true");
@@ -168,64 +151,55 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
   }
 
   function choose(index: number): void {
-    const variable = results[index];
-    const currentTrigger = trigger;
-    if (!variable || !currentTrigger) return;
-
-    const end = source.selectionStart ?? currentTrigger.start;
-
-    source.setRangeText(
-      variableReplacement(variable.name),
-      currentTrigger.start,
-      end,
-      "end",
-    );
+    const item = results[index];
+    const current = trigger;
+    if (!item || !current) return;
+    const end = source.selectionStart ?? current.start;
+    source.setRangeText(item.replacement, current.start, end, "end");
     source.dispatchEvent(new Event("input", { bubbles: true }));
     close();
     source.focus();
   }
 
-  async function loadVariables(): Promise<CatalogSnippet[]> {
-    if (variables) return variables;
-    if (variableLoad) return variableLoad;
-
-    variableLoad = requestJSON("/api/editor/catalog")
-      .then((payload) =>
-        parseEditorCatalog(payload)
-          .snippets.filter((item) => item.kind === "variable")
-          .sort((left, right) => left.name.localeCompare(right.name)),
-      )
+  async function loadItems(): Promise<CatalogCompletion[]> {
+    if (catalog) return catalog;
+    if (load) return load;
+    load = requestJSON("/api/editor/catalog")
+      .then((payload) => parseEditorCatalog(payload).completions)
       .then((items) => {
-        variables = items;
+        catalog = items;
         return items;
       })
       .finally(() => {
-        variableLoad = null;
+        load = null;
       });
-
-    return variableLoad;
+    return load;
   }
 
   async function refresh(): Promise<void> {
-    const next = variableTrigger(source.value, source.selectionStart ?? 0);
-    if (!next) {
-      close();
-      return;
-    }
-
-    trigger = next;
-    const currentRequest = ++request;
-
     try {
-      const available = await loadVariables();
+      const available = await loadItems();
+      const triggers = [...new Set(available.map((item) => item.trigger))].sort(
+        (left, right) => right.length - left.length,
+      );
+      const next = completionTrigger(
+        source.value,
+        source.selectionStart ?? 0,
+        triggers,
+      );
+      if (!next) {
+        close();
+        return;
+      }
+      trigger = next;
+      const currentRequest = ++request;
+      results = matches(available, next);
       if (currentRequest !== request) return;
-
-      results = matchingVariables(available, next.query);
       active = results.length ? 0 : -1;
       render();
     } catch (error) {
-      console.error("variable catalog failed", error);
-      if (currentRequest === request) close();
+      console.error("plugin completion catalog failed", error);
+      close();
     }
   }
 
@@ -234,7 +208,6 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
   source.addEventListener("scroll", position);
   source.addEventListener("keydown", (event: KeyboardEvent) => {
     if (menu.hidden) return;
-
     switch (event.key) {
       case "ArrowDown":
         if (results.length) {
@@ -263,18 +236,17 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
         break;
     }
   });
-
   menu.addEventListener("mousedown", (event: MouseEvent) =>
     event.preventDefault(),
   );
   menu.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-
-    const option = target.closest<HTMLElement>("[data-variable-index]");
-    if (option) choose(Number(option.dataset.variableIndex));
+    const option = target.closest<HTMLElement>(
+      "[data-plugin-completion-index]",
+    );
+    if (option) choose(Number(option.dataset.pluginCompletionIndex));
   });
-
   document.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (target !== source && target instanceof Node && !menu.contains(target))
@@ -283,10 +255,10 @@ function setupVariableAutocomplete(source: HTMLTextAreaElement): void {
   window.addEventListener("resize", position);
 }
 
-// Initializes reusable-variable autocomplete in Markdown editors.
-export function initVariableAutocomplete(): void {
+// Initializes active plugin-owned completions in Markdown editors.
+export function initPluginCompletions(): void {
   for (const source of document.querySelectorAll<HTMLTextAreaElement>(
-    "textarea[data-variable-autocomplete]",
+    "textarea[data-plugin-completions]",
   ))
-    setupVariableAutocomplete(source);
+    setupPluginCompletions(source);
 }

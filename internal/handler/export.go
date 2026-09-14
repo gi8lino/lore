@@ -78,7 +78,7 @@ func ExportPagePDF(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
-		overrides, err := readExportVariables(w, r)
+		parameters, err := readExportParameters(w, r)
 		if err != nil {
 			httpresponse.Problem(w, http.StatusBadRequest, "Invalid export request.")
 			return
@@ -124,7 +124,7 @@ func ExportPagePDF(
 
 		settings := applicationSettings.Rendering
 		rendered, err := renderExportHTML(r.Context(), catalogUseCases, knowledgeUseCases,
-			navigationUseCases, mediaUseCases, renderer, accessUseCases, currentUser(r), pageData, settings, overrides)
+			navigationUseCases, mediaUseCases, renderer, accessUseCases, currentUser(r), pageData, settings, parameters)
 		if err != nil {
 			writeRenderedExportProblem(logger, w, err)
 			return

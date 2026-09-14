@@ -98,7 +98,7 @@ export function editorDiagnostics(
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const catalog = parseEditorCatalog(catalogValue);
-  const { pages, aliases, snippets } = catalog;
+  const { pages, aliases, snippets, completions } = catalog;
   const pageBySlug = new Map(
     pages.map((page) => [editorSlug(page.slug), page]),
   );
@@ -138,10 +138,10 @@ export function editorDiagnostics(
 
   const macros = /\{\{(var|snippet|include):([^{}]+)\}\}/gu;
   const snippetKeys = new Set(
-    snippets.map(
-      (item) =>
-        `${item.kind === "variable" ? "var" : item.kind}:${item.name.toLocaleLowerCase()}`,
-    ),
+    snippets.map((item) => `${item.kind}:${item.name.toLocaleLowerCase()}`),
+  );
+  const pluginMacros = new Set(
+    completions.map((item) => item.replacement.toLocaleLowerCase()),
   );
 
   for (const match of source.matchAll(macros)) {
@@ -151,7 +151,8 @@ export function editorDiagnostics(
       kind === "include"
         ? pageBySlug.has(editorSlug(name)) ||
           Object.hasOwn(aliases, editorSlug(name))
-        : snippetKeys.has(`${kind}:${name.toLocaleLowerCase()}`);
+        : snippetKeys.has(`${kind}:${name.toLocaleLowerCase()}`) ||
+          pluginMacros.has(`{{${kind}:${name}}}`.toLocaleLowerCase());
 
     if (!valid) {
       diagnostics.push({

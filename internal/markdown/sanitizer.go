@@ -36,7 +36,6 @@ func newSanitizer() *bluemonday.Policy {
 	policy.AllowAttrs("data-lore-plugin", "data-lore-module").Matching(regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,127}$`)).OnElements("div")
 	policy.AllowAttrs("data-lore-input").Matching(regexp.MustCompile(`^html$`)).OnElements("div")
 	policy.AllowAttrs("data-lore-fallback").OnElements("div")
-	policy.AllowAttrs("data-page-variable").OnElements("span")
 	policy.AllowAttrs("data-plugin-annotation").Matching(regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,191}$`)).OnElements("span")
 	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 

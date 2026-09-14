@@ -1,77 +1,68 @@
-// Reading-page variable inspection. Saved values are never edited here.
+// Generic reading-page inspectors contributed by plugins.
 
 import { requiredElement } from "../core/dom.ts";
 
-export interface VariableField {
-  name: string;
-  value: string;
-  saved: string;
-}
-
-// Preserve explicit empty values and whitespace, and omit unchanged fields.
-// Object.fromEntries safely handles names such as "__proto__" and "constructor".
-export function variableOverrides(
-  fields: Iterable<VariableField>,
-): Record<string, string> {
-  return Object.fromEntries(
-    [...fields]
-      .filter((field) => field.value !== field.saved)
-      .map((field) => [field.name, field.value]),
-  );
-}
-
-export function initPageVariables(): void {
-  const panel = document.querySelector<HTMLElement>("[data-variables-panel]");
-  const button = document.querySelector<HTMLButtonElement>(
-    "[data-variables-open]",
-  );
+export function initPluginInspectors(): void {
   const content = document.querySelector<HTMLElement>(
-    "[data-variable-content]",
+    "[data-plugin-annotation-content]",
   );
-  if (!panel || !button || !content) return;
-  setupPageVariables(panel, button, content);
+  const tooltip = document.querySelector<HTMLElement>(
+    "[data-plugin-inspector-tooltip]",
+  );
+  if (!content || !tooltip) return;
+
+  for (const panel of document.querySelectorAll<HTMLElement>(
+    "[data-plugin-inspector-panel]",
+  )) {
+    const id = panel.dataset.pluginInspectorPanel;
+    if (!id) continue;
+    const button = document.querySelector<HTMLButtonElement>(
+      `[data-plugin-inspector-open="${CSS.escape(id)}"]`,
+    );
+    if (button) setupInspector(panel, button, content, tooltip);
+  }
 }
 
-function setupPageVariables(
+function setupInspector(
   panel: HTMLElement,
   button: HTMLButtonElement,
   content: HTMLElement,
+  tooltip: HTMLElement,
 ): void {
   const toggle = requiredElement<HTMLInputElement>(
     panel,
-    "[data-variables-highlight]",
+    "[data-plugin-inspector-highlight]",
   );
   const close = requiredElement<HTMLButtonElement>(
     panel,
-    "[data-variables-close]",
-  );
-  const tooltip = requiredElement<HTMLElement>(
-    document,
-    "[data-variable-tooltip]",
+    "[data-plugin-inspector-close]",
   );
   const tooltipName = requiredElement<HTMLElement>(
     tooltip,
-    "[data-variable-tooltip-name]",
+    "[data-plugin-inspector-tooltip-name]",
   );
   const tooltipValue = requiredElement<HTMLElement>(
     tooltip,
-    "[data-variable-tooltip-value]",
+    "[data-plugin-inspector-tooltip-value]",
   );
-  const values = new Map<string, string>();
+  const values = new Map<string, { label: string; value: string }>();
+
   for (const entry of panel.querySelectorAll<HTMLElement>(
-    "[data-variable-entry]",
+    "[data-plugin-inspector-entry]",
   )) {
-    const name = entry.dataset.variableEntry;
-    if (name === undefined) continue;
-    values.set(
-      name,
-      requiredElement<HTMLElement>(entry, "[data-variable-saved]")
-        .textContent ?? "",
-    );
+    const annotation = entry.dataset.pluginInspectorEntry;
+    if (!annotation) continue;
+    values.set(annotation, {
+      label: entry.dataset.pluginInspectorLabel ?? annotation,
+      value:
+        requiredElement<HTMLElement>(entry, "[data-plugin-inspector-saved]")
+          .textContent ?? "",
+    });
   }
+
   const marks = [
-    ...content.querySelectorAll<HTMLElement>("[data-page-variable]"),
-  ].filter((mark) => values.has(mark.dataset.pageVariable ?? ""));
+    ...content.querySelectorAll<HTMLElement>("[data-plugin-annotation]"),
+  ].filter((mark) => values.has(mark.dataset.pluginAnnotation ?? ""));
   let active: HTMLElement | null = null;
 
   function hideTooltip(): void {
@@ -83,10 +74,11 @@ function setupPageVariables(
   function showTooltip(mark: HTMLElement): void {
     if (!toggle.checked) return;
     hideTooltip();
-    const name = mark.dataset.pageVariable ?? "";
-    tooltipName.textContent = name;
-    const saved = values.get(name) ?? "";
-    tooltipValue.textContent = saved || "(empty value)";
+    const annotation = mark.dataset.pluginAnnotation ?? "";
+    const item = values.get(annotation);
+    if (!item) return;
+    tooltipName.textContent = item.label;
+    tooltipValue.textContent = item.value || "(empty value)";
     tooltip.hidden = false;
     active = mark;
     mark.setAttribute("aria-describedby", tooltip.id);
@@ -106,9 +98,9 @@ function setupPageVariables(
   }
 
   function setHighlights(): void {
-    content.classList.toggle("variables-highlighted", toggle.checked);
     button.classList.toggle("active", toggle.checked);
     for (const mark of marks) {
+      mark.classList.toggle("plugin-annotation-active", toggle.checked);
       if (toggle.checked) mark.tabIndex = 0;
       else mark.removeAttribute("tabindex");
     }
@@ -127,6 +119,7 @@ function setupPageVariables(
     button.focus();
   });
   toggle.addEventListener("change", setHighlights);
+
   for (const mark of marks) {
     mark.addEventListener("pointerenter", (event: PointerEvent) => {
       if (event.pointerType !== "touch") showTooltip(mark);
@@ -138,8 +131,6 @@ function setupPageVariables(
     mark.addEventListener("blur", hideTooltip);
     mark.addEventListener("click", (event: MouseEvent) => {
       if (!toggle.checked) return;
-      // Inspection mode favors showing provenance over following a surrounding
-      // link. Turn highlighting off to use that link normally.
       event.preventDefault();
       showTooltip(mark);
     });

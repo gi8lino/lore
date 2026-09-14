@@ -49,12 +49,14 @@ type RenderedPage struct {
 	ExportFields []plugin.ExportField
 }
 
-// Functions supplies request-local macro capabilities and variable provenance.
+// Functions supplies request-local plugin capabilities and export data.
 // Bindings cannot activate an unregistered macro.
 type Functions struct {
-	Capabilities     map[string]plugin.Capability
-	Context          context.Context
-	Variables        []Variable
+	Capabilities map[string]plugin.Capability
+	Context      context.Context
+	// Replacements contains trusted host substitutions restored after plugin content preprocessing.
+	// It exists only as a migration bridge while legacy snippets/includes move into plugins.
+	Replacements     []plugin.Replacement
 	Macros           map[string]plugin.MacroRenderer
 	ExportParameters map[string]map[string]map[string]string
 }
@@ -79,7 +81,7 @@ func NewWithRegistry(registry *plugin.Registry) *Renderer {
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
-func engine(options Options, contributed []goldmark.Extender, variableRanges []variableRange, annotationRanges []annotationRange) goldmark.Markdown {
+func engine(options Options, contributed []goldmark.Extender, annotationRanges []annotationRange) goldmark.Markdown {
 	extensions := make([]goldmark.Extender, 0, 8)
 
 	if options.typographer {
@@ -105,14 +107,12 @@ func engine(options Options, contributed []goldmark.Extender, variableRanges []v
 			parser.WithAutoHeadingID(),
 			parser.WithASTTransformers(
 				util.Prioritized(imageWidthTransformer{}, 100),
-				util.Prioritized(variableTransformer{ranges: variableRanges}, 200),
 				util.Prioritized(annotationTransformer{ranges: annotationRanges}, 210),
 			),
 		),
 		goldmark.WithRendererOptions(
 			goldhtml.WithUnsafe(),
 			renderer.WithNodeRenderers(
-				util.Prioritized(variableNodeRenderer{ranges: variableRanges}, 100),
 				util.Prioritized(annotationNodeRenderer{ranges: annotationRanges}, 110),
 			),
 		),
@@ -218,12 +218,11 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 		return RenderedPage{}, err
 	}
 	source = prepared.Markdown
+	prepared.Replacements = append(prepared.Replacements, functions.Replacements...)
 	options.annotations = prepared.Replacements
 
 	var rendered RenderedPage
-	if len(functions.Variables) != 0 {
-		rendered, err = r.renderPageWithVariables(source, resolve, options, functions)
-	} else if len(prepared.Replacements) != 0 {
+	if len(prepared.Replacements) != 0 {
 		rendered, err = r.renderPageWithAnnotations(source, resolve, options)
 	} else {
 		rendered, err = r.renderPage(source, resolve, options)
@@ -256,42 +255,6 @@ func (r *Renderer) renderPageWithAnnotations(
 	if equivalentAnnotationHTML(annotated.HTML, normal.HTML) {
 		normal.HTML = annotated.HTML
 	}
-	return normal, nil
-}
-
-// renderPageWithVariables annotates expanded variable origins without changing the rendered document.
-func (r *Renderer) renderPageWithVariables(
-	source string,
-	resolve func(string) string,
-	options Options,
-	functions Functions,
-) (RenderedPage, error) {
-	plain, _ := resolveVariableTokens(source, functions.Variables)
-
-	normal, err := r.renderPage(
-		plain,
-		resolve,
-		options,
-	)
-	if err != nil {
-		return RenderedPage{}, err
-	}
-
-	options.variables = functions.Variables
-
-	annotated, err := r.renderPage(
-		source,
-		resolve,
-		options,
-	)
-	if err != nil {
-		return normal, nil
-	}
-
-	if equivalentVariableHTML(annotated.HTML, normal.HTML) {
-		normal.HTML = annotated.HTML
-	}
-
 	return normal, nil
 }
 
@@ -353,7 +316,6 @@ func (r *Renderer) renderRawResolved(
 	}
 
 	source, annotationRanges := resolvePluginReplacements(source, options.annotations)
-	source, variableRanges := resolveVariableTokens(source, options.variables)
 
 	var output bytes.Buffer
 
@@ -363,7 +325,7 @@ func (r *Renderer) renderRawResolved(
 	}
 	// Conversion invokes contributed parsers, transformers, and node renderers.
 	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
-		return struct{}{}, engine(options, extensions, variableRanges, annotationRanges).Convert([]byte(source), &output)
+		return struct{}{}, engine(options, extensions, annotationRanges).Convert([]byte(source), &output)
 	})
 	if err != nil {
 		return "", err

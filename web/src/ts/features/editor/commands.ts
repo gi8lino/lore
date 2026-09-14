@@ -9,7 +9,7 @@ interface SlashCommand {
   label: string;
   description: string;
   markdown?: string;
-  action?: "table" | "image" | "mention" | "variable";
+  action?: "table" | "image" | "mention";
 }
 
 interface SlashCommandTrigger {
@@ -74,12 +74,6 @@ const commands: SlashCommand[] = [
     action: "mention",
   },
   {
-    id: "variable",
-    label: "Variable",
-    description: "Insert a reusable variable",
-    action: "variable",
-  },
-  {
     id: "image",
     label: "Image",
     description: "Upload or choose an image",
@@ -142,20 +136,30 @@ function setupSlashCommands(form: HTMLFormElement): void {
 
   async function loadReusableCommands(): Promise<void> {
     try {
-      const catalog = await requestJSON("/api/editor/catalog");
-      const { snippets } = parseEditorCatalog(catalog);
-      if (!snippets.length) return;
-
-      const reusable: SlashCommand[] = snippets.map((item) => ({
+      const catalog = parseEditorCatalog(
+        await requestJSON("/api/editor/catalog"),
+      );
+      const legacy: SlashCommand[] = catalog.snippets.map((item) => ({
         id: `${item.kind}-${item.name}`,
-        label: `${item.kind === "variable" ? "Variable" : "Snippet"}: ${item.name}`,
-        description: item.description || `Insert reusable ${item.kind}`,
-        markdown: `{{${item.kind === "variable" ? "var" : "snippet"}:${item.name}}}`,
+        label: `Snippet: ${item.name}`,
+        description: item.description || "Insert reusable snippet",
+        markdown: `{{snippet:${item.name}}}`,
       }));
-
-      availableCommands = [...commands, ...reusable];
+      const inserts: SlashCommand[] = catalog.inserts.map((item) => ({
+        id: `${item.plugin_id}-${item.module_id}`,
+        label: item.name,
+        description: item.description || "Insert plugin content",
+        markdown: item.markdown,
+      }));
+      const completions: SlashCommand[] = catalog.completions.map((item) => ({
+        id: `${item.plugin_id}-${item.module_id}-${item.label}`,
+        label: item.label,
+        description: item.detail || "Insert reusable content",
+        markdown: item.replacement,
+      }));
+      availableCommands = [...commands, ...inserts, ...completions, ...legacy];
     } catch {
-      // Reusable commands are optional; keep the built-in command catalog.
+      // Plugin and reusable commands are optional; keep built-in commands.
     }
   }
 
@@ -242,10 +246,6 @@ function setupSlashCommands(form: HTMLFormElement): void {
         case "mention":
           editor.setRangeText("", currentTrigger.start, end, "end");
           insertInlineAtSelection(editor, "@");
-          break;
-        case "variable":
-          editor.setRangeText("", currentTrigger.start, end, "end");
-          insertInlineAtSelection(editor, "{{");
           break;
       }
     }

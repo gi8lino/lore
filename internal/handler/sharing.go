@@ -97,12 +97,10 @@ func renderSharedPage(
 		return
 	}
 
-	expanded, err := expandKnowledgeMarkdown(
+	expanded, err := expandLegacyKnowledgeMarkdown(
 		r.Context(),
 		knowledgeContentFrom(catalogUseCases, knowledgeUseCases),
 		page.Markdown,
-		nil,
-		0,
 	)
 	if err != nil {
 		writePublicShareError(logger, w, err)
@@ -110,10 +108,14 @@ func renderSharedPage(
 	}
 
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
-		expanded,
+		expanded.Markdown,
 		md.Slug,
 		options,
-		md.Functions{Context: r.Context(), Capabilities: plugincap.Capabilities(plugincap.SharedPages{Source: catalogUseCases, Slug: slug}, nil)},
+		md.Functions{
+			Context:      r.Context(),
+			Capabilities: plugincap.Capabilities(plugincap.SharedPages{Source: catalogUseCases, Slug: slug}, nil),
+			Replacements: expanded.Replacements,
+		},
 	)
 	if err != nil {
 		writePublicShareError(logger, w, err)

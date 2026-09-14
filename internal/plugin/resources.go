@@ -18,6 +18,22 @@ const (
 	maxResourceRecordBytes = 60 << 10
 )
 
+// ParameterError reports invalid request-local plugin export input.
+type ParameterError struct {
+	PluginID string
+	ModuleID string
+	Key      string
+	Message  string
+}
+
+// Error returns a safe validation message for one plugin export parameter.
+func (e *ParameterError) Error() string {
+	if e.Key == "" {
+		return e.Message
+	}
+	return fmt.Sprintf("%s: %s", e.Key, e.Message)
+}
+
 // ResourceRecord contains one persisted record owned by an admin-resource module.
 type ResourceRecord struct {
 	// Key is the canonical value of the resource's unique key field.
@@ -29,25 +45,29 @@ type ResourceRecord struct {
 // EditorCompletionItem is one concrete resource-backed editor completion.
 type EditorCompletionItem struct {
 	// PluginID and ModuleID identify the owning completion contribution.
-	PluginID, ModuleID string
+	PluginID string `json:"plugin_id"`
+	ModuleID string `json:"module_id"`
 	// Trigger opens completion when typed immediately before the query.
-	Trigger string
+	Trigger string `json:"trigger"`
 	// Label and Detail are displayed by editor completion UI.
-	Label, Detail string
+	Label  string `json:"label"`
+	Detail string `json:"detail,omitempty"`
 	// Replacement is inserted when the item is selected.
-	Replacement string
+	Replacement string `json:"replacement"`
 }
 
 // EditorInsertContribution is one active static editor insertion action.
 type EditorInsertContribution struct {
 	// PluginID and ModuleID identify the owning contribution.
-	PluginID, ModuleID string
+	PluginID string `json:"plugin_id"`
+	ModuleID string `json:"module_id"`
 	// Name and Description are displayed by editor insertion UI.
-	Name, Description string
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 	// Markdown is inserted when the action is selected.
-	Markdown string
+	Markdown string `json:"markdown"`
 	// Inline reports whether insertion should avoid surrounding line breaks.
-	Inline bool
+	Inline bool `json:"inline"`
 }
 
 // ResourceRecords returns all records for one declared admin resource.

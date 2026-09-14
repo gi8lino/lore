@@ -140,9 +140,13 @@ type ViewData struct {
 	WebhookEvents []string
 	// WebhookDraft provides enabled defaults for the create form.
 	WebhookDraft domain.Webhook
-	// PageVariables contains distinct variables resolved in this reading page.
-	PageVariables []pageVariable
-	// KnowledgeSnippets contains reusable variables and Markdown snippets.
+	// PluginInspectors contains active plugin-owned reading-page inspection data.
+	PluginInspectors []plugin.Inspector
+	// PluginExportFields contains plugin-owned request-local export controls used by this page.
+	PluginExportFields []plugin.ExportField
+	// EditorInserts contains active plugin-owned Markdown insertion actions.
+	EditorInserts []plugin.EditorInsertContribution
+	// KnowledgeSnippets contains legacy reusable Markdown snippets until Snippets migrates to a plugin.
 	KnowledgeSnippets []domain.KnowledgeSnippet
 	// PageStatuses contains lifecycle statuses available to page editors.
 	PageStatuses []string

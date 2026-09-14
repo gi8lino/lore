@@ -1,0 +1,51 @@
+api_version: 1
+provider: Lore
+id: io.lore.variables
+name: Variables
+version: 1.0.0
+description: Reusable text values with editor completion, page inspection, and temporary export overrides.
+default_enabled: true
+modules:
+  - type: admin-resource
+    id: variables
+    name: Variables
+    description: Reusable text values available to Markdown pages.
+    fields:
+      - id: name
+        name: Name
+        type: text
+        required: true
+        key: true
+        max_bytes: 128
+      - id: description
+        name: Description
+        type: text
+        max_bytes: 4096
+      - id: content
+        name: Value
+        type: textarea
+        max_bytes: 49152
+  - type: content-substitution
+    id: values
+    resource: variables
+    prefix: var
+    value_field: content
+    label_field: name
+    detail_field: description
+    priority: 200
+    inspect: true
+    export: true
+  - type: editor-completion
+    id: variables
+    resource: variables
+    trigger: "{{"
+    replacement: "{{var:${name}}}"
+    label_field: name
+    detail_field: description
+  - type: editor-insert
+    id: variable
+    name: Variable
+    description: Insert a reusable variable.
+    markdown: "{{"
+    inline: true
+permissions: []

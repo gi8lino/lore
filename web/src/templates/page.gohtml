@@ -37,15 +37,15 @@
             {{ end }}
             </div>
             <div class="actions">
-              {{ if .PageVariables }}
-                <button class="button variables-button"
+              {{ range $index, $inspector := .PluginInspectors }}
+                <button class="button plugin-inspector-button"
                         type="button"
-                        data-variables-open
+                        data-plugin-inspector-open="{{ $index }}"
                         aria-expanded="false"
-                        aria-controls="page-variables"
-                        aria-label="Show {{ len .PageVariables }} page variable{{ if ne (len .PageVariables) 1 }}s{{ end }}"
-                        title="{{ len .PageVariables }} page variable{{ if ne (len .PageVariables) 1 }}s{{ end }}">
-                  {{ icon "braces-lucide" 17 }}<span>{{ len .PageVariables }}</span>
+                        aria-controls="plugin-inspector-{{ $index }}"
+                        aria-label="Show {{ .Name }} details"
+                        title="{{ .Name }}: {{ len .Items }} item{{ if ne (len .Items) 1 }}s{{ end }}">
+                  {{ icon "braces-lucide" 17 }}<span>{{ len .Items }}</span>
                 </button>
               {{ end }}
               <form action="/pages/{{ .Page.Slug }}/favorite" method="post">
@@ -174,50 +174,54 @@
             {{ end }}
             </div>
             </div>
-            {{ if .PageVariables }}
-              <section class="variables-panel"
-                       id="page-variables"
-                       data-variables-panel
+            {{ range $index, $inspector := .PluginInspectors }}
+              <section class="plugin-inspector-panel"
+                       id="plugin-inspector-{{ $index }}"
+                       data-plugin-inspector-panel="{{ $index }}"
                        hidden
-                       aria-labelledby="page-variables-title">
-                <div class="variables-panel-heading">
+                       aria-labelledby="plugin-inspector-title-{{ $index }}">
+                <div class="plugin-inspector-heading">
                   <div>
-                    <h2 id="page-variables-title">Variables used on this page</h2>
-                    <p>Saved values are shown below. Changing a shared value remains an administrator action.</p>
+                    <h2 id="plugin-inspector-title-{{ $index }}">{{ .Name }} used on this page</h2>
+                    <p>Saved values are shown below. Editing remains with the owning plugin.</p>
                   </div>
                   <button class="icon-button"
                           type="button"
-                          data-variables-close
-                          aria-label="Close variables">{{ icon "x-lucide" 18 }}</button>
+                          data-plugin-inspector-close
+                          aria-label="Close {{ .Name }}">{{ icon "x-lucide" 18 }}</button>
                 </div>
-                <label class="toggle-row compact variables-highlight-toggle">
-                  <span><strong>Highlight in page</strong><small>Hover, focus or tap marked text to see its variable.</small></span>
-                  <input type="checkbox" data-variables-highlight />
+                <label class="toggle-row compact plugin-inspector-highlight-toggle">
+                  <span><strong>Highlight in page</strong><small>Hover, focus or tap marked text to inspect its source.</small></span>
+                  <input type="checkbox" data-plugin-inspector-highlight />
                 </label>
-                <dl class="variables-list">
-                  {{ range .PageVariables }}
-                    <div class="variable-entry" data-variable-entry="{{ .Name }}">
-                      <dt><code>{{ .Name }}</code><small>{{ .Occurrences }} occurrence{{ if ne .Occurrences 1 }}s{{ end }}</small></dt>
-                      <dd class="variable-saved-value" data-variable-saved>
+                <dl class="plugin-inspector-list">
+                  {{ range .Items }}
+                    <div class="plugin-inspector-entry"
+                         data-plugin-inspector-entry="{{ .Annotation }}"
+                         data-plugin-inspector-label="{{ .Label }}">
+                      <dt><code>{{ .Label }}</code><small>{{ .Occurrences }} occurrence{{ if ne .Occurrences 1 }}s{{ end }}</small></dt>
+                      <dd class="plugin-inspector-saved" data-plugin-inspector-saved>
                         {{ .Value }}
                       </dd>
                       {{ if .Description }}
-                        <dd class="variable-description">
+                        <dd class="plugin-inspector-description">
                           {{ .Description }}
                         </dd>
                       {{ end }}
                     </div>
                   {{ end }}
                 </dl>
-                <p class="variables-hint">Variables in links, image attributes or complex Markdown are listed even when there is no text to highlight.</p>
+                <p class="plugin-inspector-hint">Values used only in links, image attributes, or complex Markdown may not have highlightable text.</p>
               </section>
-              <div class="variable-tooltip"
-                   id="page-variable-tooltip"
-                   data-variable-tooltip
+            {{ end }}
+            {{ if .PluginInspectors }}
+              <div class="plugin-inspector-tooltip"
+                   id="plugin-inspector-tooltip"
+                   data-plugin-inspector-tooltip
                    role="tooltip"
                    hidden>
-                <strong>Variable: <span data-variable-tooltip-name></span></strong>
-                <span class="variable-tooltip-label">Saved value</span><span data-variable-tooltip-value></span>
+                <strong><span data-plugin-inspector-tooltip-name></span></strong>
+                <span class="plugin-inspector-tooltip-label">Saved value</span><span data-plugin-inspector-tooltip-value></span>
               </div>
             {{ end }}
             {{ if eq .Page.Status "deprecated" }}
@@ -355,7 +359,9 @@
             </aside>
           {{ end }}
 <div class="page-reading{{ if .PageContents }} {{ if .Preferences.ShowPageContents }}with-contents{{ else }}contents-hidden{{ end }} {{ end }}">
-    <div class="prose" lang="{{ .PageContentLanguage }}" data-variable-content>{{ .HTML }}</div>
+    <div class="prose"
+         lang="{{ .PageContentLanguage }}"
+         data-plugin-annotation-content>{{ .HTML }}</div>
     {{ template "page-contents" . }}
   </div>
   <details class="page-details">
@@ -523,24 +529,24 @@
               data-share-dialog-close
               aria-label="Close">{{ icon "x-lucide" 20 }}</button>
     </div>
-    {{ if .PageVariables }}
-      <details class="export-variables" data-export-variables>
-        <summary>Customize variables <small>Optional values for this print or PDF only.</small></summary>
-        <form class="export-variables-form"
-              data-export-variables-form
+    {{ if .PluginExportFields }}
+      <details class="export-parameters" data-export-parameters>
+        <summary>Customize content <small>Optional temporary values for this print or PDF only.</small></summary>
+        <form class="export-parameters-form"
+              data-export-parameters-form
               autocomplete="off">
-          {{ range $index, $variable := .PageVariables }}
-            <div class="export-variable-field">
-              <label for="export-variable-{{ $index }}"><code>{{ .Name }}</code></label>
+          {{ range $index, $field := .PluginExportFields }}
+            <div class="export-parameter-field">
+              <label for="export-parameter-{{ $index }}"><code>{{ .Label }}</code></label>
               {{ if .Description }}
-                <p class="variable-description">{{ .Description }}</p>
+                <p class="plugin-inspector-description">{{ .Description }}</p>
               {{ end }}
-              <p class="export-variable-saved">Saved: <span>{{ .Value }}</span></p>
-              <textarea id="export-variable-{{ $index }}" data-export-variable="{{ .Name }}" rows="2" autocomplete="off" spellcheck="false" aria-label="Value for this export: {{ .Name }}">
+              <p class="export-parameter-saved">Saved: <span>{{ .Value }}</span></p>
+              <textarea id="export-parameter-{{ $index }}" data-export-plugin="{{ .PluginID }}" data-export-module="{{ .ModuleID }}" data-export-key="{{ .Key }}" rows="2" autocomplete="off" spellcheck="false" aria-label="Value for this export: {{ .Label }}">
 {{ .Value }}</textarea>
             </div>
           {{ end }}
-          <p class="variables-hint">These values never update the page or shared variables. Closing this dialog discards them. Markdown export is unchanged.</p>
+          <p class="plugin-inspector-hint">These values never update the page or plugin data. Closing this dialog discards them. Markdown export is unchanged.</p>
           <button class="button compact" type="reset" data-export-reset>Reset to saved values</button>
         </form>
       </details>
@@ -589,7 +595,7 @@
         <strong>Content preview</strong>
         <button class="button compact" type="button" data-export-preview-hide>Hide preview</button>
       </div>
-      <p class="variables-hint">Pagination is finalized by the browser or PDF service. Inspection highlights are not exported.</p>
+      <p class="plugin-inspector-hint">Pagination is finalized by the browser or PDF service. Inspection highlights are not exported.</p>
       <div data-export-preview-host></div>
     </section>
     <div class="share-progress" data-share-progress hidden>

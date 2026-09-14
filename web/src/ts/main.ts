@@ -3,7 +3,7 @@ import { initPathPickers } from "./features/path-picker.ts";
 
 import { initAdmin } from "./features/admin/index.ts";
 import { initEditor } from "./features/editor/index.ts";
-import { initPageVariables } from "./features/variables.ts";
+import { initPluginInspectors } from "./features/plugin-inspectors.ts";
 import { initExports } from "./features/exports.ts";
 import { initLayout } from "./features/layout.ts";
 import { initMarkdown } from "./features/markdown.ts";
@@ -31,7 +31,7 @@ initEditor();
 initMedia();
 initTokens();
 initExports();
-initPageVariables();
+initPluginInspectors();
 initPage();
 initDashboard();
 initGraph();

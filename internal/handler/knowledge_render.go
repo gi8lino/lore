@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -9,9 +11,148 @@ import (
 
 	"github.com/gi8lino/lore/internal/domain"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/plugin"
 )
 
 const maxKnowledgeExpansionDepth = 5
+
+// legacyKnowledgeExpansion contains the temporary core snippet/include expansion
+// used while those features migrate to their own plugins. Variable macros stay
+// literal for the Variables plugin to own.
+type legacyKnowledgeExpansion struct {
+	Markdown     string
+	Replacements []plugin.Replacement
+}
+
+// expandLegacyKnowledgeMarkdown expands legacy snippets and includes while
+// protecting inserted snippet values from later plugin macro scanning.
+func expandLegacyKnowledgeMarkdown(
+	ctx context.Context,
+	content knowledgeContent,
+	source string,
+) (legacyKnowledgeExpansion, error) {
+	var nonce [16]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return legacyKnowledgeExpansion{}, err
+	}
+	state := legacyKnowledgeState{
+		content: content,
+		prefix:  "lorelegacyknowledge" + hex.EncodeToString(nonce[:]) + "n",
+	}
+	markdown, err := state.expand(ctx, source, nil, 0)
+	if err != nil {
+		return legacyKnowledgeExpansion{}, err
+	}
+	return legacyKnowledgeExpansion{Markdown: markdown, Replacements: state.replacements}, nil
+}
+
+type legacyKnowledgeState struct {
+	content      knowledgeContent
+	prefix       string
+	replacements []plugin.Replacement
+}
+
+// expand recursively resolves includes and protects snippets with opaque tokens.
+func (s *legacyKnowledgeState) expand(
+	ctx context.Context,
+	source string,
+	seen map[string]bool,
+	depth int,
+) (string, error) {
+	if depth > maxKnowledgeExpansionDepth {
+		return "", fmt.Errorf("knowledge expansion exceeds maximum depth of %d", maxKnowledgeExpansionDepth)
+	}
+	if seen == nil {
+		seen = map[string]bool{}
+	}
+	lines := strings.Split(source, "\n")
+	fence := ""
+	for index, line := range lines {
+		trimmed := strings.TrimLeft(line, " ")
+		if marker := renderFenceMarker(trimmed); marker != "" {
+			if fence == "" {
+				fence = marker
+			} else if strings.HasPrefix(trimmed, fence) {
+				fence = ""
+			}
+			continue
+		}
+		if fence != "" || !strings.Contains(line, "{{") {
+			continue
+		}
+		var output strings.Builder
+		for {
+			macro, ok := parseKnowledgeMacro(line)
+			if !ok {
+				output.WriteString(line)
+				break
+			}
+			output.WriteString(line[:macro.start])
+			raw := line[macro.start:macro.end]
+			switch macro.kind {
+			case "var":
+				output.WriteString(raw)
+			case "snippet":
+				item, err := s.content.KnowledgeSnippetByName(ctx, "snippet", macro.name)
+				if errors.Is(err, domain.ErrNotFound) {
+					return "", fmt.Errorf("snippet %q not found: %w", macro.name, err)
+				}
+				if err != nil {
+					return "", err
+				}
+				token := fmt.Sprintf("%dend", len(s.replacements))
+				token = s.prefix + token
+				s.replacements = append(s.replacements, plugin.Replacement{Token: token, Value: item.Content})
+				output.WriteString(token)
+			case "include":
+				included, err := s.expandInclude(ctx, macro.name, seen, depth)
+				if err != nil {
+					return "", err
+				}
+				output.WriteString(included)
+			}
+			line = line[macro.end:]
+		}
+		lines[index] = output.String()
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+// expandInclude resolves one legacy page include while preserving plugin-owned macros.
+func (s *legacyKnowledgeState) expandInclude(
+	ctx context.Context,
+	name string,
+	seen map[string]bool,
+	depth int,
+) (string, error) {
+	pageTarget, heading := md.SplitHeadingTarget(name)
+	slug := strings.Trim(pageTarget, "/")
+	if slug == "" {
+		return "", fmt.Errorf("include requires a page path")
+	}
+	key := includeTargetKey(slug, heading)
+	if seen[key] {
+		return "", fmt.Errorf("recursive page include %q", key)
+	}
+	page, err := s.content.GetPage(ctx, slug)
+	if errors.Is(err, domain.ErrNotFound) {
+		return "", fmt.Errorf("included page %q not found: %w", slug, err)
+	}
+	if err != nil {
+		return "", err
+	}
+	markdown, err := includedMarkdown(page.Markdown, slug, heading)
+	if err != nil {
+		return "", err
+	}
+	nextSeen := maps.Clone(seen)
+	nextSeen[key] = true
+	expanded, err := s.expand(ctx, markdown, nextSeen, depth+1)
+	if err != nil {
+		return "", fmt.Errorf("expand include %s: %w", slug, err)
+	}
+	return expanded, nil
+}
 
 type knowledgeContent interface {
 	GetPage(context.Context, string) (domain.Page, error)

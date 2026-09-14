@@ -13,7 +13,7 @@ import { initTablePaste } from "./paste-table.ts";
 import { initMarkdownListContinuation } from "./lists.ts";
 import { initMarkdownToolbar } from "./toolbar.ts";
 import { initWikiLinkAutocomplete } from "./wikilinks.ts";
-import { initVariableAutocomplete } from "./variables.ts";
+import { initPluginCompletions } from "./completions.ts";
 
 // Initializes editor.
 export function initEditor(): void {
@@ -27,7 +27,7 @@ export function initEditor(): void {
   initAttachments();
   initMarkdownToolbar();
   initWikiLinkAutocomplete();
-  initVariableAutocomplete();
+  initPluginCompletions();
   initSlashCommands();
   initMarkdownListContinuation();
   initTablePalette();

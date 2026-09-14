@@ -387,7 +387,7 @@ func addRoutes(
 	mux.Handle("GET /api/graph", apiAuthn(handler.KnowledgeGraphAPI(knowledgeUseCases, accessUseCases, logger)))
 	mux.Handle(
 		"GET /api/editor/catalog",
-		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, knowledgeUseCases, catalogUseCases, logger))),
+		apiAuthn(editorAuthz(handler.EditorCatalog(navigationUseCases, knowledgeUseCases, catalogUseCases, renderer.PluginManager(), logger))),
 	)
 	mux.Handle("GET /api/mentions/users", apiAuthn(handler.MentionUsers(userUseCases, logger)))
 	mux.Handle("GET /api/notifications", apiAuthn(handler.NotificationsAPI(notificationUseCases, logger)))

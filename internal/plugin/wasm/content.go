@@ -84,7 +84,14 @@ func (m resourceSubstitutionModule) PreprocessContent(ctx plugin.Context, source
 	if err != nil {
 		return plugin.PreparedContent{}, err
 	}
-	if len(records) == 0 || !strings.Contains(source, "{{"+m.module.Prefix+":") {
+	overrides := exportOverrides(ctx, m.owner, m.module.ID)
+	if len(records) == 0 {
+		if len(overrides) != 0 {
+			return plugin.PreparedContent{}, unusedExportParameter(m.owner, m.module.ID, overrides)
+		}
+		return plugin.PreparedContent{Markdown: source}, nil
+	}
+	if !strings.Contains(source, "{{"+m.module.Prefix+":") && len(overrides) == 0 {
 		return plugin.PreparedContent{Markdown: source}, nil
 	}
 	byName := make(map[string]plugin.ResourceRecord, len(records))
@@ -120,7 +127,31 @@ func (m resourceSubstitutionModule) PreprocessContent(ctx plugin.Context, source
 		lines[index] = expanded
 	}
 	prepared.Markdown = strings.Join(lines, "\n")
+	for key := range overrides {
+		if _, ok := used[strings.ToLower(key)]; !ok {
+			return plugin.PreparedContent{}, &plugin.ParameterError{
+				PluginID: m.owner, ModuleID: m.module.ID, Key: key,
+				Message: "Only values used by this page can be overridden.",
+			}
+		}
+	}
 	return prepared, nil
+}
+
+// exportOverrides returns request-local overrides for one plugin module.
+func exportOverrides(ctx plugin.Context, pluginID, moduleID string) map[string]string {
+	if byPlugin := ctx.ExportParameters[pluginID]; byPlugin != nil {
+		return byPlugin[moduleID]
+	}
+	return nil
+}
+
+// unusedExportParameter returns a deterministic error for a module with no used values.
+func unusedExportParameter(pluginID, moduleID string, overrides map[string]string) error {
+	for key := range overrides {
+		return &plugin.ParameterError{PluginID: pluginID, ModuleID: moduleID, Key: key, Message: "Only values used by this page can be overridden."}
+	}
+	return nil
 }
 
 // expandLine replaces every valid module macro in one non-code source line.
@@ -164,12 +195,8 @@ func (m resourceSubstitutionModule) expandLine(
 			used[strings.ToLower(canonical)] = position
 			value := record.Values[m.module.ValueField]
 			if m.module.Export {
-				if byPlugin := ctx.ExportParameters[m.owner]; byPlugin != nil {
-					if byModule := byPlugin[m.module.ID]; byModule != nil {
-						if override, ok := byModule[canonical]; ok {
-							value = override
-						}
-					}
+				if override, ok := exportOverride(ctx, m.owner, m.module.ID, canonical); ok {
+					value = override
 				}
 			}
 			token := tokenPrefix + strconv.Itoa(position) + "end"
@@ -204,6 +231,16 @@ func (m resourceSubstitutionModule) expandLine(
 		line = body[close+2:]
 	}
 	return output.String(), nil
+}
+
+// exportOverride finds a request override using the resource's case-insensitive key semantics.
+func exportOverride(ctx plugin.Context, pluginID, moduleID, canonical string) (string, bool) {
+	for key, value := range exportOverrides(ctx, pluginID, moduleID) {
+		if strings.EqualFold(key, canonical) {
+			return value, true
+		}
+	}
+	return "", false
 }
 
 // annotationID returns a sanitizer-safe stable identifier for one resource item.

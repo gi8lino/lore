@@ -184,7 +184,9 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	}
 
 	pluginFeatures := make(map[string]bool)
+	var editorInserts []plugin.EditorInsertContribution
 	if l.pluginManager != nil {
+		editorInserts = l.pluginManager.EditorInserts()
 		for _, item := range l.pluginManager.Plugins() {
 			pluginFeatures[item.Manifest.ID] = item.Enabled
 			if !item.Enabled {
@@ -218,6 +220,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		ActiveTheme:         activeTheme,
 		ApplicationSettings: applicationSettings,
 		PluginFeatures:      pluginFeatures,
+		EditorInserts:       editorInserts,
 		CanEdit:             user.Role == "admin" || user.Role == "editor",
 		PageContentLanguage: applicationSettings.ContentLanguage,
 	}, nil

@@ -239,12 +239,10 @@ func ViewPage(
 			pageURL,
 		)
 
-		expanded, err := expandPageKnowledge(
+		expanded, err := expandLegacyKnowledgeMarkdown(
 			r.Context(),
 			knowledgeContentFrom(securedCatalog, knowledgeUseCases),
 			page.Markdown,
-			nil,
-			true,
 		)
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
@@ -257,7 +255,7 @@ func ViewPage(
 			options,
 			md.Functions{
 				Context: r.Context(), Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
-				Variables: expanded.Annotations,
+				Replacements: expanded.Replacements,
 			},
 		)
 		if err != nil {
@@ -287,7 +285,8 @@ func ViewPage(
 		data.CanManageReview = canManageReview
 		data.ReviewGroups = reviewGroups
 		data.CanEdit = canEditPage
-		data.PageVariables = expanded.Variables
+		data.PluginInspectors = rendered.Inspectors
+		data.PluginExportFields = rendered.ExportFields
 		data.OutgoingLinks = outgoingLinks
 		data.BrokenLinks = brokenLinks
 		data.Comments = comments

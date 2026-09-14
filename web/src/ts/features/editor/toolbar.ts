@@ -158,9 +158,6 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
       case "mention":
         insertInlineAtSelection(editor, "@");
         break;
-      case "variable":
-        insertInlineAtSelection(editor, "{{");
-        break;
       case "bold":
         wrapMarkdownSelection(editor, "**", "**", "bold text");
         break;
@@ -260,6 +257,20 @@ function setupMarkdownToolbar(toolbar: HTMLElement): void {
   toolbar.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const pluginInsert = target.closest<HTMLElement>(
+      "[data-plugin-insert-markdown]",
+    );
+    if (pluginInsert) {
+      const markdown = pluginInsert.dataset.pluginInsertMarkdown ?? "";
+      if (markdown) {
+        if (pluginInsert.dataset.pluginInsertInline === "true")
+          insertInlineAtSelection(editor, markdown);
+        else insertMarkdownAtSelection(editor, markdown);
+      }
+      closeToolbarMenus(toolbar);
+      return;
+    }
 
     const button = target.closest<HTMLElement>("[data-markdown-action]");
     if (!button) return;

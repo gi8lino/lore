@@ -4,8 +4,47 @@ import { copyText } from "../core/clipboard.ts";
 import { showNotice } from "../core/dialogs.ts";
 import { requiredAttribute, requiredElement } from "../core/dom.ts";
 import { errorMessage, requestJSON, responseProblem } from "../core/http.ts";
-import { variableOverrides } from "./variables.ts";
 import { loadPrintPreview, parseExportPreview } from "./export-preview.ts";
+
+export interface ExportParameterField {
+  pluginID: string;
+  moduleID: string;
+  key: string;
+  value: string;
+  saved: string;
+}
+
+// Builds nested request-local plugin export parameters while omitting unchanged values.
+export function exportParameterOverrides(
+  fields: Iterable<ExportParameterField>,
+): Record<string, Record<string, Record<string, string>>> {
+  const plugins = new Map<string, Map<string, Map<string, string>>>();
+  for (const field of fields) {
+    if (field.value === field.saved) continue;
+    let modules = plugins.get(field.pluginID);
+    if (!modules) {
+      modules = new Map();
+      plugins.set(field.pluginID, modules);
+    }
+    let values = modules.get(field.moduleID);
+    if (!values) {
+      values = new Map();
+      modules.set(field.moduleID, values);
+    }
+    values.set(field.key, field.value);
+  }
+  return Object.fromEntries(
+    [...plugins].map(([pluginID, modules]) => [
+      pluginID,
+      Object.fromEntries(
+        [...modules].map(([moduleID, values]) => [
+          moduleID,
+          Object.fromEntries(values),
+        ]),
+      ),
+    ]),
+  );
+}
 
 // Wires admin export behavior.
 function setupAdminExport(): void {
@@ -123,14 +162,14 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
     "[data-share-error]",
   );
   const status = requiredElement<HTMLElement>(dialog, "[data-export-status]");
-  const variableForm = dialog.querySelector<HTMLFormElement>(
-    "[data-export-variables-form]",
+  const parameterForm = dialog.querySelector<HTMLFormElement>(
+    "[data-export-parameters-form]",
   );
-  const variableDetails = dialog.querySelector<HTMLDetailsElement>(
-    "[data-export-variables]",
+  const parameterDetails = dialog.querySelector<HTMLDetailsElement>(
+    "[data-export-parameters]",
   );
   const fields = [
-    ...dialog.querySelectorAll<HTMLTextAreaElement>("[data-export-variable]"),
+    ...dialog.querySelectorAll<HTMLTextAreaElement>("[data-export-key]"),
   ];
   const permalinkPath = requiredAttribute(permalink, "data-url");
   const pdfURL = requiredAttribute(pdf, "data-url");
@@ -140,14 +179,16 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   let previewKey = "";
 
   function payload(): string {
-    const variables = variableOverrides(
+    const parameters = exportParameterOverrides(
       fields.map((field) => ({
-        name: requiredAttribute(field, "data-export-variable"),
+        pluginID: requiredAttribute(field, "data-export-plugin"),
+        moduleID: requiredAttribute(field, "data-export-module"),
+        key: requiredAttribute(field, "data-export-key"),
         value: field.value,
         saved: field.defaultValue,
       })),
     );
-    return JSON.stringify({ variables });
+    return JSON.stringify({ parameters });
   }
 
   function clearPreview(): void {
@@ -161,7 +202,7 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   function setBusy(busy: boolean): void {
     for (const control of [preview, print, pdf, ...fields])
       control.disabled = busy;
-    const reset = variableForm?.querySelector<HTMLButtonElement>(
+    const reset = parameterForm?.querySelector<HTMLButtonElement>(
       "[data-export-reset]",
     );
     if (reset) reset.disabled = busy;
@@ -172,8 +213,8 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   function resetSession(): void {
     operation?.abort();
     operation = null;
-    variableForm?.reset();
-    if (variableDetails) variableDetails.open = false;
+    parameterForm?.reset();
+    if (parameterDetails) parameterDetails.open = false;
     clearPreview();
     errorOutput.textContent = "";
     errorOutput.hidden = true;
@@ -289,11 +330,11 @@ function setupShareDialog(dialog: HTMLDialogElement): void {
   dialog.addEventListener("click", (event: MouseEvent) => {
     if (event.target === dialog) dialog.close();
   });
-  variableForm?.addEventListener("submit", (event: SubmitEvent) =>
+  parameterForm?.addEventListener("submit", (event: SubmitEvent) =>
     event.preventDefault(),
   );
-  variableForm?.addEventListener("reset", clearPreview);
-  variableForm?.addEventListener("input", () => {
+  parameterForm?.addEventListener("reset", clearPreview);
+  parameterForm?.addEventListener("input", () => {
     clearPreview();
     errorOutput.hidden = true;
   });

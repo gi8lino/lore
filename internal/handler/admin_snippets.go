@@ -8,14 +8,14 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 )
 
-// AdminSnippets renders reusable variable and Markdown-snippet management.
+// AdminSnippets renders legacy Markdown-snippet management until Snippets migrates to a plugin.
 func AdminSnippets(
 	viewDataUseCases viewDataService,
 	knowledgeUseCases knowledgeSnippetReader,
 	views *Views,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := administrationData(r, viewDataUseCases, views, "Snippets & variables", "snippets")
+		data, err := administrationData(r, viewDataUseCases, views, "Snippets", "snippets")
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
@@ -32,7 +32,7 @@ func AdminSnippets(
 	}
 }
 
-// SaveAdminSnippet creates or updates one reusable variable or Markdown snippet.
+// SaveAdminSnippet creates or updates one reusable Markdown snippet.
 func SaveAdminSnippet(knowledgeUseCases knowledgeSnippetService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
@@ -55,7 +55,7 @@ func SaveAdminSnippet(knowledgeUseCases knowledgeSnippetService, logger *slog.Lo
 			r.Context(),
 			id,
 			user.ID,
-			r.FormValue("kind"),
+			"snippet",
 			r.FormValue("name"),
 			r.FormValue("description"),
 			r.FormValue("content"),
@@ -69,7 +69,7 @@ func SaveAdminSnippet(knowledgeUseCases knowledgeSnippetService, logger *slog.Lo
 	}
 }
 
-// DeleteAdminSnippet deletes one reusable variable or Markdown snippet.
+// DeleteAdminSnippet deletes one reusable Markdown snippet.
 func DeleteAdminSnippet(knowledgeUseCases knowledgeSnippetService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)

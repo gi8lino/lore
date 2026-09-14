@@ -26,7 +26,7 @@
 @import "./components/code-ligatures.css";
 @import "./layout/mobile.css";
 @import "./pages/static.css";
-@import "./components/variables.css";
+@import "./components/plugin-inspectors.css";
 @import "./components/page-report.css";
 @import "./components/page-watches.css";
 @import "./components/path-picker.css";
