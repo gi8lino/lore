@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
+	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/pluginusage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +18,7 @@ type pageSaveRepositoryStub struct {
 	pageRepository
 	slug     string
 	metadata domain.PageMetadata
+	render   domain.PageRender
 }
 
 func (r *pageSaveRepositoryStub) SavePage(
@@ -25,12 +28,18 @@ func (r *pageSaveRepositoryStub) SavePage(
 	_ []int64,
 	metadata domain.PageMetadata,
 	_ map[string]string,
+	render domain.PageRender,
 	_ domain.User,
 ) (domain.Page, error) {
 	r.slug = slug
 	r.metadata = metadata
+	r.render = render
 
 	return domain.Page{Slug: slug, Title: title}, nil
+}
+
+func (r *pageSaveRepositoryStub) ApplicationSettings(context.Context) (domain.ApplicationSettings, error) {
+	return domain.ApplicationSettings{}, nil
 }
 
 type pageUsageAnalyzerStub struct{ index pluginusage.Index }
@@ -58,6 +67,40 @@ func TestSavePersistsDerivedPluginUsage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, repository.metadata.PluginUsage)
 	assert.Equal(t, want, *repository.metadata.PluginUsage)
+}
+
+func TestSaveMaterializesStableMarkdown(t *testing.T) {
+	t.Parallel()
+	repository := &pageSaveRepositoryStub{}
+	renderer := md.NewWithRegistry(&plugin.Registry{})
+	renderer.SetArtifactBuild("test", "abc")
+	pages := NewPages(repository, slog.Default()).WithRenderer(renderer)
+
+	_, err := pages.save(context.Background(), PageSaveInput{
+		Slug: "guide", Title: "Guide", Markdown: "# Guide\n\nStatic.", Status: "verified",
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, repository.render.HTML, `<h1 id="guide">Guide</h1>`)
+	assert.NotEmpty(t, repository.render.Fingerprint)
+	require.Len(t, repository.render.Contents, 1)
+	assert.Equal(t, "guide", repository.render.Contents[0].ID)
+}
+
+func TestSaveLeavesDynamicMarkdownUnmaterialized(t *testing.T) {
+	t.Parallel()
+	repository := &pageSaveRepositoryStub{}
+	renderer := md.NewWithRegistry(&plugin.Registry{})
+	renderer.SetArtifactBuild("test", "abc")
+	pages := NewPages(repository, slog.Default()).WithRenderer(renderer)
+
+	_, err := pages.save(context.Background(), PageSaveInput{
+		Slug: "guide", Title: "Guide", Markdown: "{{var:environment}}", Status: "verified",
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, repository.render.Fingerprint)
+	assert.Empty(t, repository.render.HTML)
 }
 
 func TestSaveValidatesPageBeforePersistence(t *testing.T) {

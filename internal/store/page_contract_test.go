@@ -136,7 +136,7 @@ func TestPageLifecycleQueryContracts(t *testing.T) {
 			}
 		}
 		_, err := database.SavePage(ctx, "", slug, "Contract "+status, "", "", "Lifecycle contract", "Created", nil, nil, nil,
-			metadata, map[string]string{" Owner ": " Platform "}, actor)
+			metadata, map[string]string{" Owner ": " Platform "}, domain.PageRender{}, actor)
 		require.NoError(t, err)
 		require.NoError(t, database.SetFavorite(ctx, slug, actor.ID, true))
 		require.NoError(t, database.RecordView(ctx, slug, actor.ID))
@@ -193,6 +193,23 @@ func TestPageLifecycleQueryContracts(t *testing.T) {
 		require.NotNil(t, page.PluginUsage)
 		assert.Equal(t, "contract", page.PluginUsage.Fingerprint)
 		assert.Equal(t, []string{"value"}, page.PluginUsage.Modules[0].Values)
+	})
+
+	t.Run("render artifact", func(t *testing.T) {
+		page, err := database.GetPage(ctx, "contract/verified")
+		require.NoError(t, err)
+		render := domain.PageRender{
+			HTML:        "<h1 id=\"cached\">Cached</h1>",
+			Contents:    []domain.PageHeading{{Level: 1, ID: "cached", Title: "Cached"}},
+			Fingerprint: "render-v1",
+		}
+		require.NoError(t, database.SavePageRender(ctx, page.ID, page.UpdatedAt, render))
+
+		page, err = database.GetPage(ctx, page.Slug)
+		require.NoError(t, err)
+		assert.Equal(t, render.HTML, page.Render.HTML)
+		assert.Equal(t, render.Contents, page.Render.Contents)
+		assert.Equal(t, render.Fingerprint, page.Render.Fingerprint)
 	})
 }
 

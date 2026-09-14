@@ -95,7 +95,7 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
       .getByRole("button", { name: "Close plugin details", exact: true })
       .click();
     await tablesDialog.waitFor({ state: "hidden" });
-    assert.equal(page.url(), url + "/admin/plugins");
+    await page.waitForURL(url + "/admin/plugins");
 
     const installForm = page.locator("[data-plugin-install]");
     const installButton = installForm.getByRole("button", {

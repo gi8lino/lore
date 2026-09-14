@@ -696,6 +696,27 @@ type User struct {
 	SessionVersion int64 `json:"-"`
 }
 
+// PageHeading is one persisted heading in a rendered page artifact.
+type PageHeading struct {
+	// Level is the HTML heading level from 1 through 6.
+	Level int `json:"level"`
+	// ID is the rendered heading anchor identifier.
+	ID string `json:"id"`
+	// Title is the plain-text heading label.
+	Title string `json:"title"`
+}
+
+// PageRender is a reusable, theme-independent render artifact for one current page revision.
+// Empty Fingerprint means the page must be rendered dynamically.
+type PageRender struct {
+	// HTML is sanitized rendered Markdown.
+	HTML string `json:"-"`
+	// Contents contains persisted headings in document order.
+	Contents []PageHeading `json:"-"`
+	// Fingerprint identifies the renderer/plugins/settings that produced the artifact.
+	Fingerprint string `json:"-"`
+}
+
 // Page represents the current state of a wiki page.
 type Page struct {
 	// ID is the stable identifier.
@@ -712,6 +733,8 @@ type Page struct {
 	Markdown string `json:"markdown_content,omitempty"`
 	// PluginUsage is rebuildable derived metadata for source-aware rendering modules.
 	PluginUsage *pluginusage.Index `json:"-"`
+	// Render contains the reusable current-revision HTML artifact when one is safe to persist.
+	Render PageRender `json:"-"`
 	// CreatedBy is the identifier of the user that created the page.
 	CreatedBy int64 `json:"created_by"`
 	// UpdatedBy is the identifier of the user that last updated the page.

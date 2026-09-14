@@ -277,21 +277,41 @@ func ViewPage(
 		)
 		stop()
 
-		stop = measurePageStage(r.Context(), "markdown")
-		rendered, err := renderer.RenderPageResolvedWithFunctions(
-			page.Markdown,
-			md.Slug,
-			options,
-			md.Functions{
-				Context:      r.Context(),
-				PluginUsage:  page.PluginUsage,
-				Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
-			},
-		)
-		stop()
-		if err != nil {
-			httpresponse.InternalServerError(views.logger, w, err)
-			return
+		fingerprint := renderer.RenderFingerprint(options)
+		persistable := renderer.CanPersist(page.Markdown, page.PluginUsage)
+		var rendered md.RenderedPage
+
+		if persistable && page.Render.Fingerprint == fingerprint {
+			stop = measurePageStage(r.Context(), "render_artifact_hit")
+			rendered = renderedPageFromArtifact(page.Render)
+			stop()
+		} else {
+			stop = measurePageStage(r.Context(), "markdown")
+			rendered, err = renderer.RenderPageResolvedWithFunctions(
+				page.Markdown,
+				md.Slug,
+				options,
+				md.Functions{
+					Context:      r.Context(),
+					PluginUsage:  page.PluginUsage,
+					Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
+				},
+			)
+			stop()
+			if err != nil {
+				httpresponse.InternalServerError(views.logger, w, err)
+				return
+			}
+			if persistable {
+				if artifact, ok := pageRenderArtifact(rendered, fingerprint); ok {
+					stop = measurePageStage(r.Context(), "render_artifact_store")
+					artifactErr := catalogUseCases.SavePageRender(r.Context(), page.ID, page.UpdatedAt, artifact)
+					stop()
+					if artifactErr != nil {
+						views.logger.Warn("store page render artifact", "event", "page_render_store_failed", "slug", page.Slug, "error", artifactErr)
+					}
+				}
+			}
 		}
 
 		stop = measurePageStage(r.Context(), "broken_links")

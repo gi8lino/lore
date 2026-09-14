@@ -2,10 +2,12 @@ api_version: 1
 provider: Lore
 id: io.lore.subpages
 name: Subpages
-version: 1.0.0
+version: 1.0.1
 default_enabled: true
 modules:
   - type: macro
     id: subpages
     name: subpages
+    usage:
+      - macro: subpages
 permissions: [pages:read]

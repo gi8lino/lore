@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/revision"
@@ -10,6 +11,7 @@ import (
 // catalogRepository contains page retrieval and discovery operations.
 type catalogRepository interface {
 	GetPage(context.Context, string) (domain.Page, error)
+	SavePageRender(context.Context, int64, time.Time, domain.PageRender) error
 	ListPages(context.Context, int) ([]domain.Page, error)
 	Search(context.Context, string, int) ([]domain.Page, error)
 	RecentViewed(context.Context, int64, int) ([]domain.Page, error)
@@ -42,6 +44,11 @@ func NewCatalog(repository catalogRepository) *Catalog { return &Catalog{reposit
 // GetPage returns an active page by slug.
 func (s *Catalog) GetPage(ctx context.Context, slug string) (domain.Page, error) {
 	return s.repository.GetPage(ctx, slug)
+}
+
+// SavePageRender refreshes a reusable render artifact for an unchanged page.
+func (s *Catalog) SavePageRender(ctx context.Context, pageID int64, updatedAt time.Time, render domain.PageRender) error {
+	return s.repository.SavePageRender(ctx, pageID, updatedAt, render)
 }
 
 // ListPages returns recently updated active pages up to a limit.

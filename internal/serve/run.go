@@ -162,12 +162,13 @@ func Run(
 	if err != nil {
 		return err
 	}
+	renderer.SetArtifactBuild(version, commit)
 	if cfg.DebugRenderTimings {
 		renderer.EnableRenderTimings(logger.With("component", "markdown"))
 		views.EnablePageTimings(logger.With("component", "handler"))
 	}
 	defer func() { _ = renderer.Close(context.Background()) }()
-	pageUseCases.WithUsageAnalyzer(renderer)
+	pageUseCases.WithRenderer(renderer)
 
 	viewDataUseCases := handler.NewViewDataLoader(
 		preferenceUseCases,

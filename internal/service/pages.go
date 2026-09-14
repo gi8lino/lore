@@ -113,7 +113,7 @@ type pageRepository interface {
 	DecidePageReview(context.Context, int64, string, int64, bool, string, string) (string, error)
 	ResolvePageComment(context.Context, int64, bool) error
 	Revision(context.Context, string, int) (revision.Revision, error)
-	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
+	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.PageRender, domain.User) (domain.Page, error)
 }
 
 type pageUsageAnalyzer interface {
@@ -126,6 +126,7 @@ type Pages struct {
 	logger        *slog.Logger
 	eventSinks    []EventSink
 	usageAnalyzer pageUsageAnalyzer
+	renderer      *md.Renderer
 }
 
 // NewPages constructs the page application service. Event sinks are optional so
@@ -137,6 +138,14 @@ func NewPages(repository pageRepository, logger *slog.Logger, eventSinks ...Even
 // WithUsageAnalyzer derives plugin usage metadata for every persisted page write.
 func (s *Pages) WithUsageAnalyzer(analyzer pageUsageAnalyzer) *Pages {
 	s.usageAnalyzer = analyzer
+	return s
+}
+
+// WithRenderer enables materialized HTML for pages whose render is independent
+// of request-local permissions and mutable plugin resource data.
+func (s *Pages) WithRenderer(renderer *md.Renderer) *Pages {
+	s.renderer = renderer
+	s.usageAnalyzer = renderer
 	return s
 }
 
@@ -236,6 +245,11 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 		pluginUsage = &usage
 	}
 
+	render, err := s.materializeRender(ctx, input.Markdown, pluginUsage)
+	if err != nil {
+		return domain.Page{}, err
+	}
+
 	return s.repository.SavePage(
 		ctx,
 		input.PreviousSlug,
@@ -257,8 +271,44 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 			PluginUsage:        pluginUsage,
 		},
 		input.Properties,
+		render,
 		input.Actor,
 	)
+}
+
+// materializeRender renders stable page content once so normal GET requests can
+// reuse it. Dynamic macro/substitution pages intentionally return an empty artifact.
+func (s *Pages) materializeRender(ctx context.Context, source string, usage *pluginusage.Index) (domain.PageRender, error) {
+	if s.renderer == nil || !s.renderer.CanPersist(source, usage) {
+		return domain.PageRender{}, nil
+	}
+	settings, err := s.repository.ApplicationSettings(ctx)
+	if err != nil {
+		return domain.PageRender{}, err
+	}
+	options := md.DefaultOptions()
+	options.WikiLinks = settings.Rendering.WikiLinks
+	rendered, err := s.renderer.RenderPageResolvedWithFunctions(source, md.Slug, options, md.Functions{
+		Context:     ctx,
+		PluginUsage: usage,
+	})
+	if err != nil {
+		return domain.PageRender{}, err
+	}
+	// Inspector/export metadata originates from mutable substitutions. Keep such
+	// pages on the request-time path even if a future plugin bypasses CanPersist.
+	if len(rendered.Inspectors) != 0 || len(rendered.ExportFields) != 0 {
+		return domain.PageRender{}, nil
+	}
+	contents := make([]domain.PageHeading, len(rendered.Contents))
+	for index, heading := range rendered.Contents {
+		contents[index] = domain.PageHeading{Level: heading.Level, ID: heading.ID, Title: heading.Title}
+	}
+	return domain.PageRender{
+		HTML:        rendered.HTML,
+		Contents:    contents,
+		Fingerprint: s.renderer.RenderFingerprint(options),
+	}, nil
 }
 
 // Delete moves a page to the recycle bin and records the action.

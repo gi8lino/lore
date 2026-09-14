@@ -83,6 +83,7 @@ type pageViewCatalogService interface {
 	PageLinks(context.Context, string) ([]domain.PageLink, error)
 	LatestRevision(context.Context, string) (record revision.Revision, count int, err error)
 	PageComments(context.Context, string) ([]domain.PageComment, error)
+	SavePageRender(context.Context, int64, time.Time, domain.PageRender) error
 }
 
 type favoriteService interface {

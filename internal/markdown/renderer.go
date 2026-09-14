@@ -24,10 +24,11 @@ import (
 // Renderer converts Lore Markdown into sanitized HTML.
 type Renderer struct {
 	// sanitizer removes unsafe HTML from rendered output.
-	sanitizer    *bluemonday.Policy
-	registry     *plugin.Registry
-	manager      *plugin.Manager
-	timingLogger *slog.Logger
+	sanitizer     *bluemonday.Policy
+	registry      *plugin.Registry
+	manager       *plugin.Manager
+	timingLogger  *slog.Logger
+	artifactBuild string
 }
 
 // Heading describes one rendered Markdown heading used in a page table of contents.

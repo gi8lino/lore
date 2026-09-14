@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/pluginusage"
@@ -300,8 +301,10 @@ GROUP BY p.id,u.id`, slug),
 	if err != nil {
 		return domain.Page{}, err
 	}
+	var renderedContents json.RawMessage
 	if err := s.pool.QueryRow(ctx, `
-SELECT p.content_language,p.status,coalesce(p.owner_group_id,0),coalesce(g.name,''),p.last_reviewed_at,p.review_interval_days,p.deprecated_target
+SELECT p.content_language,p.status,coalesce(p.owner_group_id,0),coalesce(g.name,''),p.last_reviewed_at,p.review_interval_days,p.deprecated_target,
+       p.rendered_html,p.rendered_contents,p.render_fingerprint
 FROM pages p
 LEFT JOIN wiki_groups g ON g.id=p.owner_group_id
 WHERE p.id=$1`, page.ID).Scan(
@@ -312,8 +315,19 @@ WHERE p.id=$1`, page.ID).Scan(
 		&page.LastReviewedAt,
 		&page.ReviewIntervalDays,
 		&page.DeprecatedTarget,
+		&page.Render.HTML,
+		&renderedContents,
+		&page.Render.Fingerprint,
 	); err != nil {
 		return domain.Page{}, err
+	}
+
+	if len(renderedContents) != 0 {
+		if err := json.Unmarshal(renderedContents, &page.Render.Contents); err != nil {
+			// Render artifacts are derived data. Corrupt metadata must fall back to
+			// the canonical Markdown instead of making the page unavailable.
+			page.Render = domain.PageRender{}
+		}
 	}
 
 	page.Properties, err = s.PageProperties(ctx, page.ID)
@@ -322,6 +336,25 @@ WHERE p.id=$1`, page.ID).Scan(
 	}
 
 	return page, nil
+}
+
+// SavePageRender replaces the reusable render artifact when the page has not
+// changed since it was read. A concurrent edit simply makes this refresh a no-op.
+func (s *Store) SavePageRender(ctx context.Context, pageID int64, updatedAt time.Time, render domain.PageRender) error {
+	contents, err := json.Marshal(render.Contents)
+	if err != nil {
+		return fmt.Errorf("encode rendered page contents: %w", err)
+	}
+	if render.Fingerprint == "" {
+		render.HTML = ""
+		contents = []byte("[]")
+	}
+	_, err = s.pool.Exec(ctx, `
+UPDATE pages
+SET rendered_html=$3,rendered_contents=$4::jsonb,render_fingerprint=$5,
+    rendered_at=CASE WHEN $5<>'' THEN now() ELSE NULL END
+WHERE id=$1 AND updated_at=$2`, pageID, updatedAt, render.HTML, json.RawMessage(contents), render.Fingerprint)
+	return mutationError(err)
 }
 
 // ListPages returns recently updated pages up to the requested limit.
@@ -396,6 +429,7 @@ func (s *Store) SavePage(
 	groupIDs []int64,
 	metadata domain.PageMetadata,
 	properties map[string]string,
+	render domain.PageRender,
 	user domain.User,
 ) (domain.Page, error) {
 	if !domain.ValidPageStatus(metadata.Status) {
@@ -414,6 +448,15 @@ func (s *Store) SavePage(
 			return domain.Page{}, fmt.Errorf("encode page plugin usage: %w", err)
 		}
 		pluginUsage = json.RawMessage(encoded)
+	}
+
+	renderedContents, err := json.Marshal(render.Contents)
+	if err != nil {
+		return domain.Page{}, fmt.Errorf("encode rendered page contents: %w", err)
+	}
+	if render.Fingerprint == "" {
+		render.HTML = ""
+		renderedContents = []byte("[]")
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -454,11 +497,13 @@ SELECT EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1)`, slug).Scan(&aliasExis
 
 		err = tx.QueryRow(ctx, `
 INSERT INTO pages(
-  slug,title,content_language,markdown_content,created_by,updated_by,status,owner_group_id,last_reviewed_at,review_interval_days,deprecated_target,plugin_usage
+  slug,title,content_language,markdown_content,created_by,updated_by,status,owner_group_id,last_reviewed_at,review_interval_days,deprecated_target,plugin_usage,
+  rendered_html,rendered_contents,render_fingerprint,rendered_at
 ) VALUES(
-  $1,$2,$3,$4,$5,$5,$6,NULLIF($7,0),CASE WHEN $8 THEN now() ELSE NULL END,$9,$10,$11::jsonb
+  $1,$2,$3,$4,$5,$5,$6,NULLIF($7,0),CASE WHEN $8 THEN now() ELSE NULL END,$9,$10,$11::jsonb,
+  $12,$13::jsonb,$14,CASE WHEN $14<>'' THEN now() ELSE NULL END
 ) RETURNING id`,
-			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage,
+			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage, render.HTML, json.RawMessage(renderedContents), render.Fingerprint,
 		).Scan(&id)
 	case err != nil:
 		return domain.Page{}, mutationError(err)
@@ -500,9 +545,11 @@ UPDATE pages
 SET title=$2,content_language=$3,markdown_content=$4,updated_by=$5,updated_at=now(),
     status=$6,owner_group_id=NULLIF($7,0),
     last_reviewed_at=CASE WHEN $8 THEN now() ELSE last_reviewed_at END,
-    review_interval_days=$9,deprecated_target=$10,plugin_usage=$11::jsonb
+    review_interval_days=$9,deprecated_target=$10,plugin_usage=$11::jsonb,
+    rendered_html=$12,rendered_contents=$13::jsonb,render_fingerprint=$14,
+    rendered_at=CASE WHEN $14<>'' THEN now() ELSE NULL END
 WHERE id=$1`,
-			id, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage,
+			id, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage, render.HTML, json.RawMessage(renderedContents), render.Fingerprint,
 		)
 	}
 
