@@ -113,8 +113,8 @@ type ViewData struct {
 	RenderingPreviews map[string]template.HTML
 	// DocumentationHealth contains actionable documentation quality findings.
 	DocumentationHealth domain.DocumentationHealth
-	// RenderingLanguages lists content languages available to administrators.
-	RenderingLanguages []renderingLanguageOption
+	// ContentLanguages lists content languages available to administrators.
+	ContentLanguages []contentLanguageOption
 	// PageContentLanguage is the effective language for the current page/editor.
 	PageContentLanguage string
 	// AdminUsers contains users and group memberships for administrators.
@@ -195,8 +195,6 @@ type ViewData struct {
 	ActiveTheme string
 	// CanEdit reports whether the current user may create or edit pages.
 	CanEdit bool
-	// RenderMermaid reports whether browser-side Mermaid rendering is enabled.
-	RenderMermaid bool
 }
 
 type pageTemplateView struct {

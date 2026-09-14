@@ -18,12 +18,16 @@ import (
 	"golang.org/x/net/http/httpguts"
 )
 
-type renderingLanguageOption struct {
-	Code  string
+// contentLanguageOption describes one supported application/page language.
+type contentLanguageOption struct {
+	// Code is the persisted BCP 47 language tag.
+	Code string
+	// Label is the administrator-facing language name.
 	Label string
 }
 
-var renderingLanguageOptions = []renderingLanguageOption{
+// contentLanguageOptions contains the languages supported by page search and presentation.
+var contentLanguageOptions = []contentLanguageOption{
 	{Code: "en", Label: "English"},
 	{Code: "en-US", Label: "English (United States)"},
 	{Code: "en-GB", Label: "English (United Kingdom)"},
@@ -97,6 +101,7 @@ func AdminConfiguration(
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
+		data.ContentLanguages = contentLanguageOptions
 
 		render(views, w, "admin_configuration", data)
 	}
@@ -118,8 +123,6 @@ func AdminRendering(viewDataUseCases viewDataService, renderer *md.Renderer, vie
 		}
 
 		data.RenderingPreviews = previews
-		data.RenderingLanguages = renderingLanguageOptions
-
 		render(views, w, "admin_rendering", data)
 	}
 }
@@ -134,14 +137,6 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, r
 		}
 
 		settings := renderingSettingsFromForm(r)
-		if !isRenderingLanguage(settings.ContentLanguage) {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Rendering validation failed.",
-				httpresponse.NewFieldProblem("content_language", "Choose a supported content language."),
-			)
-			return
-		}
 		if err := renderer.ValidateFeatures(renderingOptionsFromSettings(settings)); err != nil {
 			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Rendering validation failed.", httpresponse.NewFieldProblem("rendering", err.Error()))
 			return
@@ -159,29 +154,21 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, r
 func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
 	return domain.RenderingSettings{
 		WikiLinks:          r.FormValue("wiki_links") == "on",
-		Callouts:           r.FormValue("callouts") == "on",
 		Tabs:               r.FormValue("tabs") == "on",
 		Details:            r.FormValue("details") == "on",
-		Tables:             r.FormValue("tables") == "on",
-		TableStyles:        r.FormValue("table_styles") == "on",
-		TableSorting:       r.FormValue("table_sorting") == "on",
-		TableFiltering:     r.FormValue("table_filtering") == "on",
 		Strikethrough:      r.FormValue("strikethrough") == "on",
 		TaskLists:          r.FormValue("task_lists") == "on",
 		Autolinks:          r.FormValue("autolinks") == "on",
 		SyntaxHighlighting: r.FormValue("syntax_highlighting") == "on",
-		ContentLanguage:    strings.TrimSpace(r.FormValue("content_language")),
-		CodingLigatures:    r.FormValue("coding_ligatures") == "on",
-		Mermaid:            r.FormValue("mermaid") == "on",
 		Footnotes:          r.FormValue("footnotes") == "on",
 		DefinitionLists:    r.FormValue("definition_lists") == "on",
 		Typographer:        r.FormValue("typographer") == "on",
 	}
 }
 
-// isRenderingLanguage reports whether a configured content language is exposed by the admin UI.
-func isRenderingLanguage(value string) bool {
-	return slices.ContainsFunc(renderingLanguageOptions, func(option renderingLanguageOption) bool {
+// isContentLanguage reports whether a configured content language is exposed by the admin UI.
+func isContentLanguage(value string) bool {
+	return slices.ContainsFunc(contentLanguageOptions, func(option contentLanguageOption) bool {
 		return option.Code == value
 	})
 }
@@ -948,6 +935,14 @@ func SaveAdminSettings(settingsUseCases settingsService, logger *slog.Logger) ht
 		}
 
 		settings := applicationSettingsFromForm(r)
+		if !isContentLanguage(settings.ContentLanguage) {
+			httpresponse.Problem(w,
+				http.StatusUnprocessableEntity,
+				"Settings validation failed.",
+				httpresponse.NewFieldProblem("content_language", "Choose a supported content language."),
+			)
+			return
+		}
 		if err := settingsUseCases.SaveApplicationSettings(r.Context(), settings, admin.ID); err != nil {
 			writeAdminProblem(logger, w, err, "Settings")
 			return
@@ -962,6 +957,7 @@ func applicationSettingsFromForm(r *http.Request) domain.ApplicationSettings {
 	return domain.ApplicationSettings{
 		AllowUserRegistration: r.FormValue("allow_user_registration") == "on",
 		DiscussionsEnabled:    r.FormValue("discussions_enabled") == "on",
+		ContentLanguage:       strings.TrimSpace(r.FormValue("content_language")),
 		ExternalLinks:         externalLinksFromForm(r),
 		RobotsPolicy:          strings.TrimSpace(r.FormValue("robots_policy")),
 		Rendering: domain.RenderingSettings{

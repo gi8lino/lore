@@ -130,7 +130,7 @@ func ExportPagePDF(
 			return
 		}
 
-		language := cmp.Or(pageData.Language, settings.ContentLanguage)
+		language := cmp.Or(pageData.Language, applicationSettings.ContentLanguage)
 
 		pdfFile, cleanup, err := pdf.Render(r.Context(), pdfURL, pageData.Title, language, rendered, pdfRequestHeaders(pdfHeaders))
 		if err != nil {

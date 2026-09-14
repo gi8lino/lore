@@ -91,7 +91,7 @@ func renderSharedPage(
 		return
 	}
 
-	options, settings, err := renderingOptions(r.Context(), settingsUseCases)
+	options, application, err := renderingOptions(r.Context(), settingsUseCases)
 	if err != nil {
 		writePublicShareError(logger, w, err)
 		return
@@ -134,9 +134,8 @@ func renderSharedPage(
 
 	data.Page = &page
 	data.HTML = template.HTML(standaloneHTML)
-	data.ApplicationSettings.Rendering = settings
-	data.RenderMermaid = settings.Mermaid
-	data.PageContentLanguage = cmp.Or(page.Language, settings.ContentLanguage)
+	data.ApplicationSettings = application
+	data.PageContentLanguage = cmp.Or(page.Language, application.ContentLanguage)
 
 	renderTemplate(views, w, "shared_page", "shared-layout", data)
 }

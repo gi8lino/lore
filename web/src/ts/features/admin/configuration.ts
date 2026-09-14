@@ -1,8 +1,7 @@
-// Administrator authentication, rendering, and PDF configuration behavior.
+// Administrator authentication, application, and PDF configuration behavior.
 
 import { requiredElement } from "../../core/dom.ts";
 import { errorMessage, responseProblem } from "../../core/http.ts";
-import { renderPluginModules } from "../../plugins/loader.ts";
 
 const sensitivePDFHeaderNames = new Set([
   "authorization",
@@ -468,21 +467,9 @@ function setupAuthenticationSettings(): void {
   refreshGroupSync();
 }
 
-function setupMermaidPreview(): void {
-  const preview = document.querySelector<HTMLElement>(
-    "[data-rendering-mermaid-preview]",
-  );
-  if (!preview) return;
-
-  void renderPluginModules(preview).catch((error: unknown) => {
-    console.error("rendering Mermaid preview failed", error);
-  });
-}
-
 // Initializes administrator configuration controls present on the current page.
 export function initAdminConfiguration(): void {
   setupExternalLinks();
   setupAuthenticationSettings();
   setupPDFSettings();
-  setupMermaidPreview();
 }

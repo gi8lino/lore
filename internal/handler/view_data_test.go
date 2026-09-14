@@ -78,11 +78,12 @@ func TestViewDataLoaderLoad(t *testing.T) {
 					{ID: 5, Slug: "platforms/consul", Title: "Consul"},
 				},
 			},
-			viewDataSettingsStub{settings: domain.ApplicationSettings{Rendering: domain.RenderingSettings{
-				DefaultTypographySize: domain.TypographySizeLarge,
-				Mermaid:               true,
-				ContentLanguage:       "de-CH",
-			}}},
+			viewDataSettingsStub{settings: domain.ApplicationSettings{
+				ContentLanguage: "de-CH",
+				Rendering: domain.RenderingSettings{
+					DefaultTypographySize: domain.TypographySizeLarge,
+				},
+			}},
 			viewDataSavedSearchStub{searches: []domain.SavedSearch{{ID: 7, Name: "Production", Query: "tag:prod"}}},
 			viewDataNotificationStub{
 				notifications: []domain.Notification{{ID: 8, Title: "Mention"}},
@@ -97,6 +98,7 @@ func TestViewDataLoaderLoad(t *testing.T) {
 				}
 				return filtered
 			}},
+			nil,
 		)
 		views := &Views{
 			version:      "v1.2.3",
@@ -124,7 +126,6 @@ func TestViewDataLoaderLoad(t *testing.T) {
 		assert.Equal(t, "Dark", data.Preferences.Theme)
 		assert.Equal(t, "platforms/kubernetes", data.NewPageParent)
 		assert.Equal(t, domain.PageStatuses(), data.PageStatuses)
-		assert.True(t, data.RenderMermaid)
 		assert.Equal(t, "de-CH", data.PageContentLanguage)
 		assert.Equal(t, "v1.2.3", data.Version)
 		assert.Equal(t, "abc123", data.Commit)
@@ -164,6 +165,7 @@ func TestViewDataLoaderLoad(t *testing.T) {
 			viewDataSavedSearchStub{},
 			viewDataNotificationStub{},
 			nil,
+			nil,
 		)
 		views := &Views{themes: []themes.Theme{{Title: "Dark", ColorScheme: "dark"}}}
 		request := auth.WithUser(httptest.NewRequest(http.MethodGet, "/admin", nil), user)
@@ -191,6 +193,7 @@ func TestViewDataLoaderLoad(t *testing.T) {
 			nil,
 			nil,
 			nil,
+			nil,
 		)
 
 		_, err := loader.Load(
@@ -211,6 +214,7 @@ func TestViewDataLoaderLoad(t *testing.T) {
 			nil,
 			nil,
 			viewDataSettingsStub{err: wantErr},
+			nil,
 			nil,
 			nil,
 			nil,

@@ -362,7 +362,7 @@ func EditPage(
 
 		data.Groups = groups
 		data.KnowledgeSnippets = snippets
-		data.RenderingLanguages = renderingLanguageOptions
+		data.ContentLanguages = contentLanguageOptions
 		data.PageStatuses = domain.PageStatuses()
 
 		switch slug := r.PathValue("slug"); slug {

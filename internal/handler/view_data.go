@@ -9,6 +9,7 @@ import (
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/navigation"
+	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/themes"
 )
 
@@ -44,6 +45,7 @@ type ViewDataLoader struct {
 	savedSearchUseCases  savedSearchReader
 	notificationUseCases notificationReader
 	accessUseCases       pageAccessReader
+	pluginManager        *plugin.Manager
 }
 
 // NewViewDataLoader constructs the shared authenticated view-data loader.
@@ -55,6 +57,7 @@ func NewViewDataLoader(
 	savedSearches savedSearchReader,
 	notifications notificationReader,
 	access pageAccessReader,
+	plugins *plugin.Manager,
 ) *ViewDataLoader {
 	return &ViewDataLoader{
 		preferenceUseCases:   preferences,
@@ -64,6 +67,7 @@ func NewViewDataLoader(
 		savedSearchUseCases:  savedSearches,
 		notificationUseCases: notifications,
 		accessUseCases:       access,
+		pluginManager:        plugins,
 	}
 }
 
@@ -179,6 +183,19 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		return ViewData{}, err
 	}
 
+	pluginFeatures := make(map[string]bool)
+	if l.pluginManager != nil {
+		for _, item := range l.pluginManager.Plugins() {
+			pluginFeatures[item.Manifest.ID] = item.Enabled
+			if !item.Enabled {
+				continue
+			}
+			for key, enabled := range item.Settings {
+				pluginFeatures[item.Manifest.ID+"."+key] = enabled
+			}
+		}
+	}
+
 	return ViewData{
 		Title:               title,
 		User:                user,
@@ -200,9 +217,9 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		Themes:              views.themes,
 		ActiveTheme:         activeTheme,
 		ApplicationSettings: applicationSettings,
+		PluginFeatures:      pluginFeatures,
 		CanEdit:             user.Role == "admin" || user.Role == "editor",
-		RenderMermaid:       applicationSettings.Rendering.Mermaid,
-		PageContentLanguage: applicationSettings.Rendering.ContentLanguage,
+		PageContentLanguage: applicationSettings.ContentLanguage,
 	}, nil
 }
 

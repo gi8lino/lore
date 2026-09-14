@@ -57,7 +57,7 @@ func variableExportFixture(t *testing.T) (variableExportStub, *Views, *slog.Logg
 	content := variableTestContent()
 	content.pages["guide"] = domain.Page{Slug: "guide", Title: "Deployment", Language: "en", Markdown: "production {{var:environment}}\n\n```text\n{{var:environment}}\n```"}
 	stub := variableExportStub{knowledgeContentStub: content}
-	stub.application.Rendering = domain.RenderingSettings{Tables: true, WikiLinks: true}
+	stub.application.Rendering = domain.RenderingSettings{WikiLinks: true}
 	return stub, &Views{}, slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 

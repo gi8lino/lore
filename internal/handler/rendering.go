@@ -11,34 +11,29 @@ import (
 func renderingOptions(
 	ctx context.Context,
 	settingsUseCases settingsService,
-) (options md.Options, rendering domain.RenderingSettings, err error) {
+) (options md.Options, application domain.ApplicationSettings, err error) {
 	settings, err := settingsUseCases.ApplicationSettings(ctx)
 	if err != nil {
-		return md.Options{}, domain.RenderingSettings{}, err
+		return md.Options{}, domain.ApplicationSettings{}, err
 	}
 
-	return renderingOptionsFromSettings(settings.Rendering), settings.Rendering, nil
+	return renderingOptionsFromSettings(settings.Rendering), settings, nil
 }
 
-// renderingOptionsFromSettings maps persisted rendering settings to Markdown renderer options.
+// renderingOptionsFromSettings maps persisted core rendering settings to Markdown renderer options.
+// Plugin-owned features keep their default request flags and are controlled by
+// plugin lifecycle and plugin-owned settings at the composition boundary.
 func renderingOptionsFromSettings(rendering domain.RenderingSettings) md.Options {
-	return md.Options{
-		WikiLinks:          rendering.WikiLinks,
-		Callouts:           rendering.Callouts,
-		Mermaid:            rendering.Mermaid,
-		Tabs:               rendering.Tabs,
-		Details:            rendering.Details,
-		Tables:             rendering.Tables,
-		TableStyles:        rendering.TableStyles,
-		TableSorting:       rendering.TableSorting,
-		TableFiltering:     rendering.TableFiltering,
-		Strikethrough:      rendering.Strikethrough,
-		TaskLists:          rendering.TaskLists,
-		Autolinks:          rendering.Autolinks,
-		SyntaxHighlighting: rendering.SyntaxHighlighting,
-		Footnotes:          rendering.Footnotes,
-		DefinitionLists:    rendering.DefinitionLists,
-		Typographer:        rendering.Typographer,
-		CodingLigatures:    rendering.CodingLigatures,
-	}
+	options := md.DefaultOptions()
+	options.WikiLinks = rendering.WikiLinks
+	options.Tabs = rendering.Tabs
+	options.Details = rendering.Details
+	options.Strikethrough = rendering.Strikethrough
+	options.TaskLists = rendering.TaskLists
+	options.Autolinks = rendering.Autolinks
+	options.SyntaxHighlighting = rendering.SyntaxHighlighting
+	options.Footnotes = rendering.Footnotes
+	options.DefinitionLists = rendering.DefinitionLists
+	options.Typographer = rendering.Typographer
+	return options
 }

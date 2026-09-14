@@ -24,6 +24,7 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 		"allow_user_registration":    {"on"},
 		"discussions_enabled":        {"on"},
 		"default_typography_size":    {" compact "},
+		"content_language":           {" de-CH "},
 		"robots_policy":              {" disallow "},
 		"external_link_label":        {" Repository ", "Status"},
 		"external_link_url":          {" https://github.com/gi8lino/lore ", "https://status.example.test"},
@@ -42,6 +43,7 @@ func TestApplicationSettingsFromForm(t *testing.T) {
 	assert.True(t, settings.AllowUserRegistration)
 	assert.True(t, settings.DiscussionsEnabled)
 	assert.Equal(t, domain.TypographySizeCompact, settings.Rendering.DefaultTypographySize)
+	assert.Equal(t, "de-CH", settings.ContentLanguage)
 	assert.Equal(t, domain.RobotsPolicyDisallow, settings.RobotsPolicy)
 	assert.Equal(t, []domain.ExternalLink{
 		{Label: "Repository", URL: "https://github.com/gi8lino/lore", Icon: "github-simple", Description: "v2.4.1", HoverEffect: "lift", HoverText: "{{label }} | {{description}}"},
@@ -53,10 +55,9 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	t.Parallel()
 
 	form := url.Values{
-		"content_language":    {"de-CH"},
-		"coding_ligatures":    {"on"},
 		"wiki_links":          {"on"},
 		"syntax_highlighting": {"on"},
+		"typographer":         {"on"},
 	}
 	request := httptest.NewRequest("POST", "/admin/rendering", strings.NewReader(form.Encode()))
 
@@ -65,28 +66,30 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 
 	settings := renderingSettingsFromForm(request)
 
-	assert.Equal(t, "de-CH", settings.ContentLanguage)
-	assert.True(t, settings.CodingLigatures)
 	assert.True(t, settings.WikiLinks)
 	assert.True(t, settings.SyntaxHighlighting)
-	assert.False(t, settings.Tables)
+	assert.True(t, settings.Typographer)
+	assert.False(t, settings.Tabs)
 }
 
-func TestRenderingOptionsIncludeTypographerAndCodingLigatures(t *testing.T) {
+func TestRenderingOptionsKeepPluginFeaturesAtDefaults(t *testing.T) {
 	t.Parallel()
 
-	options := renderingOptionsFromSettings(domain.RenderingSettings{Typographer: true, CodingLigatures: true})
+	options := renderingOptionsFromSettings(domain.RenderingSettings{Typographer: true})
 
 	assert.True(t, options.Typographer)
-	assert.True(t, options.CodingLigatures)
+	assert.True(t, options.Callouts)
+	assert.True(t, options.Tables)
+	assert.True(t, options.Mermaid)
+	assert.False(t, options.CodingLigatures)
 }
 
 func TestRenderingLanguageValidation(t *testing.T) {
 	t.Parallel()
 
-	assert.True(t, isRenderingLanguage("de-CH"))
-	assert.True(t, isRenderingLanguage("en"))
-	assert.False(t, isRenderingLanguage("invalid"))
+	assert.True(t, isContentLanguage("de-CH"))
+	assert.True(t, isContentLanguage("en"))
+	assert.False(t, isContentLanguage("invalid"))
 }
 
 func TestAuthenticationSettingsFromForm(t *testing.T) {

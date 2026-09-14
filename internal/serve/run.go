@@ -99,16 +99,6 @@ func Run(
 	templateUseCases := service.NewTemplates(database)
 	tokenUseCases := service.NewTokens(database)
 	userUseCases := service.NewUsers(database)
-	viewDataUseCases := handler.NewViewDataLoader(
-		preferenceUseCases,
-		navigationUseCases,
-		catalogUseCases,
-		settingsUseCases,
-		knowledgeUseCases,
-		notificationUseCases,
-		accessUseCases,
-	)
-
 	browserAuth, err := auth.ConfigureBrowserAuth(
 		ctx,
 		auth.BrowserConfig{
@@ -173,6 +163,17 @@ func Run(
 		return err
 	}
 	defer func() { _ = renderer.Close(context.Background()) }()
+
+	viewDataUseCases := handler.NewViewDataLoader(
+		preferenceUseCases,
+		navigationUseCases,
+		catalogUseCases,
+		settingsUseCases,
+		knowledgeUseCases,
+		notificationUseCases,
+		accessUseCases,
+		renderer.PluginManager(),
+	)
 
 	router := routes.New(
 		appFS,

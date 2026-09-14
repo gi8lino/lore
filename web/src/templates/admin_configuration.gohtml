@@ -93,6 +93,18 @@
           </label>
           <label class="configuration-choice-row">
             <span class="configuration-choice-copy">
+              <strong>Content language</strong>
+              <small>Default language for pages, spell checking, accessibility, search, and PDF exports.</small>
+            </span>
+            <select name="content_language" aria-label="Content language">
+              {{ range .ContentLanguages }}
+                <option value="{{ .Code }}"
+                        {{ if eq $.ApplicationSettings.ContentLanguage .Code }}selected{{ end }}>{{ .Label }}</option>
+              {{ end }}
+            </select>
+          </label>
+          <label class="configuration-choice-row">
+            <span class="configuration-choice-copy">
               <strong>robots.txt</strong>
               <small>Controls public crawler discovery. Allowing crawling also publishes <code>/sitemap.xml</code> with verified and deprecated page paths. Lore defaults to disallowing crawling.</small>
             </span>

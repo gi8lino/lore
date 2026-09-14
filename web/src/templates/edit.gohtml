@@ -214,8 +214,8 @@
       <label>
         Content language <span class="optional">optional</span>
         <select name="language">
-          <option value="">Use default ({{ .ApplicationSettings.Rendering.ContentLanguage }})</option>
-          {{ range .RenderingLanguages }}
+          <option value="">Use default ({{ .ApplicationSettings.ContentLanguage }})</option>
+          {{ range .ContentLanguages }}
             <option value="{{ .Code }}" {{ if $.Page }}{{ if eq $.Page.Language .Code }}selected{{ end }}{{ end }}>
               {{ .Label }}
             </option>
@@ -422,7 +422,7 @@
               data-markdown-action="subpages"
               title="Sub-page table of contents"
               aria-label="Insert sub-page table of contents">{{ icon "list-tree-lucide" 16 }}</button>
-      {{ if .ApplicationSettings.Rendering.Tables }}
+      {{ if index .PluginFeatures "io.lore.tables" }}
         <button type="button"
                 data-table-format-open
                 title="Insert or format table"
@@ -583,7 +583,7 @@
         <label class="toggle-row compact">
           <span><strong>Sortable</strong><small>Click column headers to sort rows.</small></span>
           <input type="checkbox"
-                 data-table-format-sortable{{ if .ApplicationSettings.Rendering.TableSorting }}
+                 data-table-format-sortable{{ if index .PluginFeatures "io.lore.tables.sorting" }}
                  {{ else }}
                  disabled
                  {{ end }} />
@@ -591,19 +591,19 @@
         <label class="toggle-row compact">
           <span><strong>Filterable</strong><small>Add a filter control to each column header.</small></span>
           <input type="checkbox"
-                 data-table-format-filterable{{ if .ApplicationSettings.Rendering.TableFiltering }}
+                 data-table-format-filterable{{ if index .PluginFeatures "io.lore.tables.filtering" }}
                  {{ else }}
                  disabled
                  {{ end }} />
         </label>
       </div>
-      {{ if .ApplicationSettings.Rendering.TableSorting }}
+      {{ if index .PluginFeatures "io.lore.tables.sorting" }}
       {{ else }}
-        <small class="muted">Table sorting is disabled under Administration → Rendering.</small>
+        <small class="muted">Table sorting is disabled in the Tables plugin settings.</small>
       {{ end }}
-      {{ if .ApplicationSettings.Rendering.TableFiltering }}
+      {{ if index .PluginFeatures "io.lore.tables.filtering" }}
       {{ else }}
-        <small class="muted">Table filtering is disabled under Administration → Rendering.</small>
+        <small class="muted">Table filtering is disabled in the Tables plugin settings.</small>
       {{ end }}
     </fieldset>
     <fieldset class="table-format-section">
@@ -636,7 +636,7 @@
       </div>
     </fieldset>
   <fieldset class="table-format-section"
-            {{ if .ApplicationSettings.Rendering.TableStyles }}
+            {{ if index .PluginFeatures "io.lore.tables.styles" }}
             {{ else }}
             disabled
             {{ end }}>
@@ -669,9 +669,9 @@
         <input type="radio" name="table-format-tone" value="red" /><span>Red</span>
       </label>
     </div>
-    {{ if .ApplicationSettings.Rendering.TableStyles }}
+    {{ if index .PluginFeatures "io.lore.tables.styles" }}
     {{ else }}
-      <small class="muted">Table colors are disabled under Administration → Rendering.</small>
+      <small class="muted">Table colors are disabled in the Tables plugin settings.</small>
     {{ end }}
     </fieldset>
     <div class="app-dialog-actions table-format-actions">

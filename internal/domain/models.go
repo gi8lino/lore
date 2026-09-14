@@ -145,20 +145,10 @@ type TagInfo struct {
 type RenderingSettings struct {
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
-	// Callouts enables !!! callout blocks.
-	Callouts bool
 	// Tabs enables Material-style === tab blocks.
 	Tabs bool
 	// Details enables ??? collapsible detail blocks.
 	Details bool
-	// Tables enables GitHub-flavored Markdown tables.
-	Tables bool
-	// TableStyles enables theme-aware table color directives.
-	TableStyles bool
-	// TableSorting enables sortable table directives.
-	TableSorting bool
-	// TableFiltering enables filterable table directives.
-	TableFiltering bool
 	// Strikethrough enables GitHub-flavored ~~strikethrough~~.
 	Strikethrough bool
 	// TaskLists enables GitHub-flavored task lists.
@@ -167,14 +157,8 @@ type RenderingSettings struct {
 	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
 	SyntaxHighlighting bool
-	// ContentLanguage is the BCP 47 language tag applied to wiki content and the editor.
-	ContentLanguage string
-	// CodingLigatures enables supported OpenType coding ligatures in rendered text and code.
-	CodingLigatures bool
 	// DefaultTypographySize is used when a user has not selected a personal content size.
 	DefaultTypographySize string
-	// Mermaid enables browser-side Mermaid diagram rendering.
-	Mermaid bool
 	// Footnotes enables Markdown footnotes.
 	Footnotes bool
 	// DefinitionLists enables Markdown definition lists.
@@ -328,6 +312,8 @@ type ApplicationSettings struct {
 	AllowUserRegistration bool
 	// DiscussionsEnabled enables page comments and anchored discussions.
 	DiscussionsEnabled bool
+	// ContentLanguage is the BCP 47 language tag applied to wiki content and the editor.
+	ContentLanguage string
 	// PDFURL is the persisted HTML-to-PDF rendering endpoint.
 	PDFURL string
 	// ExternalLinks contains configurable links rendered beside global search.

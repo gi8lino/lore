@@ -104,7 +104,7 @@ func PreviewPageExport(
 			writeRenderedExportProblem(logger, w, err)
 			return
 		}
-		language := cmp.Or(page.Language, application.Rendering.ContentLanguage)
+		language := cmp.Or(page.Language, application.ContentLanguage)
 		httpresponse.Respond(w, http.StatusOK, exportPreviewResponse{Document: pdf.Document(page.Title, language, rendered)})
 	}
 }
