@@ -33,7 +33,7 @@ GOLANGCI_LINT := bin/golangci-lint
 
 ## Build Configuration
 BINARY ?= lore
-COMMAND ?= ./cmd
+COMMAND ?= ./cmd/lore
 # Bound race-instrumented cold WASM compilation without relaxing runtime deadlines.
 GO_TEST_RACE_FLAGS ?= -p=2 -parallel=4
 RUN_ARGS ?=

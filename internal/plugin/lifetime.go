@@ -8,12 +8,12 @@ import (
 	"github.com/gi8lino/lore/pluginpackage"
 )
 
-// A lifetime belongs to one contribution version. Snapshots acquired by a render
-// retain it, so retirement cannot close a reactor while that render still uses it.
+// A lifetime belongs to one contribution version. Render-plan and full-snapshot
+// leases retain it, so retirement cannot close a reactor while a render still uses it.
 type lifetime struct {
 	// mu protects concurrent access to the receiver state.
 	mu sync.Mutex
-	// refs counts active render snapshots using this contribution version.
+	// refs counts active executable leases using this contribution version.
 	refs int
 	// retired prevents this contribution version from accepting new ownership.
 	retired bool
@@ -70,6 +70,44 @@ func (r *Registry) Acquire() (Snapshot, func()) {
 	}
 }
 
+// AcquireRenderPlan pins the immutable render-only registry view for one complete
+// render. Unlike Acquire, it does not clone contribution metadata on the hot path.
+func (r *Registry) AcquireRenderPlan() (*RenderPlan, func()) {
+	r.mu.RLock()
+	if r.renderPlan == nil {
+		r.mu.RUnlock()
+		r.mu.Lock()
+		if r.renderPlan == nil {
+			r.rebuildRenderPlanLocked()
+		}
+		plan := r.renderPlan
+		acquireRenderPlanLifetimes(plan)
+		r.mu.Unlock()
+		return plan, releaseRenderPlan(plan)
+	}
+	plan := r.renderPlan
+	acquireRenderPlanLifetimes(plan)
+	r.mu.RUnlock()
+	return plan, releaseRenderPlan(plan)
+}
+
+func acquireRenderPlanLifetimes(plan *RenderPlan) {
+	for _, life := range plan.lifetimes {
+		life.acquire()
+	}
+}
+
+func releaseRenderPlan(plan *RenderPlan) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			for _, life := range plan.lifetimes {
+				life.release()
+			}
+		})
+	}
+}
+
 // transition validates a candidate before committing persistence or publication.
 // Replacement keeps contribution order and is never observable as remove/add.
 func (r *Registry) transition(id string, replacement *Entry, replace bool, commit func() error) (*lifetime, error) {
@@ -82,7 +120,7 @@ func (r *Registry) transition(id string, replacement *Entry, replace bool, commi
 		}
 		return nil, fmt.Errorf("plugin %s is no longer registered", id)
 	}
-	candidate := &Registry{entries: slices.Clone(r.entries)}
+	candidate := &Registry{entries: slices.Clone(r.entries), renderGeneration: r.renderGeneration}
 	if replacement == nil {
 		if err := candidate.Unregister(id); err != nil {
 			return nil, err
@@ -98,6 +136,7 @@ func (r *Registry) transition(id string, replacement *Entry, replace bool, commi
 			added := candidate.entries[len(candidate.entries)-1]
 			candidate.entries = candidate.entries[:len(candidate.entries)-1]
 			candidate.entries = slices.Insert(candidate.entries, index, added)
+			candidate.renderPlan = buildRenderPlan(candidate.entries, candidate.renderGeneration)
 		}
 	}
 	catalog := make(map[string]managedPlugin, len(candidate.entries))
@@ -117,6 +156,8 @@ func (r *Registry) transition(id string, replacement *Entry, replace bool, commi
 		old = r.entries[index].lifetime
 	}
 	r.entries = candidate.entries
+	r.renderGeneration = candidate.renderGeneration
+	r.renderPlan = candidate.renderPlan
 	return old, nil
 }
 
@@ -127,7 +168,7 @@ func (r *Registry) initialize(entries []Entry) error {
 	if len(r.entries) != 0 {
 		return fmt.Errorf("registry is not empty")
 	}
-	r.entries = entries
+	r.publishEntriesLocked(entries)
 	return nil
 }
 
@@ -137,12 +178,16 @@ func (r *Registry) detach(ids map[string]managedPlugin) map[string]*lifetime {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	result := make(map[string]*lifetime)
-	r.entries = slices.DeleteFunc(r.entries, func(entry Entry) bool {
+	entries := slices.Clone(r.entries)
+	entries = slices.DeleteFunc(entries, func(entry Entry) bool {
 		if _, owned := ids[entry.Descriptor.ID]; !owned {
 			return false
 		}
 		result[entry.Descriptor.ID] = entry.lifetime
 		return true
 	})
+	if len(entries) != len(r.entries) {
+		r.publishEntriesLocked(entries)
+	}
 	return result
 }

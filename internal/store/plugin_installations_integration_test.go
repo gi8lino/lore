@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

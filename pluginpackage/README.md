@@ -8,3 +8,42 @@ defensive copies and archives are never extracted by the runtime.
 See [the SDK](../pluginsdk/README.md) for project creation and deterministic builds,
 and [the runtime architecture](../internal/plugin/README.md) for lifecycle and
 security boundaries.
+
+## Source usage selectors
+
+Executable modules can optionally declare bounded `usage` selectors so Lore can
+build a page render plan without invoking WASM merely to ask whether a plugin is
+needed:
+
+```yaml
+modules:
+  - type: renderer-extension
+    id: callouts
+    stage: preprocess
+    usage:
+      - contains: "!!! "
+
+  - type: renderer-extension
+    id: includes
+    stage: content-preprocess
+    usage:
+      - substitution: include
+
+  - type: renderer-extension
+    id: diagrams
+    stage: postprocess
+    usage:
+      - fence: mermaid
+```
+
+A rule sets exactly one of `contains`, `macro`, `substitution`, or `fence`;
+`fence: "*"` matches any fenced-code block. Selectors are performance hints and
+therefore must not produce false negatives. Modules without selectors remain
+always active. `macro` modules are an exception: Lore infers their source selector
+from the manifest macro name.
+
+Lore derives plugin usage from Markdown on page writes and stores it as
+rebuildable page metadata. Saved-page renders use the index when its renderer
+fingerprint and source hash are current. Editor preview, static input, legacy
+pages, and stale indexes are analyzed transiently in memory. Markdown remains
+the source of truth.

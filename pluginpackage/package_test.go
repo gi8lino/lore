@@ -257,3 +257,44 @@ permissions: []
 		require.Error(t, err)
 	}
 }
+
+func TestManifestUsageRules(t *testing.T) {
+	manifest := strings.Replace(testManifest, "stage: preprocess", "stage: preprocess\n    usage:\n      - contains: \"!!! \"", 1)
+	pkg, err := Read(testArchive(t, manifest))
+	require.NoError(t, err)
+	require.Len(t, pkg.Manifest().Modules[0].Usage, 1)
+	assert.Equal(t, "!!! ", pkg.Manifest().Modules[0].Usage[0].Contains)
+
+	copy := pkg.Manifest()
+	copy.Modules[0].Usage[0].Contains = "mutated"
+	assert.Equal(t, "!!! ", pkg.Manifest().Modules[0].Usage[0].Contains)
+
+	for _, invalid := range []string{
+		strings.Replace(manifest, "- contains: \"!!! \"", "- {}", 1),
+		strings.Replace(manifest, "- contains: \"!!! \"", "- contains: \"!!! \"\n        macro: pages", 1),
+		strings.Replace(manifest, "contains: \"!!! \"", "macro: ../pages", 1),
+	} {
+		_, err := Read(testArchive(t, invalid))
+		require.Error(t, err, invalid)
+	}
+
+	substitution := strings.Replace(testManifest, "stage: preprocess", "stage: preprocess\n    usage:\n      - substitution: include", 1)
+	substitutionPackage, err := Read(testArchive(t, substitution))
+	require.NoError(t, err)
+	assert.Equal(t, "include", substitutionPackage.Manifest().Modules[0].Usage[0].Substitution)
+
+	browser := `api_version: 1
+id: io.example.browser-usage
+name: Browser usage
+version: 1.0.0
+modules:
+  - type: browser-module
+    id: browser
+    javascript: plugin.js
+    usage:
+      - contains: diagram
+permissions: [browser:render]
+`
+	_, err = Read(testArchive(t, browser, archiveEntry{"assets/plugin.js", []byte("globalThis.lorePlugin={}"), 0644}))
+	require.Error(t, err)
+}

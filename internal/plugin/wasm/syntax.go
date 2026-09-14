@@ -8,7 +8,15 @@ import (
 
 // syntaxModule selects a public standard grammar through the same manifest for
 // every distribution source. Feature flags control each fresh parser instance.
-type syntaxModule struct{ owner, id, syntax string }
+type syntaxModule struct {
+	owner, id, syntax string
+	usage             []plugin.SourceUsageRule
+}
+
+// SourceUsage exposes the manifest selectors for this host grammar.
+func (m syntaxModule) SourceUsage() plugin.SourceUsage {
+	return plugin.SourceUsage{ModuleID: m.id, Rules: m.usage}
+}
 
 func (m syntaxModule) Extension(ctx plugin.Context) goldmark.Extender {
 	if enabled, ok := ctx.Features[m.owner]; ok && !enabled {

@@ -112,6 +112,7 @@ func renderExportHTML(
 		renderingOptionsFromSettings(settings),
 		md.Functions{
 			Context:          ctx,
+			PluginUsage:      page.PluginUsage,
 			Capabilities:     plugincap.Capabilities(securedCatalog, pageNavigation),
 			ExportParameters: parameters,
 		},

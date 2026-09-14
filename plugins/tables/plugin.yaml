@@ -9,12 +9,20 @@ modules:
   - type: markdown-syntax
     id: tables
     syntax: tables
+    usage:
+      - contains: "|"
   - type: renderer-extension
     id: directives
     stage: preprocess
+    usage:
+      - contains: "{table"
   - type: renderer-extension
     id: presentation
     stage: postprocess
+    usage:
+      - contains: "|"
+      - contains: "{table"
+      - contains: "<table"
   - type: browser-module
     id: interactive
     javascript: plugin.js
@@ -35,5 +43,7 @@ modules:
     description: Allow filterable tables to filter rows from each column header.
     requires: [tables]
 permissions: [browser:render]
+
+
 
 

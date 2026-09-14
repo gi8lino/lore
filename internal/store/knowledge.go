@@ -497,7 +497,7 @@ WHERE deleted_at IS NULL AND markdown_content LIKE '%[[%'`)
 		for _, edit := range edits {
 			if _, err := tx.Exec(ctx, `
 UPDATE pages
-SET markdown_content=$2,updated_by=$3,updated_at=now()
+SET markdown_content=$2,plugin_usage=NULL,updated_by=$3,updated_at=now()
 WHERE id=$1`, edit.id, edit.markdown, user.ID); err != nil {
 				return mutationError(err)
 			}

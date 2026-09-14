@@ -11,6 +11,8 @@ modules:
     stage: content-preprocess
     priority: 100
     capability: pages.content
+    usage:
+      - substitution: include
   - type: editor-insert
     id: include
     name: Include page
@@ -19,3 +21,5 @@ modules:
     inline: true
 permissions:
   - pages:content
+
+

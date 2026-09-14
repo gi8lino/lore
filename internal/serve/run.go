@@ -163,6 +163,7 @@ func Run(
 		return err
 	}
 	defer func() { _ = renderer.Close(context.Background()) }()
+	pageUseCases.WithUsageAnalyzer(renderer)
 
 	viewDataUseCases := handler.NewViewDataLoader(
 		preferenceUseCases,

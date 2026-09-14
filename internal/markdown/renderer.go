@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/pluginusage"
 	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
@@ -55,6 +56,8 @@ type Functions struct {
 	Context          context.Context
 	Macros           map[string]plugin.MacroRenderer
 	ExportParameters map[string]map[string]map[string]string
+	// PluginUsage is derived persisted metadata for saved pages. Nil requests transient analysis.
+	PluginUsage *pluginusage.Index
 }
 
 // Close releases the attached plugin manager, if any. Renderers created with
@@ -194,14 +197,16 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	execution, cancel := context.WithTimeout(execution, 30*time.Second)
 	defer cancel()
 	functions.Context = execution
-	snapshot, release := r.registry.Acquire()
+	plan, release := r.registry.AcquireRenderPlan()
 	defer release()
-	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
+	options.pipeline = newRenderPipeline(plan, r.pluginFeatures(options), functions, source)
 	prepared, err := options.pipeline.prepareContent(source, r.moduleContext(resolve, options))
 	if err != nil {
 		return RenderedPage{}, err
 	}
 	source = prepared.Markdown
+	options.pipeline.setUsageSource(source)
+	options.pipeline.opaqueReplacements = len(prepared.Replacements) != 0
 	options.annotations = prepared.Replacements
 
 	var rendered RenderedPage
@@ -247,11 +252,12 @@ func (r *Renderer) renderPage(
 	resolve func(string) string,
 	options Options,
 ) (RenderedPage, error) {
-	source, invocations, err := options.pipeline.preprocessMacros(source, r.moduleContext(resolve, options))
+	pagePlan := options.pipeline.pagePlanForSource(source)
+	source, invocations, err := options.pipeline.preprocessMacros(source, r.moduleContext(resolve, options), pagePlan)
 	if err != nil {
 		return RenderedPage{}, err
 	}
-	raw, err := r.renderRawResolved(source, resolve, options)
+	raw, renderPlan, err := r.renderRawResolved(source, resolve, options)
 	if err != nil {
 		return RenderedPage{}, err
 	}
@@ -262,7 +268,12 @@ func (r *Renderer) renderPage(
 	if err != nil {
 		return RenderedPage{}, err
 	}
-	raw, err = options.pipeline.postprocess(raw, r.moduleContext(resolve, options))
+	raw, err = options.pipeline.postprocess(
+		raw,
+		r.moduleContext(resolve, options),
+		renderPlan,
+		len(invocations) != 0 || options.pipeline.opaqueReplacements,
+	)
 	if err != nil {
 		return RenderedPage{}, err
 	}
@@ -274,20 +285,21 @@ func (r *Renderer) renderRawResolved(
 	source string,
 	resolve func(string) string,
 	options Options,
-) (string, error) {
+) (string, pageRenderPlan, error) {
 	if err := options.pipeline.context.Err(); err != nil {
-		return "", err
+		return "", pageRenderPlan{}, err
 	}
 	if options.depth >= 64 {
-		return "", errors.New("markdown nesting limit exceeded")
+		return "", pageRenderPlan{}, errors.New("markdown nesting limit exceeded")
 	}
 	options.depth++
-	var err error
 
 	ctx := r.moduleContext(resolve, options)
-	source, err = options.pipeline.preprocess(source, ctx)
+	pagePlan := options.pipeline.pagePlanForSource(source)
+	var err error
+	source, pagePlan, err = options.pipeline.preprocess(source, ctx, pagePlan)
 	if err != nil {
-		return "", err
+		return "", pageRenderPlan{}, err
 	}
 
 	if options.WikiLinks {
@@ -302,21 +314,21 @@ func (r *Renderer) renderRawResolved(
 
 	var output bytes.Buffer
 
-	extensions, err := options.pipeline.extensions(ctx)
+	extensions, err := options.pipeline.extensions(ctx, pagePlan, options.pipeline.opaqueReplacements)
 	if err != nil {
-		return "", err
+		return "", pageRenderPlan{}, err
 	}
 	// Conversion invokes contributed parsers, transformers, and node renderers.
 	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
 		return struct{}{}, engine(extensions, annotationRanges).Convert([]byte(source), &output)
 	})
 	if err != nil {
-		return "", err
+		return "", pageRenderPlan{}, err
 	}
 
 	raw := output.String()
 
-	return raw, nil
+	return raw, pagePlan, nil
 }
 
 // fenceDelimiter returns the Markdown fence marker when a line starts a fenced code block.

@@ -90,3 +90,52 @@ func TestRegistryAllowsOnlyOneActiveCodeHighlighter(t *testing.T) {
 	require.NoError(t, r.Unregister("one"))
 	require.NoError(t, r.Register(Descriptor{ID: "two", Name: "Two"}, second))
 }
+
+type plannedContentPreprocessor struct {
+	priority int
+	usage    SourceUsage
+}
+
+func (m plannedContentPreprocessor) Priority() int            { return m.priority }
+func (m plannedContentPreprocessor) SourceUsage() SourceUsage { return m.usage }
+func (m plannedContentPreprocessor) PreprocessContent(_ Context, source string) (PreparedContent, error) {
+	return PreparedContent{Markdown: source}, nil
+}
+
+// TestRegistryCachesImmutableRenderPlan verifies render-only flattening happens on
+// lifecycle changes rather than once per page render.
+func TestRegistryCachesImmutableRenderPlan(t *testing.T) {
+	t.Parallel()
+
+	r := &Registry{}
+	macro := BoundMacro[string]{MacroName: "example", ParseOptions: func(s string) (string, bool) { return s, true }}
+	require.NoError(t, r.Register(Descriptor{ID: "base", Name: "Base"}, Contributions{
+		ContentPreprocessors: []ContentPreprocessor{
+			plannedContentPreprocessor{priority: 200, usage: SourceUsage{ModuleID: "late", Rules: []SourceUsageRule{{Contains: "late"}}}},
+			plannedContentPreprocessor{priority: 100, usage: SourceUsage{ModuleID: "early", Rules: []SourceUsageRule{{Contains: "early"}}}},
+		},
+		Macros: []Macro{macro},
+	}))
+
+	first, releaseFirst := r.AcquireRenderPlan()
+	require.Len(t, first.ContentPreprocessors, 2)
+	require.Equal(t, 100, first.ContentPreprocessors[0].Priority)
+	require.Equal(t, 200, first.ContentPreprocessors[1].Priority)
+	require.Contains(t, first.Macros, "example")
+	require.Len(t, first.SourceUsage, 2)
+	require.Equal(t, "late", first.SourceUsage[0].Usage.ModuleID)
+	require.Equal(t, "early", first.SourceUsage[1].Usage.ModuleID)
+	require.NotEmpty(t, first.UsageFingerprint)
+
+	same, releaseSame := r.AcquireRenderPlan()
+	require.Same(t, first, same)
+	releaseSame()
+
+	require.NoError(t, r.Register(Descriptor{ID: "other", Name: "Other"}, Contributions{}))
+	second, releaseSecond := r.AcquireRenderPlan()
+	require.NotSame(t, first, second)
+	require.Greater(t, second.Generation, first.Generation)
+
+	releaseSecond()
+	releaseFirst()
+}

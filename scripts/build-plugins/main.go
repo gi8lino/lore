@@ -36,7 +36,18 @@ func buildAll() error {
 // buildPackage compiles one plugin module to WASM and writes its deterministic archive.
 func buildPackage(directory string) error {
 	if _, err := os.Stat(filepath.Join(directory, "browser.ts")); err == nil {
-		command := exec.Command("./node_modules/.bin/tsc", "--ignoreConfig", filepath.Join(directory, "browser.ts"), "--target", "ES2022", "--lib", "ES2022,DOM,DOM.Iterable", "--strict", "--outDir", filepath.Join(directory, "assets"))
+		command := exec.Command(
+			"./node_modules/.bin/tsc",
+			"--ignoreConfig",
+			filepath.Join(directory, "browser.ts"),
+			"--target",
+			"ES2022",
+			"--lib",
+			"ES2022,DOM,DOM.Iterable",
+			"--strict",
+			"--outDir",
+			filepath.Join(directory, "assets"),
+		)
 		if output, err := command.CombinedOutput(); err != nil {
 			return fmt.Errorf("build plugin browser entry: %w: %s", err, output)
 		}

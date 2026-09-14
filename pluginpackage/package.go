@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gi8lino/lore/pluginapi"
 	"go.yaml.in/yaml/v3"
@@ -71,6 +72,19 @@ type ResourceField struct {
 	MaxBytes int `yaml:"max_bytes,omitempty"`
 }
 
+// UsageRule declares a cheap source selector used to avoid invoking a module
+// for pages that cannot contain its syntax. Exactly one selector is set.
+type UsageRule struct {
+	// Contains matches literal Markdown text. False positives are safe; false negatives are not.
+	Contains string `yaml:"contains,omitempty"`
+	// Fence matches a fenced-code info-string language; "*" matches any fenced code block.
+	Fence string `yaml:"fence,omitempty"`
+	// Macro matches a standalone {{name ...}} invocation and captures its argument text.
+	Macro string `yaml:"macro,omitempty"`
+	// Substitution matches inline {{prefix:value}} syntax outside fenced code and captures values.
+	Substitution string `yaml:"substitution,omitempty"`
+}
+
 // Module declares one plugin contribution in a package manifest.
 type Module struct {
 	// Type selects the contribution module kind.
@@ -117,6 +131,8 @@ type Module struct {
 	Markdown string `yaml:"markdown,omitempty"`
 	// Inline reports whether editor insertion should avoid block line breaks.
 	Inline bool `yaml:"inline,omitempty"`
+	// Usage declares cheap host-side source selectors for executable modules.
+	Usage []UsageRule `yaml:"usage,omitempty"`
 	// Inspect enables a reading-page inspector for content substitutions.
 	Inspect bool `yaml:"inspect,omitempty"`
 	// Export enables request-local export overrides for content substitutions.
@@ -145,6 +161,7 @@ func (p *Package) Manifest() Manifest {
 	for i := range m.Modules {
 		m.Modules[i].Requires = slices.Clone(m.Modules[i].Requires)
 		m.Modules[i].Fields = slices.Clone(m.Modules[i].Fields)
+		m.Modules[i].Usage = slices.Clone(m.Modules[i].Usage)
 	}
 	m.Requires = slices.Clone(m.Requires)
 	m.Permissions = slices.Clone(m.Permissions)
@@ -454,6 +471,9 @@ func validModule(m Module) bool {
 
 // validModuleFields rejects fields that are only meaningful for another module type.
 func validModuleFields(m Module) bool {
+	if !validUsageRules(m) {
+		return false
+	}
 	if m.Type != "browser-module" && m.JavaScript != "" {
 		return false
 	}
@@ -507,6 +527,52 @@ func validModuleFields(m Module) bool {
 	}
 	if m.Type != "content-substitution" && (m.Inspect || m.Export) {
 		return false
+	}
+	return true
+}
+
+// validUsageRules validates bounded, declarative source selectors.
+func validUsageRules(m Module) bool {
+	if len(m.Usage) == 0 {
+		return true
+	}
+	switch m.Type {
+	case "renderer-extension", "macro", "markdown-syntax", "code-highlighter":
+	default:
+		return false
+	}
+	if len(m.Usage) > 8 {
+		return false
+	}
+	for _, rule := range m.Usage {
+		selectors := 0
+		if rule.Contains != "" {
+			selectors++
+			if len(rule.Contains) > 128 || !utf8.ValidString(rule.Contains) || strings.ContainsRune(rule.Contains, '\x00') {
+				return false
+			}
+		}
+		if rule.Fence != "" {
+			selectors++
+			if rule.Fence != "*" && !identifier.MatchString(rule.Fence) {
+				return false
+			}
+		}
+		if rule.Macro != "" {
+			selectors++
+			if !identifier.MatchString(rule.Macro) {
+				return false
+			}
+		}
+		if rule.Substitution != "" {
+			selectors++
+			if !identifier.MatchString(rule.Substitution) {
+				return false
+			}
+		}
+		if selectors != 1 {
+			return false
+		}
 	}
 	return true
 }

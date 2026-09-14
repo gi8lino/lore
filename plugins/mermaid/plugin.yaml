@@ -9,8 +9,12 @@ modules:
   - type: renderer-extension
     id: fences
     stage: postprocess
+    usage:
+      - fence: mermaid
   - type: browser-module
     id: diagrams
     javascript: plugin.js
     css: plugin.css
 permissions: [browser:render]
+
+

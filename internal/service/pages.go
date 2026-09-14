@@ -13,6 +13,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/icons"
 	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/pluginusage"
 	"github.com/gi8lino/lore/internal/revision"
 )
 
@@ -115,17 +116,28 @@ type pageRepository interface {
 	SavePage(context.Context, string, string, string, string, string, string, string, []string, []string, []int64, domain.PageMetadata, map[string]string, domain.User) (domain.Page, error)
 }
 
+type pageUsageAnalyzer interface {
+	AnalyzeUsage(string) pluginusage.Index
+}
+
 // Pages coordinates page mutations and their application-level side effects.
 type Pages struct {
-	repository pageRepository
-	logger     *slog.Logger
-	eventSinks []EventSink
+	repository    pageRepository
+	logger        *slog.Logger
+	eventSinks    []EventSink
+	usageAnalyzer pageUsageAnalyzer
 }
 
 // NewPages constructs the page application service. Event sinks are optional so
 // page mutations remain independently testable.
 func NewPages(repository pageRepository, logger *slog.Logger, eventSinks ...EventSink) *Pages {
 	return &Pages{repository: repository, logger: logger, eventSinks: eventSinks}
+}
+
+// WithUsageAnalyzer derives plugin usage metadata for every persisted page write.
+func (s *Pages) WithUsageAnalyzer(analyzer pageUsageAnalyzer) *Pages {
+	s.usageAnalyzer = analyzer
+	return s
 }
 
 // Save validates and persists a page, then records audit and mention side effects.
@@ -218,6 +230,12 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 		return domain.Page{}, validation
 	}
 
+	var pluginUsage *pluginusage.Index
+	if s.usageAnalyzer != nil {
+		usage := s.usageAnalyzer.AnalyzeUsage(input.Markdown)
+		pluginUsage = &usage
+	}
+
 	return s.repository.SavePage(
 		ctx,
 		input.PreviousSlug,
@@ -236,6 +254,7 @@ func (s *Pages) save(ctx context.Context, input PageSaveInput) (domain.Page, err
 			ReviewIntervalDays: input.ReviewIntervalDays,
 			MarkReviewed:       input.MarkReviewed,
 			DeprecatedTarget:   input.DeprecatedTarget,
+			PluginUsage:        pluginUsage,
 		},
 		input.Properties,
 		input.Actor,

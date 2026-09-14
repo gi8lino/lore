@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/pluginusage"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -17,17 +19,25 @@ import (
 )
 
 // A narrow row fake checks the projection order without a running database.
-type pageContractRow struct{ status string }
+type pageContractRow struct {
+	status      string
+	pluginUsage json.RawMessage
+}
 
 func (r pageContractRow) Scan(destinations ...any) error {
-	if len(destinations) != 13 {
-		return fmt.Errorf("page projection has %d fields, want 13", len(destinations))
+	if len(destinations) != 14 {
+		return fmt.Errorf("page projection has %d fields, want 14", len(destinations))
 	}
 	status, ok := destinations[12].(*string)
 	if !ok {
 		return fmt.Errorf("page status destination is %T, want *string", destinations[12])
 	}
 	*status = r.status
+	usage, ok := destinations[13].(*json.RawMessage)
+	if !ok {
+		return fmt.Errorf("page plugin usage destination is %T, want *json.RawMessage", destinations[13])
+	}
+	*usage = slices.Clone(r.pluginUsage)
 	return nil
 }
 
@@ -68,6 +78,20 @@ func TestScanPagePreservesLifecycleStatus(t *testing.T) {
 	})
 }
 
+func TestScanPagePreservesPluginUsage(t *testing.T) {
+	t.Parallel()
+	record := json.RawMessage(`{"version":1,"fingerprint":"abc","modules":[{"plugin_id":"io.example","module_id":"example","values":["value"]}]}`)
+
+	page, err := scanPage(pageContractRow{status: "verified", pluginUsage: record})
+
+	require.NoError(t, err)
+	require.NotNil(t, page.PluginUsage)
+	assert.Equal(t, "abc", page.PluginUsage.Fingerprint)
+	require.Len(t, page.PluginUsage.Modules, 1)
+	assert.Equal(t, "io.example", page.PluginUsage.Modules[0].PluginID)
+	assert.Equal(t, []string{"value"}, page.PluginUsage.Modules[0].Values)
+}
+
 type propertyContractTx struct {
 	pgx.Tx
 	inserted [][]any
@@ -102,8 +126,17 @@ func TestPageLifecycleQueryContracts(t *testing.T) {
 	statuses := []string{"draft", "verified", "deprecated", "archived"}
 	for _, status := range statuses {
 		slug := "contract/" + status
+		metadata := domain.PageMetadata{Status: status}
+		if status == "verified" {
+			metadata.PluginUsage = &pluginusage.Index{
+				Version:     pluginusage.Version,
+				Fingerprint: "contract",
+				SourceHash:  "source",
+				Modules:     []pluginusage.Module{{PluginID: "io.example", ModuleID: "example", Values: []string{"value"}}},
+			}
+		}
 		_, err := database.SavePage(ctx, "", slug, "Contract "+status, "", "", "Lifecycle contract", "Created", nil, nil, nil,
-			domain.PageMetadata{Status: status}, map[string]string{" Owner ": " Platform "}, actor)
+			metadata, map[string]string{" Owner ": " Platform "}, actor)
 		require.NoError(t, err)
 		require.NoError(t, database.SetFavorite(ctx, slug, actor.ID, true))
 		require.NoError(t, database.RecordView(ctx, slug, actor.ID))
@@ -157,5 +190,17 @@ func TestPageLifecycleQueryContracts(t *testing.T) {
 		page, err := database.GetPage(ctx, "contract/verified")
 		require.NoError(t, err)
 		assert.Equal(t, []domain.PageProperty{{Key: "Owner", Value: "Platform"}}, page.Properties)
+		require.NotNil(t, page.PluginUsage)
+		assert.Equal(t, "contract", page.PluginUsage.Fingerprint)
+		assert.Equal(t, []string{"value"}, page.PluginUsage.Modules[0].Values)
 	})
+}
+
+func TestScanPageIgnoresInvalidDerivedPluginUsage(t *testing.T) {
+	t.Parallel()
+
+	page, err := scanPage(pageContractRow{status: "verified", pluginUsage: json.RawMessage(`{"version":"invalid"}`)})
+
+	require.NoError(t, err)
+	assert.Nil(t, page.PluginUsage)
 }

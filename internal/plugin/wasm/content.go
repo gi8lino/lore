@@ -71,9 +71,21 @@ type resourceSubstitutionModule struct {
 // Priority orders content substitutions after earlier content preprocessors such as includes.
 func (m resourceSubstitutionModule) Priority() int { return m.module.Priority }
 
+// SourceUsage lets Lore index resource references without loading plugin storage.
+func (m resourceSubstitutionModule) SourceUsage() plugin.SourceUsage {
+	return plugin.SourceUsage{
+		ModuleID: m.module.ID,
+		Rules:    []plugin.SourceUsageRule{{Substitution: m.module.Prefix}},
+	}
+}
+
 // PreprocessContent replaces matching macros with opaque tokens and contributes inspector/export metadata.
 func (m resourceSubstitutionModule) PreprocessContent(ctx plugin.Context, source string) (plugin.PreparedContent, error) {
 	if m.storage == nil {
+		return plugin.PreparedContent{Markdown: source}, nil
+	}
+	overrides := exportOverrides(ctx, m.owner, m.module.ID)
+	if !strings.Contains(source, "{{"+m.module.Prefix+":") && len(overrides) == 0 {
 		return plugin.PreparedContent{Markdown: source}, nil
 	}
 	execution := ctx.Context
@@ -84,14 +96,10 @@ func (m resourceSubstitutionModule) PreprocessContent(ctx plugin.Context, source
 	if err != nil {
 		return plugin.PreparedContent{}, err
 	}
-	overrides := exportOverrides(ctx, m.owner, m.module.ID)
 	if len(records) == 0 {
 		if len(overrides) != 0 {
 			return plugin.PreparedContent{}, unusedExportParameter(m.owner, m.module.ID, overrides)
 		}
-		return plugin.PreparedContent{Markdown: source}, nil
-	}
-	if !strings.Contains(source, "{{"+m.module.Prefix+":") && len(overrides) == 0 {
 		return plugin.PreparedContent{Markdown: source}, nil
 	}
 	byName := make(map[string]plugin.ResourceRecord, len(records))

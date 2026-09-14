@@ -25,6 +25,31 @@ type Descriptor struct {
 	Requires []string
 }
 
+// SourceUsageRule is a cheap host-side selector for one source-aware module.
+// Rules are hints only: modules without rules remain always active.
+type SourceUsageRule struct {
+	// Contains selects the module when the Markdown contains this literal text.
+	Contains string
+	// Fence selects fenced code by info-string language; "*" matches any fence.
+	Fence string
+	// Macro selects a standalone {{name ...}} invocation.
+	Macro string
+	// Substitution selects inline {{prefix:value}} references and extracts values.
+	Substitution string
+}
+
+// SourceUsage describes how Lore can identify one module without invoking plugin code.
+type SourceUsage struct {
+	ModuleID string
+	Rules    []SourceUsageRule
+}
+
+// SourceUsageProvider is implemented by runtime adapters that opt into cheap source selection.
+// Implementations with no rules intentionally remain always active.
+type SourceUsageProvider interface {
+	SourceUsage() SourceUsage
+}
+
 // Context contains only render-local capabilities. RenderMarkdown returns
 // intermediate HTML: the host must sanitize the complete document afterwards.
 // Callbacks must not retain this context or mutate its maps.
@@ -174,7 +199,7 @@ type ContextualMacro interface {
 	ParseContext(Context, string) (Invocation, bool, error)
 }
 
-// Macro recognizes a standalone invocation and produces untrusted HTML.
+// Macro recognizes a standalone {{name ...}} invocation and produces untrusted HTML.
 type Macro interface {
 	// Name returns the registered contribution name.
 	Name() string

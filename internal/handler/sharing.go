@@ -100,6 +100,7 @@ func renderSharedPage(
 		options,
 		md.Functions{
 			Context:      r.Context(),
+			PluginUsage:  page.PluginUsage,
 			Capabilities: plugincap.Capabilities(plugincap.SharedPages{Source: catalogUseCases, Slug: slug}, nil),
 		},
 	)

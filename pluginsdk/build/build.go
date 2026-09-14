@@ -30,7 +30,8 @@ func Build(ctx context.Context, directory, destination string) error {
 
 	defer func() { _ = os.RemoveAll(temporary) }()
 
-	command := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-buildmode=c-shared", "-ldflags=-s -w -buildid=", "-o", filepath.Join(temporary, "plugin.wasm"), ".")
+	command := exec.CommandContext(ctx,
+		"go", "build", "-trimpath", "-buildvcs=false", "-buildmode=c-shared", "-ldflags=-s -w -buildid=", "-o", filepath.Join(temporary, "plugin.wasm"), ".")
 	command.Dir = directory
 
 	// Reproduce the checked-in artifact with the manifest's Go toolchain version,
@@ -119,7 +120,7 @@ func Build(ctx context.Context, directory, destination string) error {
 			return err
 		}
 		header := &zip.FileHeader{Name: name, Method: zip.Deflate}
-		header.SetMode(0644)
+		header.SetMode(0o644)
 		writer, err := archive.CreateHeader(header)
 		if err != nil {
 			return err
@@ -136,12 +137,12 @@ func Build(ctx context.Context, directory, destination string) error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return err
 	}
 	previous, _ := os.ReadFile(destination)
 	if bytes.Equal(previous, buffer.Bytes()) {
 		return nil
 	}
-	return os.WriteFile(destination, buffer.Bytes(), 0644)
+	return os.WriteFile(destination, buffer.Bytes(), 0o644)
 }

@@ -1,11 +1,11 @@
 package markdown
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync"
 	"testing"
-	"context"
 
 	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/icons"

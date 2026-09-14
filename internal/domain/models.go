@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/gi8lino/lore/internal/pluginusage"
 )
 
 var (
@@ -388,11 +390,12 @@ type ImageData struct {
 
 // PageMetadata contains optional workflow metadata attached to a page.
 type PageMetadata struct {
-	Status             string `json:"status"`
-	OwnerGroupID       int64  `json:"owner_group_id,omitempty"`
-	ReviewIntervalDays int    `json:"review_interval_days,omitempty"`
-	MarkReviewed       bool   `json:"mark_reviewed,omitempty"`
-	DeprecatedTarget   string `json:"deprecated_target,omitempty"`
+	Status             string             `json:"status"`
+	OwnerGroupID       int64              `json:"owner_group_id,omitempty"`
+	ReviewIntervalDays int                `json:"review_interval_days,omitempty"`
+	MarkReviewed       bool               `json:"mark_reviewed,omitempty"`
+	DeprecatedTarget   string             `json:"deprecated_target,omitempty"`
+	PluginUsage        *pluginusage.Index `json:"-"`
 }
 
 // PageProperty is one searchable structured metadata value attached to a page.
@@ -707,6 +710,8 @@ type Page struct {
 	Language string `json:"language,omitempty"`
 	// Markdown is the current Markdown body.
 	Markdown string `json:"markdown_content,omitempty"`
+	// PluginUsage is rebuildable derived metadata for source-aware rendering modules.
+	PluginUsage *pluginusage.Index `json:"-"`
 	// CreatedBy is the identifier of the user that created the page.
 	CreatedBy int64 `json:"created_by"`
 	// UpdatedBy is the identifier of the user that last updated the page.

@@ -9,4 +9,10 @@ modules:
   - type: markdown-syntax
     id: task-lists
     syntax: task-list
+    usage:
+      - contains: "[ ]"
+      - contains: "[x]"
+      - contains: "[X]"
 permissions: []
+
+

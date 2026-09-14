@@ -16,21 +16,27 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-// renderPipeline pins an active contribution set for the whole document,
+// renderPipeline pins one immutable global render plan for the whole document,
 // including nested Markdown and the variable-provenance rendering pass.
 type renderPipeline struct {
 	// context carries cancellation through the complete render.
 	context context.Context
 	// capabilities contains request-local host capabilities exposed to plugins.
 	capabilities map[string]plugin.Capability
-	// snapshot pins the active plugin contribution set for this render.
-	snapshot plugin.Snapshot
+	// plan is the immutable render-only contribution set for this lifecycle generation.
+	plan *plugin.RenderPlan
 	// features contains presentation feature flags visible to plugin modules.
 	features map[string]bool
 	// macros contains request-local macro render bindings.
 	macros map[string]plugin.MacroRenderer
 	// exportParameters contains request-local plugin export overrides.
 	exportParameters map[string]map[string]map[string]string
+	// usageSource is the Markdown source represented by pagePlan.
+	usageSource string
+	// pagePlan contains only modules selected for usageSource.
+	pagePlan pageRenderPlan
+	// opaqueReplacements reports whether plugin substitutions may add parser/postprocessor syntax.
+	opaqueReplacements bool
 }
 
 // macroInvocation records one deferred macro expansion and its owner.
@@ -45,18 +51,28 @@ type macroInvocation struct {
 	placeholder string
 }
 
-// newRenderPipeline binds one leased plugin snapshot to request-local rendering state.
-func newRenderPipeline(snapshot plugin.Snapshot, features map[string]bool, functions Functions) *renderPipeline {
+// newRenderPipeline binds one leased global render plan to request-local state.
+func newRenderPipeline(plan *plugin.RenderPlan, features map[string]bool, functions Functions, source string) *renderPipeline {
 	capabilities := plugincap.Capabilities(nil, nil)
 	maps.Copy(capabilities, functions.Capabilities)
+	exportParameters := cloneExportParameters(functions.ExportParameters)
+
+	index := functions.PluginUsage
+	if !currentUsageIndex(index, plan, source) {
+		derived := analyzeUsage(source, plan)
+		index = &derived
+	}
+	usage := usageSetFromIndex(*index)
 
 	return &renderPipeline{
 		context:          functions.Context,
 		capabilities:     capabilities,
-		snapshot:         snapshot,
+		plan:             plan,
 		features:         maps.Clone(features),
 		macros:           maps.Clone(functions.Macros),
-		exportParameters: cloneExportParameters(functions.ExportParameters),
+		exportParameters: exportParameters,
+		usageSource:      source,
+		pagePlan:         newPageRenderPlan(plan, usage, exportParameters),
 	}
 }
 
@@ -68,32 +84,26 @@ func (r *Renderer) moduleContext(resolve func(string) string, options Options) p
 		Features:         maps.Clone(options.pipeline.features),
 		Macros:           maps.Clone(options.pipeline.macros),
 		ExportParameters: cloneExportParameters(options.pipeline.exportParameters),
-		RenderMarkdown:   func(source string) (string, error) { return r.renderRawResolved(source, resolve, options) },
+		RenderMarkdown: func(source string) (string, error) {
+			raw, _, err := r.renderRawResolved(source, resolve, options)
+			return raw, err
+		},
 	}
 }
 
-// contentPreprocessorBinding associates a content preprocessor with its plugin owner.
-type contentPreprocessorBinding struct {
-	owner  string
-	module plugin.ContentPreprocessor
-}
-
-// prepareContent runs active content preprocessors once in priority order before normal Markdown rendering.
+// prepareContent runs selected content preprocessors once in pre-sorted priority order.
+// If one module transforms Markdown, later modules are reselected from the new source
+// without rerunning modules whose priority/order has already passed.
 func (p *renderPipeline) prepareContent(source string, ctx plugin.Context) (plugin.PreparedContent, error) {
-	var modules []contentPreprocessorBinding
-	for _, entry := range p.snapshot.Entries {
-		for _, module := range entry.Contributions.ContentPreprocessors {
-			modules = append(modules, contentPreprocessorBinding{owner: entry.Descriptor.ID, module: module})
-		}
-	}
-	sort.SliceStable(modules, func(i, j int) bool {
-		return modules[i].module.Priority() < modules[j].module.Priority()
-	})
-
 	prepared := plugin.PreparedContent{Markdown: source}
-	for _, binding := range modules {
-		result, err := plugin.Guard(binding.owner, func() (plugin.PreparedContent, error) {
-			return binding.module.PreprocessContent(ctx, prepared.Markdown)
+	page := p.pagePlanForSource(prepared.Markdown)
+	modules := page.contentPreprocessors
+
+	for position := 0; position < len(modules); position++ {
+		binding := modules[position]
+		before := prepared.Markdown
+		result, err := plugin.Guard(binding.Selector.PluginID, func() (plugin.PreparedContent, error) {
+			return binding.Module.PreprocessContent(ctx, prepared.Markdown)
 		})
 		if err != nil {
 			return plugin.PreparedContent{}, err
@@ -102,8 +112,24 @@ func (p *renderPipeline) prepareContent(source string, ctx plugin.Context) (plug
 		prepared.Replacements = append(prepared.Replacements, result.Replacements...)
 		prepared.Inspectors = append(prepared.Inspectors, result.Inspectors...)
 		prepared.ExportFields = append(prepared.ExportFields, result.ExportFields...)
+		if prepared.Markdown == before {
+			continue
+		}
+
+		page = p.pagePlanForSource(prepared.Markdown)
+		modules = page.contentPreprocessors
+		position = firstContentPreprocessorAfter(modules, binding.Order) - 1
 	}
 	return prepared, nil
+}
+
+func firstContentPreprocessorAfter(modules []plugin.ContentPreprocessorBinding, order int) int {
+	for index, binding := range modules {
+		if binding.Order > order {
+			return index
+		}
+	}
+	return len(modules)
 }
 
 // cloneExportParameters deep-copies request-local export values before plugin callbacks receive them.
@@ -122,60 +148,96 @@ func cloneExportParameters(source map[string]map[string]map[string]string) map[s
 	return result
 }
 
-// preprocess runs active plugin preprocessors in registry order.
-func (p *renderPipeline) preprocess(source string, ctx plugin.Context) (string, error) {
-	for _, entry := range p.snapshot.Entries {
-		for _, module := range entry.Contributions.Preprocessors {
-			var err error
-			source, err = plugin.Guard(entry.Descriptor.ID, func() (string, error) { return module.Preprocess(ctx, source) })
-			if err != nil {
-				return "", err
-			}
+// preprocess runs selected source preprocessors in registry order. A transform
+// may activate later modules, so the page plan is refreshed only when source changes.
+func (p *renderPipeline) preprocess(source string, ctx plugin.Context, page pageRenderPlan) (string, pageRenderPlan, error) {
+	modules := page.preprocessors
+	for position := 0; position < len(modules); position++ {
+		binding := modules[position]
+		before := source
+		var err error
+		source, err = plugin.Guard(binding.Selector.PluginID, func() (string, error) {
+			return binding.Module.Preprocess(ctx, source)
+		})
+		if err != nil {
+			return "", pageRenderPlan{}, err
 		}
-	}
+		if source == before {
+			continue
+		}
 
-	return source, nil
+		page = p.pagePlanForSource(source)
+		modules = page.preprocessors
+		position = firstPreprocessorAfter(modules, binding.Order) - 1
+	}
+	return source, page, nil
 }
 
-// extensions creates active Goldmark extensions for the current render.
-func (p *renderPipeline) extensions(ctx plugin.Context) ([]goldmark.Extender, error) {
-	result := p.snapshot.PolicyExtensions()
-	for _, entry := range p.snapshot.Entries {
-		for _, module := range entry.Contributions.MarkdownExtensions {
-			extender, err := plugin.Guard(entry.Descriptor.ID, func() (goldmark.Extender, error) { return module.Extension(ctx), nil })
-			if err != nil {
-				return nil, err
-			}
-			if extender == nil {
-				return nil, fmt.Errorf("plugin %s returned a nil Markdown extension", entry.Descriptor.ID)
-			}
-			result = append(result, extender)
+func firstPreprocessorAfter(modules []plugin.PreprocessorBinding, order int) int {
+	for index, binding := range modules {
+		if binding.Order > order {
+			return index
 		}
 	}
-	if owner, module, ok := p.snapshot.CodeHighlighter(); ok {
-		result = append(result, codeHighlighterExtension{owner: owner, module: module, context: ctx})
+	return len(modules)
+}
+
+// extensions creates active Goldmark extensions for the current page plan.
+func (p *renderPipeline) extensions(ctx plugin.Context, page pageRenderPlan, includeAll bool) ([]goldmark.Extender, error) {
+	result := p.plan.PolicyExtensions()
+	modules := page.markdownExtensions
+	if includeAll {
+		modules = p.plan.MarkdownExtensions
+	}
+	for _, binding := range modules {
+		extender, err := plugin.Guard(binding.Selector.PluginID, func() (goldmark.Extender, error) {
+			return binding.Module.Extension(ctx), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		if extender == nil {
+			return nil, fmt.Errorf("plugin %s returned a nil Markdown extension", binding.Selector.PluginID)
+		}
+		result = append(result, extender)
+	}
+
+	highlighter := page.codeHighlighter
+	if includeAll {
+		highlighter = p.plan.CodeHighlighter
+	}
+	if highlighter != nil {
+		result = append(result, codeHighlighterExtension{
+			owner:   highlighter.Selector.PluginID,
+			module:  highlighter.Module,
+			context: ctx,
+		})
 	}
 	return result, nil
 }
 
-// postprocess runs active plugin HTML postprocessors in registry order.
-func (p *renderPipeline) postprocess(source string, ctx plugin.Context) (string, error) {
-	for _, entry := range p.snapshot.Entries {
-		for _, module := range entry.Contributions.Postprocessors {
-			var err error
-			source, err = plugin.Guard(entry.Descriptor.ID, func() (string, error) { return module.Postprocess(ctx, source) })
-			if err != nil {
-				return "", err
-			}
+// postprocess runs selected plugin HTML postprocessors in registry order.
+func (p *renderPipeline) postprocess(source string, ctx plugin.Context, page pageRenderPlan, includeAll bool) (string, error) {
+	modules := page.postprocessors
+	if includeAll {
+		modules = p.plan.Postprocessors
+	}
+	for _, binding := range modules {
+		var err error
+		source, err = plugin.Guard(binding.Selector.PluginID, func() (string, error) {
+			return binding.Module.Postprocess(ctx, source)
+		})
+		if err != nil {
+			return "", err
 		}
 	}
 	return source, nil
 }
 
 // preprocessMacros protects code using CommonMark's own parser, including long
-// fences, blockquote/list fences, and indented code. Registry order decides the
-// first matching macro; the central renderer has no knowledge of macro names.
-func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context) (string, []macroInvocation, error) {
+// fences, blockquote/list fences, and indented code. Macro names are globally
+// unique, so candidate lines dispatch directly through the page plan's name map.
+func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context, page pageRenderPlan) (string, []macroInvocation, error) {
 	lines := strings.Split(source, "\n")
 	protected := codeLines(source)
 
@@ -186,43 +248,61 @@ func (p *renderPipeline) preprocessMacros(source string, ctx plugin.Context) (st
 		if protected[index] {
 			continue
 		}
-		matched := false
-		for _, entry := range p.snapshot.Entries {
-			for _, macro := range entry.Contributions.Macros {
-				type parsed struct {
-					arguments plugin.Invocation
-					matched   bool
-				}
-				invocation, err := plugin.Guard(entry.Descriptor.ID, func() (parsed, error) {
-					if conditional, ok := macro.(plugin.ConditionalMacro); ok && !conditional.Available(ctx) {
-						return parsed{}, nil
-					}
-					if contextual, ok := macro.(plugin.ContextualMacro); ok {
-						args, matched, err := contextual.ParseContext(ctx, line)
-						return parsed{args, matched}, err
-					}
-					args, ok := macro.Parse(line)
-					return parsed{args, ok}, nil
-				})
-				if err != nil {
-					return "", nil, err
-				}
-				if !invocation.matched {
-					continue
-				}
-				placeholder := `<div data-lore-macro="` + nonce + "-" + strconv.Itoa(len(invocations)) + `"></div>`
-				invocations = append(invocations, macroInvocation{entry.Descriptor.ID, macro, invocation.arguments, placeholder})
-				lines[index] = placeholder
-				matched = true
-				break
-			}
-			if matched {
-				break
-			}
+		name, ok := macroInvocationName(line)
+		if !ok {
+			continue
 		}
+		binding, ok := page.macros[name]
+		if !ok {
+			continue
+		}
+
+		type parsed struct {
+			arguments plugin.Invocation
+			matched   bool
+		}
+		invocation, err := plugin.Guard(binding.Selector.PluginID, func() (parsed, error) {
+			if conditional, ok := binding.Module.(plugin.ConditionalMacro); ok && !conditional.Available(ctx) {
+				return parsed{}, nil
+			}
+			if contextual, ok := binding.Module.(plugin.ContextualMacro); ok {
+				args, matched, err := contextual.ParseContext(ctx, line)
+				return parsed{args, matched}, err
+			}
+			args, matched := binding.Module.Parse(line)
+			return parsed{args, matched}, nil
+		})
+		if err != nil {
+			return "", nil, err
+		}
+		if !invocation.matched {
+			continue
+		}
+
+		placeholder := `<div data-lore-macro="` + nonce + "-" + strconv.Itoa(len(invocations)) + `"></div>`
+		invocations = append(invocations, macroInvocation{binding.Selector.PluginID, binding.Module, invocation.arguments, placeholder})
+		lines[index] = placeholder
 	}
 
 	return strings.Join(lines, "\n"), invocations, nil
+}
+
+func macroInvocationName(line string) (string, bool) {
+	line = strings.TrimSpace(line)
+	if len(line) < 5 || !strings.HasPrefix(line, "{{") || !strings.HasSuffix(line, "}}") {
+		return "", false
+	}
+	body := strings.TrimSpace(line[2 : len(line)-2])
+	if body == "" {
+		return "", false
+	}
+	if end := strings.IndexAny(body, " \t"); end >= 0 {
+		body = body[:end]
+	}
+	if body == "" || strings.ContainsAny(body, "{}\r\n") {
+		return "", false
+	}
+	return body, true
 }
 
 // expandMacros renders deferred macros and replaces their placeholders in order.

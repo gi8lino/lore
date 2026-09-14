@@ -39,6 +39,23 @@ same `Manager.Load` method as a manually supplied package. `SourceBundled` and
 runtime configuration, permissions, or rendering behavior. There is no separate
 native or privileged path for bundled Callouts.
 
+### Source-aware render planning
+
+Executable manifest modules may declare cheap `usage` selectors (`contains`,
+`macro`, inline `substitution`, or fenced-code `fence`). Lore derives a versioned
+page usage index when a persisted page is written and uses it to skip source-aware
+modules that cannot
+participate in that page. The index is rebuildable metadata, never a second source
+of truth. Preview and filesystem/static Markdown derive the same plan in memory,
+and a stale index is ignored when the Markdown or active module selectors change. Modules without
+selectors remain always active for compatibility. Macro modules are source-aware
+automatically from their declared macro name.
+
+Content preprocessors are re-analyzed after a transformation so an include can
+introduce later substitutions safely. Opaque substitutions and macro expansion
+keep downstream parser/postprocessor stages conservative where inserted content
+may contain additional syntax.
+
 ## Registration and lifetime
 
 `Register(Descriptor, Contributions)` publishes a complete contribution set
@@ -46,11 +63,16 @@ atomically. Duplicate IDs and macro names, invalid metadata, and unavailable
 dependencies fail without publishing partial contributions. Requirements load
 first and unload after dependents.
 
-Each top-level render acquires and releases one leased snapshot. Nested blocks and
-variable-provenance passes keep that view; registry locks are not held during
-rendering. Native
-callbacks must be immutable and concurrency safe. Request macro bindings are
-copied and cannot reactivate an unregistered macro.
+Each top-level render acquires and releases one immutable `RenderPlan`. The plan is
+rebuilt only when active plugin lifecycle state changes and contains only flattened
+render contributions: pre-sorted content preprocessors, preprocessors, Markdown
+extensions, the active highlighter, a macro-name index, postprocessors, rendering
+policies, and source-usage descriptors. A request derives a smaller page render
+plan from persisted/transient usage metadata, so unrelated modules are not walked
+or invoked. Nested blocks and variable-provenance passes keep the same leased
+global plan; registry locks are not held during rendering. Native callbacks must
+be immutable and concurrency safe. Request macro bindings are copied and cannot
+reactivate an unregistered macro.
 
 `Manager.Install`, `Enable`, `Disable`, `Upgrade`, and `Uninstall` work inside
 one running process. The candidate package is validated and instantiated before
@@ -60,12 +82,14 @@ Replacement preserves contribution order and checks the complete dependency
 graph, including cycles introduced by upgrades. Required plugins cannot be
 disabled or removed while an enabled dependent still needs them.
 
-A render leases every contribution version in its snapshot. Removing or replacing
+A render plan leases every contribution version it references. Removing or replacing
 an entry affects new renders immediately; the old WASM instance closes after its
-last render releases the lease. Registry locks never cover guest execution.
+last render releases the plan lease. Registry locks never cover guest execution.
 Shutdown detaches all owned contributions atomically and waits for retired
-instances. A cancelled shutdown can be retried. `Snapshot()` is an unleased
-inspection API; executable consumers use `Acquire()` and release on every path.
+instances. A cancelled shutdown can be retried. `Snapshot()` remains an unleased
+inspection API; renderers use `AcquireRenderPlan()` and release on every path,
+while `Acquire()` remains available for callers that explicitly need an executable
+full registry snapshot.
 
 The manager's small `Store` interface persists installation records. Server
 composition supplies PostgreSQL through `NewWithPluginStore`. The
@@ -291,7 +315,7 @@ Rendering preference controls their presentation; it does not disable extraction
 Optional Markdown features are declared by plugins and administered in their
 plugin details. Public grammar and rendering-policy declarations are translated
 by the host; they do not grant native code access. Normal pages, previews, PDF
-exports and static builds all consume the same renderer and registry snapshot.
+exports and static builds all consume the same renderer and immutable registry render plan.
 
 ## Go developer boundary
 
@@ -305,3 +329,5 @@ only supplies distribution bytes to the ordinary bootstrap path.
 
 See [the developer guide](../../pluginsdk/README.md) for project scaffolding,
 testing and deterministic packaging.
+
+

@@ -8,13 +8,17 @@ import (
 )
 
 // Registry owns active contributions. Its zero value is ready for use.
-// Registration is atomic; renderers take snapshots rather than hold locks while
-// invoking modules. A removed module may finish an already-started render.
+// Registration is atomic; renderers lease immutable render plans rather than hold
+// registry locks while invoking modules. A removed module may finish an already-started render.
 type Registry struct {
 	// mu protects concurrent access to the receiver state.
 	mu sync.RWMutex
 	// entries contains active plugin contributions in deterministic order.
 	entries []Entry
+	// renderPlan is the immutable render-only view for the current lifecycle generation.
+	renderPlan *RenderPlan
+	// renderGeneration increments whenever active contributions change.
+	renderGeneration uint64
 }
 
 // Entry associates an immutable contribution set with its owner.
@@ -117,12 +121,13 @@ func (r *Registry) Register(descriptor Descriptor, modules Contributions) (err e
 		return err
 	}
 
-	r.entries = append(r.entries, cloneEntry(Entry{Descriptor: descriptor, Contributions: modules, lifetime: newLifetime()}))
+	entries := append(slices.Clone(r.entries), cloneEntry(Entry{Descriptor: descriptor, Contributions: modules, lifetime: newLifetime()}))
+	r.publishEntriesLocked(entries)
 	return nil
 }
 
 // Unregister removes every contribution owned by id. Dependents must be removed
-// first. Existing snapshots stay valid; future renders see the removal.
+// first. Existing executable leases stay valid; future renders see the removal.
 func (r *Registry) Unregister(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -138,7 +143,8 @@ func (r *Registry) Unregister(id string) error {
 		}
 	}
 
-	r.entries = slices.Delete(r.entries, index, index+1)
+	entries := slices.Delete(slices.Clone(r.entries), index, index+1)
+	r.publishEntriesLocked(entries)
 	return nil
 }
 

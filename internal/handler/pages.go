@@ -244,6 +244,7 @@ func ViewPage(
 			options,
 			md.Functions{
 				Context:      r.Context(),
+				PluginUsage:  page.PluginUsage,
 				Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
 			},
 		)

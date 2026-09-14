@@ -7,13 +7,15 @@ import (
 	"testing"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/pluginusage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type pageSaveRepositoryStub struct {
 	pageRepository
-	slug string
+	slug     string
+	metadata domain.PageMetadata
 }
 
 func (r *pageSaveRepositoryStub) SavePage(
@@ -21,13 +23,41 @@ func (r *pageSaveRepositoryStub) SavePage(
 	_, slug, title, _, _, _, _ string,
 	_, _ []string,
 	_ []int64,
-	_ domain.PageMetadata,
+	metadata domain.PageMetadata,
 	_ map[string]string,
 	_ domain.User,
 ) (domain.Page, error) {
 	r.slug = slug
+	r.metadata = metadata
 
 	return domain.Page{Slug: slug, Title: title}, nil
+}
+
+type pageUsageAnalyzerStub struct{ index pluginusage.Index }
+
+func (s pageUsageAnalyzerStub) AnalyzeUsage(string) pluginusage.Index { return s.index }
+
+func TestSavePersistsDerivedPluginUsage(t *testing.T) {
+	t.Parallel()
+
+	repository := &pageSaveRepositoryStub{}
+	want := pluginusage.Index{
+		Version:     pluginusage.Version,
+		Fingerprint: "render-plan",
+		Modules:     []pluginusage.Module{{PluginID: "io.lore.variables", ModuleID: "variables", Values: []string{"environment"}}},
+	}
+	pages := NewPages(repository, slog.Default()).WithUsageAnalyzer(pageUsageAnalyzerStub{index: want})
+
+	_, err := pages.save(context.Background(), PageSaveInput{
+		Slug:     "guide",
+		Title:    "Guide",
+		Markdown: "{{var:environment}}",
+		Status:   "verified",
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, repository.metadata.PluginUsage)
+	assert.Equal(t, want, *repository.metadata.PluginUsage)
 }
 
 func TestSaveValidatesPageBeforePersistence(t *testing.T) {

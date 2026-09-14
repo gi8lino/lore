@@ -51,7 +51,14 @@ fenced code before dispatching macros. Macro results are HTML text parts.
 `RegisterModule` supports renderer extensions and code highlighters using typed
 `Request`/`Result` values. A multi-stage plugin may use `Register` for its own
 dispatcher. Declarative syntax, style, settings, browser and resource modules
-are declared in the manifest; they need no extra guest handlers.
+are declared in the manifest; they need no extra guest handlers. Executable
+modules may also declare optional `usage` selectors (`contains`, `macro`,
+`substitution`, or `fence`) so Lore can skip the guest for pages that cannot use
+the module. Treat
+these as conservative performance hints: a false positive only does extra work,
+but a false negative would suppress required rendering. Modules without usage
+selectors remain always active. Macro registrations are automatically source-aware
+from the manifest macro name.
 
 `Text` returns intermediate output, `Markdown` asks Lore to render a nested
 fragment (preprocessors only), and `Failure` returns an error. Every HTML result
@@ -102,3 +109,5 @@ compilation is project-owned; the CLI does not install a frontend toolchain.
 The low-level [wire contract](../pluginapi/README.md) remains available for other
 languages and advanced integrations. Go authors need not implement its exports,
 allocation, host-call envelopes or macro serialization.
+
+

@@ -9,4 +9,10 @@ modules:
   - type: markdown-syntax
     id: autolinks
     syntax: linkify
+    usage:
+      - contains: "://"
+      - contains: "www."
+      - contains: "@"
 permissions: []
+
+

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/pluginusage"
 	"github.com/gi8lino/lore/internal/revision"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -241,7 +243,7 @@ RETURNING u.id,u.username,u.email,u.display_name,u.role,u.enabled,u.session_vers
 }
 
 const pageSelect = `
-SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),coalesce(u.display_name,u.username,''),p.created_at,p.updated_at,p.view_count,coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL),'{}'),p.status
+SELECT p.id,p.slug,p.title,coalesce(max(ni.icon),''),p.markdown_content,coalesce(p.created_by,0),coalesce(p.updated_by,0),coalesce(u.display_name,u.username,''),p.created_at,p.updated_at,p.view_count,coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL),'{}'),p.status,p.plugin_usage
 FROM pages p
 LEFT JOIN navigation_icons ni ON ni.path=p.slug
 LEFT JOIN users u ON u.id=p.updated_by
@@ -251,6 +253,7 @@ LEFT JOIN tags t ON t.id=pt.tag_id`
 // scanPage scans the common page projection and normalizes missing rows.
 func scanPage(row pgx.Row) (domain.Page, error) {
 	var p domain.Page
+	var pluginUsage json.RawMessage
 	err := row.Scan(
 		&p.ID,
 		&p.Slug,
@@ -265,7 +268,15 @@ func scanPage(row pgx.Row) (domain.Page, error) {
 		&p.ViewCount,
 		&p.Tags,
 		&p.Status,
+		&pluginUsage,
 	)
+
+	if err == nil && len(pluginUsage) != 0 {
+		var usage pluginusage.Index
+		if json.Unmarshal(pluginUsage, &usage) == nil {
+			p.PluginUsage = &usage
+		}
+	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = domain.ErrNotFound
@@ -396,6 +407,15 @@ func (s *Store) SavePage(
 
 	metadata.DeprecatedTarget = strings.TrimSpace(metadata.DeprecatedTarget)
 
+	var pluginUsage any
+	if metadata.PluginUsage != nil {
+		encoded, err := json.Marshal(metadata.PluginUsage)
+		if err != nil {
+			return domain.Page{}, fmt.Errorf("encode page plugin usage: %w", err)
+		}
+		pluginUsage = json.RawMessage(encoded)
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return domain.Page{}, mutationError(err)
@@ -434,11 +454,11 @@ SELECT EXISTS(SELECT 1 FROM page_aliases WHERE alias=$1)`, slug).Scan(&aliasExis
 
 		err = tx.QueryRow(ctx, `
 INSERT INTO pages(
-  slug,title,content_language,markdown_content,created_by,updated_by,status,owner_group_id,last_reviewed_at,review_interval_days,deprecated_target
+  slug,title,content_language,markdown_content,created_by,updated_by,status,owner_group_id,last_reviewed_at,review_interval_days,deprecated_target,plugin_usage
 ) VALUES(
-  $1,$2,$3,$4,$5,$5,$6,NULLIF($7,0),CASE WHEN $8 THEN now() ELSE NULL END,$9,$10
+  $1,$2,$3,$4,$5,$5,$6,NULLIF($7,0),CASE WHEN $8 THEN now() ELSE NULL END,$9,$10,$11::jsonb
 ) RETURNING id`,
-			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
+			slug, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage,
 		).Scan(&id)
 	case err != nil:
 		return domain.Page{}, mutationError(err)
@@ -480,9 +500,9 @@ UPDATE pages
 SET title=$2,content_language=$3,markdown_content=$4,updated_by=$5,updated_at=now(),
     status=$6,owner_group_id=NULLIF($7,0),
     last_reviewed_at=CASE WHEN $8 THEN now() ELSE last_reviewed_at END,
-    review_interval_days=$9,deprecated_target=$10
+    review_interval_days=$9,deprecated_target=$10,plugin_usage=$11::jsonb
 WHERE id=$1`,
-			id, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget,
+			id, title, language, markdown, user.ID, metadata.Status, metadata.OwnerGroupID, metadata.MarkReviewed, metadata.ReviewIntervalDays, metadata.DeprecatedTarget, pluginUsage,
 		)
 	}
 

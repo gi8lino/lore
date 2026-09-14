@@ -60,7 +60,7 @@ func (i *Instance) Contributions() plugin.Contributions {
 			continue
 		}
 		if module.Type == "markdown-syntax" {
-			result.MarkdownExtensions = append(result.MarkdownExtensions, syntaxModule{owner: i.manifest.ID, id: module.ID, syntax: module.Syntax})
+			result.MarkdownExtensions = append(result.MarkdownExtensions, syntaxModule{owner: i.manifest.ID, id: module.ID, syntax: module.Syntax, usage: sourceUsageRules(module.Usage)})
 			continue
 		}
 		if module.Type == "settings" {
@@ -231,6 +231,24 @@ type rendererModule struct {
 	instance *Instance
 	// module holds the active WebAssembly module instance.
 	module pluginpackage.Module
+}
+
+// SourceUsage exposes declarative source selectors without invoking guest code.
+func (m rendererModule) SourceUsage() plugin.SourceUsage {
+	rules := sourceUsageRules(m.module.Usage)
+	if m.module.Type == "macro" && m.module.Name != "" {
+		rules = append([]plugin.SourceUsageRule{{Macro: m.module.Name}}, rules...)
+	}
+	return plugin.SourceUsage{ModuleID: m.module.ID, Rules: rules}
+}
+
+// sourceUsageRules converts validated package selectors into internal immutable metadata.
+func sourceUsageRules(rules []pluginpackage.UsageRule) []plugin.SourceUsageRule {
+	result := make([]plugin.SourceUsageRule, 0, len(rules))
+	for _, rule := range rules {
+		result = append(result, plugin.SourceUsageRule{Contains: rule.Contains, Fence: rule.Fence, Macro: rule.Macro, Substitution: rule.Substitution})
+	}
+	return result
 }
 
 // Preprocess transforms Markdown before the core parser runs.

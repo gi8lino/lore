@@ -9,4 +9,8 @@ modules:
   - type: code-highlighter
     id: chroma
     css: plugin.css
+    usage:
+      - fence: "*"
 permissions: []
+
+
