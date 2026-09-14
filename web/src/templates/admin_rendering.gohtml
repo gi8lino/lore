@@ -23,16 +23,6 @@
               <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "wiki_links" }}
             </div>
           </article>
-          <article class="render-setting-card">
-            <label class="toggle-row">
-              <span><strong>Collapsible details</strong><small>Render <code>???</code> and <code>???+</code> detail blocks.</small></span><input type="checkbox"
-       name="details"
-       {{ if .ApplicationSettings.Rendering.Details }}checked{{ end }} />
-            </label>
-            <div class="render-setting-preview prose">
-              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "details" }}
-            </div>
-          </article>
         </div>
       </section>
       <section class="panel settings-panel">

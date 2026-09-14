@@ -154,7 +154,6 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, r
 func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
 	return domain.RenderingSettings{
 		WikiLinks:          r.FormValue("wiki_links") == "on",
-		Details:            r.FormValue("details") == "on",
 		Strikethrough:      r.FormValue("strikethrough") == "on",
 		TaskLists:          r.FormValue("task_lists") == "on",
 		Autolinks:          r.FormValue("autolinks") == "on",

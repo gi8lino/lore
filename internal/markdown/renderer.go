@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	stdhtml "html"
-	"strconv"
 	"strings"
 	"time"
 
@@ -334,13 +332,6 @@ func (r *Renderer) renderRawResolved(
 	options.depth++
 	var err error
 
-	if options.Details {
-		source, err = r.preprocessDetails(source, resolve, options)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	ctx := r.moduleContext(resolve, options)
 	source, err = options.pipeline.preprocess(source, ctx)
 	if err != nil {
@@ -379,182 +370,8 @@ func (r *Renderer) renderRawResolved(
 	return raw, nil
 }
 
-// preprocessDetails converts Material-style collapsible detail blocks into native details elements.
-func (r *Renderer) preprocessDetails(
-	source string,
-	resolve func(string) string,
-	options Options,
-) (string, error) {
-	lines := strings.Split(source, "\n")
-	out := make([]string, 0, len(lines))
-
-	for index := 0; index < len(lines); {
-		if marker := fenceDelimiter(lines[index]); marker != "" {
-			index = appendFencedBlock(
-				lines,
-				index,
-				marker,
-				&out,
-			)
-			continue
-		}
-
-		title, open, ok := parseDetailsTitle(lines[index])
-		if !ok {
-			out = append(out, lines[index])
-			index++
-			continue
-		}
-
-		bodyLines, next := indentedBody(lines, index+1)
-
-		body, err := r.renderRawResolved(
-			strings.Join(bodyLines, "\n"),
-			resolve,
-			options,
-		)
-		if err != nil {
-			return "", err
-		}
-
-		openAttribute := ""
-
-		if open {
-			openAttribute = " open"
-		}
-
-		markup :=
-			`<details class="markdown-details"` +
-				openAttribute +
-				`><summary>` +
-				stdhtml.EscapeString(title) +
-				`</summary><div class="markdown-details-body">` +
-				body +
-				`</div></details>`
-
-		out = append(out, "", markup, "")
-		index = next
-	}
-
-	return strings.Join(out, "\n"), nil
-}
-
-// parseTabTitle parses a top-level tab declaration such as === "Linux".
-func parseTabTitle(
-	line string,
-) (title string, ok bool) {
-	if strings.TrimLeft(line, " \t") != line {
-		return "", false
-	}
-
-	trimmed := strings.TrimSpace(line)
-
-	title, ok = strings.CutPrefix(trimmed, "===")
-	if !ok {
-		return "", false
-	}
-
-	return parseQuotedTitle(strings.TrimSpace(title))
-}
-
-// parseDetailsTitle parses ??? and ???+ collapsible block declarations.
-func parseDetailsTitle(
-	line string,
-) (title string, open bool, ok bool) {
-	if strings.TrimLeft(line, " \t") != line {
-		return "", false, false
-	}
-
-	trimmed := strings.TrimSpace(line)
-
-	remaining, open := strings.CutPrefix(trimmed, "???+")
-	if !open {
-		var found bool
-
-		remaining, found = strings.CutPrefix(
-			trimmed,
-			"???",
-		)
-
-		if !found {
-			return "", false, false
-		}
-	}
-
-	title, ok = parseQuotedTitle(
-		strings.TrimSpace(remaining),
-	)
-
-	return title, open, ok
-}
-
-// parseQuotedTitle parses one quoted block title and supports standard Go-style escapes.
-func parseQuotedTitle(
-	value string,
-) (title string, ok bool) {
-	if len(value) < 2 ||
-		value[0] != '"' ||
-		value[len(value)-1] != '"' {
-		return "", false
-	}
-
-	title, err := strconv.Unquote(value)
-	if err != nil || strings.TrimSpace(title) == "" {
-		return "", false
-	}
-
-	return title, true
-}
-
-// indentedBody collects blank and four-space-indented lines following a custom block declaration.
-func indentedBody(
-	lines []string,
-	start int,
-) (body []string, next int) {
-	body = make([]string, 0)
-	index := start
-
-	for index < len(lines) {
-		if strings.TrimSpace(lines[index]) == "" {
-			body = append(body, "")
-			index++
-			continue
-		}
-
-		line, ok := stripBlockIndent(lines[index])
-		if !ok {
-			break
-		}
-
-		body = append(body, line)
-		index++
-	}
-
-	return body, index
-}
-
-// stripBlockIndent removes one tab or four spaces from a custom block body line.
-func stripBlockIndent(
-	line string,
-) (content string, ok bool) {
-	if content, ok := strings.CutPrefix(line, "\t"); ok {
-		return content, true
-	}
-
-	if content, ok := strings.CutPrefix(line, "    "); ok {
-		return content, true
-	}
-
-	return "", false
-}
-
 // fenceDelimiter returns the Markdown fence marker when a line starts a fenced code block.
 func fenceDelimiter(line string) string { return pluginmarkdown.Fence(line) }
-
-// appendFencedBlock copies a complete fenced block without interpreting it.
-func appendFencedBlock(lines []string, start int, marker string, out *[]string) int {
-	return pluginmarkdown.AppendFence(lines, start, marker, out)
-}
 
 // walkWikiLinks visits wiki links outside fenced code blocks in source order.
 func walkWikiLinks(

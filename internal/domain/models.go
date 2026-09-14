@@ -145,8 +145,6 @@ type TagInfo struct {
 type RenderingSettings struct {
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
-	// Details enables ??? collapsible detail blocks.
-	Details bool
 	// Strikethrough enables GitHub-flavored ~~strikethrough~~.
 	Strikethrough bool
 	// TaskLists enables GitHub-flavored task lists.

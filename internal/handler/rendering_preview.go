@@ -21,10 +21,6 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 			source:  `See [[Keycloak|Keycloak configuration]].`,
 			options: md.Options{WikiLinks: true},
 		},
-		"details": {
-			source:  "??? \"Show command\"\n\n    `kubectl describe pod example`\n",
-			options: md.Options{Details: true},
-		},
 		"strikethrough": {
 			source:  `Deploy ~~Friday~~ Monday.`,
 			options: md.Options{Strikethrough: true},

@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.details
+name: Collapsible Details
+version: 1.0.0
+description: Render collapsible Markdown detail blocks with optional open state.
+default_enabled: true
+modules:
+  - type: renderer-extension
+    id: details
+    stage: preprocess
+permissions: []

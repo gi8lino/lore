@@ -14,8 +14,6 @@ type Options struct {
 	Callouts bool
 	// Mermaid enables the diagram plugin when it is registered.
 	Mermaid bool
-	// Details enables collapsible detail blocks.
-	Details bool
 	// Tables enables GitHub-flavored Markdown tables.
 	Tables bool
 	// TableStyles enables trusted theme-aware table colors.
@@ -49,7 +47,6 @@ func DefaultOptions() Options {
 		Callouts:           true,
 		Mermaid:            true,
 		DefinitionLists:    true,
-		Details:            true,
 		Footnotes:          true,
 		Strikethrough:      true,
 		SyntaxHighlighting: true,
