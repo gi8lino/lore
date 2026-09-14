@@ -34,7 +34,7 @@ func allocate(size uint32) uint32 {
 //go:wasmexport lore_transform
 func invoke(pointer, length uint32) uint64 {
 	var result pluginapi.RenderResult
-	if len(input) == 0 || pointer != uint32(uintptr(unsafe.Pointer(&input[0]))) || uint64(length) != uint64(len(input)) {
+	if !validRequestBuffer(pointer, length) {
 		result.Error = "invalid request buffer"
 	} else {
 		var request pluginapi.RenderRequest
@@ -46,4 +46,13 @@ func invoke(pointer, length uint32) uint64 {
 	}
 	output, _ = json.Marshal(result)
 	return uint64(len(output))<<32 | uint64(uintptr(unsafe.Pointer(&output[0])))
+}
+
+// validRequestBuffer reports whether pointer and length identify the current host request buffer.
+func validRequestBuffer(pointer, length uint32) bool {
+	if len(input) == 0 {
+		return false
+	}
+
+	return pointer == uint32(uintptr(unsafe.Pointer(&input[0]))) && uint64(length) == uint64(len(input))
 }

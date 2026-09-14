@@ -37,7 +37,7 @@ func Parse(line string) (Options, bool) {
 	}
 
 	encodedTitle = strings.TrimSpace(encodedTitle)
-	if len(encodedTitle) < 2 || encodedTitle[0] != '"' || encodedTitle[len(encodedTitle)-1] != '"' {
+	if !isQuoted(encodedTitle) {
 		return Options{}, false
 	}
 
@@ -47,4 +47,9 @@ func Parse(line string) (Options, bool) {
 	}
 
 	return Options{Title: title, ShowTitle: title != ""}, true
+}
+
+// isQuoted reports whether value is enclosed in double quotes.
+func isQuoted(value string) bool {
+	return len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"'
 }

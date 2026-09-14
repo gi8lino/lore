@@ -38,6 +38,14 @@ func (i *Instance) Contributions() plugin.Contributions {
 	var result plugin.Contributions
 
 	for _, module := range i.manifest.Modules {
+		if module.Type == "markdown-syntax" {
+			result.MarkdownExtensions = append(result.MarkdownExtensions, syntaxModule{owner: i.manifest.ID, id: module.ID, syntax: module.Syntax})
+			continue
+		}
+		if module.Type == "settings" {
+			result.SettingsModules = append(result.SettingsModules, plugin.SettingsModule{ID: module.ID, Name: module.Name, Requires: module.Requires})
+			continue
+		}
 		if module.Type == "browser-module" {
 			result.BrowserModules = append(result.BrowserModules, plugin.BrowserModule{ID: module.ID, JavaScript: module.JavaScript, CSS: module.CSS})
 			continue
@@ -163,12 +171,17 @@ func (i *Instance) call(ctx context.Context, request pluginapi.RenderRequest) (p
 		return result, errors.New("plugin returned too many fragments")
 	}
 	for _, part := range result.Parts {
-		if part.Markdown != nil && (part.Text != "" || request.Stage != "preprocess") {
+		if !validRenderPart(part, request.Stage) {
 			return result, errors.New("invalid plugin render fragment")
 		}
 	}
 
 	return result, nil
+}
+
+// validRenderPart reports whether one guest fragment is valid for the requested render stage.
+func validRenderPart(part pluginapi.RenderPart, stage string) bool {
+	return part.Markdown == nil || (part.Text == "" && stage == "preprocess")
 }
 
 // rendererModule adapts one WASM renderer declaration to a pipeline stage.

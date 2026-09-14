@@ -1,0 +1,33 @@
+api_version: 1
+id: io.lore.tables
+name: Tables
+version: 1.0.0
+description: Markdown tables with colors, sorting, and filtering.
+default_enabled: true
+modules:
+  - type: markdown-syntax
+    id: tables
+    syntax: tables
+  - type: renderer-extension
+    id: directives
+    stage: preprocess
+  - type: renderer-extension
+    id: presentation
+    stage: postprocess
+  - type: browser-module
+    id: interactive
+    javascript: plugin.js
+    css: plugin.css
+  - type: settings
+    id: styles
+    name: Table colors
+    requires: [tables]
+  - type: settings
+    id: sorting
+    name: Table sorting
+    requires: [tables]
+  - type: settings
+    id: filtering
+    name: Table filtering
+    requires: [tables]
+permissions: [browser:render]

@@ -42,3 +42,13 @@
 .lore-plugin-block > pre[hidden] {
   display: none;
 }
+
+@media print {
+  .lore-plugin-frame {
+    display: none;
+  }
+  [data-lore-plugin] > [data-lore-fallback][hidden],
+  [data-lore-plugin] > pre[hidden] {
+    display: block !important;
+  }
+}

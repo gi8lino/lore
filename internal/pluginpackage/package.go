@@ -66,6 +66,10 @@ type Module struct {
 	Capability string `yaml:"capability,omitempty"`
 	// JavaScript names the browser module JavaScript asset.
 	JavaScript string `yaml:"javascript,omitempty"`
+	// Syntax selects a public standard Markdown grammar.
+	Syntax string `yaml:"syntax,omitempty"`
+	// Requires names prerequisite modules within this package.
+	Requires []string `yaml:"requires,omitempty"`
 	// CSS names the optional browser module stylesheet asset.
 	CSS string `yaml:"css,omitempty"`
 }
@@ -87,6 +91,9 @@ type Package struct {
 func (p *Package) Manifest() Manifest {
 	m := p.manifest
 	m.Modules = slices.Clone(m.Modules)
+	for i := range m.Modules {
+		m.Modules[i].Requires = slices.Clone(m.Modules[i].Requires)
+	}
 	m.Requires = slices.Clone(m.Requires)
 	m.Permissions = slices.Clone(m.Permissions)
 	return m
@@ -177,7 +184,7 @@ func read(data []byte) (*Package, error) {
 	}
 
 	wasm := files["plugin.wasm"]
-	if len(wasm) < 8 || !bytes.Equal(wasm[:8], []byte{'\x00', 'a', 's', 'm', 1, 0, 0, 0}) {
+	if !hasWASMHeader(wasm) {
 		return nil, errors.New("missing or invalid plugin.wasm")
 	}
 
@@ -199,6 +206,12 @@ func read(data []byte) (*Package, error) {
 	}
 
 	return &Package{manifest: manifest, wasm: wasm, assets: assets, digest: sha256.Sum256(data)}, nil
+}
+
+// hasWASMHeader reports whether data starts with the WebAssembly magic and version bytes.
+func hasWASMHeader(data []byte) bool {
+	header := []byte{'\x00', 'a', 's', 'm', 1, 0, 0, 0}
+	return len(data) >= len(header) && bytes.Equal(data[:len(header)], header)
 }
 
 // validPath reports whether an archive path is safe and canonical.
@@ -268,7 +281,7 @@ func (m Manifest) Validate() error {
 	if m.APIVersion != pluginapi.Version {
 		return fmt.Errorf("unsupported plugin API version %d", m.APIVersion)
 	}
-	if !identifier.MatchString(m.ID) || strings.TrimSpace(m.Name) == "" || len(m.Name) > 128 || !version.MatchString(m.Version) {
+	if !validPluginIdentity(m) {
 		return errors.New("invalid plugin identity or version")
 	}
 	if len(m.Description) > 4096 {
@@ -292,9 +305,13 @@ func (m Manifest) Validate() error {
 			return fmt.Errorf("invalid or duplicate module ID %q", module.ID)
 		}
 		names[module.ID] = true
-		if !validModule(module) || (module.Type == "browser-module" && !permissions["browser:render"]) {
+		if !validModule(module) || !modulePermissionsAllowed(module, permissions) {
 			return fmt.Errorf("unsupported plugin module %q", module.ID)
 		}
+	}
+
+	if err := validateModuleDependencies(m.Modules, names); err != nil {
+		return err
 	}
 
 	dependencies := make(map[string]bool)
@@ -308,24 +325,127 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
+// validPluginIdentity reports whether the manifest identity fields are well formed.
+func validPluginIdentity(m Manifest) bool {
+	return identifier.MatchString(m.ID) &&
+		strings.TrimSpace(m.Name) != "" &&
+		len(m.Name) <= 128 &&
+		version.MatchString(m.Version)
+}
+
+// modulePermissionsAllowed reports whether the manifest grants permissions required by a module type.
+func modulePermissionsAllowed(m Module, permissions map[string]bool) bool {
+	return m.Type != "browser-module" || permissions["browser:render"]
+}
+
 // validModule validates one declared module type, stage, and identifier.
 func validModule(m Module) bool {
-	if m.Type != "browser-module" && (m.JavaScript != "" || m.CSS != "") {
+	if !validModuleFields(m) {
 		return false
 	}
+
 	switch m.Type {
+	case "markdown-syntax":
+		return validMarkdownSyntaxModule(m)
+	case "settings":
+		return validSettingsModule(m)
 	case "browser-module":
-		return m.Stage == "" && m.Name == "" && m.Capability == "" && validPath(m.JavaScript) && strings.HasSuffix(m.JavaScript, ".js") && (m.CSS == "" || (validPath(m.CSS) && strings.HasSuffix(m.CSS, ".css")))
+		return validBrowserModule(m)
 	case "renderer-extension":
-		return (m.Stage == "preprocess" || m.Stage == "postprocess") && m.Name == "" && m.Capability == ""
+		return validRendererModule(m)
 	case "macro":
-		if m.Capability != "" {
-			if _, ok := pluginapi.PermissionFor(m.Capability); !ok {
-				return false
-			}
-		}
-		return identifier.MatchString(m.Name) && m.Stage == ""
+		return validMacroModule(m)
 	default:
 		return false
 	}
+}
+
+// validModuleFields rejects fields that are only meaningful for another module type.
+func validModuleFields(m Module) bool {
+	if m.Type != "browser-module" && (m.JavaScript != "" || m.CSS != "") {
+		return false
+	}
+	if m.Type != "markdown-syntax" && m.Syntax != "" {
+		return false
+	}
+	return m.Type == "settings" || len(m.Requires) == 0
+}
+
+// validMarkdownSyntaxModule validates fields specific to a Markdown syntax declaration.
+func validMarkdownSyntaxModule(m Module) bool {
+	return pluginapi.ValidSyntax(m.Syntax) && m.Stage == "" && m.Name == "" && m.Capability == ""
+}
+
+// validSettingsModule validates fields specific to a settings declaration.
+func validSettingsModule(m Module) bool {
+	return m.Stage == "" && m.Capability == "" && len(m.Name) > 0 && len(m.Name) <= 128
+}
+
+// validBrowserModule validates fields specific to an isolated browser module.
+func validBrowserModule(m Module) bool {
+	validJavaScript := validPath(m.JavaScript) && strings.HasSuffix(m.JavaScript, ".js")
+	validCSS := m.CSS == "" || (validPath(m.CSS) && strings.HasSuffix(m.CSS, ".css"))
+
+	return m.Stage == "" && m.Name == "" && m.Capability == "" && validJavaScript && validCSS
+}
+
+// validRendererModule validates fields specific to a renderer pipeline declaration.
+func validRendererModule(m Module) bool {
+	validStage := m.Stage == "preprocess" || m.Stage == "postprocess"
+	return validStage && m.Name == "" && m.Capability == ""
+}
+
+// validMacroModule validates fields specific to a macro declaration.
+func validMacroModule(m Module) bool {
+	if m.Capability != "" {
+		if _, ok := pluginapi.PermissionFor(m.Capability); !ok {
+			return false
+		}
+	}
+
+	return identifier.MatchString(m.Name) && m.Stage == ""
+}
+
+// validateModuleDependencies validates settings-module dependency references and cycles.
+func validateModuleDependencies(modules []Module, names map[string]bool) error {
+	for _, module := range modules {
+		seen := map[string]bool{}
+		for _, dependency := range module.Requires {
+			if !names[dependency] || dependency == module.ID || seen[dependency] {
+				return fmt.Errorf("invalid module dependency %q", dependency)
+			}
+			seen[dependency] = true
+		}
+	}
+	// Detect cycles before a package can reach the registry.
+	visiting, done := map[string]bool{}, map[string]bool{}
+	var visit func(string) bool
+	visit = func(id string) bool {
+		if visiting[id] {
+			return false
+		}
+		if done[id] {
+			return true
+		}
+		visiting[id] = true
+		for _, module := range modules {
+			if module.ID == id {
+				for _, dep := range module.Requires {
+					if !visit(dep) {
+						return false
+					}
+				}
+			}
+		}
+		visiting[id] = false
+		done[id] = true
+		return true
+	}
+	for id := range names {
+		if !visit(id) {
+			return errors.New("module dependency cycle")
+		}
+	}
+
+	return nil
 }

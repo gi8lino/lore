@@ -14,7 +14,7 @@ func main() {}
 
 // transform converts supported callout blocks into intermediate HTML fragments.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
-	if request.APIVersion != pluginapi.Version || request.Module != "callouts" || request.Stage != "preprocess" {
+	if !supportsRequest(request) {
 		return pluginapi.RenderResult{Error: "unsupported render request"}
 	}
 	lines := strings.Split(request.Source, "\n")
@@ -48,6 +48,11 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	}
 	output.flush()
 	return pluginapi.RenderResult{Parts: output.parts}
+}
+
+// supportsRequest reports whether the callouts plugin supports the render request.
+func supportsRequest(request pluginapi.RenderRequest) bool {
+	return request.APIVersion == pluginapi.Version && request.Module == "callouts" && request.Stage == "preprocess"
 }
 
 // calloutKind normalizes and validates a supported callout kind.

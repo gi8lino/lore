@@ -129,3 +129,33 @@ to `document.currentScript.src` captured when the entry script runs.
 
 See `internal/plugin/README.md` for lifecycle, static hosting and isolation
 limitations. Browser modules do not expose a general host capability bridge.
+
+## Standard syntax and settings declarations
+
+`markdown-syntax` modules select a standard grammar with a `syntax` field:
+`tables`, `strikethrough`, `task-list`, `definition-list`, `footnote`, `linkify`,
+or `typographer`. Core constructs the parser components in the current render,
+so other inline syntax, references and page variables keep their semantics.
+These are public grammar identifiers, not privileged plugin IDs. Custom plugin
+behavior continues to use WASM preprocessors/postprocessors; arbitrary native
+extensions cannot be installed.
+
+`settings` modules have an `id`, display `name`, and optional `requires` list of
+module IDs in the same package. Missing dependencies and cycles are rejected.
+Request feature keys are `<plugin-id>.<module-id>`; omitted flags default on.
+Core's registry validates declared dependencies when saving compatibility
+preferences. Package install/disable/upgrade still operates atomically per plugin.
+
+For HTML browser inputs, emit a `div` with `data-lore-input="html"` and a direct
+child `div data-lore-fallback`. The core sanitizer processes the complete HTML
+before the browser sees it. The module receives `context.html` for its isolated
+frame. Core normalizes links and transfers bounded same-origin raster images as
+data URLs. Unsupported or unavailable image resources leave the native fallback
+visible. Plugin JavaScript never receives access to the host DOM.
+
+Core forwards trusted link clicks only to HTTP(S) URLs already present in the
+original fallback and only during browser user activation. Themes provide a
+bounded set of validated color variables. A filtered stylesheet exposes only
+scoped foreground/background/border colors to the original fallback; URLs,
+imports, positioning and arbitrary selectors remain excluded. All other package
+CSS runs only inside the frame.

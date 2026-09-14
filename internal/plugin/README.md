@@ -224,8 +224,9 @@ Core accepts sanitized blocks marked with `data-lore-plugin` and
 text and theme to an opaque sandbox iframe. Plugin JavaScript defines
 `globalThis.lorePlugin.render(root, {source, theme})`, optionally returning a
 promise. The classic-script contract works on static hosts without CORS setup.
-The shared core harness reports only readiness, failure and bounded height;
-plugin HTML is never inserted into Lore's parent document.
+The shared core harness reports readiness, failure and bounded height. Phase 6
+adds constrained user-click forwarding for links already in the original
+fallback; plugin HTML is never inserted into Lore's parent document.
 
 Frames allow scripts but not same-origin privileges, parent DOM access, forms,
 popups or top navigation. CSP limits script/style resources to the package and
@@ -241,3 +242,30 @@ a static site to change its enabled plugins. Export/PDF documents remain
 script-free and preserve diagram source as their existing fallback. The legacy
 Mermaid rendering preference still controls whether blocks are marked; plugin
 lifecycle controls availability independently. Administration UI is Phase 7.
+
+## Tables and public rendering declarations (Phase 6)
+
+Tables now ships as an actual bundled package. Its manifest owns standard table
+syntax activation, the WASM directive stages, browser module and settings
+relationships (`styles`, `sorting`, `filtering` require `tables`). The renderer
+and HTTP handlers no longer implement table syntax, directives, interactions or
+dependency rules. Legacy `Options`/rendering preferences translate to generic
+request feature flags at the composition boundary.
+
+Standard grammar declarations are intentionally host parser primitives available
+to every package. This avoids a second Markdown parser in WASM that would lose
+wiki links, variables, references and other plugin syntax inside cells. Selection
+comes from the manifest and registry, never a switch on a bundled plugin ID.
+WASM code owns all custom directive and presentation work. Core retains the
+sanitizer and supplies no privileged native callback to the Tables guest.
+
+Plain tables remain native semantic HTML. Interactive tables pass a sanitized
+HTML copy to the sandbox. Disable or a failed browser module restores the original
+HTML; print and script-free PDF/export keep semantic tables. Static builds copy
+the same package and core-filtered color stylesheet. Unsupported external or SVG
+images keep an interactive table in its native fallback, avoiding network grants
+to browser plugins. Same-origin raster images have strict transfer limits.
+
+`/plugins/styles.css` emits only core-filtered, plugin-scoped color declarations
+from enabled packages. Arbitrary stylesheet rules stay in frames. This preserves
+fallback colors without letting community CSS modify Lore's surrounding UI.

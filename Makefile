@@ -88,7 +88,7 @@ generate: plugin-packages ## Generate the icon catalog and bundled WASM packages
 	go generate ./internal/icons
 
 .PHONY: plugin-packages
-plugin-packages: ## Build reproducible bundled .loreplugin archives with standard Go.
+plugin-packages: $(NODE_MODULES) ## Build reproducible bundled .loreplugin archives with standard Go.
 	go run ./scripts/build-plugins
 
 .PHONY: test-plugins

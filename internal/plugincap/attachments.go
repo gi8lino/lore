@@ -21,7 +21,7 @@ type AttachmentReader interface {
 func Attachments(reader AttachmentReader) plugin.Capability {
 	return func(ctx context.Context, data json.RawMessage) (any, error) {
 		var request pluginapi.AttachmentRead
-		if err := json.Unmarshal(data, &request); err != nil || request.ID <= 0 || request.Offset < 0 || request.Length < 1 || request.Length > 1<<20 {
+		if err := json.Unmarshal(data, &request); err != nil || !validAttachmentRead(request) {
 			return nil, errors.New("invalid attachment range")
 		}
 		attachment, err := reader.ReadAttachment(ctx, request)
@@ -33,4 +33,9 @@ func Attachments(reader AttachmentReader) plugin.Capability {
 		}
 		return attachment, nil
 	}
+}
+
+// validAttachmentRead reports whether an attachment range request is safe and bounded.
+func validAttachmentRead(request pluginapi.AttachmentRead) bool {
+	return request.ID > 0 && request.Offset >= 0 && request.Length >= 1 && request.Length <= 1<<20
 }

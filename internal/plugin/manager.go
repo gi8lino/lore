@@ -183,6 +183,9 @@ func (m *Manager) Plugins() []LoadedPlugin {
 // cloneLoaded copies mutable manifest slices before metadata leaves the manager.
 func cloneLoaded(metadata LoadedPlugin) LoadedPlugin {
 	metadata.Manifest.Modules = append([]pluginpackage.Module(nil), metadata.Manifest.Modules...)
+	for i := range metadata.Manifest.Modules {
+		metadata.Manifest.Modules[i].Requires = append([]string(nil), metadata.Manifest.Modules[i].Requires...)
+	}
 	metadata.Manifest.Requires = append([]string(nil), metadata.Manifest.Requires...)
 	metadata.Manifest.Permissions = append([]string(nil), metadata.Manifest.Permissions...)
 

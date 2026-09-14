@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/aymerick/douceur v0.2.0
 	github.com/containeroo/httpgrace v0.2.0
 	github.com/containeroo/notifykit v0.2.0
 	github.com/containeroo/tinyflags v0.0.86
@@ -27,7 +28,6 @@ require (
 )
 
 require (
-	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/containeroo/tmplfuncs v0.0.2 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect

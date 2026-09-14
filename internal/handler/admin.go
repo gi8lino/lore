@@ -125,7 +125,7 @@ func AdminRendering(viewDataUseCases viewDataService, renderer *md.Renderer, vie
 }
 
 // SaveAdminRendering updates administrator-controlled Markdown rendering settings.
-func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) http.HandlerFunc {
+func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, renderer *md.Renderer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := currentUser(r)
 		if err := r.ParseForm(); err != nil {
@@ -142,16 +142,8 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) h
 			)
 			return
 		}
-		tableEnhancementsEnabled := settings.TableStyles || settings.TableSorting || settings.TableFiltering
-		if !settings.Tables && tableEnhancementsEnabled {
-			httpresponse.Problem(w,
-				http.StatusUnprocessableEntity,
-				"Rendering validation failed.",
-				httpresponse.NewFieldProblem(
-					"tables",
-					"Table colors, sorting, and filtering require Markdown tables to be enabled.",
-				),
-			)
+		if err := renderer.ValidateFeatures(renderingOptionsFromSettings(settings)); err != nil {
+			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Rendering validation failed.", httpresponse.NewFieldProblem("rendering", err.Error()))
 			return
 		}
 		if err := settingsUseCases.SaveRenderingSettings(r.Context(), settings, admin.ID); err != nil {

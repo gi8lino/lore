@@ -12,16 +12,21 @@ export const block =
 // independently verify the generated frame and response policy.
 export async function pluginRoute(
   route,
-  { enabled = true, fake = false } = {},
+  {
+    enabled = true,
+    fake = false,
+    module = plugin,
+    assetDirectory = "mermaid",
+  } = {},
 ) {
+  const base = `/plugins/${module.plugin_id}/${module.digest}/`;
+  const framePath = base + "frames/" + module.module_id + ".html";
   const url = new URL(route.request().url());
   const path = url.pathname;
   if (!path.startsWith("/plugins/")) return false;
   if (path === "/plugins/modules.json") {
     await route.fulfill({
-      json: enabled
-        ? [{ ...plugin, frame_url: base + "frames/diagrams.html" }]
-        : [],
+      json: enabled ? [{ ...module, frame_url: framePath }] : [],
     });
     return true;
   }
@@ -29,7 +34,7 @@ export async function pluginRoute(
     await route.fulfill({ status: 404 });
     return true;
   }
-  if (path === base + "frames/diagrams.html") {
+  if (path === framePath) {
     const policy = `default-src 'none'; script-src ${url.origin}${base}assets/ ${url.origin}/plugins/runtime.js; style-src 'unsafe-inline' ${url.origin}${base}assets/; img-src data:; font-src data:; connect-src 'none'; sandbox allow-scripts`;
     await route.fulfill({
       contentType: "text/html",
@@ -57,7 +62,10 @@ export async function pluginRoute(
     await route.fulfill({
       contentType: name.endsWith(".css") ? "text/css" : "text/javascript",
       body: await readFile(
-        new URL("../../plugins/mermaid/assets/" + name, import.meta.url),
+        new URL(
+          "../../plugins/" + assetDirectory + "/assets/" + name,
+          import.meta.url,
+        ),
       ),
     });
   } else {

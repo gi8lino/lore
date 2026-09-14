@@ -122,10 +122,7 @@ func reportLimit(value string) (int, bool) {
 
 // validOptions reports whether the report presentation and columns are supported.
 func validOptions(options Options) bool {
-	if options.View != "table" && options.View != "list" && options.View != "cards" {
-		return false
-	}
-	if options.Sort != "relevance" && options.Sort != "updated" && options.Sort != "title" && options.Sort != "path" {
+	if !validView(options.View) || !validSort(options.Sort) {
 		return false
 	}
 
@@ -136,6 +133,26 @@ func validOptions(options Options) bool {
 	}
 
 	return true
+}
+
+// validView reports whether view selects a supported page-report presentation.
+func validView(view string) bool {
+	switch view {
+	case "table", "list", "cards":
+		return true
+	default:
+		return false
+	}
+}
+
+// validSort reports whether sort selects a supported page-report ordering.
+func validSort(sort string) bool {
+	switch sort {
+	case "relevance", "updated", "title", "path":
+		return true
+	default:
+		return false
+	}
 }
 
 // NewRenderer returns a request-bound renderer backed by the page catalog.

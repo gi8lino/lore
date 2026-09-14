@@ -91,7 +91,7 @@ func WithStorage(storage plugin.Storage) Option { return func(r *Runtime) { r.st
 func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error) {
 	limits = limits.defaults()
 
-	if limits.MemoryPages > 65536 || limits.WireBytes > 16<<20 || limits.Parts > 4096 {
+	if !validLimits(limits) {
 		return nil, errors.New("invalid WASM runtime limits")
 	}
 	config := wazero.NewRuntimeConfig().WithMemoryLimitPages(limits.MemoryPages).
@@ -115,6 +115,11 @@ func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error
 	}
 
 	return r, nil
+}
+
+// validLimits reports whether effective runtime limits stay within hard safety ceilings.
+func validLimits(limits Limits) bool {
+	return limits.MemoryPages <= 65536 && limits.WireBytes <= 16<<20 && limits.Parts <= 4096
 }
 
 // Load validates policy, compiles the guest, and returns an isolated plugin instance.
@@ -164,7 +169,7 @@ func validateABI(compiled wazero.CompiledModule) error {
 
 	for _, imported := range compiled.ImportedFunctions() {
 		namespace, name, _ := imported.Import()
-		if namespace != wasi_snapshot_preview1.ModuleName && !validHostImport(namespace, name, imported) {
+		if !validImport(namespace, name, imported) {
 			return fmt.Errorf("unsupported WASM import %s.%s", namespace, name)
 		}
 	}
@@ -184,7 +189,7 @@ func validateABI(compiled wazero.CompiledModule) error {
 
 	for _, signature := range signatures {
 		function := compiled.ExportedFunctions()[signature.name]
-		if function == nil || !slices.Equal(function.ParamTypes(), signature.params) || !slices.Equal(function.ResultTypes(), signature.results) {
+		if !matchesSignature(function, signature.params, signature.results) {
 			return fmt.Errorf("missing or incompatible WASM export %s", signature.name)
 		}
 	}
@@ -202,7 +207,7 @@ func (i *Instance) instantiate(ctx context.Context) error {
 	}
 
 	version, err := module.ExportedFunction("lore_api_version").Call(ctx)
-	if err != nil || len(version) != 1 || version[0] != pluginapi.Version {
+	if err != nil || !compatibleAPIVersion(version) {
 		_ = module.Close(context.Background())
 		return errors.New("incompatible WASM plugin API version")
 	}
@@ -212,7 +217,28 @@ func (i *Instance) instantiate(ctx context.Context) error {
 	return nil
 }
 
+// validImport reports whether a guest import belongs to WASI or Lore's explicit host ABI.
+func validImport(namespace, name string, function api.FunctionDefinition) bool {
+	return namespace == wasi_snapshot_preview1.ModuleName || validHostImport(namespace, name, function)
+}
+
+// matchesSignature reports whether a WASM function has the expected parameter and result types.
+func matchesSignature(function api.FunctionDefinition, params, results []api.ValueType) bool {
+	return function != nil && slices.Equal(function.ParamTypes(), params) && slices.Equal(function.ResultTypes(), results)
+}
+
+// compatibleAPIVersion reports whether the guest returned exactly Lore's supported ABI version.
+func compatibleAPIVersion(version []uint64) bool {
+	return len(version) == 1 && version[0] == pluginapi.Version
+}
+
 // validHostImport reports whether an imported function is part of Lore's allowed host ABI.
 func validHostImport(namespace, name string, function api.FunctionDefinition) bool {
-	return namespace == "lore_v1" && name == "call" && slices.Equal(function.ParamTypes(), []api.ValueType{api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32}) && slices.Equal(function.ResultTypes(), []api.ValueType{api.ValueTypeI32})
+	if namespace != "lore_v1" || name != "call" {
+		return false
+	}
+
+	params := []api.ValueType{api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32, api.ValueTypeI32}
+	results := []api.ValueType{api.ValueTypeI32}
+	return matchesSignature(function, params, results)
 }

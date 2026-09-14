@@ -81,7 +81,7 @@ func Capabilities(source Source, nodes []pluginapi.NavigationNode) map[string]pl
 		"pages.navigation": func(context.Context, json.RawMessage) (any, error) { return nodes, nil },
 		"icons.render": func(_ context.Context, data json.RawMessage) (any, error) {
 			var request pluginapi.IconRequest
-			if err := json.Unmarshal(data, &request); err != nil || len(request.Name) > 128 || request.Size < 1 || request.Size > 256 {
+			if err := json.Unmarshal(data, &request); err != nil || !validIconRequest(request) {
 				return nil, errors.New("invalid icon request")
 			}
 			return string(icons.SVG(request.Name, request.Size)), nil
@@ -92,14 +92,14 @@ func Capabilities(source Source, nodes []pluginapi.NavigationNode) map[string]pl
 		pages := Pages{source}
 		result["pages.get"] = func(ctx context.Context, data json.RawMessage) (any, error) {
 			var request pluginapi.PageRef
-			if err := json.Unmarshal(data, &request); err != nil || len(request.Slug) == 0 || len(request.Slug) > 4096 {
+			if err := json.Unmarshal(data, &request); err != nil || !validPageRef(request) {
 				return nil, errors.New("invalid page reference")
 			}
 			return pages.GetPage(ctx, request.Slug)
 		}
 		result["pages.search"] = func(ctx context.Context, data json.RawMessage) (any, error) {
 			var request pluginapi.PageQuery
-			if err := json.Unmarshal(data, &request); err != nil || len(request.Query) > 4096 || request.Limit < 1 || request.Limit > 100 {
+			if err := json.Unmarshal(data, &request); err != nil || !validPageQuery(request) {
 				return nil, errors.New("invalid page query")
 			}
 			return pages.Search(ctx, request.Query, request.Limit)
@@ -107,6 +107,21 @@ func Capabilities(source Source, nodes []pluginapi.NavigationNode) map[string]pl
 	}
 
 	return result
+}
+
+// validIconRequest reports whether an icon capability request stays within supported bounds.
+func validIconRequest(request pluginapi.IconRequest) bool {
+	return len(request.Name) <= 128 && request.Size >= 1 && request.Size <= 256
+}
+
+// validPageRef reports whether a page reference contains a bounded non-empty slug.
+func validPageRef(request pluginapi.PageRef) bool {
+	return len(request.Slug) > 0 && len(request.Slug) <= 4096
+}
+
+// validPageQuery reports whether a page search request stays within supported bounds.
+func validPageQuery(request pluginapi.PageQuery) bool {
+	return len(request.Query) <= 4096 && request.Limit >= 1 && request.Limit <= 100
 }
 
 // SharedPages constrains anonymous capability calls to the explicitly shared

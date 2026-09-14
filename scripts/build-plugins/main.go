@@ -39,6 +39,18 @@ func build() error {
 
 // buildPackage compiles one plugin module to WASM and writes its deterministic archive.
 func buildPackage(directory string) error {
+	if _, err := os.Stat(filepath.Join(directory, "browser.ts")); err == nil {
+		command := exec.Command("./node_modules/.bin/tsc", "--ignoreConfig", filepath.Join(directory, "browser.ts"), "--target", "ES2022", "--lib", "ES2022,DOM,DOM.Iterable", "--strict", "--outDir", filepath.Join(directory, "assets"))
+		if output, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build plugin browser entry: %w: %s", err, output)
+		}
+		if err := os.Rename(filepath.Join(directory, "assets", "browser.js"), filepath.Join(directory, "assets", "plugin.js")); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
 	temporary, err := os.MkdirTemp("", "lore-plugin-build-*")
 	if err != nil {
 		return err

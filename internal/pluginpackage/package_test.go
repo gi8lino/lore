@@ -172,3 +172,29 @@ permissions: [browser:render]
 	_, err = Read(testArchive(t, manifest))
 	require.Error(t, err)
 }
+
+func TestDeclarativeSyntaxAndSettingsDependencies(t *testing.T) {
+	manifest := `api_version: 1
+id: io.example.syntax
+name: Syntax
+version: 1.0.0
+modules:
+  - type: markdown-syntax
+    id: grammar
+    syntax: tables
+  - type: settings
+    id: colors
+    name: Colors
+    requires: [grammar]
+permissions: []
+`
+	pkg, err := Read(testArchive(t, manifest))
+	require.NoError(t, err)
+	copy := pkg.Manifest()
+	copy.Modules[1].Requires[0] = "mutated"
+	assert.Equal(t, "grammar", pkg.Manifest().Modules[1].Requires[0])
+	for _, invalid := range []string{strings.ReplaceAll(manifest, "syntax: tables", "syntax: unknown"), strings.ReplaceAll(manifest, "[grammar]", "[absent]"), strings.ReplaceAll(manifest, "[grammar]", "[colors]")} {
+		_, err = Read(testArchive(t, invalid))
+		require.Error(t, err)
+	}
+}

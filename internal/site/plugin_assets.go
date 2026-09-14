@@ -14,6 +14,9 @@ import (
 func (b *builder) copyPluginAssets(config Config, basePath string) error {
 	manager := b.renderer.PluginManager()
 	if manager == nil {
+		if err := writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), nil); err != nil {
+			return err
+		}
 		return writeFile(filepath.Join(config.OutputDir, "plugins", "modules.json"), []byte("[]"))
 	}
 	origin, err := url.Parse(config.SiteURL)
@@ -46,6 +49,9 @@ func (b *builder) copyPluginAssets(config Config, basePath string) error {
 			return err
 		}
 		modules = append(modules, pluginbrowser.View(prefix, module))
+	}
+	if err := writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), []byte(pluginbrowser.PresentationStyles(manager))); err != nil {
+		return err
 	}
 	data, err := json.Marshal(modules)
 	if err != nil {

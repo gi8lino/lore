@@ -146,6 +146,9 @@ func cloneEntry(entry Entry) Entry {
 	c.BrowserModules = slices.Clone(c.BrowserModules)
 	c.EditorExtensions = slices.Clone(c.EditorExtensions)
 	c.SettingsModules = slices.Clone(c.SettingsModules)
+	for i := range c.SettingsModules {
+		c.SettingsModules[i].Requires = slices.Clone(c.SettingsModules[i].Requires)
+	}
 
 	return entry
 }

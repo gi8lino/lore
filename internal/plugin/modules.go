@@ -107,6 +107,8 @@ type EditorExtension struct {
 type SettingsModule struct {
 	// ID and Name identify the settings contribution and its display name.
 	ID, Name string
+	// Requires lists prerequisite feature keys within the owning package.
+	Requires []string
 }
 
 // Contributions is registered and removed atomically under its owner's ID.

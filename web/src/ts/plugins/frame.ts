@@ -1,5 +1,6 @@
 // Core-owned harness. Plugin code runs only in this opaque, resource-restricted
-// document. The only outgoing protocol is readiness, errors and bounded height.
+// document. Outgoing messages report readiness, errors, bounded height, and
+// user clicks; core validates link destinations against the original fallback.
 (() => {
   let started = false;
   window.addEventListener("message", async (event: MessageEvent<unknown>) => {
@@ -15,7 +16,9 @@
       input.type !== "lore-plugin-render" ||
       typeof input.token !== "string" ||
       typeof input.source !== "string" ||
-      input.source.length > 1_000_000
+      input.source.length > 1_000_000 ||
+      (input.html !== undefined &&
+        (typeof input.html !== "string" || input.html.length > 1_000_000))
     )
       return;
     started = true;
@@ -44,8 +47,33 @@
         throw new Error("Invalid module");
       document.documentElement.style.colorScheme =
         input.theme === "dark" ? "dark" : "light";
+      if (typeof input.colors === "object" && input.colors !== null) {
+        for (const [name, value] of Object.entries(input.colors)) {
+          if (
+            /^[a-z-]{1,32}$/.test(name) &&
+            typeof value === "string" &&
+            CSS.supports("color", value)
+          )
+            document.documentElement.style.setProperty("--" + name, value);
+        }
+      }
+      root.addEventListener("click", (event) => {
+        const target = event.target;
+        const link =
+          target instanceof Element
+            ? target.closest<HTMLAnchorElement>("a[href]")
+            : null;
+        if (!link) return;
+        event.preventDefault();
+        if (event.isTrusted)
+          parent.postMessage(
+            { type: "lore-plugin-link", token: input.token, href: link.href },
+            "*",
+          );
+      });
       await module.render(root, {
         source: input.source,
+        html: input.html || "",
         theme: input.theme === "dark" ? "dark" : "light",
       });
       const measure = () =>
@@ -53,11 +81,33 @@
           "lore-plugin-ready",
           Math.min(
             10000,
-            Math.max(24, Math.ceil(root.getBoundingClientRect().height)),
+            Math.max(
+              24,
+              Math.ceil(
+                Math.max(
+                  root.getBoundingClientRect().height,
+                  root.scrollHeight,
+                ),
+              ),
+            ),
           ),
         );
       measure();
       new ResizeObserver(measure).observe(root);
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          measure();
+        });
+      }).observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
     } catch {
       send("lore-plugin-error");
     }

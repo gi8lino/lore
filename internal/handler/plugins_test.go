@@ -22,7 +22,7 @@ func TestBrowserPluginLifecycleAndAssetBoundary(t *testing.T) {
 	PluginModules(manager)(recorder, httptest.NewRequest("GET", "http://lore.test/plugins/modules.json", nil))
 	var modules []pluginbrowser.Module
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &modules))
-	require.Len(t, modules, 1)
+	require.Len(t, modules, 2)
 	module := modules[0]
 	assert.Equal(t, "io.lore.mermaid", module.PluginID)
 	asset := func(name, digest string) *httptest.ResponseRecorder {
@@ -55,7 +55,7 @@ func TestBrowserPluginLifecycleAndAssetBoundary(t *testing.T) {
 	assert.NotContains(t, w.Header().Get("Content-Security-Policy"), "allow-same-origin")
 	assert.Contains(t, w.Body.String(), "/plugins/runtime.js")
 	require.NoError(t, manager.Disable(ctx, module.PluginID))
-	assert.Empty(t, manager.BrowserModules())
+	assert.Len(t, manager.BrowserModules(), 1)
 	assert.Equal(t, 404, asset("plugin.js", module.Digest).Code)
 	w = httptest.NewRecorder()
 	PluginFrame(manager)(w, r)

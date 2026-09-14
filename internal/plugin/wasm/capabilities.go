@@ -52,7 +52,7 @@ func decode(data []byte, result any) error {
 func (r *Runtime) hostCall(ctx context.Context, module api.Module, pointer, length, output, capacity uint32) uint32 {
 	// Validate both buffers before executing a side effect. Never let a plugin
 	// probe host addresses or cause a write followed by an invalid-buffer retry.
-	if length == 0 || uint64(length) > uint64(r.limits.WireBytes) || capacity < 256 || uint64(capacity) > uint64(r.limits.WireBytes) {
+	if !validHostCallBuffers(length, capacity, r.limits.WireBytes) {
 		return 0
 	}
 
@@ -107,8 +107,7 @@ func (r *Runtime) dispatch(ctx context.Context, module api.Module, request plugi
 
 	state.remaining--
 	caller := state.instance
-	permission, known := pluginapi.PermissionFor(request.Method)
-	if !known || (permission != "" && (!r.permissions[permission] || !slices.Contains(caller.manifest.Permissions, permission))) {
+	if !r.capabilityAllowed(caller, request.Method) {
 		return nil, errors.New("capability denied")
 	}
 
@@ -117,7 +116,7 @@ func (r *Runtime) dispatch(ctx context.Context, module api.Module, request plugi
 	}
 	if request.Method == "log" {
 		var message pluginapi.LogMessage
-		if err := decode(request.Params, &message); err != nil || len(message.Message) > 4096 {
+		if err := decode(request.Params, &message); err != nil || !validLogMessage(message) {
 			return nil, errors.New("invalid log message")
 		}
 		slog.InfoContext(ctx, "plugin message", "plugin_id", caller.manifest.ID, "message", message.Message)
@@ -132,6 +131,29 @@ func (r *Runtime) dispatch(ctx context.Context, module api.Module, request plugi
 	return capability(ctx, request.Params)
 }
 
+// validHostCallBuffers reports whether guest request and response buffers stay within wire limits.
+func validHostCallBuffers(length, capacity uint32, wireBytes int) bool {
+	return length > 0 && uint64(length) <= uint64(wireBytes) && capacity >= 256 && uint64(capacity) <= uint64(wireBytes)
+}
+
+// capabilityAllowed reports whether a method is known and granted to the calling plugin.
+func (r *Runtime) capabilityAllowed(caller *Instance, method string) bool {
+	permission, known := pluginapi.PermissionFor(method)
+	if !known {
+		return false
+	}
+	if permission == "" {
+		return true
+	}
+
+	return r.permissions[permission] && slices.Contains(caller.manifest.Permissions, permission)
+}
+
+// validLogMessage reports whether a plugin log message stays within the wire contract.
+func validLogMessage(message pluginapi.LogMessage) bool {
+	return len(message.Message) <= 4096
+}
+
 // storageCall executes namespaced plugin settings or data storage operations.
 func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.CapabilityRequest) (any, error) {
 	if r.storage == nil {
@@ -139,7 +161,7 @@ func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.
 	}
 
 	var value pluginapi.StorageValue
-	if err := decode(request.Params, &value); err != nil || len(value.Key) == 0 || len(value.Key) > 256 || strings.ContainsRune(value.Key, 0) || len(value.Value) > 64<<10 {
+	if err := decode(request.Params, &value); err != nil || !validStorageValue(value) {
 		return nil, errors.New("invalid storage value")
 	}
 	namespace := "data"
@@ -156,4 +178,9 @@ func (r *Runtime) storageCall(ctx context.Context, id string, request pluginapi.
 	}
 
 	return nil, r.storage.WritePluginValue(ctx, id, namespace, value.Key, value.Value)
+}
+
+// validStorageValue reports whether a plugin storage request uses bounded key and value data.
+func validStorageValue(value pluginapi.StorageValue) bool {
+	return len(value.Key) > 0 && len(value.Key) <= 256 && !strings.ContainsRune(value.Key, 0) && len(value.Value) <= 64<<10
 }
