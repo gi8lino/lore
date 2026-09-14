@@ -62,6 +62,16 @@ func TestLocalRecoveryLoginCanBeEnabledFromEnvironment(t *testing.T) {
 	assert.True(t, cfg.LocalLogin)
 }
 
+func TestRenderTimingsCanBeEnabledFromEnvironment(t *testing.T) {
+	t.Setenv("LORE__DATABASE_URL", "postgres://example/lore")
+	t.Setenv("LORE__DEBUG_RENDER_TIMINGS", "true")
+
+	cfg, err := parseTestConfig(nil)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.DebugRenderTimings)
+}
+
 func TestOIDCSecretsRemainDeploymentConfiguration(t *testing.T) {
 	t.Parallel()
 

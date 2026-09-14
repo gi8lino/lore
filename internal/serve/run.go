@@ -162,6 +162,10 @@ func Run(
 	if err != nil {
 		return err
 	}
+	if cfg.DebugRenderTimings {
+		renderer.EnableRenderTimings(logger.With("component", "markdown"))
+		views.EnablePageTimings(logger.With("component", "handler"))
+	}
 	defer func() { _ = renderer.Close(context.Background()) }()
 	pageUseCases.WithUsageAnalyzer(renderer)
 

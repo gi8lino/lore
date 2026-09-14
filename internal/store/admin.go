@@ -207,19 +207,28 @@ WHERE user_id=$1`, userID); err != nil {
 	return tx.Commit(ctx)
 }
 
-// Groups returns all groups and their current user counts.
+// Groups returns all groups and their current user and page counts. Aggregate
+// each relation independently so memberships and page assignments do not form
+// a multiplicative join before counting.
 func (s *Store) Groups(ctx context.Context) ([]domain.Group, error) {
 	rows, err := s.pool.Query(ctx, `
 SELECT
   g.id,
   g.name,
-  count(DISTINCT ug.user_id),
-  count(DISTINCT gp.id)
+  coalesce(ug.user_count,0),
+  coalesce(pg.page_count,0)
 FROM wiki_groups g
-LEFT JOIN user_groups ug ON ug.group_id=g.id
-LEFT JOIN page_groups pg ON pg.group_id=g.id
-LEFT JOIN pages gp ON gp.id=pg.page_id AND gp.deleted_at IS NULL
-GROUP BY g.id
+LEFT JOIN (
+  SELECT group_id,count(*) AS user_count
+  FROM user_groups
+  GROUP BY group_id
+) ug ON ug.group_id=g.id
+LEFT JOIN (
+  SELECT pg.group_id,count(*) AS page_count
+  FROM page_groups pg
+  JOIN pages p ON p.id=pg.page_id AND p.deleted_at IS NULL
+  GROUP BY pg.group_id
+) pg ON pg.group_id=g.id
 ORDER BY lower(g.name),g.id`)
 	if err != nil {
 		return nil, err

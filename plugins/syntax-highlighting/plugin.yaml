@@ -2,7 +2,7 @@ api_version: 1
 provider: Lore
 id: io.lore.syntax-highlighting
 name: Syntax Highlighting
-version: 1.0.0
+version: 1.2.0
 description: Highlight fenced code blocks with Chroma.
 default_enabled: true
 modules:
@@ -12,5 +12,3 @@ modules:
     usage:
       - fence: "*"
 permissions: []
-
-

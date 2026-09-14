@@ -75,7 +75,9 @@ func NewViewDataLoader(
 func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (ViewData, error) {
 	user, _ := auth.User(r)
 
+	stop := measurePageStage(r.Context(), "view_preferences")
 	preferences, err := l.preferenceUseCases.Preferences(r.Context(), user.ID)
+	stop()
 	if err != nil {
 		return ViewData{}, err
 	}
@@ -85,17 +87,23 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	var sidebarRecent []domain.Page
 
 	if !strings.HasPrefix(r.URL.Path, "/admin") {
+		stop = measurePageStage(r.Context(), "view_navigation_pages")
 		pages, err := l.navigationUseCases.NavigationPages(r.Context())
+		stop()
 		if err != nil {
 			return ViewData{}, err
 		}
 
+		stop = measurePageStage(r.Context(), "view_navigation_filter")
 		pages, err = l.accessUseCases.FilterPages(r.Context(), user, pages)
+		stop()
 		if err != nil {
 			return ViewData{}, err
 		}
 
+		stop = measurePageStage(r.Context(), "view_navigation_icons")
 		navigationIcons, err := l.navigationUseCases.NavigationIcons(r.Context())
+		stop()
 		if err != nil {
 			return ViewData{}, err
 		}
@@ -116,29 +124,39 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			})
 		}
 
+		stop = measurePageStage(r.Context(), "view_navigation_build")
 		pageNavigation = navigation.Build(navigationPages, navigation.Options{
 			ActiveSlug:     activeNavigationSlug(r.URL.Path),
 			Expanded:       expanded,
 			ShowPageCounts: preferences.ShowNavigationPageCounts,
 			Icons:          navigationIcons,
 		})
+		stop()
 
 		if preferences.ShowPinnedPages {
+			stop = measurePageStage(r.Context(), "view_sidebar_pinned")
 			sidebarPinned, err = l.catalogUseCases.Favorites(r.Context(), user.ID)
+			stop()
 			if err != nil {
 				return ViewData{}, err
 			}
+			stop = measurePageStage(r.Context(), "view_sidebar_pinned_filter")
 			sidebarPinned, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarPinned)
+			stop()
 			if err != nil {
 				return ViewData{}, err
 			}
 		}
 		if preferences.ShowRecentlyViewed {
+			stop = measurePageStage(r.Context(), "view_sidebar_recent")
 			sidebarRecent, err = l.catalogUseCases.RecentViewed(r.Context(), user.ID, 8)
+			stop()
 			if err != nil {
 				return ViewData{}, err
 			}
+			stop = measurePageStage(r.Context(), "view_sidebar_recent_filter")
 			sidebarRecent, err = l.accessUseCases.FilterPages(r.Context(), user, sidebarRecent)
+			stop()
 			if err != nil {
 				return ViewData{}, err
 			}
@@ -147,7 +165,9 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		}
 	}
 
+	stop = measurePageStage(r.Context(), "view_application_settings")
 	applicationSettings, err := l.settingsUseCases.ApplicationSettings(r.Context())
+	stop()
 	if err != nil {
 		return ViewData{}, err
 	}
@@ -168,21 +188,28 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 
 	preferences.Theme = activeTheme
 
+	stop = measurePageStage(r.Context(), "view_theme_data")
 	themeData, err := json.Marshal(views.themes)
+	stop()
 	if err != nil {
 		return ViewData{}, err
 	}
 
+	stop = measurePageStage(r.Context(), "view_saved_searches")
 	savedSearches, err := l.savedSearchUseCases.SavedSearches(r.Context(), user.ID)
+	stop()
 	if err != nil {
 		return ViewData{}, err
 	}
 
+	stop = measurePageStage(r.Context(), "view_notifications")
 	notifications, unreadNotifications, err := l.notificationUseCases.Notifications(r.Context(), user.ID, 8)
+	stop()
 	if err != nil {
 		return ViewData{}, err
 	}
 
+	stop = measurePageStage(r.Context(), "view_plugin_features")
 	pluginFeatures := make(map[string]bool)
 	var editorInserts []plugin.EditorInsertContribution
 	if l.pluginManager != nil {
@@ -197,6 +224,7 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 			}
 		}
 	}
+	stop()
 
 	return ViewData{
 		Title:               title,

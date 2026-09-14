@@ -94,6 +94,7 @@ type reviewTargetRepositoryStub struct {
 	page   domain.Page
 	users  []domain.User
 	group  domain.Group
+	groups []domain.Group
 }
 
 func (r reviewTargetRepositoryStub) PageReviewRequest(context.Context, string) (domain.PageReviewRequest, error) {
@@ -111,8 +112,22 @@ func (r reviewTargetRepositoryStub) ReviewGroup(context.Context, int64) (domain.
 	return r.group, nil
 }
 
+func (r reviewTargetRepositoryStub) ReviewGroups(context.Context) ([]domain.Group, error) {
+	return r.groups, nil
+}
+
 func (r reviewTargetRepositoryStub) GetPage(context.Context, string) (domain.Page, error) {
 	return r.page, nil
+}
+
+func TestReviewGroupsUsesReviewTargetProjection(t *testing.T) {
+	t.Parallel()
+
+	want := []domain.Group{{ID: 2, Name: "Editors"}, {ID: 4, Name: "Security"}}
+	got, err := NewPages(reviewTargetRepositoryStub{groups: want}, slog.Default()).ReviewGroups(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }
 
 func TestResolveReviewTargets(t *testing.T) {

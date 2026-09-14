@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -206,6 +207,29 @@ func TestWASMOutputCannotBypassSanitizer(t *testing.T) {
 	assert.NotContains(t, got, "javascript:")
 	_, err = renderer.Render("recursive")
 	require.ErrorContains(t, err, "nesting limit")
+}
+
+func TestRenderTimingsIncludeWASMBoundary(t *testing.T) {
+	instance, _ := runtimeFixture(t, "preprocess", wasm.Limits{})
+	registry := &plugin.Registry{}
+	require.NoError(t, registry.Register(plugin.Descriptor{ID: "fixture", Name: "Fixture"}, instance.Contributions()))
+	renderer := markdown.NewWithRegistry(registry)
+
+	var logs bytes.Buffer
+	renderer.EnableRenderTimings(slog.New(slog.NewJSONHandler(&logs, nil)))
+
+	_, err := renderer.Render("healthy")
+	require.NoError(t, err)
+
+	output := logs.String()
+	assert.Contains(t, output, `"event":"wasm_render_timing"`)
+	assert.Contains(t, output, `"plugin_id":"io.example.fixture"`)
+	assert.Contains(t, output, `"module_id":"fixture"`)
+	assert.Contains(t, output, `"request_bytes":`)
+	assert.Contains(t, output, `"response_bytes":`)
+	assert.Contains(t, output, `"guest_execute_ms":`)
+	assert.Contains(t, output, `"event":"render_timing"`)
+	assert.Contains(t, output, `"wasm_calls":1`)
 }
 
 // TestWASMRequestsAreIsolatedAndSerialized verifies wasmrequests are isolated and serialized behavior.

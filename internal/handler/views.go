@@ -100,6 +100,8 @@ type Views struct {
 	templates map[string]*template.Template
 	// logger records template rendering failures.
 	logger *slog.Logger
+	// pageTimingLogger records opt-in page handler timing diagnostics.
+	pageTimingLogger *slog.Logger
 	// version is the application version exposed in rendered pages.
 	version string
 	// commit is the application commit exposed for diagnostics.

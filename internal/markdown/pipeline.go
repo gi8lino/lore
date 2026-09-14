@@ -11,6 +11,7 @@ import (
 
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugincap"
+	"github.com/gi8lino/lore/internal/renderprofile"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -21,6 +22,8 @@ import (
 type renderPipeline struct {
 	// context carries cancellation through the complete render.
 	context context.Context
+	// trace collects optional per-render diagnostics.
+	trace *renderprofile.Trace
 	// capabilities contains request-local host capabilities exposed to plugins.
 	capabilities map[string]plugin.Capability
 	// plan is the immutable render-only contribution set for this lifecycle generation.
@@ -57,22 +60,29 @@ func newRenderPipeline(plan *plugin.RenderPlan, features map[string]bool, functi
 	maps.Copy(capabilities, functions.Capabilities)
 	exportParameters := cloneExportParameters(functions.ExportParameters)
 
+	trace := renderprofile.FromContext(functions.Context)
 	index := functions.PluginUsage
 	if !currentUsageIndex(index, plan, source) {
+		stop := trace.Measure("usage_analysis")
 		derived := analyzeUsage(source, plan)
+		stop()
 		index = &derived
 	}
+	stop := trace.Measure("page_plan")
 	usage := usageSetFromIndex(*index)
+	pagePlan := newPageRenderPlan(plan, usage, exportParameters)
+	stop()
 
 	return &renderPipeline{
 		context:          functions.Context,
+		trace:            trace,
 		capabilities:     capabilities,
 		plan:             plan,
 		features:         maps.Clone(features),
 		macros:           maps.Clone(functions.Macros),
 		exportParameters: exportParameters,
 		usageSource:      source,
-		pagePlan:         newPageRenderPlan(plan, usage, exportParameters),
+		pagePlan:         pagePlan,
 	}
 }
 

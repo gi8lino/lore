@@ -66,6 +66,8 @@ type Config struct {
 	LogFormat logging.LogFormat
 	// Debug enables verbose diagnostic logging.
 	Debug bool
+	// DebugRenderTimings enables detailed page handler, Markdown, and WASM timing logs.
+	DebugRenderTimings bool
 	// AccessLog enables HTTP request logging.
 	AccessLog bool
 }
@@ -149,6 +151,8 @@ func BindFlags(flags *tinyflags.FlagSet) func() Config {
 		Value()
 	flags.BoolVar(&cfg.Debug, "debug", false, "Enable verbose diagnostic logging").
 		Short("d").
+		Value()
+	flags.BoolVar(&cfg.DebugRenderTimings, "debug-render-timings", false, "Log detailed page handler, Markdown, and WASM timings").
 		Value()
 	flags.BoolVar(&cfg.AccessLog, "access-log", false, "Enable HTTP request access logging").
 		Value()

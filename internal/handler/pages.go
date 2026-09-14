@@ -112,8 +112,12 @@ func ViewPage(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
+		r, timingTrace := views.startPageTiming(r)
+		defer views.logPageTiming(timingTrace, r, slug)
 
+		stop := measurePageStage(r.Context(), "page_lookup")
 		page, alias, err := getPageOrAlias(r.Context(), catalogUseCases, slug)
+		stop()
 		if errors.Is(err, domain.ErrNotFound) {
 			renderNotFoundPage(w, r, viewDataUseCases, views)
 			return
@@ -130,31 +134,44 @@ func ViewPage(
 
 		user, _ := auth.User(r)
 		securedCatalog := accessiblePageCatalog{catalog: catalogUseCases, access: accessUseCases, user: user}
+
+		stop = measurePageStage(r.Context(), "record_view")
 		_ = catalogUseCases.RecordView(r.Context(), slug, user.ID)
+		stop()
 
+		stop = measurePageStage(r.Context(), "favorite_lookup")
 		pageFavorite, err := catalogUseCases.IsFavorite(r.Context(), slug, user.ID)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "page_watch")
 		pageWatch, err := catalogUseCases.PageWatch(r.Context(), slug, user.ID)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "review_request")
 		reviewRequest, err := approvalUseCases.PageReviewRequest(r.Context(), slug)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+		stop = measurePageStage(r.Context(), "can_review")
 		canReview, err := approvalUseCases.CanReview(r.Context(), slug, user)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+		stop = measurePageStage(r.Context(), "can_edit")
 		canEditPage, err := accessUseCases.CanEdit(r.Context(), user, slug)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
@@ -164,37 +181,49 @@ func ViewPage(
 
 		var reviewGroups []domain.Group
 		if canEditPage && (reviewRequest.ID == 0 || canManageReview) {
+			stop = measurePageStage(r.Context(), "review_groups")
 			reviewGroups, err = approvalUseCases.ReviewGroups(r.Context())
+			stop()
 			if err != nil {
 				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 		}
 
+		stop = measurePageStage(r.Context(), "rendering_options")
 		options, _, err := renderingOptions(r.Context(), settingsUseCases)
+		stop()
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "backlinks_lookup")
 		backlinks, err := catalogUseCases.Backlinks(r.Context(), slug)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
+		stop = measurePageStage(r.Context(), "backlinks_filter")
 		backlinks, err = accessUseCases.FilterPages(r.Context(), user, backlinks)
+		stop()
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "outgoing_links")
 		outgoingLinks, err := catalogUseCases.PageLinks(r.Context(), slug)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "latest_revision")
 		latestRevision, revisionCount, err := catalogUseCases.LatestRevision(r.Context(), slug)
+		stop()
 		if err != nil {
 			writePageProblem(views.logger, w, err)
 			return
@@ -203,19 +232,25 @@ func ViewPage(
 		var related []domain.Page
 
 		if len(page.Tags) > 0 {
+			stop = measurePageStage(r.Context(), "related_search")
 			related, err = catalogUseCases.Search(r.Context(), "tag:"+page.Tags[0], 6)
+			stop()
 			if err != nil {
 				httpresponse.InternalServerError(views.logger, w, err)
 				return
 			}
 		}
+		stop = measurePageStage(r.Context(), "related_filter")
 		related, err = accessUseCases.FilterPages(r.Context(), user, related)
+		stop()
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "view_data")
 		data, err := viewData(r, viewDataUseCases, views, page.Title)
+		stop()
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
@@ -224,7 +259,9 @@ func ViewPage(
 		var comments []domain.PageComment
 
 		if data.ApplicationSettings.DiscussionsEnabled {
+			stop = measurePageStage(r.Context(), "comments")
 			comments, err = catalogUseCases.PageComments(r.Context(), slug)
+			stop()
 			if err != nil {
 				writePageProblem(views.logger, w, err)
 				return
@@ -233,11 +270,14 @@ func ViewPage(
 
 		data.PageContentLanguage = cmp.Or(page.Language, data.PageContentLanguage)
 
+		stop = measurePageStage(r.Context(), "page_navigation")
 		pageNavigation := plugincap.Navigation(
 			navigation.Children(data.Navigation, slug),
 			pageURL,
 		)
+		stop()
 
+		stop = measurePageStage(r.Context(), "markdown")
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
 			page.Markdown,
 			md.Slug,
@@ -248,11 +288,13 @@ func ViewPage(
 				Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
 			},
 		)
+		stop()
 		if err != nil {
 			httpresponse.InternalServerError(views.logger, w, err)
 			return
 		}
 
+		stop = measurePageStage(r.Context(), "broken_links")
 		renderedHTML := rendered.HTML
 		var brokenLinks []domain.PageLink
 
@@ -268,6 +310,7 @@ func ViewPage(
 				`<a class="wiki-link-broken" href="/pages/`+link.TargetSlug+`"`,
 			)
 		}
+		stop()
 
 		data.Page, data.HTML, data.Backlinks = &page, template.HTML(renderedHTML), backlinks
 		data.PageReviewRequest = reviewRequest
@@ -285,14 +328,18 @@ func ViewPage(
 		data.RevisionCount = revisionCount
 
 		if revisionCount > 0 {
+			stop = measurePageStage(r.Context(), "revision_analysis")
 			latestRevision = revision.Analyze(latestRevision)
 			data.LatestRevision = &latestRevision
+			stop()
 		}
 
 		data.PageContents = rendered.Contents
 		data.Related = withoutSlug(related, slug)
 
+		stop = measurePageStage(r.Context(), "template_render")
 		render(views, w, "page", data)
+		stop()
 	}
 }
 

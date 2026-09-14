@@ -105,7 +105,7 @@ type pageRepository interface {
 	PageReviewRequestByID(context.Context, int64, string) (domain.PageReviewRequest, error)
 	ReviewUsers(context.Context, []string) ([]domain.User, error)
 	ReviewGroup(context.Context, int64) (domain.Group, error)
-	Groups(context.Context) ([]domain.Group, error)
+	ReviewGroups(context.Context) ([]domain.Group, error)
 	RequestPageReview(context.Context, string, int64, []int64, int64, string) (domain.PageReviewRequest, error)
 	UpdatePageReview(context.Context, int64, string, int64, []int64, int64, string) (domain.PageReviewRequest, error)
 	CancelPageReview(context.Context, int64, string, int64) (string, error)
@@ -604,7 +604,7 @@ func (s *Pages) PageReviewRequest(ctx context.Context, slug string) (domain.Page
 
 // ReviewGroups returns collaboration groups that can be selected as review targets.
 func (s *Pages) ReviewGroups(ctx context.Context) ([]domain.Group, error) {
-	return s.repository.Groups(ctx)
+	return s.repository.ReviewGroups(ctx)
 }
 
 // CanReview reports whether an editor is assigned to the current pending review.

@@ -175,8 +175,14 @@ func (p *renderPipeline) pagePlanForSource(source string) pageRenderPlan {
 	if source == p.usageSource {
 		return p.pagePlan
 	}
-	usage := usageSetFromIndex(analyzeUsage(source, p.plan))
-	return newPageRenderPlan(p.plan, usage, p.exportParameters)
+	stop := p.trace.Measure("usage_analysis")
+	index := analyzeUsage(source, p.plan)
+	stop()
+	stop = p.trace.Measure("page_plan")
+	usage := usageSetFromIndex(index)
+	page := newPageRenderPlan(p.plan, usage, p.exportParameters)
+	stop()
+	return page
 }
 
 func (p *renderPipeline) setUsageSource(source string) {
@@ -184,6 +190,11 @@ func (p *renderPipeline) setUsageSource(source string) {
 		return
 	}
 	p.usageSource = source
-	usage := usageSetFromIndex(analyzeUsage(source, p.plan))
+	stop := p.trace.Measure("usage_analysis")
+	index := analyzeUsage(source, p.plan)
+	stop()
+	stop = p.trace.Measure("page_plan")
+	usage := usageSetFromIndex(index)
 	p.pagePlan = newPageRenderPlan(p.plan, usage, p.exportParameters)
+	stop()
 }

@@ -105,6 +105,30 @@ WHERE id=$1`, id).Scan(&group.ID, &group.Name)
 	return group, err
 }
 
+// ReviewGroups returns only the fields needed by page review target selectors.
+// Unlike Groups, this deliberately avoids membership and page-count aggregates.
+func (s *Store) ReviewGroups(ctx context.Context) ([]domain.Group, error) {
+	rows, err := s.pool.Query(ctx, `
+SELECT id,name
+FROM wiki_groups
+ORDER BY lower(name),id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []domain.Group
+	for rows.Next() {
+		var group domain.Group
+		if err := rows.Scan(&group.ID, &group.Name); err != nil {
+			return nil, err
+		}
+		groups = append(groups, group)
+	}
+
+	return groups, rows.Err()
+}
+
 // RequestPageReview opens a review for the current revision and stores explicit targets.
 func (s *Store) RequestPageReview(
 	ctx context.Context,

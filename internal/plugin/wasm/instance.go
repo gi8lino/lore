@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/renderprofile"
 	"github.com/gi8lino/lore/pluginapi"
 	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/tetratelabs/wazero/api"
@@ -128,14 +130,36 @@ func (i *Instance) Close(ctx context.Context) error {
 }
 
 // invoke executes one serialized guest render request with the current capability scope.
-func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) (pluginapi.RenderResult, error) {
+func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) (result pluginapi.RenderResult, err error) {
+	trace := renderprofile.FromContext(ctx)
+	profiled := trace != nil
+	metrics := renderprofile.WASMCall{}
+	started := timingStarted(profiled)
+	if profiled {
+		metrics.PluginID = i.manifest.ID
+		metrics.ModuleID = request.Module
+		metrics.Stage = request.Stage
+		defer func() {
+			metrics.Total = time.Since(started)
+			metrics.Failed = err != nil
+			trace.RecordWASM(metrics)
+		}()
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, i.runtime.limits.CallTimeout)
 	defer cancel()
 
+	gateStarted := timingStarted(profiled)
 	select {
 	case i.gate <- struct{}{}:
+		if profiled {
+			metrics.GateWait = time.Since(gateStarted)
+		}
 		defer func() { <-i.gate }()
 	case <-ctx.Done():
+		if profiled {
+			metrics.GateWait = time.Since(gateStarted)
+		}
 		return pluginapi.RenderResult{}, ctx.Err()
 	}
 
@@ -143,13 +167,18 @@ func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) 
 		return pluginapi.RenderResult{}, errors.New("WASM plugin is closed")
 	}
 	if i.module == nil || i.module.IsClosed() {
-		if err := i.instantiate(ctx); err != nil {
+		instantiateStarted := timingStarted(profiled)
+		err = i.instantiate(ctx)
+		if profiled {
+			metrics.Instantiate = time.Since(instantiateStarted)
+		}
+		if err != nil {
 			return pluginapi.RenderResult{}, err
 		}
 	}
 
 	ctx = context.WithValue(ctx, callerKey{}, &invocationState{instance: i, remaining: 512})
-	result, err := i.call(ctx, request)
+	result, err = i.call(ctx, request, &metrics, profiled)
 	if err != nil {
 		// Discard a trapped or malformed reactor. A later request gets a clean
 		// instance; no partial output or poisoned memory reaches another request.
@@ -161,10 +190,15 @@ func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) 
 }
 
 // call writes one request into guest memory and decodes its bounded response.
-func (i *Instance) call(ctx context.Context, request pluginapi.RenderRequest) (pluginapi.RenderResult, error) {
+func (i *Instance) call(ctx context.Context, request pluginapi.RenderRequest, metrics *renderprofile.WASMCall, profiled bool) (pluginapi.RenderResult, error) {
 	var result pluginapi.RenderResult
 
+	encodeStarted := timingStarted(profiled)
 	input, err := json.Marshal(request)
+	if profiled {
+		metrics.Encode = time.Since(encodeStarted)
+		metrics.RequestBytes = len(input)
+	}
 	if err != nil {
 		return result, err
 	}
@@ -172,52 +206,103 @@ func (i *Instance) call(ctx context.Context, request pluginapi.RenderRequest) (p
 		return result, errors.New("plugin request exceeds size limit")
 	}
 
+	allocateStarted := timingStarted(profiled)
 	allocated, err := i.module.ExportedFunction("lore_alloc").Call(ctx, uint64(len(input)))
+	if profiled {
+		metrics.Allocate = time.Since(allocateStarted)
+	}
 	if err != nil {
 		return result, fmt.Errorf("allocate plugin request: %w", err)
 	}
 	pointer := uint32(allocated[0])
-	if pointer == 0 || !i.module.Memory().Write(pointer, input) {
+	memoryWriteStarted := timingStarted(profiled)
+	written := pointer != 0 && i.module.Memory().Write(pointer, input)
+	if profiled {
+		metrics.MemoryWrite = time.Since(memoryWriteStarted)
+	}
+	if !written {
 		return result, errors.New("plugin returned invalid request memory")
 	}
 
+	executeStarted := timingStarted(profiled)
 	output, err := i.module.ExportedFunction("lore_transform").Call(ctx, uint64(pointer), uint64(len(input)))
+	if profiled {
+		metrics.Execute = time.Since(executeStarted)
+	}
 	if err != nil {
 		return result, fmt.Errorf("call plugin: %w", err)
 	}
 
 	pointer, length := uint32(output[0]), uint32(output[0]>>32)
+	if profiled {
+		metrics.ResponseBytes = int(length)
+	}
 	if length == 0 || uint64(length) > uint64(i.runtime.limits.WireBytes) {
 		return result, errors.New("plugin response exceeds size limit or is empty")
 	}
+	memoryReadStarted := timingStarted(profiled)
 	memory, ok := i.module.Memory().Read(pointer, length)
+	if profiled {
+		metrics.MemoryRead = time.Since(memoryReadStarted)
+	}
 	if !ok {
 		return result, errors.New("plugin returned invalid response memory")
 	}
 
+	decodeStarted := timingStarted(profiled)
 	decoder := json.NewDecoder(bytes.NewReader(memory))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&result); err != nil {
+		if profiled {
+			metrics.Decode = time.Since(decodeStarted)
+		}
 		return result, fmt.Errorf("decode plugin response: %w", err)
 	}
 
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
+		if profiled {
+			metrics.Decode = time.Since(decodeStarted)
+		}
 		return result, errors.New("plugin response must contain one JSON value")
 	}
+	if profiled {
+		metrics.Decode = time.Since(decodeStarted)
+	}
+
+	validateStarted := timingStarted(profiled)
 	if result.Error != "" {
+		if profiled {
+			metrics.Validate = time.Since(validateStarted)
+		}
 		return result, fmt.Errorf("plugin returned error: %.1024s", result.Error)
 	}
 	if len(result.Parts) > i.runtime.limits.Parts {
+		if profiled {
+			metrics.Validate = time.Since(validateStarted)
+		}
 		return result, errors.New("plugin returned too many fragments")
 	}
 	for _, part := range result.Parts {
 		if !validRenderPart(part, request.Stage) {
+			if profiled {
+				metrics.Validate = time.Since(validateStarted)
+			}
 			return result, errors.New("invalid plugin render fragment")
 		}
 	}
+	if profiled {
+		metrics.Validate = time.Since(validateStarted)
+	}
 
 	return result, nil
+}
+
+func timingStarted(enabled bool) time.Time {
+	if !enabled {
+		return time.Time{}
+	}
+	return time.Now()
 }
 
 // validRenderPart reports whether one guest fragment is valid for the requested render stage.

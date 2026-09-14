@@ -2,25 +2,28 @@
 
 Lore uses command-line flags and matching `LORE__` environment variables. The database URL is required for `lore serve`; it is not required for `lore build`.
 
-| Flag                    | Environment                 | Purpose                                                                              |
-| ----------------------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| `--listen-address`      | `LORE__LISTEN_ADDRESS`      | HTTP listen address; defaults to `127.0.0.1:8080`.                                   |
-| `--database-url`        | `LORE__DATABASE_URL`        | PostgreSQL connection URL.                                                           |
-| `--public-url`          | `LORE__PUBLIC_URL`          | Externally visible base URL; defaults to `http://localhost:8080`.                    |
-| `--pdf-url`             | `LORE__PDF_URL`             | Optional runtime override for the configured HTML-to-PDF render endpoint.            |
-| `--local-login`         | `LORE__LOCAL_LOGIN`         | Exposes local recovery login alongside another configured authentication mode.       |
-| `--theme-directory`     | `LORE__THEME_DIRECTORY`     | Optional directory of TOML theme files that override or extend embedded themes.      |
-| `--auth-mode`           | `LORE__AUTH_MODE`           | Emergency authentication override.                                                   |
-| `--oidc-issuer`         | `LORE__OIDC_ISSUER`         | OIDC issuer used with the runtime override.                                          |
-| `--oidc-client-id`      | `LORE__OIDC_CLIENT_ID`      | OIDC client ID used with the runtime override.                                       |
-| `--oidc-client-secret`  | `LORE__OIDC_CLIENT_SECRET`  | OIDC client secret used when OIDC is enabled.                                        |
-| `--oidc-session-secret` | `LORE__OIDC_SESSION_SECRET` | Signs OIDC login state/session cookies; when set it must be at least 32 characters.  |
-| `--encryption-key`      | `LORE__ENCRYPTION_KEY`      | Base64-encoded 32-byte key used to encrypt sensitive persisted application settings. |
-| `--log-format`          | `LORE__LOG_FORMAT`          | `json` or `text`.                                                                    |
-| `--debug`               | `LORE__DEBUG`               | Enables verbose diagnostics.                                                         |
-| `--access-log`          | `LORE__ACCESS_LOG`          | Enables HTTP access logging.                                                         |
+| Flag                     | Environment                  | Purpose                                                                                   |
+| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `--listen-address`       | `LORE__LISTEN_ADDRESS`       | HTTP listen address; defaults to `127.0.0.1:8080`.                                        |
+| `--database-url`         | `LORE__DATABASE_URL`         | PostgreSQL connection URL.                                                                |
+| `--public-url`           | `LORE__PUBLIC_URL`           | Externally visible base URL; defaults to `http://localhost:8080`.                         |
+| `--pdf-url`              | `LORE__PDF_URL`              | Optional runtime override for the configured HTML-to-PDF render endpoint.                 |
+| `--local-login`          | `LORE__LOCAL_LOGIN`          | Exposes local recovery login alongside another configured authentication mode.            |
+| `--theme-directory`      | `LORE__THEME_DIRECTORY`      | Optional directory of TOML theme files that override or extend embedded themes.           |
+| `--auth-mode`            | `LORE__AUTH_MODE`            | Emergency authentication override.                                                        |
+| `--oidc-issuer`          | `LORE__OIDC_ISSUER`          | OIDC issuer used with the runtime override.                                               |
+| `--oidc-client-id`       | `LORE__OIDC_CLIENT_ID`       | OIDC client ID used with the runtime override.                                            |
+| `--oidc-client-secret`   | `LORE__OIDC_CLIENT_SECRET`   | OIDC client secret used when OIDC is enabled.                                             |
+| `--oidc-session-secret`  | `LORE__OIDC_SESSION_SECRET`  | Signs OIDC login state/session cookies; when set it must be at least 32 characters.       |
+| `--encryption-key`       | `LORE__ENCRYPTION_KEY`       | Base64-encoded 32-byte key used to encrypt sensitive persisted application settings.      |
+| `--log-format`           | `LORE__LOG_FORMAT`           | `json` or `text`.                                                                         |
+| `--debug`                | `LORE__DEBUG`                | Enables verbose diagnostics.                                                              |
+| `--debug-render-timings` | `LORE__DEBUG_RENDER_TIMINGS` | Logs detailed page-handler, Markdown-stage, and WASM-boundary timings for rendered pages. |
+| `--access-log`           | `LORE__ACCESS_LOG`           | Enables HTTP access logging.                                                              |
 
 Trusted-proxy username, email, and display-name header lists also have deployment flags and environment-variable forms. Their built-in defaults cover common reverse-proxy headers.
+
+`--debug-render-timings` / `LORE__DEBUG_RENDER_TIMINGS=true` is intended for short-lived performance diagnosis. It emits one page-handler summary, one Markdown summary per page render, and one record per WASM call. Handler stages cover page lookups, shared view-data loading, Markdown rendering, and template execution; WASM records include guest gate wait, JSON encode/decode, guest allocation/execution, memory copies, and request/response byte counts. It never logs page or plugin payload contents. Disable it again after profiling because the additional timing and log output add overhead. Stage timings are cumulative; nested handler stages such as `view_data` and its individual lookups, plus nested Markdown rendering and annotation passes, can therefore make the sum of individual stages larger than the wall-clock `duration_ms`. Compare `page_handler_timing.duration_ms` with the access log `request_complete` duration to identify time spent before the handler in routing, authentication, or middleware.
 
 The `--auth-mode` value is a recovery override, not the normal place to configure browser authentication. When it is set, the administration UI shows the effective authentication mode as **Managed by deployment** and does not allow the persisted mode to be changed. Remove the runtime setting and restart Lore to manage the mode in the UI again.
 

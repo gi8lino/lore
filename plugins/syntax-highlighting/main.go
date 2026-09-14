@@ -5,29 +5,35 @@ import (
 	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
-	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/gi8lino/lore/pluginapi"
 	"github.com/gi8lino/lore/pluginsdk"
 )
 
-// main runs the package entry point.
+var (
+	highlightFormatter = chromahtml.New(chromahtml.WithClasses(true))
+	highlightStyle     = styles.Get("github-dark")
+	highlightLexers    = newCuratedLexerRegistry()
+)
+
 func main() {}
 
-func init() { pluginsdk.RegisterModule("chroma", transform) }
+func init() {
+	if highlightStyle == nil {
+		panic("syntax highlighting style is unavailable")
+	}
+	pluginsdk.RegisterModule("chroma", transform)
+}
 
-// transform highlights one fenced code block when Chroma recognizes its language.
+// transform highlights one fenced code block using its explicit Markdown
+// fence language. Chroma compiles each selected lexer lazily and retains the
+// compiled rules on the curated registry instance for subsequent calls.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	if !supportsRequest(request) {
 		return pluginapi.RenderResult{Error: "unsupported syntax-highlighting request"}
 	}
 
-	language := strings.ToLower(strings.TrimSpace(request.Language))
-	if language == "" {
-		return pluginapi.RenderResult{}
-	}
-
-	lexer := lexers.Get(language)
+	lexer := highlightLexers.Get(strings.TrimSpace(request.Language))
 	if lexer == nil {
 		return pluginapi.RenderResult{}
 	}
@@ -37,25 +43,14 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 		return pluginapi.RenderResult{Error: "tokenize code: " + err.Error()}
 	}
 
-	style := styles.Get("github-dark")
-	if style == nil {
-		return pluginapi.RenderResult{Error: "syntax highlighting style is unavailable"}
-	}
-
 	var output bytes.Buffer
-	formatter := chromahtml.New(chromahtml.WithClasses(true))
-	if err := formatter.Format(&output, style, iterator); err != nil {
+	if err := highlightFormatter.Format(&output, highlightStyle, iterator); err != nil {
 		return pluginapi.RenderResult{Error: "format highlighted code: " + err.Error()}
 	}
 
-	return pluginapi.RenderResult{
-		Matched: true,
-		Parts:   []pluginapi.RenderPart{{Text: output.String()}},
-	}
+	return pluginapi.RenderResult{Matched: true, Parts: []pluginapi.RenderPart{{Text: output.String()}}}
 }
 
-// supportsRequest reports whether the request targets this highlighter module.
 func supportsRequest(request pluginapi.RenderRequest) bool {
-	return request.Module == "chroma" &&
-		request.Stage == "highlight"
+	return request.Module == "chroma" && request.Stage == "highlight"
 }

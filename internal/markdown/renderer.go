@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/pluginusage"
+	"github.com/gi8lino/lore/internal/renderprofile"
 	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
@@ -22,9 +24,10 @@ import (
 // Renderer converts Lore Markdown into sanitized HTML.
 type Renderer struct {
 	// sanitizer removes unsafe HTML from rendered output.
-	sanitizer *bluemonday.Policy
-	registry  *plugin.Registry
-	manager   *plugin.Manager
+	sanitizer    *bluemonday.Policy
+	registry     *plugin.Registry
+	manager      *plugin.Manager
+	timingLogger *slog.Logger
 }
 
 // Heading describes one rendered Markdown heading used in a page table of contents.
@@ -189,18 +192,37 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	resolve func(string) string,
 	options Options,
 	functions Functions,
-) (RenderedPage, error) {
+) (rendered RenderedPage, err error) {
+	sourceBytes := len(source)
 	execution := functions.Context
 	if execution == nil {
 		execution = context.Background()
 	}
 	execution, cancel := context.WithTimeout(execution, 30*time.Second)
 	defer cancel()
+
+	var trace *renderprofile.Trace
+	if r.timingLogger != nil {
+		trace = renderprofile.New()
+		execution = renderprofile.WithContext(execution, trace)
+		defer func() {
+			r.logRenderTimings(trace, sourceBytes, len(rendered.HTML), err)
+		}()
+	}
 	functions.Context = execution
+
+	stop := trace.Measure("render_plan_acquire")
 	plan, release := r.registry.AcquireRenderPlan()
+	stop()
 	defer release()
+
+	stop = trace.Measure("pipeline_setup")
 	options.pipeline = newRenderPipeline(plan, r.pluginFeatures(options), functions, source)
+	stop()
+
+	stop = trace.Measure("content_preprocess")
 	prepared, err := options.pipeline.prepareContent(source, r.moduleContext(resolve, options))
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
@@ -209,11 +231,14 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	options.pipeline.opaqueReplacements = len(prepared.Replacements) != 0
 	options.annotations = prepared.Replacements
 
-	var rendered RenderedPage
 	if len(prepared.Replacements) != 0 {
+		stop = trace.Measure("render_with_annotations")
 		rendered, err = r.renderPageWithAnnotations(source, resolve, options)
+		stop()
 	} else {
+		stop = trace.Measure("render_page")
 		rendered, err = r.renderPage(source, resolve, options)
+		stop()
 	}
 	if err != nil {
 		return RenderedPage{}, err
@@ -229,14 +254,20 @@ func (r *Renderer) renderPageWithAnnotations(
 	resolve func(string) string,
 	options Options,
 ) (RenderedPage, error) {
+	stop := options.pipeline.trace.Measure("annotation_resolve_plain")
 	plain, _ := resolvePluginReplacements(source, options.annotations)
+	stop()
 	plainOptions := options
 	plainOptions.annotations = nil
+	stop = options.pipeline.trace.Measure("annotation_plain_render")
 	normal, err := r.renderPage(plain, resolve, plainOptions)
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
+	stop = options.pipeline.trace.Measure("annotation_wrapped_render")
 	annotated, err := r.renderPage(source, resolve, options)
+	stop()
 	if err != nil {
 		return normal, nil
 	}
@@ -253,31 +284,47 @@ func (r *Renderer) renderPage(
 	options Options,
 ) (RenderedPage, error) {
 	pagePlan := options.pipeline.pagePlanForSource(source)
+	stop := options.pipeline.trace.Measure("macro_preprocess")
 	source, invocations, err := options.pipeline.preprocessMacros(source, r.moduleContext(resolve, options), pagePlan)
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
+	stop = options.pipeline.trace.Measure("markdown_render")
 	raw, renderPlan, err := r.renderRawResolved(source, resolve, options)
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
 	// Preserve the established contents list: generated macro headings are not
 	// part of the source page's navigation.
-	contents := extractHeadings(r.sanitizer.Sanitize(raw))
+	stop = options.pipeline.trace.Measure("heading_sanitize")
+	headingHTML := r.sanitizer.Sanitize(raw)
+	stop()
+	stop = options.pipeline.trace.Measure("heading_extract")
+	contents := extractHeadings(headingHTML)
+	stop()
+	stop = options.pipeline.trace.Measure("macro_expand")
 	raw, err = options.pipeline.expandMacros(raw, invocations, r.moduleContext(resolve, options))
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
+	stop = options.pipeline.trace.Measure("postprocess")
 	raw, err = options.pipeline.postprocess(
 		raw,
 		r.moduleContext(resolve, options),
 		renderPlan,
 		len(invocations) != 0 || options.pipeline.opaqueReplacements,
 	)
+	stop()
 	if err != nil {
 		return RenderedPage{}, err
 	}
-	return RenderedPage{HTML: r.sanitizer.Sanitize(raw), Contents: contents}, nil
+	stop = options.pipeline.trace.Measure("final_sanitize")
+	html := r.sanitizer.Sanitize(raw)
+	stop()
+	return RenderedPage{HTML: html, Contents: contents}, nil
 }
 
 // renderRawResolved renders Markdown extensions into unsanitized HTML for recursive block rendering.
@@ -297,31 +344,41 @@ func (r *Renderer) renderRawResolved(
 	ctx := r.moduleContext(resolve, options)
 	pagePlan := options.pipeline.pagePlanForSource(source)
 	var err error
+	stop := options.pipeline.trace.Measure("markdown_preprocess")
 	source, pagePlan, err = options.pipeline.preprocess(source, ctx, pagePlan)
+	stop()
 	if err != nil {
 		return "", pageRenderPlan{}, err
 	}
 
 	if options.WikiLinks {
+		stop = options.pipeline.trace.Measure("wiki_links")
 		source = rewriteWikiLinks(
 			source,
 			resolve,
 			wikiLinkPrefix(options),
 		)
+		stop()
 	}
 
+	stop = options.pipeline.trace.Measure("replacement_resolve")
 	source, annotationRanges := resolvePluginReplacements(source, options.annotations)
+	stop()
 
 	var output bytes.Buffer
 
+	stop = options.pipeline.trace.Measure("extensions")
 	extensions, err := options.pipeline.extensions(ctx, pagePlan, options.pipeline.opaqueReplacements)
+	stop()
 	if err != nil {
 		return "", pageRenderPlan{}, err
 	}
 	// Conversion invokes contributed parsers, transformers, and node renderers.
+	stop = options.pipeline.trace.Measure("goldmark")
 	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
 		return struct{}{}, engine(extensions, annotationRanges).Convert([]byte(source), &output)
 	})
+	stop()
 	if err != nil {
 		return "", pageRenderPlan{}, err
 	}
