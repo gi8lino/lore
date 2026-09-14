@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gi8lino/lore/pluginapi/blocksyntax"
+	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	stdhtml "html"
@@ -46,12 +46,12 @@ func preprocessTableDirectives(
 	fence := ""
 
 	for index, line := range lines {
-		marker := blocksyntax.Fence(line)
+		marker := pluginmarkdown.Fence(line)
 
 		if fence != "" {
 			out = append(out, line)
 
-			if blocksyntax.Closes(line, fence) {
+			if pluginmarkdown.Closes(line, fence) {
 				fence = ""
 			}
 

@@ -1,5 +1,5 @@
-// Package blocksyntax shares code-block boundaries between Markdown modules.
-package blocksyntax
+// Package markdown provides reusable Markdown parsing helpers for Lore plugins.
+package markdown
 
 import "strings"
 
@@ -13,6 +13,7 @@ func Fence(line string) string {
 	return marker
 }
 
+// openingMarker returns a valid opening fence marker or an empty string.
 func openingMarker(line string) string {
 	for _, delimiter := range []string{"`", "~"} {
 		length := len(line) - len(strings.TrimLeft(line, delimiter))
@@ -23,6 +24,7 @@ func openingMarker(line string) string {
 	return ""
 }
 
+// validFenceInfo reports whether the opening fence accepts the trailing info string.
 func validFenceInfo(marker, info string) bool {
 	return marker[0] != '`' || !strings.ContainsRune(info, '`')
 }

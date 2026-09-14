@@ -11,7 +11,7 @@ import (
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/pluginapi/blocksyntax"
+	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -695,11 +695,11 @@ func stripBlockIndent(
 }
 
 // fenceDelimiter returns the Markdown fence marker when a line starts a fenced code block.
-func fenceDelimiter(line string) string { return blocksyntax.Fence(line) }
+func fenceDelimiter(line string) string { return pluginmarkdown.Fence(line) }
 
 // appendFencedBlock copies a complete fenced block without interpreting it.
 func appendFencedBlock(lines []string, start int, marker string, out *[]string) int {
-	return blocksyntax.AppendFence(lines, start, marker, out)
+	return pluginmarkdown.AppendFence(lines, start, marker, out)
 }
 
 // walkWikiLinks visits wiki links outside fenced code blocks in source order.
@@ -713,7 +713,7 @@ func walkWikiLinks(
 		marker := fenceDelimiter(line)
 
 		if fence != "" {
-			if blocksyntax.Closes(line, fence) {
+			if pluginmarkdown.Closes(line, fence) {
 				fence = ""
 			}
 
@@ -820,7 +820,7 @@ func rewriteWikiLinks(
 		marker := fenceDelimiter(line)
 
 		if fence != "" {
-			if blocksyntax.Closes(line, fence) {
+			if pluginmarkdown.Closes(line, fence) {
 				fence = ""
 			}
 
