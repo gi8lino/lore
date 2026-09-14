@@ -1,6 +1,6 @@
 # Lore render ABI v1
 
-This is the wire contract through Phase 3, not the full developer SDK. The
+This is the versioned wire contract. Go authors should use [the SDK](../pluginsdk/README.md). The
 `pluginapi` package has no dependency on Lore internals. Plugins may be written in
 any language that can produce a WASI Preview 1 reactor with these exports:
 
@@ -32,8 +32,8 @@ callbacks, filesystem handles, database clients, or Lore Go pointers. Unknown JS
 fields, trailing JSON, invalid memory ranges, and excessive output are errors.
 
 The bundled example in `plugins/callouts` is an independent Go module. Its
-`main.go` owns callout parsing; `abi_wasm.go` contains the small amount of memory
-transport code that a later SDK will hide. Standard Go builds it with:
+`main.go` owns callout parsing and registers a handler with `pluginsdk`. The SDK
+owns all guest exports, buffers and transport. Standard Go builds it with:
 
 ```sh
 GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugin.wasm .
@@ -110,7 +110,8 @@ survives renderer/runtime restart. Disabling does not delete plugin data.
 Runtime installation, enable/disable, version replacement, and removal are
 implemented in Lore's manager. These are trusted application operations, not guest
 host calls.
-Browser assets remain Phase 5; the full developer SDK and CLI remain Phase 9.
+Browser assets use the sandboxed browser-module contract. The Go SDK and
+`lore-plugin` CLI provide typed capabilities, registration, testing and packaging.
 
 
 

@@ -1,16 +1,20 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/gi8lino/lore/pluginapi"
+	"github.com/gi8lino/lore/pluginsdk"
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"strings"
 )
 
 func main() {}
+
+func init() { pluginsdk.Register(transform) }
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	enabled := func(name string) bool { v, ok := request.Features["io.lore.tables."+name]; return !ok || v }
-	options := Options{Tables: enabled("tables"), TableStyles: enabled("styles"), TableSorting: enabled("sorting"), TableFiltering: enabled("filtering")}
+	options := tableOptions{Tables: enabled("tables"), TableStyles: enabled("styles"), TableSorting: enabled("sorting"), TableFiltering: enabled("filtering")}
 	output := request.Source
 	switch request.Stage {
 	case "preprocess":

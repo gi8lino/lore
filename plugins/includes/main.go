@@ -8,12 +8,15 @@ import (
 
 	"github.com/gi8lino/lore/pluginapi"
 	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
+	"github.com/gi8lino/lore/pluginsdk"
 )
 
 const maxIncludeDepth = 5
 
 // main runs the package entry point.
 func main() {}
+
+func init() { pluginsdk.Register(transform) }
 
 // pageLoader returns authorized page Markdown for one canonical path.
 type pageLoader func(string) (pluginapi.PageContent, error)
@@ -33,9 +36,7 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 
 // loadPage resolves one page through Lore's authorized page-content capability.
 func loadPage(slug string) (pluginapi.PageContent, error) {
-	var result pluginapi.PageContent
-	err := pluginapi.Call("pages.content", pluginapi.PageRef{Slug: slug}, &result)
-	return result, err
+	return pluginsdk.Pages().Content(slug)
 }
 
 // expandIncludes resolves includes outside fenced code blocks.

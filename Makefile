@@ -34,6 +34,8 @@ GOLANGCI_LINT := bin/golangci-lint
 ## Build Configuration
 BINARY ?= lore
 COMMAND ?= ./cmd
+# Bound race-instrumented cold WASM compilation without relaxing runtime deadlines.
+GO_TEST_RACE_FLAGS ?= -p=2 -parallel=4
 RUN_ARGS ?=
 BUILD_VERSION ?= dev
 BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
@@ -101,7 +103,7 @@ test-plugins-race: ## Test bundled plugin source modules with the race detector.
 
 .PHONY: check-generated
 check-generated: generate ## Verify committed generated files are current.
-	git diff --exit-code -- internal/icons/catalog_gen.go internal/plugins/bundled/*.loreplugin
+	git diff --exit-code -- internal/icons/catalog_gen.go internal/firstparty/*.loreplugin
 
 .PHONY: css
 css: ## Bundle split CSS sources into web/dist/css/app.css.
@@ -210,7 +212,7 @@ test-fresh: test-plugins test-web vet ## Run frontend and backend unit tests wit
 
 .PHONY: test-race
 test-race: test-plugins-race test-web vet ## Run unit tests with the Go race detector.
-	go test -race -count=1 -timeout=3m ./...
+	go test -race -count=1 -timeout=3m $(GO_TEST_RACE_FLAGS) ./...
 
 .PHONY: cover
 cover: test-web ## Display Go test coverage.

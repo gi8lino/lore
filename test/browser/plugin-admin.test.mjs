@@ -55,7 +55,7 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(url + "/admin/plugins");
     assert.equal(
-      await page.getByRole("heading", { name: "Plugins", exact: true }).count(),
+      await page.getByRole("heading", { name: "Plugins", level: 1, exact: true }).count(),
       1,
     );
 

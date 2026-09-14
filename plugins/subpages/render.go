@@ -32,10 +32,10 @@ func newTemplate(icon func(string, int) template.HTML) *template.Template {
 	)
 }
 
-// NewRenderer returns a renderer for one prepared navigation subtree and URL strategy.
-func NewRenderer(nodes []pluginapi.NavigationNode, icon func(string, int) template.HTML) func(Options) (string, error) {
+// newRenderer returns a renderer for one prepared navigation subtree and URL strategy.
+func newRenderer(nodes []pluginapi.NavigationNode, icon func(string, int) template.HTML) func(macroOptions) (string, error) {
 	htmlTemplate := newTemplate(icon)
-	return func(options Options) (string, error) {
+	return func(options macroOptions) (string, error) {
 		if len(nodes) == 0 {
 			return "", nil
 		}

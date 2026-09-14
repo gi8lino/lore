@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // Bootstrap merges embedded distribution bytes with durable overrides, checks

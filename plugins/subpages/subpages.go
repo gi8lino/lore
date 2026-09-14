@@ -8,45 +8,45 @@ import (
 
 const defaultTitle = "Pages in this section"
 
-// Options controls one rendered subpages invocation.
-type Options struct {
+// macroOptions controls one rendered subpages invocation.
+type macroOptions struct {
 	// Title is the visible navigation heading when ShowTitle is true.
 	Title string
 	// ShowTitle controls whether the visible navigation heading is rendered.
 	ShowTitle bool
 }
 
-// Parse recognizes one standalone {{subpages}} invocation.
-func Parse(line string) (Options, bool) {
+// parse recognizes one standalone {{subpages}} invocation.
+func parse(line string) (macroOptions, bool) {
 	value := strings.TrimSpace(line)
 	if value == "{{subpages}}" {
-		return Options{Title: defaultTitle, ShowTitle: true}, true
+		return macroOptions{Title: defaultTitle, ShowTitle: true}, true
 	}
 	argument, ok := strings.CutPrefix(value, "{{subpages ")
 	if !ok {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 	argument, ok = strings.CutSuffix(argument, "}}")
 	if !ok {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 	argument = strings.TrimSpace(argument)
 	name, encodedTitle, ok := strings.Cut(argument, "=")
 	if !ok || strings.TrimSpace(name) != "title" {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	encodedTitle = strings.TrimSpace(encodedTitle)
 	if !isQuoted(encodedTitle) {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	title, err := strconv.Unquote(encodedTitle)
 	if err != nil {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
-	return Options{Title: title, ShowTitle: title != ""}, true
+	return macroOptions{Title: title, ShowTitle: title != ""}, true
 }
 
 // isQuoted reports whether value is enclosed in double quotes.

@@ -11,7 +11,7 @@ import (
 	"github.com/gi8lino/lore/internal/httpresponse"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // AdminPlugins exposes package metadata and lifecycle operations through the

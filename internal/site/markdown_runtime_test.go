@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	md "github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ func testPluginMarkdownRenderer(t testing.TB, names ...string) (*md.Renderer, *p
 
 	archives := make([][]byte, 0, len(names))
 	for _, name := range names {
-		archive, err := bundled.Packages.ReadFile(name + ".loreplugin")
+		archive, err := firstparty.Packages.ReadFile(name + ".loreplugin")
 		require.NoError(t, err)
 		archives = append(archives, archive)
 	}

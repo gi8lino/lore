@@ -8,7 +8,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // Runtime loads validated packages without depending on their distribution.

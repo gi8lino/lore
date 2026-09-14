@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/pluginpackage"
 	"github.com/gi8lino/lore/pluginapi"
+	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"

@@ -1,4 +1,4 @@
-// Callouts is a standalone WASI plugin. It imports only the public wire types,
+// Callouts is a standalone WASI plugin. It uses the public Go SDK and wire types,
 // never Lore's renderer, registry, persistence, or handler packages.
 package main
 
@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"github.com/gi8lino/lore/pluginapi"
+	"github.com/gi8lino/lore/pluginsdk"
 )
 
 // main runs the package entry point.
 func main() {}
+func init() { pluginsdk.RegisterModule("callouts", transform) }
 
 // transform converts supported callout blocks into intermediate HTML fragments.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
@@ -52,7 +54,7 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 
 // supportsRequest reports whether the callouts plugin supports the render request.
 func supportsRequest(request pluginapi.RenderRequest) bool {
-	return request.APIVersion == pluginapi.Version && request.Module == "callouts" && request.Stage == "preprocess"
+	return request.Module == "callouts" && request.Stage == "preprocess"
 }
 
 // calloutKind normalizes and validates a supported callout kind.

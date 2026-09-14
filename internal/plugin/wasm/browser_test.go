@@ -5,18 +5,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/pluginpackage"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInstalledBrowserPluginUsesSameRuntimeAndAssets(t *testing.T) {
 	ctx := context.Background()
-	archive, err := bundled.Packages.ReadFile("mermaid.loreplugin")
+	archive, err := firstparty.Packages.ReadFile("mermaid.loreplugin")
 	require.NoError(t, err)
 	pkg, err := pluginpackage.Read(archive)
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestInstalledBrowserPluginUsesSameRuntimeAndAssets(t *testing.T) {
 
 func TestTablesPackageOwnsSyntaxAndPresentation(t *testing.T) {
 	ctx := context.Background()
-	archive, err := bundled.Packages.ReadFile("tables.loreplugin")
+	archive, err := firstparty.Packages.ReadFile("tables.loreplugin")
 	require.NoError(t, err)
 	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("browser:render"))
 	require.NoError(t, err)

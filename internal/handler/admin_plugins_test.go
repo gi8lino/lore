@@ -13,11 +13,11 @@ import (
 
 	"github.com/gi8lino/lore/internal/auth"
 	"github.com/gi8lino/lore/internal/domain"
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/middleware"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/pluginpackage"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/gi8lino/lore/web"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +48,7 @@ func TestAdminPluginLifecycleAndAuthorization(t *testing.T) {
 		return ViewData{User: domain.User{ID: 1, Role: "admin"}}, nil
 	}}
 	admin := NewAdminPlugins(manager, data, views)
-	archive, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	archive, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	denied := httptest.NewRecorder()
 	request := auth.WithUser(pluginUpload(t, archive), domain.User{ID: 2, Role: "viewer"})

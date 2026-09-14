@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/gi8lino/lore/pluginapi"
+	"github.com/gi8lino/lore/pluginsdk"
 )
 
 // Goldmark's unhighlighted fence output has this shape. Capture its escaped
@@ -12,6 +13,8 @@ var fence = regexp.MustCompile(`(?s)<pre><code class="language-mermaid">.*?</cod
 
 // main runs the package entry point.
 func main() {}
+
+func init() { pluginsdk.Register(transform) }
 
 // transform marks Mermaid code blocks for the browser-side renderer.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {

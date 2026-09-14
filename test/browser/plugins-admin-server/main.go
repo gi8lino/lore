@@ -21,7 +21,7 @@ import (
 	"github.com/gi8lino/lore/internal/handler"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/middleware"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/themes"
 	"github.com/gi8lino/lore/web"
 )
@@ -125,7 +125,7 @@ func main() {
 }
 
 func fixturePackage(version string) ([]byte, error) {
-	original, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	original, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	if err != nil {
 		return nil, err
 	}

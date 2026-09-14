@@ -292,3 +292,16 @@ Optional Markdown features are declared by plugins and administered in their
 plugin details. Public grammar and rendering-policy declarations are translated
 by the host; they do not grant native code access. Normal pages, previews, PDF
 exports and static builds all consume the same renderer and registry snapshot.
+
+## Go developer boundary
+
+The public `pluginsdk` package owns Go reactor exports, guest buffers, typed
+capabilities and macro serialization. All first-party guests register through
+that SDK; none keeps a private ABI shim. `pluginapi` remains the language-neutral
+wire contract. The standalone `cmd/lore-plugin` tool and first-party build script
+share `pluginsdk/build`, which uses the same public `pluginpackage` validator as
+the manager. Embedded artifacts live in `internal/firstparty`; that package
+only supplies distribution bytes to the ordinary bootstrap path.
+
+See [the developer guide](../../pluginsdk/README.md) for project scaffolding,
+testing and deterministic packaging.

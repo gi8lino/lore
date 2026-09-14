@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/plugin"
-	"github.com/gi8lino/lore/internal/pluginpackage"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +47,7 @@ func (i *fakeInstance) Close(context.Context) error { i.closed = true; return ni
 
 // TestManagerRollsBackFailedRegistration verifies manager rolls back failed registration behavior.
 func TestManagerRollsBackFailedRegistration(t *testing.T) {
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "io.lore.callouts", Name: "Existing"}, plugin.Contributions{}))
@@ -64,7 +64,7 @@ func TestManagerRollsBackFailedRegistration(t *testing.T) {
 
 // TestManagerFailuresNeverPublishContributions verifies manager failures never publish contributions behavior.
 func TestManagerFailuresNeverPublishContributions(t *testing.T) {
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	registry := &plugin.Registry{}
 	runtime := &fakeRuntime{err: errors.New("invalid reactor")}
@@ -82,7 +82,7 @@ func TestManagerFailuresNeverPublishContributions(t *testing.T) {
 
 // TestInstallCannotReplaceAnotherRegistryOwner verifies install cannot replace another registry owner behavior.
 func TestInstallCannotReplaceAnotherRegistryOwner(t *testing.T) {
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	registry := &plugin.Registry{}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "io.lore.callouts", Name: "Existing"}, plugin.Contributions{}))
@@ -98,7 +98,7 @@ func TestInstallCannotReplaceAnotherRegistryOwner(t *testing.T) {
 
 func TestRequiredPluginsAreOperatorPolicy(t *testing.T) {
 	ctx := context.Background()
-	archive, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	archive, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	runtime := &fakeRuntime{instance: &fakeInstance{}}
 	manager := plugin.NewManager(&plugin.Registry{}, runtime, plugin.WithRequiredPlugins("io.lore.callouts"))
@@ -125,7 +125,7 @@ func (disabledPolicyStore) DeletePlugin(context.Context, string) error {
 
 func TestRequiredPolicyOverridesDisabledBootstrapRecord(t *testing.T) {
 	ctx := context.Background()
-	archive, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	archive, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	runtime := &fakeRuntime{instance: &fakeInstance{}}
 	manager := plugin.NewManager(&plugin.Registry{}, runtime, plugin.WithStore(disabledPolicyStore{}), plugin.WithRequiredPlugins("io.lore.callouts"))

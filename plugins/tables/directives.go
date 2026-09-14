@@ -1,16 +1,17 @@
 package main
 
 import (
-	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
-	xhtml "golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	stdhtml "html"
 	"slices"
 	"strconv"
 	"strings"
+
+	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
+	xhtml "golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
-type Options struct{ Tables, TableStyles, TableSorting, TableFiltering bool }
+type tableOptions struct{ Tables, TableStyles, TableSorting, TableFiltering bool }
 
 // tableStyle describes trusted presentation classes applied to one rendered table.
 type tableStyle struct {
@@ -29,7 +30,7 @@ type tableStyle struct {
 }
 
 // tableDirectivesEnabled reports whether any table directive feature can be rendered.
-func tableDirectivesEnabled(options Options) bool {
+func tableDirectivesEnabled(options tableOptions) bool {
 	return options.Tables &&
 		(options.TableStyles ||
 			options.TableSorting ||
@@ -39,7 +40,7 @@ func tableDirectivesEnabled(options Options) bool {
 // preprocessTableDirectives replaces enabled table directives with trusted markers consumed after rendering.
 func preprocessTableDirectives(
 	source string,
-	options Options,
+	options tableOptions,
 ) string {
 	lines := strings.Split(source, "\n")
 	out := make([]string, 0, len(lines))
@@ -215,7 +216,7 @@ func parsePositiveInt(
 // tableDirectiveActive reports whether a parsed directive contains any currently enabled behavior.
 func tableDirectiveActive(
 	directive tableStyle,
-	options Options,
+	options tableOptions,
 ) bool {
 	colors :=
 		directive.header != "" ||
@@ -253,7 +254,7 @@ func tableTone(value string) bool {
 
 // tableDirectiveWalker tracks the nearest table while applying rendered table markers.
 type tableDirectiveWalker struct {
-	options   Options
+	options   tableOptions
 	markers   []*xhtml.Node
 	lastTable *xhtml.Node
 }
@@ -261,7 +262,7 @@ type tableDirectiveWalker struct {
 // applyTableDirectiveMarkers applies trusted directives to the nearest preceding rendered table.
 func applyTableDirectiveMarkers(
 	rendered string,
-	options Options,
+	options tableOptions,
 ) (string, error) {
 	contextNode := &xhtml.Node{
 		Type:     xhtml.ElementNode,
@@ -343,7 +344,7 @@ func (w *tableDirectiveWalker) walk(
 func applyTableDirective(
 	table *xhtml.Node,
 	directive tableStyle,
-	options Options,
+	options tableOptions,
 ) {
 	if options.TableSorting && directive.sortable {
 		addHTMLClass(table, "lore-table-sortable")

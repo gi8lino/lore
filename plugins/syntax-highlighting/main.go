@@ -8,10 +8,13 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/gi8lino/lore/pluginapi"
+	"github.com/gi8lino/lore/pluginsdk"
 )
 
 // main runs the package entry point.
 func main() {}
+
+func init() { pluginsdk.RegisterModule("chroma", transform) }
 
 // transform highlights one fenced code block when Chroma recognizes its language.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
@@ -53,7 +56,6 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 
 // supportsRequest reports whether the request targets this highlighter module.
 func supportsRequest(request pluginapi.RenderRequest) bool {
-	return request.APIVersion == pluginapi.Version &&
-		request.Module == "chroma" &&
+	return request.Module == "chroma" &&
 		request.Stage == "highlight"
 }

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
 	"github.com/gi8lino/lore/pluginapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ import (
 func TestBundledAndInstalledMacrosUsePublicCapabilities(t *testing.T) {
 	ctx := context.Background()
 	for _, name := range []string{"subpages", "page-report"} {
-		data, err := bundled.Packages.ReadFile(name + ".loreplugin")
+		data, err := firstparty.Packages.ReadFile(name + ".loreplugin")
 		require.NoError(t, err)
 		var outputs []string
 		for _, source := range []plugin.Source{plugin.SourceBundled, plugin.SourceInstalled} {
@@ -74,7 +74,7 @@ func TestBundledAndInstalledMacrosUsePublicCapabilities(t *testing.T) {
 // TestPageReportPropagatesAuthorizationFailure verifies page report propagates authorization failure behavior.
 func TestPageReportPropagatesAuthorizationFailure(t *testing.T) {
 	ctx := context.Background()
-	data, err := bundled.Packages.ReadFile("page-report.loreplugin")
+	data, err := firstparty.Packages.ReadFile("page-report.loreplugin")
 	require.NoError(t, err)
 	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("pages:read"))
 	require.NoError(t, err)

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 const (

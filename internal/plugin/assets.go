@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // BrowserContribution is public asset metadata; it contains no settings or

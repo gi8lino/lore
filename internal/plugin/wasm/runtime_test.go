@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/pluginpackage"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/pluginpackage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,7 +79,7 @@ func runtimeFixture(t *testing.T, stage string, limits wasm.Limits) (plugin.Inst
 
 // TestBundledAndInstalledCalloutsUseSameRuntime verifies bundled and installed callouts use same runtime behavior.
 func TestBundledAndInstalledCalloutsUseSameRuntime(t *testing.T) {
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	var outputs []string
 	for _, source := range []plugin.Source{plugin.SourceBundled, plugin.SourceInstalled} {

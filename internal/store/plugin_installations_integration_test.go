@@ -9,7 +9,7 @@ import (
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ func TestPluginInstallationSurvivesDatabaseAndRuntimeRestart(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	database, err := Open(ctx, dsn, logger)
 	require.NoError(t, err)
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	runtime, err := wasm.New(ctx, wasm.Limits{})
 	require.NoError(t, err)

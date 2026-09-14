@@ -14,7 +14,7 @@ func TestParse(t *testing.T) {
 	t.Run("uses defaults", func(t *testing.T) {
 		t.Parallel()
 
-		options, ok := Parse(`{{pages query="tag:service status:verified"}}`)
+		options, ok := parse(`{{pages query="tag:service status:verified"}}`)
 
 		require.True(t, ok)
 		assert.Equal(t, "tag:service status:verified", options.Query)
@@ -26,7 +26,7 @@ func TestParse(t *testing.T) {
 	t.Run("accepts report options", func(t *testing.T) {
 		t.Parallel()
 
-		options, ok := Parse(`{{pages query="owner:\"Platform\"" columns="title,property:version,path" view=cards sort=title limit=12}}`)
+		options, ok := parse(`{{pages query="owner:\"Platform\"" columns="title,property:version,path" view=cards sort=title limit=12}}`)
 
 		require.True(t, ok)
 		assert.Equal(t, `owner:"Platform"`, options.Query)
@@ -39,7 +39,7 @@ func TestParse(t *testing.T) {
 	t.Run("rejects unknown columns", func(t *testing.T) {
 		t.Parallel()
 
-		_, ok := Parse(`{{pages query="tag:service" columns="title,secret"}}`)
+		_, ok := parse(`{{pages query="tag:service" columns="title,secret"}}`)
 		assert.False(t, ok)
 	})
 }

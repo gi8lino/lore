@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // A lifetime belongs to one contribution version. Snapshots acquired by a render

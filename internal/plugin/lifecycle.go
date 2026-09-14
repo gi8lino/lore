@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // retirement tracks asynchronous shutdown of one replaced plugin instance.

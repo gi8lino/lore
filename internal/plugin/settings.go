@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/gi8lino/lore/internal/pluginpackage"
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 // loadSettings returns persisted boolean settings for every settings module in manifest.

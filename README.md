@@ -11,6 +11,10 @@ Lore gives you a focused place to write, organize, search, and share documentati
 
 The same binary can also publish Markdown as a read-only static documentation site without PostgreSQL or a running Lore server.
 
+## Plugin development
+
+Create, test and build Go/WASI plugins with the [Lore Plugin SDK and CLI](pluginsdk/README.md). Bundled and installed packages use the same public API and sandboxed runtime.
+
 ## Screenshots
 
 ### Documentation dashboard

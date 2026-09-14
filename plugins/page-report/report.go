@@ -19,8 +19,8 @@ const (
 	maxLimit     = 100
 )
 
-// Options controls one {{pages}} report invocation.
-type Options struct {
+// macroOptions controls one {{pages}} report invocation.
+type macroOptions struct {
 	// Query is the required Lore search expression.
 	Query string
 	// Columns contains prepared report columns in display order.
@@ -33,24 +33,24 @@ type Options struct {
 	Limit int
 }
 
-// Source supplies page discovery and full page metadata for a report.
-type Source interface {
+// pageSource supplies page discovery and full page metadata for a report.
+type pageSource interface {
 	// Search searches the value.
 	Search(context.Context, string, int) ([]pluginapi.Page, error)
 	// GetPage returns page.
 	GetPage(context.Context, string) (pluginapi.Page, error)
 }
 
-// Parse recognizes one standalone {{pages ...}} invocation.
-func Parse(line string) (Options, bool) {
+// parse recognizes one standalone {{pages ...}} invocation.
+func parse(line string) (macroOptions, bool) {
 	body, ok := pageReportBody(line)
 	if !ok {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	arguments, ok := parseArguments(body)
 	if !ok {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	return optionsFromArguments(arguments)
@@ -73,8 +73,8 @@ func pageReportBody(line string) (string, bool) {
 }
 
 // optionsFromArguments normalizes parsed arguments and validates report options.
-func optionsFromArguments(arguments map[string]string) (Options, bool) {
-	options := Options{
+func optionsFromArguments(arguments map[string]string) (macroOptions, bool) {
+	options := macroOptions{
 		Query:   strings.TrimSpace(arguments["query"]),
 		Columns: []string{"title", "status", "owner", "updated"},
 		View:    cmp.Or(strings.TrimSpace(arguments["view"]), "table"),
@@ -83,24 +83,24 @@ func optionsFromArguments(arguments map[string]string) (Options, bool) {
 	}
 
 	if options.Query == "" {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	if value := strings.TrimSpace(arguments["columns"]); value != "" {
 		options.Columns = splitColumns(value)
 	}
 	if len(options.Columns) == 0 {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	limit, ok := reportLimit(arguments["limit"])
 	if !ok {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 	options.Limit = limit
 
 	if !validOptions(options) {
-		return Options{}, false
+		return macroOptions{}, false
 	}
 
 	return options, true
@@ -122,7 +122,7 @@ func reportLimit(value string) (int, bool) {
 }
 
 // validOptions reports whether the report presentation and columns are supported.
-func validOptions(options Options) bool {
+func validOptions(options macroOptions) bool {
 	if !validView(options.View) || !validSort(options.Sort) {
 		return false
 	}
@@ -156,9 +156,9 @@ func validSort(sort string) bool {
 	}
 }
 
-// NewRenderer returns a request-bound renderer backed by the page catalog.
-func NewRenderer(ctx context.Context, source Source) func(Options) (string, error) {
-	return func(options Options) (string, error) {
+// newRenderer returns a request-bound renderer backed by the page catalog.
+func newRenderer(ctx context.Context, source pageSource) func(macroOptions) (string, error) {
+	return func(options macroOptions) (string, error) {
 		pages, err := source.Search(ctx, options.Query, options.Limit)
 		if err != nil {
 			return "", err
@@ -363,7 +363,7 @@ var reportTemplate = template.Must(
 )
 
 // render executes the selected report presentation for the resolved pages.
-func render(options Options, pages []pluginapi.Page) (string, error) {
+func render(options macroOptions, pages []pluginapi.Page) (string, error) {
 	data := tableData{Columns: make([]columnData, 0, len(options.Columns)), Rows: make([]rowData, 0, len(pages))}
 	for _, column := range options.Columns {
 		data.Columns = append(data.Columns, columnData{Key: column, Label: columnLabel(column)})

@@ -4,9 +4,9 @@ import (
 	"context"
 	"maps"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
 )
 
 // New constructs a renderer and owns its plugin runtime. Server and static
@@ -32,7 +32,7 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 		}
 	}
 	manager := plugin.NewManager(registry, runtime, managerOptions...)
-	if err := bundled.Load(ctx, manager); err != nil {
+	if err := firstparty.Load(ctx, manager); err != nil {
 		_ = manager.Close(context.Background())
 		return nil, err
 	}

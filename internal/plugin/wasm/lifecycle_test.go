@@ -10,10 +10,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/markdown"
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/plugin/wasm"
-	"github.com/gi8lino/lore/internal/plugins/bundled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -104,7 +104,7 @@ func TestRuntimeLifecycleWithoutRestart(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
 	manager, renderer, _ := lifecycleManager(t, store)
-	callouts, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	callouts, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	callouts = changedManifest(t, callouts, func(s string) string { return strings.ReplaceAll(s, "io.lore.callouts", "io.example.lifecycle") })
 	render := func() string {
@@ -166,7 +166,7 @@ func TestUpgradeRetainsAcquiredVersionUntilRenderFinishes(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
 	manager, renderer, registry := lifecycleManager(t, store)
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	metadata, err := manager.Install(ctx, data)
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestUpgradeRetainsAcquiredVersionUntilRenderFinishes(t *testing.T) {
 func TestBundledDisableAndInstalledOverrideSurviveRestore(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	manager, _, _ := lifecycleManager(t, store)
 	require.NoError(t, manager.Bootstrap(ctx, [][]byte{data}))
@@ -241,7 +241,7 @@ func TestUpgradeDuringRenderingKeepsWholeSnapshotAlive(t *testing.T) {
 	manager, renderer, registry := lifecycleManager(t, store)
 	blocker := &blockingPreprocessor{start: make(chan struct{}), proceed: make(chan struct{})}
 	require.NoError(t, registry.Register(plugin.Descriptor{ID: "blocker", Name: "Blocker"}, plugin.Contributions{Preprocessors: []plugin.Preprocessor{blocker}}))
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	_, err = manager.Install(ctx, data)
 	require.NoError(t, err)
@@ -267,7 +267,7 @@ func TestLifecycleDependenciesAndFailedBootstrapAreAtomic(t *testing.T) {
 	ctx := context.Background()
 	store := &installationStore{records: make(map[string]plugin.Record)}
 	manager, _, registry := lifecycleManager(t, store)
-	data, err := bundled.Packages.ReadFile("callouts.loreplugin")
+	data, err := firstparty.Packages.ReadFile("callouts.loreplugin")
 	require.NoError(t, err)
 	base := changedManifest(t, data, func(s string) string { return strings.ReplaceAll(s, "io.lore.callouts", "io.base") })
 	child := changedManifest(t, data, func(s string) string {
