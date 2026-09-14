@@ -3,12 +3,20 @@ package pluginbrowser
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"html/template"
 	"net/url"
 	"strings"
 
 	"github.com/gi8lino/lore/internal/plugin"
+)
+
+//go:embed template.gohtml
+var templateSource string
+
+var frameTemplate = template.Must(
+	template.New("pluginbrowser").Parse(templateSource),
 )
 
 // Module describes one browser module exposed by an enabled plugin.
@@ -29,17 +37,39 @@ func View(prefix string, m plugin.BrowserContribution) Module {
 }
 
 // Policy also applies when the frame is opened directly. Opaque origin and
-// resource restrictions keep plugin JS away from Lore's DOM, credentials and APIs.
+// resource restrictions keep plugin JavaScript away from Lore's DOM,
+// credentials, and APIs.
 func Policy(origins []string, assetBase, runtimeURL string) string {
-	sources := make([]string, 0, len(origins)*2)
-	for _, origin := range origins {
-		sources = append(sources, origin+assetBase, origin+runtimeURL)
-	}
+	sources := policySources(origins, assetBase, runtimeURL)
 
-	return "default-src 'none'; script-src " + strings.Join(sources, " ") + "; style-src 'unsafe-inline' " + strings.Join(sources, " ") + "; img-src data:; font-src data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts"
+	return strings.Join([]string{
+		"default-src 'none'",
+		"script-src " + sources,
+		"style-src 'unsafe-inline' " + sources,
+		"img-src data:",
+		"font-src data:",
+		"connect-src 'none'",
+		"object-src 'none'",
+		"frame-src 'none'",
+		"base-uri 'none'",
+		"form-action 'none'",
+		"sandbox allow-scripts",
+	}, "; ")
 }
 
-var frameTemplate = template.Must(template.New("plugin-frame").Parse(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{{.Policy}}"><title>{{.Name}}</title>{{if .CSS}}<link rel="stylesheet" href="{{.CSS}}">{{end}}<script defer src="{{.Runtime}}"></script></head><body data-plugin-javascript="{{.JavaScript}}"><main id="plugin-root"></main></body></html>`))
+// policySources returns the origins and asset URLs used by the plugin browser.
+func policySources(origins []string, assetBase, runtimeURL string) string {
+	sources := make([]string, 0, len(origins)*2)
+	for _, origin := range origins {
+		sources = append(
+			sources,
+			origin+assetBase,
+			origin+runtimeURL,
+		)
+	}
+
+	return strings.Join(sources, " ")
+}
 
 // Frame renders the isolated HTML frame used to load one plugin browser module.
 func Frame(prefix, runtimeURL string, origins []string, m plugin.BrowserContribution) ([]byte, string, error) {
