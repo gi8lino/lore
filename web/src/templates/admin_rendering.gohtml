@@ -32,16 +32,6 @@
         <div class="render-setting-list">
           <article class="render-setting-card">
             <label class="toggle-row">
-              <span><strong>Syntax highlighting</strong><small>Apply server-side syntax highlighting to fenced code blocks.</small></span><input type="checkbox"
-       name="syntax_highlighting"
-       {{ if .ApplicationSettings.Rendering.SyntaxHighlighting }}checked{{ end }} />
-            </label>
-            <div class="render-setting-preview prose">
-              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "syntax_highlighting" }}
-            </div>
-          </article>
-          <article class="render-setting-card">
-            <label class="toggle-row">
               <span><strong>Typographer</strong><small>Convert common punctuation sequences to typographic characters.</small></span><input type="checkbox"
        name="typographer"
        {{ if .ApplicationSettings.Rendering.Typographer }}checked{{ end }} />

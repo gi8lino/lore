@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.syntax-highlighting
+name: Syntax Highlighting
+version: 1.0.0
+description: Highlight fenced code blocks with language-aware token classes.
+default_enabled: true
+modules:
+  - type: render-policy
+    id: highlighting
+    policy: syntax-highlighting
+permissions: []

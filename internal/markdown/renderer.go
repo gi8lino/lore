@@ -95,7 +95,7 @@ func engine(options Options, contributed []goldmark.Extender, ranges ...variable
 		}
 		extensions = append(extensions, typographer)
 	}
-	if options.SyntaxHighlighting {
+	if options.syntaxHighlighting {
 		extensions = append(
 			extensions,
 			highlighting.NewHighlighting(
@@ -225,6 +225,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	snapshot, release := r.registry.Acquire()
 	defer release()
 	options.CodingLigatures = options.CodingLigatures || snapshot.HasRenderPolicy("coding-ligatures")
+	options.syntaxHighlighting = snapshot.HasRenderPolicy("syntax-highlighting")
 	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
 	if len(functions.Variables) != 0 {
 		return r.renderPageWithVariables(

@@ -508,9 +508,7 @@ func TestSyntaxHighlightingEmitsChromaClasses(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
-	options := DefaultOptions()
-	options.SyntaxHighlighting = true
-	got, err := renderer.RenderResolvedWithOptions("```go\nfunc main() { println(\"Lore\") }\n```\n", Slug, options)
+	got, err := renderer.Render("```go\nfunc main() { println(\"Lore\") }\n```\n")
 
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="chroma"`)

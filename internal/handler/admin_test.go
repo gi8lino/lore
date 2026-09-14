@@ -55,9 +55,8 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	t.Parallel()
 
 	form := url.Values{
-		"wiki_links":          {"on"},
-		"syntax_highlighting": {"on"},
-		"typographer":         {"on"},
+		"wiki_links":  {"on"},
+		"typographer": {"on"},
 	}
 	request := httptest.NewRequest("POST", "/admin/rendering", strings.NewReader(form.Encode()))
 
@@ -67,7 +66,6 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	settings := renderingSettingsFromForm(request)
 
 	assert.True(t, settings.WikiLinks)
-	assert.True(t, settings.SyntaxHighlighting)
 	assert.True(t, settings.Typographer)
 }
 

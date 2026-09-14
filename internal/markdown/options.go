@@ -6,6 +6,8 @@ type Options struct {
 	depth    int
 	// variables is request-local provenance used only for reading-page inspection.
 	variables []Variable
+	// syntaxHighlighting reports whether an active plugin requested the host highlighting policy.
+	syntaxHighlighting bool
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
 	// WikiLinkPrefix is prepended to resolved wiki-link targets. Empty uses /pages/.
@@ -22,8 +24,6 @@ type Options struct {
 	TableSorting bool
 	// TableFiltering enables client-side filtering for opted-in tables.
 	TableFiltering bool
-	// SyntaxHighlighting enables server-side fenced-code highlighting.
-	SyntaxHighlighting bool
 	// Typographer enables typographic punctuation substitutions.
 	Typographer bool
 	// CodingLigatures preserves ASCII operators when typographic punctuation is enabled.
@@ -33,15 +33,14 @@ type Options struct {
 // DefaultOptions returns the rendering behavior used before administrator customization.
 func DefaultOptions() Options {
 	return Options{
-		Callouts:           true,
-		Mermaid:            true,
-		SyntaxHighlighting: true,
-		TableFiltering:     true,
-		Tables:             true,
-		TableSorting:       true,
-		TableStyles:        true,
-		Typographer:        true,
-		WikiLinks:          true,
-		WikiLinkPrefix:     "/pages/",
+		Callouts:       true,
+		Mermaid:        true,
+		TableFiltering: true,
+		Tables:         true,
+		TableSorting:   true,
+		TableStyles:    true,
+		Typographer:    true,
+		WikiLinks:      true,
+		WikiLinkPrefix: "/pages/",
 	}
 }
