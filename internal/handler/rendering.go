@@ -26,7 +26,6 @@ func renderingOptions(
 func renderingOptionsFromSettings(rendering domain.RenderingSettings) md.Options {
 	options := md.DefaultOptions()
 	options.WikiLinks = rendering.WikiLinks
-	options.Strikethrough = rendering.Strikethrough
 	options.TaskLists = rendering.TaskLists
 	options.Autolinks = rendering.Autolinks
 	options.SyntaxHighlighting = rendering.SyntaxHighlighting

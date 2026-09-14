@@ -22,8 +22,6 @@ type Options struct {
 	TableSorting bool
 	// TableFiltering enables client-side filtering for opted-in tables.
 	TableFiltering bool
-	// Strikethrough enables GitHub-flavored strikethrough.
-	Strikethrough bool
 	// TaskLists enables GitHub-flavored task lists.
 	TaskLists bool
 	// Autolinks enables automatic URL and email links.
@@ -48,7 +46,6 @@ func DefaultOptions() Options {
 		Mermaid:            true,
 		DefinitionLists:    true,
 		Footnotes:          true,
-		Strikethrough:      true,
 		SyntaxHighlighting: true,
 		TableFiltering:     true,
 		Tables:             true,

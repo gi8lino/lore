@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.strikethrough
+name: Strikethrough
+version: 1.0.0
+description: Render GitHub-style strikethrough text.
+default_enabled: true
+modules:
+  - type: markdown-syntax
+    id: strikethrough
+    syntax: strikethrough
+permissions: []
