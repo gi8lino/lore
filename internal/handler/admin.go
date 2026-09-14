@@ -153,8 +153,7 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, r
 // renderingSettingsFromForm parses mutable rendering settings from a form.
 func renderingSettingsFromForm(r *http.Request) domain.RenderingSettings {
 	return domain.RenderingSettings{
-		WikiLinks:   r.FormValue("wiki_links") == "on",
-		Typographer: r.FormValue("typographer") == "on",
+		WikiLinks: r.FormValue("wiki_links") == "on",
 	}
 }
 
