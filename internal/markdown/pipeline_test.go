@@ -347,7 +347,5 @@ func testRenderer(t testing.TB, names ...string) *Renderer {
 	}
 	require.NoError(t, manager.Bootstrap(ctx, archives))
 
-	renderer := NewWithRegistry(registry)
-	renderer.manager = manager
-	return renderer
+	return NewWithManager(registry, manager)
 }

@@ -55,9 +55,9 @@ func (l Limits) defaults() Limits {
 // request state, or capabilities. It is in memory only and lives for the process.
 var compilationCache = wazero.NewCompilationCache()
 
-// Wazero's cache does not single-flight concurrent compilations. Serialize
-// loading to avoid compiling the same binary many times during parallel startup.
-// This gate never covers rendering or shares guest state.
+// Wazero's cache does not single-flight concurrent compilations. Serialize cache
+// misses so parallel startup cannot compile the same binary repeatedly. Cache
+// hits bypass this gate; rendering and guest state are never shared here.
 var compilationGate = make(chan struct{}, 1)
 
 // Runtime owns the wazero engine and trusted host policy used for plugin instances.
@@ -133,15 +133,8 @@ func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.
 	ctx, cancel := context.WithTimeout(ctx, r.limits.LoadTimeout)
 	defer cancel()
 
-	select {
-	case compilationGate <- struct{}{}:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-
 	binary := pkg.WASM()
 	compiled, err := r.compile(ctx, binary)
-	<-compilationGate
 	if err != nil {
 		return nil, fmt.Errorf("compile WASM: %w", err)
 	}

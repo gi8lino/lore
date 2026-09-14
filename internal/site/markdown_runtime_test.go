@@ -17,15 +17,6 @@ func testMarkdownRenderer(t testing.TB) *md.Renderer {
 	return md.NewWithRegistry(nil)
 }
 
-// testFullMarkdownRenderer returns the production bundled-plugin renderer for integration boundaries that inspect its manager.
-func testFullMarkdownRenderer(t testing.TB) *md.Renderer {
-	t.Helper()
-	renderer, err := md.New(context.Background())
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, renderer.Close(context.Background())) })
-	return renderer
-}
-
 // testPluginMarkdownRenderer returns a renderer with only the requested bundled plugins.
 func testPluginMarkdownRenderer(t testing.TB, names ...string) (*md.Renderer, *plugin.Manager) {
 	t.Helper()
@@ -43,5 +34,5 @@ func testPluginMarkdownRenderer(t testing.TB, names ...string) (*md.Renderer, *p
 		archives = append(archives, archive)
 	}
 	require.NoError(t, manager.Bootstrap(ctx, archives))
-	return md.NewWithRegistry(registry), manager
+	return md.NewWithManager(registry, manager), manager
 }

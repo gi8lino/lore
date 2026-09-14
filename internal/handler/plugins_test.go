@@ -6,18 +6,27 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	md "github.com/gi8lino/lore/internal/markdown"
+	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/plugin/wasm"
 	"github.com/gi8lino/lore/internal/pluginbrowser"
+	"github.com/gi8lino/lore/internal/plugins/bundled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBrowserPluginLifecycleAndAssetBoundary(t *testing.T) {
 	ctx := context.Background()
-	renderer, err := md.New(ctx)
+	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("browser:render"))
 	require.NoError(t, err)
-	defer func() { require.NoError(t, renderer.Close(ctx)) }()
-	manager := renderer.PluginManager()
+	manager := plugin.NewManager(&plugin.Registry{}, runtime)
+	t.Cleanup(func() { require.NoError(t, manager.Close(context.Background())) })
+	archives := make([][]byte, 0, 2)
+	for _, name := range []string{"mermaid", "tables"} {
+		archive, err := bundled.Packages.ReadFile(name + ".loreplugin")
+		require.NoError(t, err)
+		archives = append(archives, archive)
+	}
+	require.NoError(t, manager.Bootstrap(ctx, archives))
 	recorder := httptest.NewRecorder()
 	PluginModules(manager)(recorder, httptest.NewRequest("GET", "http://lore.test/plugins/modules.json", nil))
 	var modules []pluginbrowser.Module

@@ -36,9 +36,7 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 		_ = manager.Close(context.Background())
 		return nil, err
 	}
-	renderer := NewWithRegistry(registry)
-	renderer.manager = manager
-	return renderer, nil
+	return NewWithManager(registry, manager), nil
 }
 
 // moduleFeatures translates request-scoped compatibility flags at the composition boundary.

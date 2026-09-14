@@ -41,9 +41,7 @@ func TestStaticBuildUsesLiveRendererRegistry(t *testing.T) {
 
 func TestStaticBrowserPackagesFollowLiveRegistry(t *testing.T) {
 	ctx := context.Background()
-	renderer := testFullMarkdownRenderer(t)
-	manager := renderer.PluginManager()
-	require.NotNil(t, manager)
+	renderer, manager := testPluginMarkdownRenderer(t, "mermaid", "tables")
 	root := t.TempDir()
 	source := filepath.Join(root, "docs")
 	require.NoError(t, os.MkdirAll(source, 0755))

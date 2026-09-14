@@ -11,6 +11,12 @@ import (
 
 // Run builds one filesystem-backed static documentation site.
 func Run(ctx context.Context, appFS fs.FS, config Config, overrides map[string]any, stdout io.Writer) error {
+	return run(ctx, newBuilder(appFS), config, overrides, stdout)
+}
+
+// run executes one site build with an already constructed builder. Production
+// callers use the default builder; tests can inject a focused renderer.
+func run(ctx context.Context, builder *builder, config Config, overrides map[string]any, stdout io.Writer) error {
 	logger := logging.Setup(config.logFormat, false, stdout)
 	setupLogger := logger.With("component", "setup")
 
@@ -22,7 +28,7 @@ func Run(ctx context.Context, appFS fs.FS, config Config, overrides map[string]a
 		)
 	}
 
-	result, err := newBuilder(appFS).build(ctx, config)
+	result, err := builder.build(ctx, config)
 	if err != nil {
 		return err
 	}

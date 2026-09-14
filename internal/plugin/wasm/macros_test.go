@@ -74,9 +74,17 @@ func TestBundledAndInstalledMacrosUsePublicCapabilities(t *testing.T) {
 // TestPageReportPropagatesAuthorizationFailure verifies page report propagates authorization failure behavior.
 func TestPageReportPropagatesAuthorizationFailure(t *testing.T) {
 	ctx := context.Background()
-	renderer, err := markdown.New(ctx)
+	data, err := bundled.Packages.ReadFile("page-report.loreplugin")
 	require.NoError(t, err)
-	defer func() { _ = renderer.Close(ctx) }()
+	runtime, err := wasm.New(ctx, wasm.Limits{}, wasm.WithPermissions("pages:read"))
+	require.NoError(t, err)
+	registry := &plugin.Registry{}
+	manager := plugin.NewManager(registry, runtime)
+	t.Cleanup(func() { require.NoError(t, manager.Close(context.Background())) })
+	_, err = manager.Load(ctx, data, plugin.SourceBundled)
+	require.NoError(t, err)
+	renderer := markdown.NewWithRegistry(registry)
+
 	_, err = renderer.RenderPageResolvedWithFunctions(`{{pages query="private"}}`, markdown.Slug, markdown.DefaultOptions(), markdown.Functions{Capabilities: map[string]plugin.Capability{
 		"pages.search": func(context.Context, json.RawMessage) (any, error) { return []pluginapi.Page{{Slug: "private"}}, nil },
 		"pages.get":    func(context.Context, json.RawMessage) (any, error) { return nil, errors.New("page unavailable") },

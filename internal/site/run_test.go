@@ -32,10 +32,13 @@ func TestRunLogsOverrides(t *testing.T) {
 	config.SourceDir = source
 	config.OutputDir = output
 
+	builder := newBuilder(assets)
+	builder.renderer = testMarkdownRenderer(t)
+
 	var stdout bytes.Buffer
-	err := Run(
+	err := run(
 		context.Background(),
-		assets,
+		builder,
 		config,
 		map[string]any{"site-name": "Example Docs"},
 		&stdout,

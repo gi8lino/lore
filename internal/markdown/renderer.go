@@ -58,8 +58,8 @@ type Functions struct {
 	ExportParameters map[string]map[string]map[string]string
 }
 
-// Close releases the owned plugin runtime. Explicit-registry renderers leave
-// ownership with their caller.
+// Close releases the attached plugin manager, if any. Renderers created with
+// NewWithRegistry alone do not own plugin runtime resources.
 func (r *Renderer) Close(ctx context.Context) error {
 	if r.manager != nil {
 		return r.manager.Close(ctx)
@@ -75,6 +75,15 @@ func NewWithRegistry(registry *plugin.Registry) *Renderer {
 	}
 
 	return &Renderer{sanitizer: newSanitizer(), registry: registry}
+}
+
+// NewWithManager attaches a plugin manager to a renderer so
+// lifecycle metadata and browser assets remain available through PluginManager.
+// Closing the renderer closes the manager.
+func NewWithManager(registry *plugin.Registry, manager *plugin.Manager) *Renderer {
+	renderer := NewWithRegistry(registry)
+	renderer.manager = manager
+	return renderer
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
