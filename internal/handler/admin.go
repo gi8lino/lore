@@ -128,7 +128,7 @@ func AdminRendering(viewDataUseCases viewDataService, renderer *md.Renderer, vie
 }
 
 // SaveAdminRendering updates administrator-controlled Markdown rendering settings.
-func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, renderer *md.Renderer) http.HandlerFunc {
+func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		admin := currentUser(r)
 		if err := r.ParseForm(); err != nil {
@@ -137,10 +137,6 @@ func SaveAdminRendering(settingsUseCases settingsService, logger *slog.Logger, r
 		}
 
 		settings := renderingSettingsFromForm(r)
-		if err := renderer.ValidateFeatures(renderingOptionsFromSettings(settings)); err != nil {
-			httpresponse.Problem(w, http.StatusUnprocessableEntity, "Rendering validation failed.", httpresponse.NewFieldProblem("rendering", err.Error()))
-			return
-		}
 		if err := settingsUseCases.SaveRenderingSettings(r.Context(), settings, admin.ID); err != nil {
 			writeAdminProblem(logger, w, err, "Rendering settings")
 			return

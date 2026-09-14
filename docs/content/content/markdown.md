@@ -1,6 +1,6 @@
 # Markdown
 
-Lore uses Goldmark with optional extensions controlled by administrators. The default renderer enables wiki links, callouts, tabs, details, tables, table styling/sorting/filtering, strikethrough, task lists, autolinks, syntax highlighting, footnotes, definition lists, and typographic substitutions.
+Lore uses Goldmark for its core Markdown renderer. Wiki links remain a built-in Lore feature; optional syntax and presentation features such as callouts, tabs, details, tables, task lists, autolinks, syntax highlighting, footnotes, definition lists, and typographic substitutions are provided by plugins and managed under **Administration → Plugins**.
 
 ## Images
 

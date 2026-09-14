@@ -41,8 +41,8 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 	return renderer, nil
 }
 
-// moduleFeatures translates legacy settings at the composition boundary. It
-// does not activate modules absent from the registry.
+// moduleFeatures translates request-scoped compatibility flags at the composition boundary.
+// It does not activate modules absent from the registry.
 func moduleFeatures(options Options) map[string]bool {
 	return map[string]bool{"io.lore.callouts": options.Callouts, "io.lore.mermaid": options.Mermaid, "io.lore.tables": options.Tables, "io.lore.tables.tables": options.Tables, "io.lore.tables.styles": options.TableStyles, "io.lore.tables.sorting": options.TableSorting, "io.lore.tables.filtering": options.TableFiltering}
 }
@@ -59,8 +59,3 @@ func (r *Renderer) pluginFeatures(options Options) map[string]bool {
 // PluginManager exposes lifecycle operations to the trusted application layer.
 // Renderers built from an external registry have no owned manager.
 func (r *Renderer) PluginManager() *plugin.Manager { return r.manager }
-
-// ValidateFeatures checks declarative plugin settings dependencies.
-func (r *Renderer) ValidateFeatures(options Options) error {
-	return r.registry.Snapshot().ValidateFeatures(moduleFeatures(options))
-}

@@ -153,7 +153,7 @@ func addRoutes(
 		"POST /admin/templates/{id}/delete",
 		browserAuthn(adminAuthz(handler.DeleteAdminPageTemplate(templateUseCases, logger))),
 	)
-	mux.Handle("POST /admin/rendering", browserAuthn(adminAuthz(handler.SaveAdminRendering(settingsUseCases, logger, renderer))))
+	mux.Handle("POST /admin/rendering", browserAuthn(adminAuthz(handler.SaveAdminRendering(settingsUseCases, logger))))
 	mux.Handle(
 		"GET /admin/users",
 		browserAuthn(adminAuthz(handler.AdminUsers(viewDataUseCases, userUseCases, groupUseCases, views))),

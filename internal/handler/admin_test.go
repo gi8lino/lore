@@ -67,16 +67,6 @@ func TestRenderingSettingsFromForm(t *testing.T) {
 	assert.True(t, settings.WikiLinks)
 }
 
-func TestRenderingOptionsKeepPluginFeaturesAtDefaults(t *testing.T) {
-	t.Parallel()
-
-	options := renderingOptionsFromSettings(domain.RenderingSettings{})
-
-	assert.True(t, options.Callouts)
-	assert.True(t, options.Tables)
-	assert.True(t, options.Mermaid)
-}
-
 func TestRenderingLanguageValidation(t *testing.T) {
 	t.Parallel()
 
