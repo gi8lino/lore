@@ -43,5 +43,3 @@ A page whose lifecycle status is `draft` is different: it is a real persisted pa
 ## Revision history
 
 Every persisted page update creates immutable revision history. The page view shows the newest revision summary and can load the full history. Editors can restore an older revision by creating a new revision from its Markdown rather than mutating history in place.
-
-

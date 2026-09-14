@@ -51,5 +51,3 @@ The preview and browser print document use the PDF export's HTML and stylesheet.
 Markdown exports remain original source, including macro syntax. This feature does not change macro evaluation: fenced code stays literal, inline code can expand variables, and includes retain their existing recursion limits. Stored snippet contents and temporary values are not recursively evaluated as new knowledge macros.
 
 Temporary values follow the existing Markdown rendering and sanitization rules. Export requests accept at most 128 changed variables, 8 KiB per value, and 64 KiB in total for names and values. Only variables actually used by the page may be overridden. None of these operations writes to the database.
-
-
