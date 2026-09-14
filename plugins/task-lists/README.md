@@ -13,4 +13,6 @@ The rendered checkboxes are presentation only; editing the Markdown remains the 
 
 ## Permissions
 
-This plugin requests no Lore capabilities. It selects Lore's public `task-list` Markdown grammar.
+This plugin requests no Lore capabilities. It selects Lore's public `task-list` Markdown grammar. The host implementation of that grammar includes the inert accessible checkbox renderer, so disabling the plugin removes both task-list parsing and task-list presentation from new renders.
+
+

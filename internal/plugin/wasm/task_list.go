@@ -1,11 +1,26 @@
-package markdown
+package wasm
 
 import (
+	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
 	extensionast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 )
+
+// taskListSyntax installs Goldmark task-list parsing together with Lore's inert checkbox renderer.
+type taskListSyntax struct{}
+
+// Extend installs task-list parsing and the safe presentation renderer.
+func (taskListSyntax) Extend(markdown goldmark.Markdown) {
+	extension.TaskList.Extend(markdown)
+	markdown.Renderer().AddOptions(
+		renderer.WithNodeRenderers(
+			util.Prioritized(taskCheckBoxRenderer{}, 100),
+		),
+	)
+}
 
 // taskCheckBoxRenderer renders task-list markers as inert, themeable controls.
 // Using a span keeps raw HTML inputs outside the sanitizer allowlist while

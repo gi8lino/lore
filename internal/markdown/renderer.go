@@ -123,7 +123,6 @@ func engine(options Options, contributed []goldmark.Extender, ranges ...variable
 		goldmark.WithRendererOptions(
 			goldhtml.WithUnsafe(),
 			renderer.WithNodeRenderers(
-				util.Prioritized(taskCheckBoxRenderer{}, 100),
 				util.Prioritized(
 					variableNodeRenderer{ranges: ranges},
 					100,

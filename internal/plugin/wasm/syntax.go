@@ -17,10 +17,14 @@ func (m syntaxModule) Extension(ctx plugin.Context) goldmark.Extender {
 	if enabled, ok := ctx.Features[m.owner+"."+m.id]; ok && !enabled {
 		return noSyntax{}
 	}
+	if m.syntax == "task-list" {
+		return taskListSyntax{}
+	}
+
 	return map[string]goldmark.Extender{
 		"tables": extension.Table, "strikethrough": extension.Strikethrough,
-		"task-list": extension.TaskList, "definition-list": extension.DefinitionList,
-		"footnote": extension.Footnote, "linkify": extension.Linkify,
+		"definition-list": extension.DefinitionList, "footnote": extension.Footnote,
+		"linkify": extension.Linkify,
 	}[m.syntax]
 }
 
