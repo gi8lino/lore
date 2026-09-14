@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.task-lists
+name: Task Lists
+version: 1.0.0
+description: Render Markdown task list items with visible checkbox state.
+default_enabled: true
+modules:
+  - type: markdown-syntax
+    id: task-lists
+    syntax: task-list
+permissions: []

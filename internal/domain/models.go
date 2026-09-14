@@ -145,8 +145,6 @@ type TagInfo struct {
 type RenderingSettings struct {
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
-	// TaskLists enables GitHub-flavored task lists.
-	TaskLists bool
 	// Autolinks enables automatic URL and email links.
 	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.

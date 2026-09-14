@@ -22,8 +22,6 @@ type Options struct {
 	TableSorting bool
 	// TableFiltering enables client-side filtering for opted-in tables.
 	TableFiltering bool
-	// TaskLists enables GitHub-flavored task lists.
-	TaskLists bool
 	// Autolinks enables automatic URL and email links.
 	Autolinks bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
@@ -51,7 +49,6 @@ func DefaultOptions() Options {
 		Tables:             true,
 		TableSorting:       true,
 		TableStyles:        true,
-		TaskLists:          true,
 		Typographer:        true,
 		WikiLinks:          true,
 		WikiLinkPrefix:     "/pages/",

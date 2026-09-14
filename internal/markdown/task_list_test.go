@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,9 +26,10 @@ func TestTaskListsCanBeDisabled(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
-	options := DefaultOptions()
-	options.TaskLists = false
-	got, err := renderer.RenderResolvedWithOptions("- [ ] pending\n", Slug, options)
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.Disable(context.Background(), "io.lore.task-lists"))
+	got, err := renderer.Render("- [ ] pending\n")
 
 	require.NoError(t, err)
 	assert.NotContains(t, got, `class="task-list-checkbox`)

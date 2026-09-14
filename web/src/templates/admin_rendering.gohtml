@@ -32,16 +32,6 @@
         <div class="render-setting-list">
           <article class="render-setting-card">
             <label class="toggle-row">
-              <span><strong>Task lists</strong><small>Render <code>- [ ]</code> and <code>- [x]</code> task items.</small></span><input type="checkbox"
-       name="task_lists"
-       {{ if .ApplicationSettings.Rendering.TaskLists }}checked{{ end }} />
-            </label>
-            <div class="render-setting-preview prose">
-              <span class="render-preview-label">Preview</span>{{ index .RenderingPreviews "task_lists" }}
-            </div>
-          </article>
-          <article class="render-setting-card">
-            <label class="toggle-row">
               <span><strong>Automatic links</strong><small>Turn plain URLs and email addresses into links.</small></span><input type="checkbox"
        name="autolinks"
        {{ if .ApplicationSettings.Rendering.Autolinks }}checked{{ end }} />

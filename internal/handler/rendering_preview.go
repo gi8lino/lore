@@ -21,10 +21,6 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 			source:  `See [[Keycloak|Keycloak configuration]].`,
 			options: md.Options{WikiLinks: true},
 		},
-		"task_lists": {
-			source:  "- [x] Create backup\n- [ ] Run upgrade\n",
-			options: md.Options{TaskLists: true},
-		},
 		"autolinks": {
 			source:  `Documentation: https://example.com/docs`,
 			options: md.Options{Autolinks: true},
