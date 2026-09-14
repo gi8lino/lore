@@ -139,7 +139,7 @@ func (p *renderPipeline) preprocess(source string, ctx plugin.Context) (string, 
 
 // extensions creates active Goldmark extensions for the current render.
 func (p *renderPipeline) extensions(ctx plugin.Context) ([]goldmark.Extender, error) {
-	var result []goldmark.Extender
+	result := p.snapshot.PolicyExtensions()
 	for _, entry := range p.snapshot.Entries {
 		for _, module := range entry.Contributions.MarkdownExtensions {
 			extender, err := plugin.Guard(entry.Descriptor.ID, func() (goldmark.Extender, error) { return module.Extension(ctx), nil })

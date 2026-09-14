@@ -8,10 +8,6 @@ type Options struct {
 	depth    int
 	// annotations contains request-local opaque plugin substitutions for an annotated render pass.
 	annotations []plugin.Replacement
-	// typographer reports whether an active plugin requested typographic substitutions.
-	typographer bool
-	// codingLigatures reports whether an active plugin requested operator-preserving substitutions.
-	codingLigatures bool
 	// WikiLinks enables [[Wiki Link]] resolution.
 	WikiLinks bool
 	// WikiLinkPrefix is prepended to resolved wiki-link targets. Empty uses /pages/.

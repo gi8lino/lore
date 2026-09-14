@@ -33,7 +33,7 @@ extracts into the filesystem. Limits are 16 MiB compressed, 32 MiB expanded,
 256 entries, 16 MiB WASM, 8 MiB per asset, and 64 KiB for the manifest. CRC and
 actual decompressed-size checks apply when entries are read.
 
-`internal/plugins/bundled` embeds the package bytes. Bundled loading calls the
+`internal/firstparty` embeds the package bytes. Bundled loading calls the
 same `Manager.Load` method as a manually supplied package. `SourceBundled` and
 `SourceInstalled` are descriptive metadata only: they do not change validation,
 runtime configuration, permissions, or rendering behavior. There is no separate
@@ -86,8 +86,7 @@ state; explicit replacements may also restore an earlier version.
 
 `Load`/`Unload` remain transient, low-level helpers for explicitly owned managers;
 application installation uses the durable lifecycle methods. The application
-exposes its manager through `Renderer.PluginManager()`. Administration routes and
-UI remain Phase 7. The standalone site CLI uses bundled defaults;
+exposes its manager through `Renderer.PluginManager()`. Administration routes and UI use that same manager. The standalone site CLI uses bundled defaults;
 `site.BuildWithRenderer` lets an application reuse its live registry for builds.
 
 ## Runtime boundary
@@ -195,7 +194,7 @@ renderer across disable/re-enable. Installation UI, marketplace, and remote pack
 
 
 
-## Browser modules (Phase 5)
+## Browser modules
 
 Mermaid is a bundled `.loreplugin` with a WASM postprocessor and packaged
 JavaScript/CSS. Bundled and installed modules use the same manager metadata,
@@ -214,8 +213,7 @@ Core accepts sanitized blocks marked with `data-lore-plugin` and
 text and theme to an opaque sandbox iframe. Plugin JavaScript defines
 `globalThis.lorePlugin.render(root, {source, theme})`, optionally returning a
 promise. The classic-script contract works on static hosts without CORS setup.
-The shared core harness reports readiness, failure and bounded height. Phase 6
-adds constrained user-click forwarding for links already in the original
+The shared core harness reports readiness, failure and bounded height, with constrained user-click forwarding for links already in the original
 fallback; plugin HTML is never inserted into Lore's parent document.
 
 Frames allow scripts but not same-origin privileges, parent DOM access, forms,
@@ -231,9 +229,9 @@ from the same manager, with the configured site origin/base path in CSP. Rebuild
 a static site to change its enabled plugins. Export/PDF documents remain
 script-free and preserve diagram source as their existing fallback. The legacy
 Mermaid rendering preference still controls whether blocks are marked; plugin
-lifecycle controls availability independently. Administration UI is described under Phase 7 below.
+lifecycle controls availability independently. Administration UI is described below.
 
-## Tables and public rendering declarations (Phase 6)
+## Tables and public rendering declarations
 
 Tables now ships as an actual bundled package. Its manifest owns standard table
 syntax activation, the WASM directive stages, browser module and settings
@@ -260,7 +258,7 @@ to browser plugins. Same-origin raster images have strict transfer limits.
 from enabled packages. Arbitrary stylesheet rules stay in frames. This preserves
 fallback colors without letting community CSS modify Lore's surrounding UI.
 
-## Administration (Phase 7)
+## Administration
 
 `/admin/plugins` and its plugin detail modals use the existing browser authentication
 and administrator authorization middleware. Bounded multipart uploads call the
@@ -282,3 +280,15 @@ The admin UI renders each package `README.md`, exposes enable/disable lifecycle 
 
 
 
+
+## Core page primitives
+
+Wiki links remain core, alongside CommonMark. The same parser extracts canonical
+targets when pages are saved (`internal/service/pages.go`) and validates links
+for static builds (`internal/site/pages.go`). Plugin activation must not change
+the persisted page-link graph or the meaning of stored page references. The
+Rendering preference controls their presentation; it does not disable extraction.
+Optional Markdown features are declared by plugins and administered in their
+plugin details. Public grammar and rendering-policy declarations are translated
+by the host; they do not grant native code access. Normal pages, previews, PDF
+exports and static builds all consume the same renderer and registry snapshot.

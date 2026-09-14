@@ -11,7 +11,6 @@ import (
 	pluginmarkdown "github.com/gi8lino/lore/plugins/markdown"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	goldhtml "github.com/yuin/goldmark/renderer/html"
@@ -87,28 +86,9 @@ func NewWithManager(registry *plugin.Registry, manager *plugin.Manager) *Rendere
 }
 
 // engine constructs a Goldmark renderer from administrator-controlled options.
-func engine(options Options, contributed []goldmark.Extender, annotationRanges []annotationRange) goldmark.Markdown {
-	extensions := make([]goldmark.Extender, 0, 8)
-
-	if options.typographer {
-		var typographer goldmark.Extender = extension.Typographer
-		if options.codingLigatures {
-			typographer = extension.NewTypographer(
-				extension.WithTypographicSubstitutions(
-					extension.TypographicSubstitutions{
-						extension.EnDash:          nil,
-						extension.EmDash:          nil,
-						extension.LeftAngleQuote:  nil,
-						extension.RightAngleQuote: nil,
-					},
-				),
-			)
-		}
-		extensions = append(extensions, typographer)
-	}
-	extensions = append(extensions, contributed...)
+func engine(contributed []goldmark.Extender, annotationRanges []annotationRange) goldmark.Markdown {
 	return goldmark.New(
-		goldmark.WithExtensions(extensions...),
+		goldmark.WithExtensions(contributed...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 			parser.WithASTTransformers(
@@ -216,8 +196,6 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	functions.Context = execution
 	snapshot, release := r.registry.Acquire()
 	defer release()
-	options.codingLigatures = snapshot.HasRenderPolicy("coding-ligatures")
-	options.typographer = snapshot.HasRenderPolicy("typographer")
 	options.pipeline = newRenderPipeline(snapshot, r.pluginFeatures(options), functions)
 	prepared, err := options.pipeline.prepareContent(source, r.moduleContext(resolve, options))
 	if err != nil {
@@ -330,7 +308,7 @@ func (r *Renderer) renderRawResolved(
 	}
 	// Conversion invokes contributed parsers, transformers, and node renderers.
 	_, err = plugin.Guard("Markdown conversion", func() (struct{}, error) {
-		return struct{}{}, engine(options, extensions, annotationRanges).Convert([]byte(source), &output)
+		return struct{}{}, engine(extensions, annotationRanges).Convert([]byte(source), &output)
 	})
 	if err != nil {
 		return "", err
