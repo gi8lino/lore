@@ -58,11 +58,19 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
       await page.getByRole("heading", { name: "Plugins", exact: true }).count(),
       1,
     );
+
     await page.getByRole("link", { name: "Tables", exact: true }).click();
-    await page
+    const tablesDialog = page.locator(
+      '[data-plugin-detail-dialog][data-plugin-id="io.lore.tables"]',
+    );
+    await tablesDialog.waitFor({ state: "visible" });
+    assert.match(page.url(), /\?plugin=io\.lore\.tables$/);
+
+    await tablesDialog
       .getByRole("button", { name: "Disable plugin", exact: true })
       .click();
-    await page
+    await page.waitForURL(url + "/admin/plugins?plugin=io.lore.tables");
+    await tablesDialog
       .getByRole("button", { name: "Enable plugin", exact: true })
       .waitFor();
     assert.ok(
@@ -70,10 +78,12 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
         await (await page.request.get(url + "/fixture/render")).text()
       ).includes("<table"),
     );
-    await page
+
+    await tablesDialog
       .getByRole("button", { name: "Enable plugin", exact: true })
       .click();
-    await page
+    await page.waitForURL(url + "/admin/plugins?plugin=io.lore.tables");
+    await tablesDialog
       .getByRole("button", { name: "Disable plugin", exact: true })
       .waitFor();
     assert.ok(
@@ -81,8 +91,13 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
         "<table",
       ),
     );
-    await page.getByRole("link", { name: "All plugins", exact: true }).click();
-    const installForm = page.locator("[data-plugin-upload]");
+    await tablesDialog
+      .getByRole("button", { name: "Close plugin details", exact: true })
+      .click();
+    await tablesDialog.waitFor({ state: "hidden" });
+    assert.equal(page.url(), url + "/admin/plugins");
+
+    const installForm = page.locator("[data-plugin-install]");
     const installButton = installForm.getByRole("button", {
       name: "Install and enable",
       exact: true,
@@ -128,14 +143,20 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
       /(?:KiB|MiB)$/,
     );
     await installButton.click();
-    await page.waitForURL(url + "/admin/plugins/io.example.browser");
+    await page.waitForURL(url + "/admin/plugins?plugin=io.example.browser");
+
+    const browserDialog = page.locator(
+      '[data-plugin-detail-dialog][data-plugin-id="io.example.browser"]',
+    );
+    await browserDialog.waitFor({ state: "visible" });
     assert.equal(
-      await page
+      await browserDialog
         .getByRole("heading", { name: "Browser Fixture", exact: true })
         .count(),
       1,
     );
-    const upgradeForm = page.locator("[data-plugin-upload]");
+
+    const upgradeForm = browserDialog.locator("[data-plugin-upgrade]");
     const upgradeButton = upgradeForm.getByRole("button", {
       name: "Upgrade plugin",
       exact: true,
@@ -158,26 +179,34 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
       buffer: Buffer.from("invalid"),
     });
     await upgradeButton.click();
-    await page.getByRole("alert").waitFor();
+    await browserDialog.getByRole("alert").waitFor();
     assert.match(
-      await page.locator(".plugin-metadata").textContent(),
+      await browserDialog.locator(".plugin-metadata").textContent(),
       /1\.0\.0/,
     );
+
     const upgrade = await page.request.get(
       url + "/fixture/package?version=1.1.0",
     );
-    await upgradeForm.locator("[data-plugin-upload-input]").setInputFiles({
-      name: "fixture.loreplugin",
-      mimeType: "application/zip",
-      buffer: await upgrade.body(),
-    });
-    await upgradeButton.click();
-    await page.waitForURL(url + "/admin/plugins/io.example.browser");
+    await browserDialog
+      .locator("[data-plugin-upgrade] [data-plugin-upload-input]")
+      .setInputFiles({
+        name: "fixture.loreplugin",
+        mimeType: "application/zip",
+        buffer: await upgrade.body(),
+      });
+    await browserDialog
+      .locator("[data-plugin-upgrade]")
+      .getByRole("button", { name: "Upgrade plugin", exact: true })
+      .click();
+    await page.waitForURL(url + "/admin/plugins?plugin=io.example.browser");
+    await browserDialog.waitFor({ state: "visible" });
     assert.match(
-      await page.locator(".plugin-metadata").textContent(),
+      await browserDialog.locator(".plugin-metadata").textContent(),
       /1\.1\.0/,
     );
-    await page
+
+    await browserDialog
       .getByRole("button", { name: "Uninstall plugin", exact: true })
       .click();
     await page.locator("[data-confirm-dialog-accept]").click();
@@ -210,3 +239,5 @@ test("plugin administration forms drive the real runtime lifecycle", async () =>
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+

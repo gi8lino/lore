@@ -41,7 +41,7 @@ type LoadedPlugin struct {
 	Enabled bool
 	// Manifest is the validated package manifest for this plugin.
 	Manifest pluginpackage.Manifest
-	// README is the package documentation rendered on the administration detail page.
+	// README is the package documentation rendered in the administration detail modal.
 	README string
 	// Settings contains persisted boolean settings keyed by settings-module ID.
 	Settings map[string]bool

@@ -262,7 +262,7 @@ fallback colors without letting community CSS modify Lore's surrounding UI.
 
 ## Administration (Phase 7)
 
-`/admin/plugins` and plugin detail pages use the existing browser authentication
+`/admin/plugins` and its plugin detail modals use the existing browser authentication
 and administrator authorization middleware. Bounded multipart uploads call the
 same manager methods as runtime callers; handlers neither extract files nor
 instantiate separate runtimes. Invalid packages, permission failures and lifecycle
@@ -276,6 +276,8 @@ public disable/remove/unload paths enforce the policy. Shutdown still closes
 required instances normally. No current bundled feature is required by default.
 
 The admin UI renders each package `README.md`, exposes enable/disable lifecycle controls, and renders declarative boolean `settings` modules with their names and descriptions. Settings are stored in a core-owned namespace and reach renderers as generic feature flags. A marketplace and arbitrary custom settings controls remain future work.
+
+
 
 
 

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"html/template"
 	"io"
 	"log/slog"
 	"mime/multipart"
@@ -69,12 +70,12 @@ func TestAdminPluginLifecycleAndAuthorization(t *testing.T) {
 		require.Equal(t, http.StatusSeeOther, w.Code)
 		assert.Equal(t, action == "enable", manager.Plugins()[0].Enabled)
 	}
-	detail := httptest.NewRequest("GET", "/admin/plugins/"+id, nil)
-	detail.SetPathValue("pluginID", id)
+	detail := httptest.NewRequest("GET", "/admin/plugins?plugin="+id, nil)
 	w := httptest.NewRecorder()
-	admin.Detail(w, detail)
+	admin.List(w, detail)
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "Callouts")
+	assert.Contains(t, w.Body.String(), "data-plugin-detail-open-on-load")
 	assert.Contains(t, w.Body.String(), "Permissions")
 	assert.Contains(t, w.Body.String(), "Uninstall plugin")
 	broken := pluginUpload(t, []byte("invalid archive"))
@@ -104,7 +105,12 @@ func TestPluginUploadBoundaries(t *testing.T) {
 func TestAdminPluginMetadataIsEscaped(t *testing.T) {
 	views, err := NewViews(web.Assets, slog.Default(), "test", "test", nil, RuntimeInfo{})
 	require.NoError(t, err)
-	data := ViewData{AdminPlugin: &plugin.LoadedPlugin{Manifest: pluginpackage.Manifest{ID: "io.example.safe", Name: "<script>bad()</script>", Provider: "<img src=x onerror=bad()>", Version: "1.0.0"}}}
+	data := ViewData{
+		AdminPlugins:      []plugin.LoadedPlugin{{Manifest: pluginpackage.Manifest{ID: "io.example.safe", Name: "<script>bad()</script>", Provider: "<img src=x onerror=bad()>", Version: "1.0.0"}}},
+		PluginRequiredIDs: make(map[string]bool),
+		PluginHasSettings: make(map[string]bool),
+		PluginREADMEs:     make(map[string]template.HTML),
+	}
 	html, err := renderTemplateHTML(views, "admin_plugins", "content", data)
 	require.NoError(t, err)
 	assert.NotContains(t, string(html), "<script>bad()")

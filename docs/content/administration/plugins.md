@@ -3,7 +3,7 @@
 Open **Administration → Plugins** to manage Lore's bundled and installed plugins.
 Only administrators can view these pages or change plugin lifecycle state.
 
-The list shows each plugin's name, version, provider, source, and status and lets administrators enable or disable optional plugins directly. Open a plugin to read its packaged documentation, change plugin-owned settings, and inspect its ID, modules, requested permissions, dependencies, and technical metadata. Provider names are supplied by package authors; they are not verification badges.
+The list shows each plugin's name, version, provider, source, and status and lets administrators enable or disable optional plugins directly. Select a plugin to open its detail modal without leaving the plugin inventory. The modal contains its packaged documentation, plugin-owned settings, lifecycle controls, upgrade and uninstall actions, plus its ID, modules, requested permissions, dependencies, and technical metadata. Provider names are supplied by package authors; they are not verification badges.
 
 ## Install and upgrade
 
@@ -30,9 +30,11 @@ Dependencies must remain enabled while a dependent plugin is active. System
 plugins marked required by deployment policy cannot be disabled or removed.
 Packages cannot declare themselves required.
 
-Installed plugins can be uninstalled from their detail page. Plugin settings and
+Installed plugins can be uninstalled from their detail modal. Plugin settings and
 namespaced data are retained for reinstall. Removing an installed override leaves
 any bundled copy disabled. Bundled plugins themselves can be disabled; their
 embedded package remains part of Lore.
 
-Plugin-owned rendering features and their settings live on the plugin detail page. **Administration → Rendering** contains only Lore's built-in Markdown behavior. Declarative plugin settings are boolean controls; arbitrary custom settings editors are not provided yet.
+Plugin-owned rendering features and their settings live in the plugin detail modal. **Administration → Rendering** contains only Lore's built-in Markdown behavior. Declarative plugin settings are boolean controls; arbitrary custom settings editors are not provided yet.
+
+

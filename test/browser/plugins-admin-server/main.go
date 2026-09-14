@@ -77,7 +77,6 @@ func main() {
 	secure := func(fn http.HandlerFunc) http.Handler { return middleware.RequireRole("admin")(fn) }
 	mux.Handle("GET /admin/plugins", secure(admin.List))
 	mux.Handle("POST /admin/plugins", secure(admin.Install))
-	mux.Handle("GET /admin/plugins/{pluginID}", secure(admin.Detail))
 	mux.Handle("POST /admin/plugins/{pluginID}/{action}", secure(admin.Action))
 	mux.Handle("GET /assets/", handler.Assets(web.Assets))
 	mux.HandleFunc("GET /plugins/modules.json", handler.PluginModules(renderer.PluginManager()))

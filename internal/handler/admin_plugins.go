@@ -26,11 +26,9 @@ func NewAdminPlugins(manager *plugin.Manager, data viewDataService, views *Views
 	return &AdminPlugins{manager: manager, data: data, views: views}
 }
 
+// List renders the plugin inventory and optionally opens one plugin detail modal.
 func (a *AdminPlugins) List(w http.ResponseWriter, r *http.Request) {
-	a.render(w, r, "", http.StatusOK, "")
-}
-func (a *AdminPlugins) Detail(w http.ResponseWriter, r *http.Request) {
-	a.render(w, r, r.PathValue("pluginID"), http.StatusOK, "")
+	a.render(w, r, strings.TrimSpace(r.URL.Query().Get("plugin")), http.StatusOK, "")
 }
 
 func (a *AdminPlugins) render(w http.ResponseWriter, r *http.Request, id string, status int, message string) {
@@ -46,36 +44,35 @@ func (a *AdminPlugins) render(w http.ResponseWriter, r *http.Request, id string,
 	}
 	data.AdminPlugins = a.manager.Plugins()
 	data.PluginRequiredIDs = make(map[string]bool, len(data.AdminPlugins))
+	data.PluginHasSettings = make(map[string]bool, len(data.AdminPlugins))
+	data.PluginREADMEs = make(map[string]template.HTML, len(data.AdminPlugins))
+	foundOpenPlugin := id == ""
 	for _, item := range data.AdminPlugins {
-		data.PluginRequiredIDs[item.Manifest.ID] = a.manager.IsRequired(item.Manifest.ID)
-	}
-	sort.Slice(data.AdminPlugins, func(i, j int) bool { return data.AdminPlugins[i].Manifest.Name < data.AdminPlugins[j].Manifest.Name })
-	data.PluginMessage = message
-	if id != "" {
-		for _, item := range data.AdminPlugins {
-			if item.Manifest.ID == id {
-				data.AdminPlugin = &item
-				data.PluginRequired = a.manager.IsRequired(id)
-				for _, module := range item.Manifest.Modules {
-					if module.Type == "settings" {
-						data.PluginHasSettings = true
-						break
-					}
-				}
-				readme, renderErr := renderPluginREADME(item.README)
-				if renderErr != nil {
-					httpresponse.InternalServerError(a.views.logger, w, renderErr)
-					return
-				}
-				data.PluginREADME = readme
+		pluginID := item.Manifest.ID
+		data.PluginRequiredIDs[pluginID] = a.manager.IsRequired(pluginID)
+		for _, module := range item.Manifest.Modules {
+			if module.Type == "settings" {
+				data.PluginHasSettings[pluginID] = true
 				break
 			}
 		}
-		if data.AdminPlugin == nil {
-			http.NotFound(w, r)
+		readme, renderErr := renderPluginREADME(item.README)
+		if renderErr != nil {
+			httpresponse.InternalServerError(a.views.logger, w, renderErr)
 			return
 		}
+		data.PluginREADMEs[pluginID] = readme
+		if pluginID == id {
+			foundOpenPlugin = true
+		}
 	}
+	if !foundOpenPlugin {
+		http.NotFound(w, r)
+		return
+	}
+	sort.Slice(data.AdminPlugins, func(i, j int) bool { return data.AdminPlugins[i].Manifest.Name < data.AdminPlugins[j].Manifest.Name })
+	data.OpenPluginID = id
+	data.PluginMessage = message
 	renderStatus(a.views, w, status, "admin_plugins", data)
 }
 
@@ -99,7 +96,7 @@ func (a *AdminPlugins) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.audit(r, "install", item.Manifest.ID)
-	http.Redirect(w, r, "/admin/plugins/"+item.Manifest.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/plugins?plugin="+item.Manifest.ID, http.StatusSeeOther)
 }
 
 func (a *AdminPlugins) Action(w http.ResponseWriter, r *http.Request) {
@@ -123,16 +120,16 @@ func (a *AdminPlugins) Action(w http.ResponseWriter, r *http.Request) {
 		var status int
 		archive, status, err = readPluginUpload(w, r)
 		if err != nil {
-			a.render(w, r, id, status, "Upload failed: "+err.Error()+".")
+			a.render(w, r, pluginDetailID(r, id), status, "Upload failed: "+err.Error()+".")
 			return
 		}
 		pkg, parseErr := pluginpackage.Read(archive)
 		if parseErr != nil {
-			a.render(w, r, id, http.StatusUnprocessableEntity, "Invalid plugin package: "+parseErr.Error())
+			a.render(w, r, pluginDetailID(r, id), http.StatusUnprocessableEntity, "Invalid plugin package: "+parseErr.Error())
 			return
 		}
 		if pkg.Manifest().ID != id {
-			a.render(w, r, id, http.StatusUnprocessableEntity, "The uploaded package must have the same plugin ID.")
+			a.render(w, r, pluginDetailID(r, id), http.StatusUnprocessableEntity, "The uploaded package must have the same plugin ID.")
 			return
 		}
 		_, err = a.manager.Upgrade(r.Context(), id, archive)
@@ -145,9 +142,9 @@ func (a *AdminPlugins) Action(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.audit(r, action, id)
-	destination := "/admin/plugins/" + id
-	if action == "uninstall" {
-		destination = "/admin/plugins"
+	destination := "/admin/plugins"
+	if action != "uninstall" && pluginDetailID(r, id) != "" {
+		destination += "?plugin=" + id
 	}
 	http.Redirect(w, r, destination, http.StatusSeeOther)
 }
@@ -204,7 +201,15 @@ func (a *AdminPlugins) failure(w http.ResponseWriter, r *http.Request, id, actio
 	if action == "settings" {
 		message = "Could not save plugin settings. Check the setting dependencies and try again."
 	}
-	a.render(w, r, id, http.StatusUnprocessableEntity, message)
+	a.render(w, r, pluginDetailID(r, id), http.StatusUnprocessableEntity, message)
+}
+
+// pluginDetailID returns id when the request originated from a plugin detail modal.
+func pluginDetailID(r *http.Request, id string) string {
+	if r.URL.Query().Get("return") == "detail" {
+		return id
+	}
+	return ""
 }
 func (a *AdminPlugins) audit(r *http.Request, action, id string) {
 	a.views.logger.Info("plugin lifecycle changed", "event", "plugin."+action, "plugin_id", id, "actor_id", currentUser(r).ID)

@@ -1,12 +1,17 @@
-- move highlighting to plugin, so user can deactive this and provide another?
-- move variables to plugin
-- revision plugin? move it into a plugin?
-- pdf plugin? would it make sense to move it into a plugin as well?
+- why not move variables to plugin
+
 - move icons also as a plugin. than maybe split in 2 plugins, each for a icon set? or do you think some builtins are okay and other can be added as plugins?
-- is it possible to make the syntax highlighter a plugin?
+
+- revision plugin? move it into a plugin?
+
+- pdf plugin? would it make sense to move it into a plugin as well?
+
+
 
 - cleanup Phase stuff in READMEs
 
 - internal/plugins -> bundlet seems wrong. any idea on how to improve this?
 
 
+- why does every plugin have "abi_wasm.go" can this not be centrelaized? only answer, no changes.
+- why is in subpages the method NewRenderer public? ensure all functions are correctly private or public.

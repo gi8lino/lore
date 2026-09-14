@@ -77,7 +77,8 @@ func (r codeHighlighterRenderer) render(
 func fencedCodeSource(block *ast.FencedCodeBlock, source []byte) string {
 	var output strings.Builder
 	for index := 0; index < block.Lines().Len(); index++ {
-		_, _ = output.Write(block.Lines().At(index).Value(source))
+		segment := block.Lines().At(index)
+		_, _ = output.Write(segment.Value(source))
 	}
 	return output.String()
 }

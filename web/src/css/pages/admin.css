@@ -713,31 +713,9 @@
 }
 
 /* Plugin administration. */
-.plugin-back-link {
-  margin: 0 0 12px;
-}
-
-.plugin-overview-heading,
 .plugin-state-control {
   display: flex;
   align-items: center;
-}
-
-.plugin-overview-heading {
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.plugin-overview-heading h2,
-.plugin-overview-heading p {
-  margin: 0;
-}
-
-.plugin-overview-heading p {
-  margin-top: 4px;
-}
-
-.plugin-state-control {
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -765,8 +743,70 @@
   min-width: 185px;
 }
 
-.plugin-readme-panel {
-  padding: 26px;
+.plugin-detail-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-height: min(880px, calc(100vh - 32px));
+  overflow: hidden;
+}
+
+.plugin-detail-header {
+  padding: 20px 24px 16px;
+}
+
+.plugin-detail-header > div {
+  min-width: 0;
+}
+
+.plugin-detail-header p {
+  margin: 5px 0 0;
+}
+
+.plugin-detail-body {
+  display: block;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding: 0;
+  color: var(--text);
+}
+
+.plugin-detail-message {
+  margin: 18px 24px 0;
+}
+
+.plugin-detail-section {
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.plugin-detail-section:last-child {
+  border-bottom: 0;
+}
+
+.plugin-detail-section > :first-child {
+  margin-top: 0;
+}
+
+.plugin-detail-section > :last-child {
+  margin-bottom: 0;
+}
+
+.plugin-detail-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.plugin-detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.plugin-detail-facts strong {
+  color: var(--text);
 }
 
 .plugin-readme > :first-child {
@@ -796,7 +836,8 @@
   margin-top: 18px;
 }
 
-.plugin-technical-section h3 {
+.plugin-technical-section h3,
+.plugin-detail-section > h3 {
   margin: 0 0 8px;
   font-size: 14px;
 }
@@ -805,9 +846,29 @@
   margin: 0;
 }
 
+.plugin-danger-zone {
+  background: color-mix(in srgb, var(--danger) 4%, transparent);
+}
+
 @media (max-width: 640px) {
-  .plugin-overview-heading {
-    align-items: flex-start;
+  .plugin-detail-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .plugin-detail-header {
+    padding: 16px 18px 13px;
+  }
+
+  .plugin-detail-body {
+    max-height: calc(100vh - 112px);
+  }
+
+  .plugin-detail-section {
+    padding: 18px;
+  }
+
+  .plugin-detail-summary {
     flex-direction: column;
   }
 }

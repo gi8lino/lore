@@ -173,4 +173,94 @@ export function initAdminPlugins(): void {
   )) {
     setupPluginUpload(form);
   }
+
+  setupPluginDialogs();
+}
+
+// pluginDialogs returns every server-rendered plugin detail dialog on the page.
+function pluginDialogs(): HTMLDialogElement[] {
+  return [
+    ...document.querySelectorAll<HTMLDialogElement>(
+      "[data-plugin-detail-dialog]",
+    ),
+  ];
+}
+
+// findPluginDialog resolves a plugin detail dialog without interpolating the ID into a selector.
+function findPluginDialog(pluginID: string): HTMLDialogElement | null {
+  return (
+    pluginDialogs().find((dialog) => dialog.dataset.pluginId === pluginID) ??
+    null
+  );
+}
+
+// replacePluginURL keeps the address bar aligned with the currently open plugin modal.
+function replacePluginURL(pluginID = ""): void {
+  const url = new URL(window.location.href);
+  url.pathname = "/admin/plugins";
+  if (pluginID) url.searchParams.set("plugin", pluginID);
+  else url.searchParams.delete("plugin");
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+// openPluginDialog opens one plugin and closes any other plugin detail dialog first.
+function openPluginDialog(pluginID: string, updateURL = true): void {
+  const dialog = findPluginDialog(pluginID);
+  if (!dialog) return;
+
+  for (const other of pluginDialogs()) {
+    if (other !== dialog && other.open) other.close();
+  }
+
+  if (!dialog.open) dialog.showModal();
+  if (updateURL) replacePluginURL(pluginID);
+}
+
+// setupPluginDialogs wires plugin list links, close controls, and server-requested modal state.
+function setupPluginDialogs(): void {
+  for (const opener of document.querySelectorAll<HTMLAnchorElement>(
+    "[data-plugin-detail-open]",
+  )) {
+    opener.addEventListener("click", (event: MouseEvent) => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const pluginID = opener.dataset.pluginDetailOpen;
+      if (!pluginID || !findPluginDialog(pluginID)) return;
+
+      event.preventDefault();
+      openPluginDialog(pluginID);
+    });
+  }
+
+  for (const dialog of pluginDialogs()) {
+    const pluginID = dialog.dataset.pluginId ?? "";
+
+    for (const close of dialog.querySelectorAll<HTMLButtonElement>(
+      "[data-plugin-detail-close]",
+    )) {
+      close.addEventListener("click", () => dialog.close());
+    }
+
+    dialog.addEventListener("click", (event: MouseEvent) => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    dialog.addEventListener("close", () => {
+      const selected = new URL(window.location.href).searchParams.get("plugin");
+      if (selected === pluginID) replacePluginURL();
+    });
+  }
+
+  const initial = document.querySelector<HTMLDialogElement>(
+    "[data-plugin-detail-open-on-load]",
+  );
+  if (initial?.dataset.pluginId) openPluginDialog(initial.dataset.pluginId);
 }
