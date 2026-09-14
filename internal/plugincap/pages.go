@@ -51,7 +51,16 @@ func (p Pages) GetPage(ctx context.Context, slug string) (pluginapi.Page, error)
 
 // pageValue converts an internal page record into its public plugin representation.
 func pageValue(page domain.Page) pluginapi.Page {
-	result := pluginapi.Page{Slug: page.Slug, Title: page.Title, Status: page.Status, OwnerGroup: page.OwnerGroup, UpdatedAt: page.UpdatedAt, Author: page.Author, Tags: page.Tags, ViewCount: page.ViewCount}
+	result := pluginapi.Page{
+		Slug:       page.Slug,
+		Title:      page.Title,
+		Status:     page.Status,
+		OwnerGroup: page.OwnerGroup,
+		UpdatedAt:  page.UpdatedAt,
+		Author:     page.Author,
+		Tags:       page.Tags,
+		ViewCount:  page.ViewCount,
+	}
 
 	for _, property := range page.Properties {
 		result.Properties = append(result.Properties, pluginapi.Property{Key: property.Key, Value: property.Value})
