@@ -36,7 +36,7 @@ modules:
     inspect: true
     export: true
   - type: editor-completion
-    id: variables
+    id: completion
     resource: variables
     trigger: "{{"
     replacement: "{{var:${name}}}"

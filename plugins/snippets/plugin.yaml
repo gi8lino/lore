@@ -35,7 +35,7 @@ modules:
     detail_field: description
     priority: 200
   - type: editor-completion
-    id: snippets
+    id: completion
     resource: snippets
     trigger: "{{"
     replacement: "{{snippet:${name}}}"
