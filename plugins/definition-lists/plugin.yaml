@@ -1,0 +1,12 @@
+api_version: 1
+provider: Lore
+id: io.lore.definition-lists
+name: Definition Lists
+version: 1.0.0
+description: Add term and definition list syntax to Markdown.
+default_enabled: false
+modules:
+  - type: markdown-syntax
+    id: definition-lists
+    syntax: definition-list
+permissions: []

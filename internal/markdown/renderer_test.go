@@ -475,9 +475,10 @@ func TestDefinitionListsCanBeEnabled(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t)
-	options := DefaultOptions()
-	options.DefinitionLists = true
-	got, err := renderer.RenderResolvedWithOptions("Term\n: Definition\n", Slug, options)
+	manager := renderer.PluginManager()
+	require.NotNil(t, manager)
+	require.NoError(t, manager.Enable(context.Background(), "io.lore.definition-lists"))
+	got, err := renderer.Render("Term\n: Definition\n")
 
 	require.NoError(t, err)
 	assert.Contains(t, got, `<dl>`)

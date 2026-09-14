@@ -389,7 +389,6 @@ SELECT
 	trusted_admin_group,
 	  render_wiki_links,
   render_syntax_highlighting,
-  render_definition_lists,
   render_typographer
 FROM application_settings
 WHERE singleton=true`).Scan(
@@ -414,7 +413,6 @@ WHERE singleton=true`).Scan(
 		&settings.Authentication.TrustedAdminGroup,
 		&settings.Rendering.WikiLinks,
 		&settings.Rendering.SyntaxHighlighting,
-		&settings.Rendering.DefinitionLists,
 		&settings.Rendering.Typographer,
 	)
 
@@ -590,13 +588,11 @@ func (s *Store) SaveRenderingSettings(ctx context.Context, settings domain.Rende
 UPDATE application_settings
 SET render_wiki_links=$1,
 	    render_syntax_highlighting=$2,
-	    render_definition_lists=$3,
-	    render_typographer=$4,
+	    render_typographer=$3,
     updated_at=now()
 WHERE singleton=true`,
 		settings.WikiLinks,
 		settings.SyntaxHighlighting,
-		settings.DefinitionLists,
 		settings.Typographer,
 	)
 	return err

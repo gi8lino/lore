@@ -25,10 +25,6 @@ func renderingPreviews(renderer *md.Renderer) (map[string]template.HTML, error) 
 			source:  "```go\nfunc main() {\n    fmt.Println(\"Lore\")\n}\n```\n",
 			options: md.Options{SyntaxHighlighting: true},
 		},
-		"definition_lists": {
-			source:  "Runbook\n: A repeatable operational procedure.\n",
-			options: md.Options{DefinitionLists: true},
-		},
 		"typographer": {
 			source:  `"Lore" -- documentation...`,
 			options: md.Options{Typographer: true},

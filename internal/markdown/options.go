@@ -24,8 +24,6 @@ type Options struct {
 	TableFiltering bool
 	// SyntaxHighlighting enables server-side fenced-code highlighting.
 	SyntaxHighlighting bool
-	// DefinitionLists enables Markdown definition lists.
-	DefinitionLists bool
 	// Typographer enables typographic punctuation substitutions.
 	Typographer bool
 	// CodingLigatures preserves ASCII operators when typographic punctuation is enabled.
@@ -37,7 +35,6 @@ func DefaultOptions() Options {
 	return Options{
 		Callouts:           true,
 		Mermaid:            true,
-		DefinitionLists:    true,
 		SyntaxHighlighting: true,
 		TableFiltering:     true,
 		Tables:             true,
