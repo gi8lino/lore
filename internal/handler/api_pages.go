@@ -92,24 +92,13 @@ func PreviewMarkdown(
 			return
 		}
 
-		expanded, err := expandLegacyKnowledgeMarkdown(
-			r.Context(),
-			knowledgeContentFrom(securedCatalog),
-			request.Markdown,
-		)
-		if err != nil {
-			httpresponse.InternalServerError(logger, w, err)
-			return
-		}
-
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
-			expanded.Markdown,
+			request.Markdown,
 			md.Slug,
 			options,
 			md.Functions{
 				Context:      r.Context(),
 				Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
-				Replacements: expanded.Replacements,
 			},
 		)
 		if err != nil {

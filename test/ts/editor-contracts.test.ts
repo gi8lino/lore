@@ -43,15 +43,11 @@ test("editor catalog checks every field used by both consumers", () => {
 
 test("Object prototype names are not catalog aliases", () => {
   const diagnostics = editorDiagnostics(
-    "[[constructor]] {{include:constructor}}",
+    "[[constructor]]",
     fixtures.empty_catalog,
   );
   assert.equal(
     diagnostics.some((item) => item.code === "broken-link"),
-    true,
-  );
-  assert.equal(
-    diagnostics.some((item) => item.code === "missing-macro"),
     true,
   );
 });

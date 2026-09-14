@@ -98,7 +98,7 @@ export function editorDiagnostics(
 ): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const catalog = parseEditorCatalog(catalogValue);
-  const { pages, aliases, completions } = catalog;
+  const { pages, aliases } = catalog;
   const pageBySlug = new Map(
     pages.map((page) => [editorSlug(page.slug), page]),
   );
@@ -132,32 +132,6 @@ export function editorDiagnostics(
         detail: `“${current.title}”`,
         start: current.offset,
         end: current.offset + current.title.length + current.level + 1,
-      });
-    }
-  }
-
-  const macros = /\{\{(var|snippet|include):([^{}]+)\}\}/gu;
-  const pluginMacros = new Set(
-    completions.map((item) => item.replacement.toLocaleLowerCase()),
-  );
-
-  for (const match of source.matchAll(macros)) {
-    const kind = match[1];
-    const name = match[2].trim();
-    const valid =
-      kind === "include"
-        ? pageBySlug.has(editorSlug(name)) ||
-          Object.hasOwn(aliases, editorSlug(name))
-        : pluginMacros.has(`{{${kind}:${name}}}`.toLocaleLowerCase());
-
-    if (!valid) {
-      diagnostics.push({
-        kind: "error",
-        code: "missing-macro",
-        title: `Unknown ${kind}: ${name}`,
-        detail: `Line ${lineNumberAt(source, match.index)}`,
-        start: match.index,
-        end: match.index + match[0].length,
       });
     }
   }

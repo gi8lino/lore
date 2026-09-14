@@ -37,7 +37,7 @@ test("wikiLinkRanges extracts targets and labels", () => {
   ]);
 });
 
-test("editorDiagnostics reports broken links, heading jumps, macros and link suggestions", () => {
+test("editorDiagnostics reports broken links, heading jumps, and link suggestions", () => {
   const catalog = {
     pages: [
       { slug: "postgresql", title: "PostgreSQL" },
@@ -66,7 +66,6 @@ test("editorDiagnostics reports broken links, heading jumps, macros and link sug
     "# Runbook",
     "### Procedure",
     "See [[missing]] and [[old-postgres]].",
-    "Use {{var:unknown}}.",
     "PostgreSQL is documented elsewhere.",
   ].join("\n");
   const diagnostics = editorDiagnostics(source, catalog, "runbook");
@@ -79,10 +78,6 @@ test("editorDiagnostics reports broken links, heading jumps, macros and link sug
   );
   assert.equal(
     diagnostics.some((item) => item.code === "heading-jump"),
-    true,
-  );
-  assert.equal(
-    diagnostics.some((item) => item.code === "missing-macro"),
     true,
   );
   assert.equal(

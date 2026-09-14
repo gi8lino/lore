@@ -87,7 +87,7 @@ The Lore server can expand reusable knowledge content before Markdown rendering:
 {{include:path/to/page}}
 ```
 
-Variables and snippets are provided by bundled plugins; includes insert another page's Markdown. Plugin content expansion is skipped inside fenced code, and includes are recursion-bounded. Disable the corresponding plugin to keep that syntax literal.
+Variables, snippets, and page includes are provided by separate bundled plugins; Includes inserts another page's Markdown. Plugin content expansion is skipped inside fenced code, and includes are recursion-bounded. Disable the corresponding plugin to keep that syntax literal.
 
 See [Tables](tables.md) for Lore's table directive syntax.
 

@@ -1,0 +1,21 @@
+api_version: 1
+provider: Lore
+id: io.lore.includes
+name: Includes
+version: 1.0.0
+description: Transclude complete pages or heading sections into Markdown.
+default_enabled: true
+modules:
+  - type: renderer-extension
+    id: includes
+    stage: content-preprocess
+    priority: 100
+    capability: pages.content
+  - type: editor-insert
+    id: include
+    name: Include page
+    description: Transclude another page or heading section.
+    markdown: "{{include:page/path}}"
+    inline: true
+permissions:
+  - pages:content

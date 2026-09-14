@@ -52,11 +52,8 @@ type RenderedPage struct {
 // Functions supplies request-local plugin capabilities and export data.
 // Bindings cannot activate an unregistered macro.
 type Functions struct {
-	Capabilities map[string]plugin.Capability
-	Context      context.Context
-	// Replacements contains trusted host substitutions restored after plugin content preprocessing.
-	// It exists only as a migration bridge while legacy snippets/includes move into plugins.
-	Replacements     []plugin.Replacement
+	Capabilities     map[string]plugin.Capability
+	Context          context.Context
 	Macros           map[string]plugin.MacroRenderer
 	ExportParameters map[string]map[string]map[string]string
 }
@@ -218,7 +215,6 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 		return RenderedPage{}, err
 	}
 	source = prepared.Markdown
-	prepared.Replacements = append(prepared.Replacements, functions.Replacements...)
 	options.annotations = prepared.Replacements
 
 	var rendered RenderedPage

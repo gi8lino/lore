@@ -85,12 +85,6 @@ const commands: SlashCommand[] = [
     description: "Insert child-page navigation",
     markdown: "{{subpages}}",
   },
-  {
-    id: "include",
-    label: "Include page",
-    description: "Transclude another page",
-    markdown: "{{include:page/path}}",
-  },
 ];
 
 // Finds an active slash-command trigger at the caret.

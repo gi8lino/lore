@@ -238,23 +238,13 @@ func ViewPage(
 			pageURL,
 		)
 
-		expanded, err := expandLegacyKnowledgeMarkdown(
-			r.Context(),
-			knowledgeContentFrom(securedCatalog),
-			page.Markdown,
-		)
-		if err != nil {
-			httpresponse.InternalServerError(views.logger, w, err)
-			return
-		}
-
 		rendered, err := renderer.RenderPageResolvedWithFunctions(
-			expanded.Markdown,
+			page.Markdown,
 			md.Slug,
 			options,
 			md.Functions{
-				Context: r.Context(), Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
-				Replacements: expanded.Replacements,
+				Context:      r.Context(),
+				Capabilities: plugincap.Capabilities(securedCatalog, pageNavigation),
 			},
 		)
 		if err != nil {

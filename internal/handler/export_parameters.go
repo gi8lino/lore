@@ -102,22 +102,17 @@ func renderExportHTML(
 	parameters map[string]map[string]map[string]string,
 ) (string, error) {
 	securedCatalog := accessiblePageCatalog{catalog: catalog, access: access, user: user}
-	expanded, err := expandLegacyKnowledgeMarkdown(ctx, knowledgeContentFrom(securedCatalog), page.Markdown)
-	if err != nil {
-		return "", err
-	}
 	pageNavigation, err := subpageNavigation(ctx, navigation, access, user, page.Slug)
 	if err != nil {
 		return "", err
 	}
 	rendered, err := renderer.RenderPageResolvedWithFunctions(
-		expanded.Markdown,
+		page.Markdown,
 		md.Slug,
 		renderingOptionsFromSettings(settings),
 		md.Functions{
 			Context:          ctx,
 			Capabilities:     plugincap.Capabilities(securedCatalog, pageNavigation),
-			Replacements:     expanded.Replacements,
 			ExportParameters: parameters,
 		},
 	)
