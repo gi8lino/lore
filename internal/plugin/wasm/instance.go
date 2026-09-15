@@ -134,10 +134,6 @@ func (i *Instance) Close(ctx context.Context) error {
 
 // invoke executes one serialized guest render request with the current capability scope.
 func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) (result pluginapi.RenderResult, err error) {
-	if i.module == nil {
-		return pluginapi.RenderResult{}, errors.New("plugin has no executable WASM module")
-	}
-
 	trace := renderprofile.FromContext(ctx)
 	profiled := trace != nil
 	metrics := renderprofile.WASMCall{}
@@ -172,6 +168,9 @@ func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) 
 
 	if i.closed {
 		return pluginapi.RenderResult{}, errors.New("WASM plugin is closed")
+	}
+	if i.compiled == nil {
+		return pluginapi.RenderResult{}, errors.New("plugin has no executable WASM module")
 	}
 	if i.module == nil || i.module.IsClosed() {
 		instantiateStarted := timingStarted(profiled)
