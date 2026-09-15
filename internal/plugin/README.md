@@ -1,4 +1,4 @@
-# Plugin architecture (Phases 1–4)
+# Plugin architecture
 
 Lore's rendering modules register contributions through an application-owned
 `plugin.Registry`. `markdown.New(ctx)` creates a renderer with an owned manager
@@ -7,7 +7,11 @@ Callers handle startup errors and close the renderer at the end of its scope.
 `markdown.NewWithRegistry` supports an explicitly owned registry.
 Server pages, preview, sharing, exports, and static builds use the same pipeline.
 
-Lore's optional rendering and content features are bundled `.loreplugin` packages built from independent Go modules under `plugins/`. Bundled and installed packages use the same package reader, manager, registry, runtime, permissions, settings, documentation, and asset paths.
+Lore's optional rendering and content features are bundled `.loreplugin` packages
+under `plugins/`. Executable plugins are independent Go modules; declarative-only
+plugins contain only their manifest, documentation, and assets. Bundled and
+installed packages use the same package reader, manager, registry, runtime,
+permissions, settings, documentation, and asset paths.
 
 ## Packages and distribution
 
@@ -22,15 +26,15 @@ assets/          # optional package assets
 
 The versioned manifest declares identity, a numeric `major.minor.patch` version,
 modules, dependencies, presentation defaults, and permissions. The manifest
-supports `renderer-extension` modules at `preprocess` and `postprocess` stages and `macro`
-modules with parse/render calls. Unknown fields, unsupported versions, stages,
+supports `renderer-extension` modules at `preprocess` and `postprocess` stages
+and `macro` modules with parse/render calls. Unknown fields, unsupported versions, stages,
 module types, and permission names are rejected. No capability is silently granted.
 
 `pluginpackage.Read` validates the whole archive before returning immutable
 content. Declarative-only packages omit `plugin.wasm`; packages containing a
 renderer extension, macro, or code highlighter must include it. It rejects
-traversal, absolute paths, backslashes, duplicate paths,
-nonregular files, invalid directories, and file/directory collisions. It never
+traversal, absolute paths, backslashes, duplicate paths, nonregular files,
+invalid directories, and file/directory collisions. It never
 extracts into the filesystem. Limits are 16 MiB compressed, 32 MiB expanded,
 256 entries, 16 MiB WASM, 8 MiB per asset, and 64 KiB for the manifest. CRC and
 actual decompressed-size checks apply when entries are read.
@@ -46,12 +50,11 @@ native or privileged path for bundled Callouts.
 Executable manifest modules may declare cheap `usage` selectors (`contains`,
 `macro`, inline `substitution`, or fenced-code `fence`). Lore derives a versioned
 page usage index when a persisted page is written and uses it to skip source-aware
-modules that cannot
-participate in that page. The index is rebuildable metadata, never a second source
+modules that cannot participate in that page. The index is rebuildable metadata, never a second source
 of truth. Preview and filesystem/static Markdown derive the same plan in memory,
-and a stale index is ignored when the Markdown or active module selectors change. Modules without
-selectors remain always active for compatibility. Macro modules are source-aware
-automatically from their declared macro name.
+and a stale index is ignored when the Markdown or active module selectors change.
+Modules without selectors remain always active. Macro modules are source-aware automatically from
+their declared macro name.
 
 Content preprocessors are re-analyzed after a transformation so an include can
 introduce later substitutions safely. Opaque substitutions and macro expansion
@@ -96,15 +99,14 @@ full registry snapshot.
 The manager's small `Store` interface persists installation records. Server
 composition supplies PostgreSQL through `NewWithPluginStore`. The
 `plugin_installations` table stores installed ZIP bytes separately from embedded
-bundled packages, alongside source and enabled state. This uses Lore's existing
+bundled packages, alongside source and enabled state. This uses Lore's
 persistence abstraction and requires no fixed filesystem path. The default
 in-memory store supports isolated renderers and standalone static builds.
 
 Startup merges bundled packages with persisted overrides, orders enabled plugins
 by dependency, prepares every instance, and publishes the complete registry once.
 Declarative-only instances are constructed from the manifest without compiling or
-instantiating WASM.
-A failed startup closes all prepared instances and publishes nothing. Bundled
+instantiating WASM. A failed startup closes all prepared instances and publishes nothing. Bundled
 state records never contain package bytes. Upgrading a bundled ID creates an
 installed override through the same loader/runtime. Uninstall removes installed
 bytes; if that ID has an embedded copy, the embedded copy remains disabled so a
@@ -112,9 +114,10 @@ restart cannot silently reactivate it. Plugin settings/data are retained for
 reinstallation. Version replacement requires the same ID and preserves enabled
 state; explicit replacements may also restore an earlier version.
 
-`Load`/`Unload` remain transient, low-level helpers for explicitly owned managers;
+`Load`/`Unload` are low-level helpers for explicitly owned managers;
 application installation uses the durable lifecycle methods. The application
-exposes its manager through `Renderer.PluginManager()`. Administration routes and UI use that same manager. The standalone site CLI uses bundled defaults;
+exposes its manager through `Renderer.PluginManager()`. Administration routes and
+UI use that same manager. The standalone site CLI uses bundled defaults;
 `site.BuildWithRenderer` lets an application reuse its live registry for builds.
 
 ## Runtime boundary
@@ -122,15 +125,13 @@ exposes its manager through `Renderer.PluginManager()`. Administration routes an
 `internal/plugin/wasm` hosts WASI reactors with wazero. Each instance has its own
 linear memory and serialized invocation gate. No host filesystem, environment,
 arguments, sockets, or streams are configured. Only WASI and the signature-checked
-`lore_v1.call` import are accepted. Imported
-memories and cross-plugin module imports are rejected. API export
+`lore_v1.call` import are accepted. Imported memories and cross-plugin module imports are rejected. API export
 signatures and the guest's API version are checked before registration.
 
 Defaults are 64 MiB guest memory, a 2-second call deadline, a 60-second
 compilation/load deadline, a separate 2-second initialization deadline, 4 MiB
 request/response and assembled-output limits, and 256 output fragments. Limits are
-configurable at runtime construction. The renderer also
-limits recursive depth to 64 and a complete render to 30 seconds, respecting an
+configurable at runtime construction. The renderer also limits recursive depth to 64 and a complete render to 30 seconds, respecting an
 earlier request cancellation. Compilation has archive-size and elapsed-time
 bounds, but not a separate hard cap on the compiler's host-memory usage.
 
@@ -151,17 +152,19 @@ prevents duplicate concurrent compilations, following
 
 The wire ABI is documented in `pluginapi/README.md`. Goldmark extension objects
 remain host-side adapters; WASM guests never receive Goldmark or Lore pointers.
-Later AST support must use serialized operations available to all plugins.
 
 ## Rendering and sanitization
 
 The pipeline recognizes registered macros outside CommonMark code, runs Markdown
 preprocessors and core features, constructs fresh Goldmark extensions, expands
-macros, then runs HTML postprocessors and the central sanitizer. Existing
-Tabs/Details ordering and macro-heading table-of-contents behavior are preserved.
-Browser contributions now run in isolated frames; editor and settings contributions remain metadata.
+macros, then runs HTML postprocessors and the central sanitizer. Tabs/Details
+ordering and macro-heading table-of-contents behavior are part of the pipeline.
+Browser contributions run in isolated frames; editor and settings contributions
+remain metadata.
 
-Plugin lifecycle and declarative settings now own plugin feature state. Core rendering settings only control built-in Markdown behavior; plugin settings are exposed and persisted through the generic plugin administration UI.
+Plugin lifecycle and declarative settings own plugin feature state. Core rendering
+settings only control built-in Markdown behavior; plugin settings are exposed and
+persisted through the generic plugin administration UI.
 
 Every output path, including WASM fragments and macros, goes through the core
 sanitizer. Plugins cannot mark HTML trusted or change the policy. A restricted,
@@ -179,7 +182,7 @@ embedded, so ordinary Lore compilation and Docker builds need no guest compiler
 invocation.
 
 `make generate` regenerates packages and icons. `make check-generated` compares
-the checked-in packages. `make test` and `make test-race` also test the standalone
+the checked-in packages. `make test` and `make test-race` also test executable
 plugin sources. Runtime tests execute both real bundled Callouts and an adversarial
 WASM fixture, including ambient-capability denial, traps, malformed output,
 resource limits, request isolation, and sanitizer enforcement.
@@ -190,7 +193,7 @@ resource limits, request isolation, and sanitizer enforcement.
 `internal/domain`, `internal/store`, or `internal/handler`. `plugincap` is the
 trusted composition adapter: it converts already-authorized catalogs and
 navigation into public values. Normal pages, previews and exports keep the
-viewer's existing access filter. Anonymous share scopes expose only the shared
+viewer's access filter. Anonymous share scopes expose only the shared
 page. Static rendering exposes prepared navigation with static URLs and leaves
 unavailable query macros literal.
 
@@ -222,8 +225,7 @@ Tests exercise install/disable/re-enable/upgrade/uninstall through real WASM in
 one process, a render spanning an upgrade, dependency and cycle failures,
 persistence failure rollback, bootstrap atomicity, installed overrides of bundled
 IDs, and PostgreSQL/runtime reopen recovery. A static build test reuses the live
-renderer across disable/re-enable. Installation UI, marketplace, and remote package downloading remain later phases.
-
+renderer across disable/re-enable.
 
 
 ## Browser modules
@@ -259,18 +261,15 @@ the separate host capability and resource limits.
 Static builds copy enabled package assets, frame documents and a fixed catalog
 from the same manager, with the configured site origin/base path in CSP. Rebuild
 a static site to change its enabled plugins. Export/PDF documents remain
-script-free and preserve diagram source as their existing fallback. The legacy
-Mermaid rendering preference still controls whether blocks are marked; plugin
-lifecycle controls availability independently. Administration UI is described below.
+script-free and preserve diagram source as their source fallback. Plugin
+lifecycle controls browser-module availability.
 
 ## Tables and public rendering declarations
 
-Tables now ships as an actual bundled package. Its manifest owns standard table
-syntax activation, the WASM directive stages, browser module and settings
-relationships (`styles`, `sorting`, `filtering` require `tables`). The renderer
-and HTTP handlers no longer implement table syntax, directives, interactions or
-dependency rules. Legacy `Options`/rendering preferences translate to generic
-request feature flags at the composition boundary.
+Tables ships as a bundled package. Its manifest owns standard table syntax
+activation, the WASM directive stages, browser module and settings relationships
+(`styles`, `sorting`, `filtering` require `tables`). The renderer and HTTP handlers
+do not implement table syntax, directives, interactions or dependency rules.
 
 Standard grammar declarations are intentionally host parser primitives available
 to every package. This avoids a second Markdown parser in WASM that would lose
@@ -292,25 +291,23 @@ fallback colors without letting community CSS modify Lore's surrounding UI.
 
 ## Administration
 
-`/admin/plugins` and its plugin detail modals use the existing browser authentication
+`/admin/plugins` and its plugin detail modals use browser authentication
 and administrator authorization middleware. Bounded multipart uploads call the
 same manager methods as runtime callers; handlers neither extract files nor
 instantiate separate runtimes. Invalid packages, permission failures and lifecycle
-errors preserve existing state. Request handlers log successful lifecycle actions
+errors leave state unchanged. Request handlers log successful lifecycle actions
 with actor and plugin IDs; internal failure details remain in server logs.
 
 The optional manifest `provider` is bounded, self-declared display metadata.
 `WithRequiredPlugins` is trusted operator policy, independent of source and
 permissions. Bootstrap enables required IDs (and rejects missing ones), and all
 public disable/remove/unload paths enforce the policy. Shutdown still closes
-required instances normally. No current bundled feature is required by default.
+required instances normally. No bundled feature is required by default.
 
-The admin UI renders each package `README.md`, exposes enable/disable lifecycle controls, and renders declarative boolean `settings` modules with their names and descriptions. Settings are stored in a core-owned namespace and reach renderers as generic feature flags. A marketplace and arbitrary custom settings controls remain future work.
-
-
-
-
-
+The admin UI renders each package `README.md`, exposes enable/disable lifecycle
+controls, and renders declarative boolean `settings` modules with their names and
+descriptions. Settings are stored in a core-owned namespace and reach renderers
+as generic feature flags.
 
 
 ## Core page primitives

@@ -22,7 +22,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^scripts/web/vendor-mermaid\\.sh$/"],
+      "managerFilePatterns": ["/^plugins/mermaid/update-assets\\.sh$/"],
       "matchStrings": [
         "MERMAID_VERSION=\"\\$\\{MERMAID_VERSION:-(?<currentValue>[^}]+)\\}\""
       ],

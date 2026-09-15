@@ -412,13 +412,12 @@ func TestTableStyleDirectiveInsideTab(t *testing.T) {
 	assert.NotContains(t, got, `{table`)
 }
 
-func TestRenderingOptionsDisableExtensions(t *testing.T) {
+func TestRenderingOptionsControlCoreFeaturesOnly(t *testing.T) {
 	t.Parallel()
 
 	renderer := testRenderer(t, "callouts")
 	options := DefaultOptions()
 	options.WikiLinks = false
-	options.Callouts = false
 
 	source := `[[Runbook]]
 
@@ -429,7 +428,7 @@ Do not restart.
 
 	require.NoError(t, err)
 	assert.NotContains(t, got, `href="/pages/runbook"`)
-	assert.NotContains(t, got, `class="callout`)
+	assert.Contains(t, got, `class="callout warning"`)
 }
 
 func TestPluginSettingsDisableTableStyles(t *testing.T) {

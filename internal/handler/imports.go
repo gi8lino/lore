@@ -51,7 +51,7 @@ func parseImportFormat(value string) (importFormat, error) {
 	}
 }
 
-// AdminImport renders the migration/import workspace.
+// AdminImport renders the import workspace.
 func AdminImport(viewDataUseCases viewDataService, views *Views) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := administrationData(r, viewDataUseCases, views, "Import", "import")

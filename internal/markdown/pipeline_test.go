@@ -141,11 +141,6 @@ func TestCalloutsCanBeRemovedAndRegisteredWithoutReplacingRenderer(t *testing.T)
 	got, err = renderer.Render(source)
 	require.NoError(t, err)
 	assert.Contains(t, got, `class="callout warning"`)
-	options := DefaultOptions()
-	options.Callouts = false
-	got, err = renderer.RenderResolvedWithOptions(source, Slug, options)
-	require.NoError(t, err)
-	assert.NotContains(t, got, `class="callout`)
 }
 
 // TestRenderSnapshotSurvivesRemovalDuringNestedRender verifies render snapshot survives removal during nested render behavior.

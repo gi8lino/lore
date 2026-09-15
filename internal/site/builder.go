@@ -67,7 +67,6 @@ type viewData struct {
 	HTML              template.HTML
 	PageContents      []md.Heading
 	ExternalLinks     []domain.ExternalLink
-	RenderMermaid     bool
 }
 
 // buildPlan contains validated and precomputed state shared by one build.
@@ -231,7 +230,6 @@ func commonViewData(plan buildPlan, branding brandingData) viewData {
 		SidebarWidth:      plan.config.SidebarWidth,
 		ThemeData:         plan.themeData,
 		ExternalLinks:     slices.Clone(plan.config.ExternalLinks),
-		RenderMermaid:     plan.config.Mermaid,
 	}
 }
 
@@ -274,7 +272,6 @@ func (b *builder) renderPages(ctx context.Context, plan buildPlan, common viewDa
 // renderPage renders one source page with shared Markdown functions and static URL rewriting.
 func (b *builder) renderPage(ctx context.Context, page sourcePage, plan buildPlan) (renderedPage, error) {
 	options := md.DefaultOptions()
-	options.Mermaid = plan.config.Mermaid
 	options.WikiLinkPrefix = plan.basePath
 	resolveWiki := func(target string) string {
 		normalized := md.Slug(target)

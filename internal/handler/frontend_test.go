@@ -31,7 +31,7 @@ func TestAssets(t *testing.T) {
 		assert.Equal(t, "public, max-age=31536000, immutable", response.Header().Get("Cache-Control"))
 	})
 
-	t.Run("keeps unversioned compatibility without long cache", func(t *testing.T) {
+	t.Run("requires content version", func(t *testing.T) {
 		t.Parallel()
 
 		request := httptest.NewRequest(http.MethodGet, "/assets/css/app.css", nil)
@@ -39,9 +39,7 @@ func TestAssets(t *testing.T) {
 
 		handler.ServeHTTP(response, request)
 
-		assert.Equal(t, http.StatusOK, response.Code)
-		assert.Equal(t, "body{}", response.Body.String())
-		assert.Equal(t, "no-cache", response.Header().Get("Cache-Control"))
+		assert.Equal(t, http.StatusNotFound, response.Code)
 	})
 }
 
@@ -56,6 +54,6 @@ func TestAssetPath(t *testing.T) {
 
 	path, versioned = assetPath("/assets/js/main.js")
 
-	assert.Equal(t, "js/main.js", path)
+	assert.Empty(t, path)
 	assert.False(t, versioned)
 }

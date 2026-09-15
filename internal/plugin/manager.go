@@ -81,7 +81,7 @@ type Manager struct {
 	store Store
 	// values provides namespaced persistent settings and data storage.
 	values Storage
-	// bundled stores embedded package bytes by plugin ID for fallback and overrides.
+	// bundled stores embedded package bytes by plugin ID for installed overrides.
 	bundled map[string][]byte
 	// retirements tracks instances waiting for active render leases to drain.
 	retirements []*retirement

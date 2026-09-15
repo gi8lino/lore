@@ -24,7 +24,6 @@ type DraftCandidate = DraftValue & {
   savedAt: number;
   stale?: boolean;
   source: DraftSource;
-  storageKey?: string;
 };
 
 type NavigationOptions = { discardDraft?: boolean; keepDraft?: boolean };
@@ -116,69 +115,37 @@ function draftKey(form: HTMLFormElement): string {
   return `${draftPrefix}${form.dataset.draftKey || "new"}`;
 }
 
-function draftStorageKeys(form: HTMLFormElement): string[] {
-  const keys = [draftKey(form)];
-  const originalSlug = String(
-    namedControl(form, "original_slug")?.value || "",
-  ).trim();
-
-  if (originalSlug) {
-    const legacy = `${draftPrefix}${originalSlug}`;
-    if (!keys.includes(legacy)) keys.push(legacy);
-  }
-
-  return keys;
-}
-
-function normalizeLocalDraft(
-  form: HTMLFormElement,
-  value: unknown,
-): DraftCandidate | null {
+function normalizeLocalDraft(value: unknown): DraftCandidate | null {
   if (typeof value !== "object" || value === null) return null;
 
   const draft = value as Record<string, unknown>;
   const savedAt = Number(draft.savedAt);
   if (!Number.isFinite(savedAt) || savedAt <= 0) return null;
-  if (isDraftValues(draft.values)) {
-    return {
-      pageID: Number(draft.pageID || 0),
-      title: String(draft.title || ""),
-      slug: String(draft.slug || ""),
-      values: draft.values,
-      savedAt,
-      source: "local",
-    };
-  }
-
-  const values = draftValues(form);
-
-  for (const field of ["title", "slug", "markdown", "message"]) {
-    if (field in draft) values[field] = [String(draft[field] || "")];
-  }
+  if (!isDraftValues(draft.values)) return null;
+  if (typeof draft.title !== "string" || typeof draft.slug !== "string")
+    return null;
+  const pageID = draft.pageID ?? 0;
+  if (typeof pageID !== "number" || !Number.isSafeInteger(pageID) || pageID < 0)
+    return null;
 
   return {
-    pageID: Number.parseInt(form.dataset.pageId || "0", 10) || 0,
-    title: String(draft.title || ""),
-    slug: String(draft.slug || ""),
-    values,
+    pageID,
+    title: draft.title,
+    slug: draft.slug,
+    values: draft.values,
     savedAt,
     source: "local",
   };
 }
 
 function parseStoredDraft(form: HTMLFormElement): DraftCandidate | null {
-  for (const storageKey of draftStorageKeys(form)) {
-    try {
-      const value = localStorage.getItem(storageKey);
-      if (!value) continue;
-
-      const draft = normalizeLocalDraft(form, JSON.parse(value) as unknown);
-      if (draft) return { ...draft, storageKey };
-    } catch {
-      // Try another candidate when browser storage contains malformed data.
-    }
+  try {
+    const value = localStorage.getItem(draftKey(form));
+    if (!value) return null;
+    return normalizeLocalDraft(JSON.parse(value) as unknown);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 // Reject malformed server state rather than coercing identifiers or field values.
@@ -369,14 +336,6 @@ function setupDrafts(
   restore.addEventListener("click", () => {
     if (!candidate) return;
 
-    if (candidate.storageKey && candidate.storageKey !== draftKey(form)) {
-      try {
-        localStorage.removeItem(candidate.storageKey);
-      } catch {
-        /* best effort */
-      }
-    }
-
     restoreDraftValues(form, candidate.values);
     banner.hidden = true;
     markDirty();
@@ -389,8 +348,7 @@ function setupDrafts(
 
     if (timer) clearTimeout(timer);
     try {
-      for (const storageKey of draftStorageKeys(form))
-        localStorage.removeItem(storageKey);
+      localStorage.removeItem(draftKey(form));
     } catch {
       // Browser fallback cleanup is best effort.
     }

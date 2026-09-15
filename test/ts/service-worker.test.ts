@@ -114,22 +114,16 @@ test("login responses and mismatched identities are never cached", async () => {
   assert.equal(w.stored.size, 0);
 });
 
-test("stable asset URLs refresh online and fall back only when offline", async () => {
+test("versioned assets are served from the service-worker cache", async () => {
   const w = worker();
+  const path = "/assets/v-release-one/app.js";
   w.runtime.fetch = async () => new Response("release-one");
-  await w.request("tab-1", "/assets/app.js");
-  w.runtime.fetch = async () => new Response("release-two");
-  assert.equal(
-    await (await w.request("tab-1", "/assets/app.js"))?.text(),
-    "release-two",
-  );
+  assert.equal(await (await w.request("tab-1", path))?.text(), "release-one");
+
   w.runtime.fetch = async () => {
-    throw new Error("offline");
+    throw new Error("cached asset should not hit the network");
   };
-  assert.equal(
-    await (await w.request("tab-1", "/assets/app.js"))?.text(),
-    "release-two",
-  );
+  assert.equal(await (await w.request("tab-1", path))?.text(), "release-one");
 });
 
 test("malformed configure-user messages are ignored instead of coerced", async () => {

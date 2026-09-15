@@ -8,7 +8,7 @@ import (
 // main runs the package entry point.
 func main() {}
 
-func init() { pluginsdk.Register(transform) }
+func init() { pluginsdk.RegisterModule("tabs", transform) }
 
 // transform converts Material-style tab groups before the core Markdown parser runs.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {

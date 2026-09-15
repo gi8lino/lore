@@ -1,11 +1,7 @@
-cleanup project, there is still legacy code, scripts, text, description and so on. no backward compatibility necessary, nor legacy code wanted. create a tarball, show git rm and git mv commands. Remove all phase description, this are not necessary anymore.
-
 would it not make more sense to have a workflow which builts the firstparty plugins when they changes and not keep them as loreplugin in the repo?
 
-plugin modal is to small and the drop zone is not visible completly.
+plugin modal is to small and the drop zone is not visible completly. also, make the complete row clickable so it opens the modal.
 
 can wiki links not become a regular wiget?
 
-since the project has now multiple sub project, like plugins, cli, sdk,  and so on, should i create a github organization and create separate reporsitories? only answer, no changes.
-
-
+is it possible to move the simple-icon in a plugin but still be able to put the icons in the icon picker?

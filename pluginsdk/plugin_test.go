@@ -10,9 +10,9 @@ import (
 )
 
 func TestMacroDispatch(t *testing.T) {
-	previous, previousFallback := handlers, fallback
-	handlers, fallback = map[string]Handler{}, nil
-	t.Cleanup(func() { handlers, fallback = previous, previousFallback })
+	previous := handlers
+	handlers = map[string]Handler{}
+	t.Cleanup(func() { handlers = previous })
 	RegisterMacro("sdk-test-macro", func(s string) (string, bool) { return s, s == "{{test}}" }, func(s string) (Result, error) { return Text(s), nil })
 	request := Request{APIVersion: pluginapi.Version, Module: "sdk-test-macro", Stage: "parse", Source: "{{test}}"}
 	parsed := Dispatch(request)

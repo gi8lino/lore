@@ -36,7 +36,6 @@ language = "en"
 navigation_style = "sidebar"
 navigation_density = "comfortable"
 sidebar_width = 280
-mermaid = true
 robots = "allow"
 
 logo = "../branding/logo.svg"

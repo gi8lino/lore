@@ -15,20 +15,28 @@ interface BrowserDraftValue {
   title?: unknown;
   savedAt?: unknown;
   values?: Record<string, unknown>;
-  pageSlug?: unknown;
 }
 
 export interface LocalDraft {
-  storageKey: string;
   key: string;
-  slug: string;
   title: string;
   savedAt: number;
   editURL: string;
 }
 
 function isBrowserDraftValue(value: unknown): value is BrowserDraftValue {
-  return typeof value === "object" && value !== null;
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return false;
+  const values = (value as BrowserDraftValue).values;
+  return typeof values === "object" && values !== null && !Array.isArray(values);
+}
+
+function validDraftKey(key: string): boolean {
+  if (key === "new") return true;
+  if (!key.startsWith("page:")) return false;
+
+  const id = Number(key.slice("page:".length));
+  return Number.isSafeInteger(id) && id > 0 && key === `page:${id}`;
 }
 
 // Returns valid Lore browser drafts ordered newest first.
@@ -52,11 +60,10 @@ export function localDrafts(
       if (!Number.isFinite(savedAt) || savedAt <= 0) continue;
 
       const key = storageKey.slice(draftPrefix.length);
+      if (!validDraftKey(key)) continue;
 
       drafts.push({
-        storageKey,
         key,
-        slug: key,
         title: String(value.title || "Untitled"),
         savedAt,
         editURL: localDraftEditURL(key, value),
@@ -73,15 +80,10 @@ export function localDrafts(
 function localDraftEditURL(key: string, draft: BrowserDraftValue): string {
   if (key === "new") return "/pages/new";
 
-  const values = draft.values ?? {};
-  const originalSlug = Array.isArray(values.original_slug)
-    ? String(values.original_slug[0] || "")
+  const originalSlug = Array.isArray(draft.values?.original_slug)
+    ? String(draft.values.original_slug[0] || "")
     : "";
-  if (originalSlug) return `/edit/${originalSlug}`;
-  if (draft.pageSlug) return `/edit/${String(draft.pageSlug)}`;
-  if (!key.startsWith("page:")) return `/edit/${key}`;
-
-  return "/";
+  return originalSlug ? `/edit/${originalSlug}` : "/";
 }
 
 // Creates one dashboard row from the shared draft template.
@@ -137,12 +139,9 @@ async function deleteServerDraft(key: string): Promise<void> {
   }
 }
 
-function removeLocalDraft(item: HTMLElement, key: string): void {
+function removeLocalDraft(key: string): void {
   try {
     localStorage.removeItem(`${draftPrefix}${key}`);
-    if (item.dataset.draftLegacyKey) {
-      localStorage.removeItem(`${draftPrefix}${item.dataset.draftLegacyKey}`);
-    }
   } catch {
     // Browser fallback cleanup is best effort.
   }
@@ -190,7 +189,7 @@ async function handleDraftDiscard(
   try {
     if (button.dataset.draftServer === "true") await deleteServerDraft(key);
 
-    removeLocalDraft(item, key);
+    removeLocalDraft(key);
     item.remove();
     showEmptyDraftState(container);
   } catch (error) {

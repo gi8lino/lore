@@ -18,9 +18,6 @@ GOLANGCI_LINT_VERSION ?= v2.13.2
 # renovate: datasource=github-releases depName=gi8lino/dev-tools
 DEV_TOOLS_VERSION ?= v0.7.0
 
-# renovate: datasource=npm depName=prettier
-PRETTIER_VERSION ?= 3.9.6
-
 ## Shared development tools
 include bin/dev-tools.mk
 include $(call dev-tools-module,tag)
@@ -59,11 +56,7 @@ SCREENSHOT_SCRIPT := scripts/screenshots/run.sh
 SCREENSHOT_BROWSER_CHANNEL ?= chrome
 
 ## Formatting
-PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md" "plugins/**/*.md"
-
-# Compatibility alias for the shared current target.
-.PHONY: tag
-tag: current
+PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
 
 ##@ Development
 
@@ -86,19 +79,19 @@ dev-build: ports
 	$(MAKE) generate web
 
 .PHONY: generate
-generate: plugin-packages ## Generate the icon catalog and bundled WASM packages.
+generate: plugin-packages ## Generate the icon catalog and bundled plugin packages.
 	go generate ./internal/icons
 
 .PHONY: plugin-packages
-plugin-packages: $(NODE_MODULES) ## Build reproducible bundled .loreplugin archives with standard Go.
+plugin-packages: $(NODE_MODULES) ## Build reproducible bundled .loreplugin archives.
 	go run ./scripts/build-plugins
 
 .PHONY: test-plugins
-test-plugins: ## Test the standalone bundled plugin source modules.
+test-plugins: ## Test executable bundled plugin modules.
 	@set -eu; for manifest in plugins/*/go.mod; do go -C "$$(dirname "$$manifest")" test ./...; done
 
 .PHONY: test-plugins-race
-test-plugins-race: ## Test bundled plugin source modules with the race detector.
+test-plugins-race: ## Test executable bundled plugin modules with the race detector.
 	@set -eu; for manifest in plugins/*/go.mod; do go -C "$$(dirname "$$manifest")" test -race ./...; done
 
 .PHONY: check-generated
@@ -247,7 +240,7 @@ fmt-go: generate web ## Format Go code.
 
 .PHONY: fmt-md
 fmt-md: $(NODE_MODULES) ## Format Markdown files.
-	$(NPX) prettier --write  $(PRETTIER_MD_SOURCES)
+	$(NPX) prettier --write $(PRETTIER_MD_SOURCES)
 
 .PHONY: check-templates
 check-templates: ## Check Go HTML template formatting.
@@ -279,6 +272,3 @@ golangci-lint: $(GO_INSTALL_TOOL) ## Download golangci-lint locally if necessary
 		--target "$(GOLANGCI_LINT)" \
 		--package github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
 		--tool-version "$(GOLANGCI_LINT_VERSION)"
-
-
-

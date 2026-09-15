@@ -95,26 +95,23 @@ function cacheablePage(url: URL): boolean {
   );
 }
 
-async function cacheAsset(request: Request, response: Response): Promise<void> {
-  try {
-    const cache = await caches.open(assetCacheName);
-    await cache.put(request, response.clone());
-  } catch {
-    // A failed cache write must not fail the network response.
-  }
-}
-
 async function fetchAsset(request: Request): Promise<Response> {
-  try {
-    // Use HTTP cache policy online so unversioned assets revalidate between releases.
-    const response = await fetch(request);
-    if (response.ok && !response.redirected)
-      await cacheAsset(request, response);
+  const cache = await caches.open(assetCacheName);
+  const cached = await cache.match(request);
+  if (cached) return cached;
 
+  try {
+    const response = await fetch(request);
+    if (response.ok && !response.redirected) {
+      try {
+        await cache.put(request, response.clone());
+      } catch {
+        // A failed cache write must not fail the network response.
+      }
+    }
     return response;
   } catch {
-    const cache = await caches.open(assetCacheName);
-    return (await cache.match(request)) || Response.error();
+    return Response.error();
   }
 }
 

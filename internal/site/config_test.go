@@ -174,7 +174,6 @@ language = "en"
 navigation_style = "tree"
 navigation_density = "compact"
 sidebar_width = 360
-mermaid = true
 `), 0o600))
 
 	flags := tinyflags.NewFlagSet("lore build", tinyflags.ContinueOnError)
@@ -186,7 +185,6 @@ mermaid = true
 		"--navigation-style", "topbar",
 		"--navigation-density", "comfortable",
 		"--sidebar-width", "320",
-		"--mermaid=false",
 		"--robots=disallow",
 	}))
 
@@ -198,7 +196,6 @@ mermaid = true
 	assert.Equal(t, domain.NavigationStyleTopbar, cfg.NavigationStyle)
 	assert.Equal(t, domain.NavigationDensityComfortable, cfg.NavigationDensity)
 	assert.Equal(t, 320, cfg.SidebarWidth)
-	assert.False(t, cfg.Mermaid)
 	assert.Equal(t, domain.RobotsPolicyDisallow, cfg.RobotsPolicy)
 }
 

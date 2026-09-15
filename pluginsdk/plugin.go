@@ -22,11 +22,6 @@ type Part = pluginapi.RenderPart
 type Handler func(Request) Result
 
 var handlers = map[string]Handler{}
-var fallback Handler
-
-// Register installs a dispatcher for plugins implementing multiple wire stages.
-// Call once during init. Prefer RegisterModule for independent contributions.
-func Register(handler Handler) { fallback = handler }
 
 // RegisterModule registers a handler for a manifest module. Call during init.
 func RegisterModule(id string, handler Handler) {
@@ -47,9 +42,6 @@ func Dispatch(request Request) (result Result) {
 		return Result{Error: "unsupported plugin API version"}
 	}
 	handler := handlers[request.Module]
-	if handler == nil {
-		handler = fallback
-	}
 	if handler == nil {
 		return Result{Error: "unregistered plugin module: " + request.Module}
 	}

@@ -16,7 +16,7 @@ const maxIncludeDepth = 5
 // main runs the package entry point.
 func main() {}
 
-func init() { pluginsdk.Register(transform) }
+func init() { pluginsdk.RegisterModule("includes", transform) }
 
 // pageLoader returns authorized page Markdown for one canonical path.
 type pageLoader func(string) (pluginapi.PageContent, error)

@@ -47,7 +47,7 @@ func newSanitizer() *bluemonday.Policy {
 		MatchingHandler(validImageWidthStyle).
 		OnElements("img")
 
-	// Macro navigation and report layouts previously escaped this boundary.
+	// Allow the navigation elements emitted by trusted render contributions.
 	policy.AllowElements("nav")
 	policy.AllowAttrs("class").OnElements("nav", "ul", "li", "a", "p")
 	policy.AllowAttrs("aria-label").OnElements("nav")

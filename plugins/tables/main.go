@@ -11,7 +11,10 @@ import (
 
 func main() {}
 
-func init() { pluginsdk.Register(transform) }
+func init() {
+	pluginsdk.RegisterModule("directives", transform)
+	pluginsdk.RegisterModule("presentation", transform)
+}
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	enabled := func(name string) bool { v, ok := request.Features["io.lore.tables."+name]; return !ok || v }
 	options := tableOptions{Tables: enabled("tables"), TableStyles: enabled("styles"), TableSorting: enabled("sorting"), TableFiltering: enabled("filtering")}

@@ -120,10 +120,7 @@ func NewOIDC(
 
 // Authenticate resolves the authenticated OIDC browser session by issuer and subject.
 func (o *OIDC) Authenticate(r *http.Request) (domain.User, error) {
-	// Session version 1 is the initial persisted generation. Cookies issued
-	// before session revocation was introduced have no version field, so seed
-	// the decoded value with 1 to keep those sessions valid across the upgrade.
-	current := session{Version: 1}
+	var current session
 
 	if err := o.decodeCookie(r, "lore_session", &current); err != nil {
 		return domain.User{}, ErrUnauthenticated
@@ -152,6 +149,9 @@ func (o *OIDC) Authenticate(r *http.Request) (domain.User, error) {
 
 // validSession reports whether a decoded browser session is current and bound to this provider.
 func (o *OIDC) validSession(current session) bool {
+	if current.Version <= 0 {
+		return false
+	}
 	if current.Expires <= time.Now().Unix() {
 		return false
 	}

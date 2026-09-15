@@ -208,7 +208,7 @@ func ExternalLinkHoverEffects() []string {
 }
 
 // ValidExternalLinkHoverEffect reports whether value is a supported hover presentation.
-// Empty is accepted as the compatibility default and renders as highlight.
+// Empty selects the default highlight presentation.
 func ValidExternalLinkHoverEffect(value string) bool {
 	switch value {
 	case "", ExternalLinkHoverHighlight, ExternalLinkHoverLift, ExternalLinkHoverNone:

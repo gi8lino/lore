@@ -48,6 +48,5 @@ from the manifest macro name.
 
 Lore derives plugin usage from Markdown on page writes and stores it as
 rebuildable page metadata. Saved-page renders use the index when its renderer
-fingerprint and source hash are current. Editor preview, static input, legacy
-pages, and stale indexes are analyzed transiently in memory. Markdown remains
-the source of truth.
+fingerprint and source hash are current. Editor preview, static input, pages without a current usage index, and stale indexes
+are analyzed transiently in memory. Markdown remains the source of truth.

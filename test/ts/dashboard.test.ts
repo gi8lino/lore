@@ -20,19 +20,21 @@ test("localDrafts returns Lore editor drafts newest first", () => {
   const result = localDrafts(
     storage({
       unrelated: "ignored",
-      "lore.editor.draft:older": JSON.stringify({
+      "lore.editor.draft:page:1": JSON.stringify({
         title: "Older",
         savedAt: 10,
+        values: { original_slug: ["older"] },
       }),
-      "lore.editor.draft:newer": JSON.stringify({
+      "lore.editor.draft:page:2": JSON.stringify({
         title: "Newer",
         savedAt: 20,
+        values: { original_slug: ["newer"] },
       }),
     }),
   );
   assert.deepEqual(
-    result.map((draft) => draft.slug),
-    ["newer", "older"],
+    result.map((draft) => draft.key),
+    ["page:2", "page:1"],
   );
 });
 
@@ -40,8 +42,8 @@ test("localDrafts ignores malformed values and supplies an untitled fallback", (
   const result = localDrafts(
     storage({
       "lore.editor.draft:bad": "{",
-      "lore.editor.draft:no-time": JSON.stringify({ title: "No time" }),
-      "lore.editor.draft:new": JSON.stringify({ savedAt: 42 }),
+      "lore.editor.draft:no-time": JSON.stringify({ title: "No time", values: {} }),
+      "lore.editor.draft:new": JSON.stringify({ savedAt: 42, values: {} }),
     }),
   );
 

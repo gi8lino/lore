@@ -296,7 +296,7 @@ func (s *Pages) materializeRender(ctx context.Context, source string, usage *plu
 		return domain.PageRender{}, err
 	}
 	// Inspector/export metadata originates from mutable substitutions. Keep such
-	// pages on the request-time path even if a future plugin bypasses CanPersist.
+	// pages on the request-time path as an additional persistence guard.
 	if len(rendered.Inspectors) != 0 || len(rendered.ExportFields) != 0 {
 		return domain.PageRender{}, nil
 	}

@@ -27,9 +27,7 @@
             <div class="continue-draft{{ if .Stale }} stale{{ end }}"
                  data-draft-item
                  data-draft-key="{{ .Key }}"
-                 data-draft-edit-url="{{ if .PageID }}/edit/{{ .PageSlug }}{{ else }}/pages/new{{ end }}"
-                 {{ if .PageSlug }}data-draft-legacy-key="{{ .PageSlug }}"
-                 {{ end }}>
+                 data-draft-edit-url="{{ if .PageID }}/edit/{{ .PageSlug }}{{ else }}/pages/new{{ end }}">
               <a class="continue-item"
                  href="{{ if .PageID }}/edit/{{ .PageSlug }}{{ else }}/pages/new{{ end }}"><span class="continue-icon">{{ icon "pencil-line-lucide" 16 }}</span><span><strong>{{ if .Title }}{{ .Title }}{{ else }}Untitled{{ end }}</strong><small>Private draft · {{ timeago .UpdatedAt }}{{ if .Stale }} · Page changed since draft started{{ end }}</small></span></a>
               <button class="icon-button continue-draft-discard"

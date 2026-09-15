@@ -33,18 +33,12 @@ func (r *Renderer) SetArtifactBuild(version, commit string) {
 func (r *Renderer) RenderFingerprint(options Options) string {
 	hash := sha256.New()
 	_, _ = fmt.Fprintf(hash,
-		"artifact=%d\napi=%d\nbuild=%s\nwiki_links=%t\nwiki_prefix=%s\ncallouts=%t\nmermaid=%t\ntables=%t\ntable_styles=%t\ntable_sorting=%t\ntable_filtering=%t\n",
+		"artifact=%d\napi=%d\nbuild=%s\nwiki_links=%t\nwiki_prefix=%s\n",
 		renderArtifactVersion,
 		pluginapi.Version,
 		r.artifactBuild,
 		options.WikiLinks,
 		options.WikiLinkPrefix,
-		options.Callouts,
-		options.Mermaid,
-		options.Tables,
-		options.TableStyles,
-		options.TableSorting,
-		options.TableFiltering,
 	)
 	if r.manager == nil {
 		return hex.EncodeToString(hash.Sum(nil))

@@ -16,3 +16,7 @@ Use `mermaid` as the fenced code-block language. Mermaid source is rendered only
 ## Permissions
 
 This plugin requests `browser:render` so its packaged JavaScript and CSS can render diagrams in the isolated plugin frame.
+
+## Development
+
+Run `./plugins/mermaid/update-assets.sh` from the repository root to refresh the vendored Mermaid JavaScript and license.

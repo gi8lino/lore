@@ -10,13 +10,13 @@ import (
 func Assets(appFS fs.FS) http.Handler {
 	files := http.FileServer(http.FS(appFS))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path, versioned := assetPath(r.URL.Path)
-
-		if versioned {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-cache")
+		path, ok := assetPath(r.URL.Path)
+		if !ok {
+			http.NotFound(w, r)
+			return
 		}
+
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 
 		request := r.Clone(r.Context())
 		request.URL.Path = "/" + path
@@ -25,15 +25,17 @@ func Assets(appFS fs.FS) http.Handler {
 	})
 }
 
-// assetPath removes the optional content-version prefix from an asset request path.
-func assetPath(requestPath string) (path string, versioned bool) {
-	requestPath = strings.TrimPrefix(requestPath, "/assets/")
-	version, remainder, ok := strings.Cut(requestPath, "/")
-	if ok && strings.HasPrefix(version, "v-") && len(version) > 2 {
-		return remainder, true
+// assetPath removes the required content-version prefix from an asset request path.
+func assetPath(requestPath string) (string, bool) {
+	requestPath, ok := strings.CutPrefix(requestPath, "/assets/")
+	if !ok {
+		return "", false
 	}
-
-	return requestPath, false
+	version, remainder, ok := strings.Cut(requestPath, "/")
+	if !ok || !strings.HasPrefix(version, "v-") || len(version) <= 2 || remainder == "" {
+		return "", false
+	}
+	return remainder, true
 }
 
 // ServiceWorker serves the root-scoped progressive-web-app worker without long-lived caching.

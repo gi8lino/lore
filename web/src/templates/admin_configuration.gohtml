@@ -295,7 +295,7 @@
               data-validate-form
               novalidate>
           <label>
-            {{ if .Runtime.PDFURL }}Saved fallback endpoint{{ else }}Endpoint{{ end }}
+            {{ if .Runtime.PDFURL }}Saved endpoint{{ else }}Endpoint{{ end }}
             <input type="url"
                    name="pdf_url"
                    value="{{ .ApplicationSettings.PDFURL }}"

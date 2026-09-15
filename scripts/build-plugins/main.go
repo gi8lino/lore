@@ -33,7 +33,7 @@ func buildAll() error {
 	return nil
 }
 
-// buildPackage compiles one plugin module to WASM and writes its deterministic archive.
+// buildPackage writes one deterministic bundled plugin archive.
 func buildPackage(directory string) error {
 	if _, err := os.Stat(filepath.Join(directory, "browser.ts")); err == nil {
 		command := exec.Command(

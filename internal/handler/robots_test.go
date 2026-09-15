@@ -122,7 +122,7 @@ func TestSitemap(t *testing.T) {
 			sitemapCatalogStub{pages: []domain.Page{
 				{Slug: "archived", Status: "archived", UpdatedAt: updatedAt},
 				{Slug: "draft", Status: "draft", UpdatedAt: updatedAt},
-				{Slug: "legacy", Status: "deprecated", UpdatedAt: updatedAt},
+				{Slug: "deprecated-guide", Status: "deprecated", UpdatedAt: updatedAt},
 				{Slug: "platform/start", Status: "verified", UpdatedAt: updatedAt},
 			}},
 			emptyContractServices{},
@@ -141,7 +141,7 @@ func TestSitemap(t *testing.T) {
 		assert.Equal(t, "urlset", document.XMLName.Local)
 		assert.Equal(t, []sitemapEntry{
 			{Location: "https://lore.example.test/docs/"},
-			{Location: "https://lore.example.test/docs/pages/legacy", LastModified: "2026-09-09T12:30:00Z"},
+			{Location: "https://lore.example.test/docs/pages/deprecated-guide", LastModified: "2026-09-09T12:30:00Z"},
 			{Location: "https://lore.example.test/docs/pages/platform/start", LastModified: "2026-09-09T12:30:00Z"},
 		}, document.URLs)
 		assert.NotContains(t, response.Body.String(), "/pages/draft")

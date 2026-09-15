@@ -8,7 +8,7 @@ import (
 // main runs the package entry point.
 func main() {}
 
-func init() { pluginsdk.Register(transform) }
+func init() { pluginsdk.RegisterModule("details", transform) }
 
 // transform converts collapsible detail blocks before the core Markdown parser runs.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {

@@ -19,11 +19,6 @@ func TestMermaidUsesRuntimeRegistryAndCentralSanitizer(t *testing.T) {
 	assert.Contains(t, rendered, "A --&gt; B")
 	assert.NotContains(t, rendered, "<iframe")
 	assert.NotContains(t, rendered, "<script")
-	options := DefaultOptions()
-	options.Mermaid = false
-	rendered, err = r.RenderResolvedWithOptions(source, Slug, options)
-	require.NoError(t, err)
-	assert.NotContains(t, rendered, "data-lore-plugin")
 	require.NoError(t, r.PluginManager().Disable(ctx, "io.lore.mermaid"))
 	rendered, err = r.Render(source)
 	require.NoError(t, err)

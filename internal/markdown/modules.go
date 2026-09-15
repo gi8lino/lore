@@ -2,7 +2,6 @@ package markdown
 
 import (
 	"context"
-	"maps"
 
 	"github.com/gi8lino/lore/internal/firstparty"
 	"github.com/gi8lino/lore/internal/plugin"
@@ -39,27 +38,12 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 	return NewWithManager(registry, manager), nil
 }
 
-// moduleFeatures translates request-scoped compatibility flags at the composition boundary.
-// It does not activate modules absent from the registry.
-func moduleFeatures(options Options) map[string]bool {
-	return map[string]bool{
-		"io.lore.callouts":         options.Callouts,
-		"io.lore.mermaid":          options.Mermaid,
-		"io.lore.tables":           options.Tables,
-		"io.lore.tables.tables":    options.Tables,
-		"io.lore.tables.styles":    options.TableStyles,
-		"io.lore.tables.sorting":   options.TableSorting,
-		"io.lore.tables.filtering": options.TableFiltering,
+// pluginFeatures returns lifecycle and plugin-owned settings for the current renderer.
+func (r *Renderer) pluginFeatures() map[string]bool {
+	if r.manager == nil {
+		return nil
 	}
-}
-
-// pluginFeatures overlays persisted plugin-owned settings on legacy request options.
-func (r *Renderer) pluginFeatures(options Options) map[string]bool {
-	features := moduleFeatures(options)
-	if r.manager != nil {
-		maps.Copy(features, r.manager.FeatureSettings())
-	}
-	return features
+	return r.manager.FeatureSettings()
 }
 
 // PluginManager exposes lifecycle operations to the trusted application layer.

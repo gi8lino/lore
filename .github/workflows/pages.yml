@@ -18,7 +18,7 @@ on:
       - "tsconfig*.json"
       - "go.mod"
       - "go.sum"
-      - "cmd/main.go"
+      - "cmd/lore/**"
       - "Makefile"
       - ".github/workflows/pages.yml"
   pull_request:
@@ -37,7 +37,7 @@ on:
       - "tsconfig*.json"
       - "go.mod"
       - "go.sum"
-      - "cmd/main.go"
+      - "cmd/lore/**"
       - "Makefile"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -112,5 +112,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
-
-

@@ -218,7 +218,7 @@ func (r *Renderer) RenderPageResolvedWithFunctions(
 	defer release()
 
 	stop = trace.Measure("pipeline_setup")
-	options.pipeline = newRenderPipeline(plan, r.pluginFeatures(options), functions, source)
+	options.pipeline = newRenderPipeline(plan, r.pluginFeatures(), functions, source)
 	stop()
 
 	stop = trace.Measure("content_preprocess")

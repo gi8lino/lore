@@ -14,7 +14,7 @@ var fence = regexp.MustCompile(`(?s)<pre><code class="language-mermaid">.*?</cod
 // main runs the package entry point.
 func main() {}
 
-func init() { pluginsdk.Register(transform) }
+func init() { pluginsdk.RegisterModule("fences", transform) }
 
 // transform marks Mermaid code blocks for the browser-side renderer.
 func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {

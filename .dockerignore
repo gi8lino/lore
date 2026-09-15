@@ -4,9 +4,4 @@ web/dist
 bin
 coverage.out
 .DS_Store
-
-
 site
-
-experiments
-output

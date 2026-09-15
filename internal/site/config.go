@@ -30,7 +30,6 @@ type Config struct {
 	NavigationStyle   string                `toml:"navigation_style"`
 	NavigationDensity string                `toml:"navigation_density"`
 	SidebarWidth      int                   `toml:"sidebar_width"`
-	Mermaid           bool                  `toml:"mermaid"`
 	RobotsPolicy      string                `toml:"robots"`
 	ExternalLinks     []domain.ExternalLink `toml:"external_links"`
 	logFormat         logging.LogFormat
@@ -49,7 +48,6 @@ func defaultConfig() Config {
 		NavigationStyle:   preferences.NavigationStyle,
 		NavigationDensity: preferences.NavigationDensity,
 		SidebarWidth:      preferences.SidebarWidth,
-		Mermaid:           true,
 		RobotsPolicy:      domain.RobotsPolicyAllow,
 		logFormat:         logging.LogFormatJSON,
 	}
@@ -126,7 +124,6 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 	sidebarWidth := flags.Int("sidebar-width", defaults.SidebarWidth, "Desktop sidebar width in pixels").
 		Validate(validateSidebarWidth).
 		Placeholder("PIXELS")
-	mermaid := flags.Bool("mermaid", defaults.Mermaid, "Enable Mermaid rendering").Strict()
 	robots := flags.String("robots", defaults.RobotsPolicy, "robots.txt policy").
 		Choices(domain.RobotsPolicyAllow, domain.RobotsPolicyDisallow, domain.RobotsPolicyNone).
 		Placeholder("POLICY")
@@ -167,9 +164,6 @@ func BindFlags(flags *tinyflags.FlagSet) func() (Config, error) {
 		}
 		if sidebarWidth.Changed() {
 			cfg.SidebarWidth = *sidebarWidth.Value()
-		}
-		if mermaid.Changed() {
-			cfg.Mermaid = *mermaid.Value()
 		}
 		if robots.Changed() {
 			cfg.RobotsPolicy = *robots.Value()

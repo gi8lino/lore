@@ -63,54 +63,6 @@ func TestOIDCAuthenticateExternalAdministrator(t *testing.T) {
 	assert.Equal(t, "viewer", user.Role, "a removed administrator-group setting must stop stale elevation")
 }
 
-func TestOIDCAuthenticatePreservesPreVersionedSession(t *testing.T) {
-	t.Parallel()
-
-	const issuer = "https://identity.example.com/realms/lore"
-	authenticator := &OIDC{
-		repository: &oidcRepositoryStub{user: domain.User{Enabled: true, SessionVersion: 1}},
-		secret:     []byte("0123456789abcdef0123456789abcdef"),
-		issuer:     issuer,
-	}
-	request := oidcSessionRequest(t, authenticator, struct {
-		Issuer  string `json:"iss"`
-		Subject string `json:"sub"`
-		Expires int64  `json:"x"`
-	}{
-		Issuer:  issuer,
-		Subject: "user-123",
-		Expires: time.Now().Add(time.Hour).Unix(),
-	})
-
-	_, err := authenticator.Authenticate(request)
-
-	require.NoError(t, err)
-}
-
-func TestOIDCAuthenticateRejectsPreVersionedSessionAfterRevocation(t *testing.T) {
-	t.Parallel()
-
-	const issuer = "https://identity.example.com/realms/lore"
-	authenticator := &OIDC{
-		repository: &oidcRepositoryStub{user: domain.User{Enabled: true, SessionVersion: 2}},
-		secret:     []byte("0123456789abcdef0123456789abcdef"),
-		issuer:     issuer,
-	}
-	request := oidcSessionRequest(t, authenticator, struct {
-		Issuer  string `json:"iss"`
-		Subject string `json:"sub"`
-		Expires int64  `json:"x"`
-	}{
-		Issuer:  issuer,
-		Subject: "user-123",
-		Expires: time.Now().Add(time.Hour).Unix(),
-	})
-
-	_, err := authenticator.Authenticate(request)
-
-	assert.ErrorIs(t, err, ErrUnauthenticated)
-}
-
 func TestOIDCAuthenticateRejectsRevokedSession(t *testing.T) {
 	t.Parallel()
 
@@ -164,13 +116,13 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
-	t.Run("rejects expired session", func(t *testing.T) {
+	t.Run("rejects session without version", func(t *testing.T) {
 		t.Parallel()
 
 		request := oidcSessionRequest(t, authenticator, session{
 			Issuer:  authenticator.issuer,
 			Subject: "user-123",
-			Expires: time.Now().Add(-time.Hour).Unix(),
+			Expires: time.Now().Add(time.Hour).Unix(),
 		})
 
 		_, err := authenticator.Authenticate(request)
@@ -178,19 +130,13 @@ func TestOIDCAuthenticateRejectsUnboundSessions(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnauthenticated)
 	})
 
-	t.Run("rejects legacy profile session", func(t *testing.T) {
+	t.Run("rejects expired session", func(t *testing.T) {
 		t.Parallel()
 
-		request := oidcSessionRequest(t, authenticator, struct {
-			Username string `json:"u"`
-			Email    string `json:"e"`
-			Name     string `json:"n"`
-			Expires  int64  `json:"x"`
-		}{
-			Username: "admin",
-			Email:    "admin@example.com",
-			Name:     "Administrator",
-			Expires:  time.Now().Add(time.Hour).Unix(),
+		request := oidcSessionRequest(t, authenticator, session{
+			Issuer:  authenticator.issuer,
+			Subject: "user-123",
+			Expires: time.Now().Add(-time.Hour).Unix(),
 		})
 
 		_, err := authenticator.Authenticate(request)

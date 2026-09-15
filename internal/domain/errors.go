@@ -51,7 +51,7 @@ func (e *GroupAssignmentError) Error() string { return "page group assignment is
 // Unwrap classifies a group assignment failure as forbidden.
 func (e *GroupAssignmentError) Unwrap() error { return ErrForbidden }
 
-// Specific missing-resource errors preserve compatibility with ErrNotFound.
+// Specific missing-resource errors also classify as ErrNotFound.
 var (
 	ErrRevisionNotFound = fmt.Errorf("revision: %w", ErrNotFound)
 	ErrCommentNotFound  = fmt.Errorf("comment: %w", ErrNotFound)
