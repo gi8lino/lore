@@ -36,6 +36,36 @@ func TestFullChromaRegistryIsAvailable(t *testing.T) {
 	}
 }
 
+func TestTransformNeverAutoDetectsLanguage(t *testing.T) {
+	for _, language := range []string{"", "   ", "not-a-real-language"} {
+		result := transform(pluginapi.RenderRequest{
+			APIVersion: pluginapi.Version,
+			Module:     "chroma",
+			Stage:      "highlight",
+			Language:   language,
+			Source:     "package main\n\nfunc main() {}\n",
+		})
+		if result.Error != "" || result.Matched || len(result.Parts) != 0 {
+			t.Fatalf("language %q must stay unmatched instead of being auto-detected: %#v", language, result)
+		}
+	}
+}
+
+func TestTransformUsesLanguagePerCodeBlock(t *testing.T) {
+	requests := []pluginapi.RenderRequest{
+		{APIVersion: pluginapi.Version, Module: "chroma", Stage: "highlight", Language: "go", Source: "package main\nfunc main() {}\n"},
+		{APIVersion: pluginapi.Version, Module: "chroma", Stage: "highlight", Language: "python", Source: "def main():\n    pass\n"},
+		{APIVersion: pluginapi.Version, Module: "chroma", Stage: "highlight", Language: "sql", Source: "SELECT * FROM users;\n"},
+	}
+
+	for _, request := range requests {
+		result := transform(request)
+		if result.Error != "" || !result.Matched || len(result.Parts) != 1 {
+			t.Fatalf("language %q did not use its explicit lexer: %#v", request.Language, result)
+		}
+	}
+}
+
 func TestTransformLeavesUnknownLanguageUnmatched(t *testing.T) {
 	result := transform(pluginapi.RenderRequest{APIVersion: pluginapi.Version, Module: "chroma", Stage: "highlight", Language: "not-a-real-language", Source: "text"})
 	if result.Error != "" || result.Matched || len(result.Parts) != 0 {

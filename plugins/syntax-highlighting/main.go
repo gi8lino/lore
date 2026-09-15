@@ -42,9 +42,15 @@ func transform(request pluginapi.RenderRequest) pluginapi.RenderResult {
 	}
 
 	language := strings.ToLower(strings.TrimSpace(request.Language))
+	if language == "" {
+		return pluginapi.RenderResult{}
+	}
 	if _, ok := highlightLanguages[language]; !ok {
 		return pluginapi.RenderResult{}
 	}
+
+	// Get selects only the explicitly supplied Chroma name or alias. Do not use
+	// Match or Analyse here: fenced code is never language-detected from content.
 	lexer := lexers.Get(language)
 	if lexer == nil {
 		return pluginapi.RenderResult{}
