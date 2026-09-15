@@ -16,7 +16,7 @@ A `.loreplugin` is a ZIP containing:
 ```text
 README.md
 plugin.yaml
-plugin.wasm
+plugin.wasm      # executable modules only
 assets/          # optional package assets
 ```
 
@@ -27,7 +27,9 @@ modules with parse/render calls. Unknown fields, unsupported versions, stages,
 module types, and permission names are rejected. No capability is silently granted.
 
 `pluginpackage.Read` validates the whole archive before returning immutable
-content. It rejects traversal, absolute paths, backslashes, duplicate paths,
+content. Declarative-only packages omit `plugin.wasm`; packages containing a
+renderer extension, macro, or code highlighter must include it. It rejects
+traversal, absolute paths, backslashes, duplicate paths,
 nonregular files, invalid directories, and file/directory collisions. It never
 extracts into the filesystem. Limits are 16 MiB compressed, 32 MiB expanded,
 256 entries, 16 MiB WASM, 8 MiB per asset, and 64 KiB for the manifest. CRC and
@@ -100,6 +102,8 @@ in-memory store supports isolated renderers and standalone static builds.
 
 Startup merges bundled packages with persisted overrides, orders enabled plugins
 by dependency, prepares every instance, and publishes the complete registry once.
+Declarative-only instances are constructed from the manifest without compiling or
+instantiating WASM.
 A failed startup closes all prepared instances and publishes nothing. Bundled
 state records never contain package bytes. Upgrading a bundled ID creates an
 installed override through the same loader/runtime. Uninstall removes installed
@@ -135,12 +139,14 @@ become render errors. The bad reactor is closed; a later request can instantiate
 a clean reactor from the compiled module. Nested Markdown fragments are handled
 after the guest invocation, so there is no reentrant call into a Go WASM runtime.
 
-Process-local, bounded caches share validated package values and immutable
-compiled modules, never active registries, guest state, or permissions. Eight
-entries are retained in each least-recently-used cache. Compiled-module leases
-keep an evicted entry alive until its active instances close. This avoids both
-repeated ZIP expansion and repeated WASM decoding across renderer scopes.
-A startup gate prevents duplicate concurrent compilations, following
+Bounded process-local caches share validated package values and immutable compiled
+modules, never active registries, guest state, or permissions. Compiled-module
+leases keep an evicted entry alive until its active instances close. Wazero also
+uses its filesystem-backed compilation cache below the operating system's normal
+user cache directory (`lore/wasm`), with an in-memory fallback when that directory
+is unavailable. This avoids recompiling unchanged guests across normal process
+restarts as well as repeated WASM decoding across renderer scopes. A startup gate
+prevents duplicate concurrent compilations, following
 [wazero's compilation-cache guidance](https://pkg.go.dev/github.com/tetratelabs/wazero#CompilationCache).
 
 The wire ABI is documented in `pluginapi/README.md`. Goldmark extension objects
@@ -164,11 +170,13 @@ SVG, URL-valued paints, scripts, and event handlers.
 
 ## Building and validation
 
-`make plugin-packages` builds standard-Go WASI reactors and deterministic ZIP
-archives. The guest's `go.mod` pins its compiler version; trimpath, disabled VCS
-metadata, an empty build ID, sorted files, and fixed ZIP metadata make artifacts
-reproducible. Packages are committed and embedded, so ordinary Lore compilation
-and Docker builds need no guest compiler invocation.
+`make plugin-packages` writes deterministic ZIP archives. Packages with executable
+modules build a standard-Go WASI reactor; declarative-only packages skip the Go
+compiler and contain no `plugin.wasm`. Executable guests use the version pinned in
+their `go.mod`; trimpath, disabled VCS metadata, an empty build ID, sorted files,
+and fixed ZIP metadata make artifacts reproducible. Packages are committed and
+embedded, so ordinary Lore compilation and Docker builds need no guest compiler
+invocation.
 
 `make generate` regenerates packages and icons. `make check-generated` compares
 the checked-in packages. `make test` and `make test-race` also test the standalone
@@ -226,11 +234,11 @@ versioned asset handlers and browser harness. `browser:render` must be declared
 and granted. The manifest names `javascript` and optional `css` paths relative
 to `assets/`; the loader validates that these files exist.
 
-Only enabled packages appear in `/plugins/modules.json`. Assets and frames use
-`/plugins/{id}/{package-digest}/` URLs and are not cached. Disable or upgrade
-invalidates old asset URLs. Pages with plugin blocks refresh metadata every three
-seconds, discard retired frames, and show source text when a module is disabled
-or fails. Subsequent page renders reflect the active WASM registry immediately.
+Enabled browser modules are embedded directly into each rendered page. Assets and
+frames use `/plugins/{id}/{package-digest}/` URLs and are not cached. Disable or
+upgrade invalidates old asset URLs, but already-open pages keep the catalog they
+were rendered with. Reload the page to pick up plugin lifecycle changes. A failed
+browser module still restores its source fallback.
 
 Core accepts sanitized blocks marked with `data-lore-plugin` and
 `data-lore-module`, containing a direct `pre` child. It passes only that block's
@@ -329,5 +337,3 @@ only supplies distribution bytes to the ordinary bootstrap path.
 
 See [the developer guide](../../pluginsdk/README.md) for project scaffolding,
 testing and deterministic packaging.
-
-

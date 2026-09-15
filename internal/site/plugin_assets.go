@@ -2,6 +2,7 @@ package site
 
 import (
 	"encoding/json"
+	"html/template"
 	"net/url"
 	"path/filepath"
 
@@ -14,10 +15,7 @@ import (
 func (b *builder) copyPluginAssets(config Config, basePath string) error {
 	manager := b.renderer.PluginManager()
 	if manager == nil {
-		if err := writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), nil); err != nil {
-			return err
-		}
-		return writeFile(filepath.Join(config.OutputDir, "plugins", "modules.json"), []byte("[]"))
+		return writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), nil)
 	}
 	origin, err := url.Parse(config.SiteURL)
 	if err != nil {
@@ -25,7 +23,6 @@ func (b *builder) copyPluginAssets(config Config, basePath string) error {
 	}
 	prefix := basePath + "plugins"
 	runtime := basePath + "assets/js/plugins/frame.js"
-	modules := make([]pluginbrowser.Module, 0)
 	for _, module := range manager.BrowserModules() {
 		names, err := manager.BrowserAssetNames(module.PluginID, module.Digest)
 		if err != nil {
@@ -48,14 +45,17 @@ func (b *builder) copyPluginAssets(config Config, basePath string) error {
 		if err := writeFile(filepath.Join(directory, "frames", module.ModuleID+".html"), frame); err != nil {
 			return err
 		}
-		modules = append(modules, pluginbrowser.View(prefix, module))
 	}
-	if err := writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), []byte(pluginbrowser.PresentationStyles(manager))); err != nil {
-		return err
-	}
-	data, err := json.Marshal(modules)
+	return writeFile(filepath.Join(config.OutputDir, "plugins", "styles.css"), []byte(pluginbrowser.PresentationStyles(manager)))
+}
+
+// pluginModulesJSON serializes the current browser module catalog directly into
+// generated pages. Static sites never fetch a mutable plugin catalog at runtime.
+func (b *builder) pluginModulesJSON(prefix string) (template.JS, error) {
+	data, err := json.Marshal(pluginbrowser.Catalog(prefix, b.renderer.PluginManager()))
 	if err != nil {
-		return err
+		return "", err
 	}
-	return writeFile(filepath.Join(config.OutputDir, "plugins", "modules.json"), data)
+
+	return template.JS(data), nil
 }

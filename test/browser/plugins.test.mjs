@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
-import { block, pluginRoute } from "./plugin-fixture.mjs";
+import { block, plugin, pluginCatalog, pluginRoute } from "./plugin-fixture.mjs";
 
-test("real Mermaid is isolated and live disable/re-enable replaces its frame", async () => {
+test("real Mermaid is isolated and plugin changes require a page reload", async () => {
   const browser = await chromium.launch({
     channel: process.env.BROWSER_CHANNEL || "chrome",
     headless: true,
@@ -28,7 +28,7 @@ test("real Mermaid is isolated and live disable/re-enable replaces its frame", a
       }
       await route.fulfill({
         contentType: "text/html",
-        body: `<body>${block}<script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js'; await renderPluginModules();</script></body>`,
+        body: `<body>${pluginCatalog(plugin, enabled)}${block}<script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js'; await renderPluginModules();</script></body>`,
       });
     });
     await page.goto("http://plugins.test/");
@@ -61,12 +61,17 @@ test("real Mermaid is isolated and live disable/re-enable replaces its frame", a
       "allow-scripts",
     );
     enabled = false;
-    await page.locator("iframe").waitFor({ state: "detached" });
-    assert.equal(await page.locator("pre").isVisible(), true);
     const stopped = assetRequests;
     await page.waitForTimeout(3200);
+    assert.equal(await page.locator("iframe[data-plugin-ready]").count(), 1);
     assert.equal(assetRequests, stopped);
+
+    await page.reload();
+    assert.equal(await page.locator("iframe").count(), 0);
+    assert.equal(await page.locator("pre").isVisible(), true);
+
     enabled = true;
+    await page.reload();
     await page.locator("iframe[data-plugin-ready]").waitFor();
     assert.ok(assetRequests > stopped);
     assert.equal(await page.frameLocator("iframe").locator("svg").count(), 1);

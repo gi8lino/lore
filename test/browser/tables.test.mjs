@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
-import { pluginRoute } from "./plugin-fixture.mjs";
+import { pluginCatalog, pluginRoute } from "./plugin-fixture.mjs";
 
 const module = {
   plugin_id: "io.lore.tables",
@@ -37,7 +37,7 @@ test("Tables uses packaged sorting/filtering, theme colors, and semantic fallbac
       }
       await route.fulfill({
         contentType: "text/html",
-        body: `<style>:root{--text:#111111;--surface:#ffffff;--accent:#3366ff;--border:#cccccc;--surface-hover:#eeeeee;--surface-elevated:#dddddd;--text-secondary:#555555;--text-tertiary:#666666;--muted:#999999;}</style><body><div data-lore-plugin="io.lore.tables" data-lore-module="interactive" data-lore-input="html"><div data-lore-fallback>${table}</div></div><script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js';await renderPluginModules();</script></body>`,
+        body: `<style>:root{--text:#111111;--surface:#ffffff;--accent:#3366ff;--border:#cccccc;--surface-hover:#eeeeee;--surface-elevated:#dddddd;--text-secondary:#555555;--text-tertiary:#666666;--muted:#999999;}</style><body>${pluginCatalog(module, enabled)}<div data-lore-plugin="io.lore.tables" data-lore-module="interactive" data-lore-input="html"><div data-lore-fallback>${table}</div></div><script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js';await renderPluginModules();</script></body>`,
       });
     });
     await page.goto("http://tables.test/");
@@ -70,13 +70,16 @@ test("Tables uses packaged sorting/filtering, theme colors, and semantic fallbac
       "http://tables.test/pages/db",
     );
     enabled = false;
-    await page.locator("iframe").waitFor({ state: "detached" });
+    await page.waitForTimeout(3200);
+    assert.equal(await page.locator("iframe[data-plugin-ready]").count(), 1);
+    await page.reload();
     assert.equal(await page.locator("[data-lore-fallback]").isVisible(), true);
     assert.equal(
       await page.locator("[data-lore-fallback] tbody tr").count(),
       2,
     );
     enabled = true;
+    await page.reload();
     await page.locator("iframe[data-plugin-ready]").waitFor();
     assert.equal(await frame.locator("tbody tr:visible").count(), 2);
     await frame.getByRole("link", { name: "DB", exact: true }).click();
@@ -126,7 +129,7 @@ test("disabling a browser module cancels its pending image transfer", async () =
       }
       await route.fulfill({
         contentType: "text/html",
-        body: `<body><div data-lore-plugin="io.lore.tables" data-lore-module="interactive" data-lore-input="html"><div data-lore-fallback><table class="lore-table-sortable"><thead><tr><th>Image</th></tr></thead><tbody><tr><td><img src="/image.png"></td></tr></tbody></table></div></div><script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js';await renderPluginModules();</script></body>`,
+        body: `<body>${pluginCatalog(module, enabled)}<div data-lore-plugin="io.lore.tables" data-lore-module="interactive" data-lore-input="html"><div data-lore-fallback><table class="lore-table-sortable"><thead><tr><th>Image</th></tr></thead><tbody><tr><td><img src="/image.png"></td></tr></tbody></table></div></div><script type="module">import {renderPluginModules} from '/assets/js/plugins/loader.js';await renderPluginModules();</script></body>`,
       });
     });
     const transferring = page.waitForRequest(
@@ -142,8 +145,9 @@ test("disabling a browser module cancels its pending image transfer", async () =
         request.resourceType() === "fetch",
     });
     enabled = false;
+    await page.reload({ waitUntil: "domcontentloaded" });
     await cancelled;
-    await page.locator("iframe").waitFor({ state: "detached" });
+    assert.equal(await page.locator("iframe").count(), 0);
     assert.equal(await page.locator("[data-lore-fallback]").isVisible(), true);
     release();
   } finally {

@@ -36,6 +36,22 @@ func View(prefix string, m plugin.BrowserContribution) Module {
 	return Module{BrowserContribution: m, FrameURL: Base(prefix, m) + "frames/" + m.ModuleID + ".html"}
 }
 
+// Catalog builds browser-module metadata for the current active registry. The
+// catalog is intended to be embedded in the page so clients never have to poll.
+func Catalog(prefix string, manager *plugin.Manager) []Module {
+	if manager == nil {
+		return []Module{}
+	}
+
+	modules := manager.BrowserModules()
+	result := make([]Module, 0, len(modules))
+	for _, module := range modules {
+		result = append(result, View(prefix, module))
+	}
+
+	return result
+}
+
 // Policy also applies when the frame is opened directly. Opaque origin and
 // resource restrictions keep plugin JavaScript away from Lore's DOM,
 // credentials, and APIs.

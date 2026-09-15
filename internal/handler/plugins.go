@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -11,21 +10,6 @@ import (
 	"github.com/gi8lino/lore/internal/plugin"
 	"github.com/gi8lino/lore/internal/pluginbrowser"
 )
-
-// PluginModules returns browser-module metadata for currently enabled plugins.
-func PluginModules(manager *plugin.Manager) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Type", "application/json")
-		result := make([]pluginbrowser.Module, 0)
-		if manager != nil {
-			for _, module := range manager.BrowserModules() {
-				result = append(result, pluginbrowser.View("/plugins", module))
-			}
-		}
-		_ = json.NewEncoder(w).Encode(result)
-	}
-}
 
 // PluginAssets serves one validated browser asset from an enabled plugin.
 func PluginAssets(manager *plugin.Manager) http.HandlerFunc {

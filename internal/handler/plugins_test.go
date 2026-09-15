@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http/httptest"
 	"testing"
 
@@ -27,10 +26,7 @@ func TestBrowserPluginLifecycleAndAssetBoundary(t *testing.T) {
 		archives = append(archives, archive)
 	}
 	require.NoError(t, manager.Bootstrap(ctx, archives))
-	recorder := httptest.NewRecorder()
-	PluginModules(manager)(recorder, httptest.NewRequest("GET", "http://lore.test/plugins/modules.json", nil))
-	var modules []pluginbrowser.Module
-	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &modules))
+	modules := pluginbrowser.Catalog("/plugins", manager)
 	require.Len(t, modules, 2)
 	module := modules[0]
 	assert.Equal(t, "io.lore.mermaid", module.PluginID)

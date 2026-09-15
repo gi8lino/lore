@@ -61,6 +61,7 @@ type viewData struct {
 	NavigationDensity string
 	SidebarWidth      int
 	ThemeData         template.JS
+	PluginModules     template.JS
 	CurrentRoute      string
 	Navigation        []navigation.Node
 	HTML              template.HTML
@@ -118,8 +119,13 @@ func (b *builder) build(ctx context.Context, config Config) (buildResult, error)
 	if err != nil {
 		return buildResult{}, err
 	}
+	pluginModules, err := b.pluginModulesJSON(plan.basePath + "plugins")
+	if err != nil {
+		return buildResult{}, err
+	}
 
 	common := commonViewData(plan, branding)
+	common.PluginModules = pluginModules
 	searchIndex, err := b.renderPages(ctx, plan, common)
 	if err != nil {
 		return buildResult{}, err

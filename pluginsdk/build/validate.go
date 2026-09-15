@@ -22,11 +22,15 @@ func Validate(directory string) (pluginpackage.Manifest, error) {
 	if _, err := readRegular(filepath.Join(directory, "README.md"), pluginpackage.MaxREADMEBytes); err != nil {
 		return empty, err
 	}
-	if _, err := readRegular(filepath.Join(directory, "go.mod"), pluginpackage.MaxManifestBytes); err != nil {
-		return empty, err
+	baseFiles := 2
+	if manifest.RequiresWASM() {
+		if _, err := readRegular(filepath.Join(directory, "go.mod"), pluginpackage.MaxManifestBytes); err != nil {
+			return empty, err
+		}
+		baseFiles++
 	}
 	// Walk every packaged asset, including dependencies referenced by JS/CSS.
-	count, total := 3, 0
+	count, total := baseFiles, 0
 	assets := filepath.Join(directory, "assets")
 	if info, err := os.Lstat(assets); err == nil {
 		if !info.IsDir() {

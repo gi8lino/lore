@@ -17,9 +17,8 @@ type Active = {
   cleanup: () => void;
 };
 const active = new Map<HTMLElement, Active>();
-let loading: Promise<Module[]> | undefined;
+let catalog: Module[] | undefined;
 let watching = false;
-let catalogVersion: string | undefined;
 const identifier = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 function validModule(value: unknown): value is Module {
   if (typeof value !== "object" || value === null) return false;
@@ -35,37 +34,37 @@ function validModule(value: unknown): value is Module {
     typeof m.frame_url === "string"
   );
 }
-function modules(): Promise<Module[]> {
-  if (loading) return loading;
-  loading = (async () => {
-    const endpoint = new URL(
-      document.body.dataset.pluginModules || "/plugins/modules.json",
-      location.href,
+function modules(): Module[] {
+  if (catalog) return catalog;
+
+  const source = document.getElementById("lore-plugin-modules");
+  if (!(source instanceof HTMLScriptElement)) return (catalog = []);
+
+  let data: unknown;
+  try {
+    data = JSON.parse(source.textContent || "[]");
+  } catch {
+    return (catalog = []);
+  }
+  if (!Array.isArray(data) || !data.every(validModule)) return (catalog = []);
+
+  const basePath = document.body.dataset.staticBasePath || "/";
+  const pluginBase = new URL(
+    basePath.replace(/\/?$/, "/") + "plugins/",
+    location.origin,
+  );
+  catalog = data.filter((module) => {
+    const frame = new URL(module.frame_url, location.href);
+    return (
+      frame.origin === location.origin &&
+      frame.pathname.startsWith(pluginBase.pathname) &&
+      !frame.search &&
+      !frame.hash
     );
-    if (endpoint.origin !== location.origin)
-      throw new Error("Invalid plugin catalog origin");
-    const response = await fetch(endpoint, {
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    if (!response.ok) throw new Error("Plugin catalog unavailable");
-    const data: unknown = await response.json();
-    if (!Array.isArray(data) || !data.every(validModule))
-      throw new Error("Invalid plugin catalog");
-    return data.filter((m) => {
-      const frame = new URL(m.frame_url, location.href);
-      return (
-        frame.origin === location.origin &&
-        frame.pathname.startsWith(new URL("./", endpoint).pathname) &&
-        !frame.search &&
-        !frame.hash
-      );
-    });
-  })().finally(() => {
-    loading = undefined;
   });
-  return loading;
+  return catalog;
 }
+
 function remove(block: HTMLElement): void {
   const state = active.get(block);
   if (!state) return;
@@ -187,13 +186,6 @@ function watch(): void {
   new MutationObserver(() => {
     for (const block of active.keys()) if (!block.isConnected) remove(block);
   }).observe(document.body, { childList: true, subtree: true });
-  if (document.body.dataset.pluginLive !== "false") {
-    window.setInterval(() => {
-      void renderPluginModules().catch(() => {
-        for (const block of active.keys()) remove(block);
-      });
-    }, 3000);
-  }
 }
 export async function renderPluginModules(
   root: Root = document,
@@ -205,25 +197,7 @@ export async function renderPluginModules(
   ];
   if (!blocks.length && !active.size) return;
   watch();
-  const enabled = await modules().catch(() => [] as Module[]);
-  const version = enabled
-    .map((module) => module.plugin_id + ":" + module.digest)
-    .join(",");
-  if (
-    catalogVersion !== undefined &&
-    catalogVersion !== version &&
-    document.body.dataset.pluginLive !== "false"
-  ) {
-    const link = document.querySelector<HTMLLinkElement>(
-      "link[data-plugin-styles]",
-    );
-    if (link) {
-      const url = new URL(link.href);
-      url.searchParams.set("v", String(Date.now()));
-      link.href = url.href;
-    }
-  }
-  catalogVersion = version;
+  const enabled = modules();
   const find = (block: HTMLElement) =>
     enabled.find(
       (m) =>

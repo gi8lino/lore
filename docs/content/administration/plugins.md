@@ -9,8 +9,9 @@ The list shows each plugin's name, version, provider, source, and status and let
 
 Upload one `.loreplugin` package, up to 16 MiB, and select **Install and enable**.
 Lore validates its format, API compatibility, dependencies, and permission policy
-before publishing its contributions. Installation takes effect immediately.
-A package requesting capabilities that Lore does not grant cannot be installed.
+before publishing its contributions. Server-side contributions take effect immediately;
+already-open pages reload before they see a changed browser module catalog. A package
+requesting capabilities that Lore does not grant cannot be installed.
 There is no marketplace or automatic package download.
 
 To upgrade, open the plugin and upload a package with the same plugin ID.
@@ -22,9 +23,10 @@ the same package loader and runtime.
 ## Enable, disable, and uninstall
 
 **Disable plugin** removes its contributions from new renders. Active renders
-finish using their existing version; browser modules notice the change shortly
-afterward and restore their HTML/source fallback. **Enable plugin** restores its
-contributions without restarting Lore.
+finish using their existing version. Browser module catalogs are embedded when a page
+is rendered, so already-open pages keep their current browser modules until the user
+reloads the page. **Enable plugin** restores its contributions without restarting Lore;
+reload an already-open page to pick up that browser-module change.
 
 Dependencies must remain enabled while a dependent plugin is active. System
 plugins marked required by deployment policy cannot be disabled or removed.

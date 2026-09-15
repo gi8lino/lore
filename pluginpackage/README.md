@@ -9,6 +9,10 @@ See [the SDK](../pluginsdk/README.md) for project creation and deterministic bui
 and [the runtime architecture](../internal/plugin/README.md) for lifecycle and
 security boundaries.
 
+Declarative-only packages do not need `plugin.wasm`. The archive requires a WASM
+guest only when the manifest contains an executable renderer extension, macro, or
+code highlighter.
+
 ## Source usage selectors
 
 Executable modules can optionally declare bounded `usage` selectors so Lore can

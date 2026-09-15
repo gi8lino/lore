@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
-import { block, pluginRoute } from "./plugin-fixture.mjs";
+import { block, pluginCatalog, pluginRoute } from "./plugin-fixture.mjs";
 
 // Run with `make test-browser`.
 // Use the real editor module and stylesheet with controlled preview latency.
@@ -43,6 +43,7 @@ test("split preview ignores cursor clicks and refreshes without flashing", async
         await route.fulfill({
           contentType: "text/html",
           body: `<link rel="stylesheet" href="/assets/css/app.css">
+            ${pluginCatalog()}
             <form data-editor-form data-preview-url="/preview">
               <input name="slug" value="example">
               <button type="button" data-editor-mode="write">Write</button>

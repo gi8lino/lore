@@ -121,6 +121,12 @@ func renderSharedPage(
 		return
 	}
 
+	data.PluginModules, err = pluginModulesJSON(renderer.PluginManager(), "/plugins")
+	if err != nil {
+		writePublicShareError(logger, w, err)
+		return
+	}
+
 	data.Page = &page
 	data.HTML = template.HTML(standaloneHTML)
 	data.ApplicationSettings = application

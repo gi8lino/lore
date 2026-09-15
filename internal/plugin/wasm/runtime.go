@@ -5,7 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/gi8lino/lore/internal/plugin"
@@ -52,8 +55,31 @@ func (l Limits) defaults() Limits {
 }
 
 // The compilation cache shares machine code, never registries, guest memory,
-// request state, or capabilities. It is in memory only and lives for the process.
-var compilationCache = wazero.NewCompilationCache()
+// request state, or capabilities. Prefer wazero's persistent cache so unchanged
+// guests do not have to be compiled again after Lore restarts.
+var (
+	compilationCacheOnce sync.Once
+	compilationCache     wazero.CompilationCache
+)
+
+// sharedCompilationCache returns one process-wide cache backed by the user's
+// normal cache directory when available. Read-only or unusual environments fall
+// back to the in-memory cache instead of preventing Lore from starting.
+func sharedCompilationCache() wazero.CompilationCache {
+	compilationCacheOnce.Do(func() {
+		if root, err := os.UserCacheDir(); err == nil {
+			cache, cacheErr := wazero.NewCompilationCacheWithDir(filepath.Join(root, "lore", "wasm"))
+			if cacheErr == nil {
+				compilationCache = cache
+				return
+			}
+		}
+
+		compilationCache = wazero.NewCompilationCache()
+	})
+
+	return compilationCache
+}
 
 // Wazero's cache does not single-flight concurrent compilations. Serialize cache
 // misses so parallel startup cannot compile the same binary repeatedly. Cache
@@ -95,7 +121,7 @@ func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error
 		return nil, errors.New("invalid WASM runtime limits")
 	}
 	config := wazero.NewRuntimeConfig().WithMemoryLimitPages(limits.MemoryPages).
-		WithCloseOnContextDone(true).WithCompilationCache(compilationCache)
+		WithCloseOnContextDone(true).WithCompilationCache(sharedCompilationCache())
 	engine := wazero.NewRuntimeWithConfig(ctx, config)
 	// No filesystem preopens, environment, process arguments, sockets, or host
 	// streams are configured. WASI descriptors cannot access Lore's resources.
@@ -122,12 +148,19 @@ func validLimits(limits Limits) bool {
 	return limits.MemoryPages <= 65536 && limits.WireBytes <= 16<<20 && limits.Parts <= 4096
 }
 
-// Load validates policy, compiles the guest, and returns an isolated plugin instance.
+// Load validates policy and returns one isolated plugin instance. Declarative
+// packages never compile or instantiate WASM.
 func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.Instance, error) {
-	for _, permission := range pkg.Manifest().Permissions {
+	manifest := pkg.Manifest()
+	for _, permission := range manifest.Permissions {
 		if !r.permissions[permission] {
 			return nil, fmt.Errorf("plugin permission not granted: %s", permission)
 		}
+	}
+
+	instance := &Instance{runtime: r, manifest: manifest, gate: make(chan struct{}, 1)}
+	if !manifest.RequiresWASM() {
+		return instance, nil
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, r.limits.LoadTimeout)
@@ -139,7 +172,7 @@ func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.
 		return nil, fmt.Errorf("compile WASM: %w", err)
 	}
 
-	instance := &Instance{runtime: r, compiled: compiled, manifest: pkg.Manifest(), gate: make(chan struct{}, 1)}
+	instance.compiled = compiled
 	initializeCtx, stop := context.WithTimeout(ctx, r.limits.CallTimeout)
 	defer stop()
 

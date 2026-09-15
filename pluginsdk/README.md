@@ -93,11 +93,15 @@ The SDK exposes no sanitizer policy or trusted-HTML bypass.
 ## Build contract
 
 `test` validates the runtime manifest schema, project files and assets, then runs
-`go test ./...`. `build` performs the same validation, compiles with standard Go
-(`GOOS=wasip1 GOARCH=wasm`, `-buildmode=c-shared`), and writes a bounded ZIP.
-The exact Go version comes from `go.mod`; trimpath, stripped build IDs, sorted
-entries and fixed ZIP metadata make repeated builds deterministic. Pin module
-versions and precompile browser sources for reproducible inputs.
+`go test ./...` when the project has a Go module. `build` performs the same
+validation and writes a bounded ZIP.
+When the manifest contains executable renderer extensions, macros, or code
+highlighters it compiles standard Go (`GOOS=wasip1 GOARCH=wasm`,
+`-buildmode=c-shared`) and includes `plugin.wasm`. Declarative-only packages skip
+the Go compiler and do not require a `go.mod`. Executable guests use the exact Go
+version from `go.mod`; trimpath, stripped build IDs, sorted entries and fixed ZIP
+metadata make repeated builds deterministic. Pin module versions and precompile
+browser sources for reproducible inputs.
 
 `pluginpackage` is the shared public manifest/package validator used by both Lore
 and the CLI. `pluginsdk/build` is host-side developer tooling; it is not imported
@@ -109,5 +113,3 @@ compilation is project-owned; the CLI does not install a frontend toolchain.
 The low-level [wire contract](../pluginapi/README.md) remains available for other
 languages and advanced integrations. Go authors need not implement its exports,
 allocation, host-call envelopes or macro serialization.
-
-

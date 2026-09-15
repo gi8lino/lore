@@ -61,6 +61,41 @@ func archive(t *testing.T, wasmBytes []byte, stage string) []byte {
 	return buffer.Bytes()
 }
 
+func declarativeArchive(t *testing.T) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	for _, entry := range []struct {
+		name string
+		data []byte
+	}{
+		{"README.md", []byte("# Declarative\n")},
+		{"plugin.yaml", []byte("api_version: 1\nid: io.example.declarative\nname: Declarative\nversion: 1.0.0\nmodules:\n  - type: markdown-syntax\n    id: syntax\n    syntax: strikethrough\npermissions: []\n")},
+	} {
+		file, err := writer.Create(entry.name)
+		require.NoError(t, err)
+		_, err = file.Write(entry.data)
+		require.NoError(t, err)
+	}
+	require.NoError(t, writer.Close())
+	return buffer.Bytes()
+}
+
+func TestDeclarativePackageLoadsWithoutWASM(t *testing.T) {
+	pkg, err := pluginpackage.Read(declarativeArchive(t))
+	require.NoError(t, err)
+	require.False(t, pkg.Manifest().RequiresWASM())
+	require.Empty(t, pkg.WASM())
+
+	runtime, err := wasm.New(context.Background(), wasm.Limits{})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, runtime.Close(context.Background())) })
+	instance, err := runtime.Load(context.Background(), pkg)
+	require.NoError(t, err)
+	require.Len(t, instance.Contributions().MarkdownExtensions, 1)
+	require.NoError(t, instance.Close(context.Background()))
+}
+
 // runtimeFixture handles the runtime fixture operation.
 func runtimeFixture(t *testing.T, stage string, limits wasm.Limits) (plugin.Instance, []byte) {
 	t.Helper()

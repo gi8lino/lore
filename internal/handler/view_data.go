@@ -10,6 +10,7 @@ import (
 	"github.com/gi8lino/lore/internal/domain"
 	"github.com/gi8lino/lore/internal/navigation"
 	"github.com/gi8lino/lore/internal/plugin"
+	"github.com/gi8lino/lore/internal/pluginbrowser"
 	"github.com/gi8lino/lore/themes"
 )
 
@@ -24,15 +25,16 @@ func publicViewData(views *Views, title string) (ViewData, error) {
 	}
 
 	return ViewData{
-		Title:        title,
-		Preferences:  preferences,
-		Version:      views.version,
-		AssetVersion: views.assetVersion,
-		Commit:       views.commit,
-		Runtime:      views.runtime,
-		ThemeData:    template.JS(themeData),
-		Themes:       views.themes,
-		ActiveTheme:  activeTheme,
+		Title:         title,
+		Preferences:   preferences,
+		Version:       views.version,
+		AssetVersion:  views.assetVersion,
+		Commit:        views.commit,
+		Runtime:       views.runtime,
+		ThemeData:     template.JS(themeData),
+		PluginModules: template.JS("[]"),
+		Themes:        views.themes,
+		ActiveTheme:   activeTheme,
 	}, nil
 }
 
@@ -226,6 +228,11 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 	}
 	stop()
 
+	pluginModules, err := pluginModulesJSON(l.pluginManager, "/plugins")
+	if err != nil {
+		return ViewData{}, err
+	}
+
 	return ViewData{
 		Title:               title,
 		User:                user,
@@ -248,10 +255,21 @@ func (l *ViewDataLoader) Load(r *http.Request, views *Views, title string) (View
 		ActiveTheme:         activeTheme,
 		ApplicationSettings: applicationSettings,
 		PluginFeatures:      pluginFeatures,
+		PluginModules:       pluginModules,
 		EditorInserts:       editorInserts,
 		CanEdit:             user.Role == "admin" || user.Role == "editor",
 		PageContentLanguage: applicationSettings.ContentLanguage,
 	}, nil
+}
+
+// pluginModulesJSON serializes active browser modules for direct page embedding.
+func pluginModulesJSON(manager *plugin.Manager, prefix string) (template.JS, error) {
+	data, err := json.Marshal(pluginbrowser.Catalog(prefix, manager))
+	if err != nil {
+		return "", err
+	}
+
+	return template.JS(data), nil
 }
 
 // viewData loads shared authenticated view data through the handler's narrow dependency.

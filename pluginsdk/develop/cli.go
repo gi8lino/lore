@@ -34,10 +34,18 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if _, err := build.Validate(directory); err != nil {
+		manifest, err := build.Validate(directory)
+		if err != nil {
 			return err
 		}
 		if args[0] == "test" {
+			if !manifest.RequiresWASM() {
+				if _, statErr := os.Stat(filepath.Join(directory, "go.mod")); os.IsNotExist(statErr) {
+					return nil
+				} else if statErr != nil {
+					return statErr
+				}
+			}
 			command := exec.CommandContext(ctx, "go", "test", "./...")
 			command.Stdout = out
 			command.Stderr = errOut

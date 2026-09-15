@@ -20,7 +20,8 @@ import (
 // Build validates and compiles a project, then writes a deterministic package.
 // Browser sources must already be compiled to the manifest-declared assets.
 func Build(ctx context.Context, directory, destination string) error {
-	if _, err := Validate(directory); err != nil {
+	manifest, err := Validate(directory)
+	if err != nil {
 		return err
 	}
 	temporary, err := os.MkdirTemp("", "lore-plugin-build-*")
@@ -30,46 +31,50 @@ func Build(ctx context.Context, directory, destination string) error {
 
 	defer func() { _ = os.RemoveAll(temporary) }()
 
-	command := exec.CommandContext(ctx,
-		"go", "build", "-trimpath", "-buildvcs=false", "-buildmode=c-shared", "-ldflags=-s -w -buildid=", "-o", filepath.Join(temporary, "plugin.wasm"), ".")
-	command.Dir = directory
+	if manifest.RequiresWASM() {
+		command := exec.CommandContext(ctx,
+			"go", "build", "-trimpath", "-buildvcs=false", "-buildmode=c-shared", "-ldflags=-s -w -buildid=", "-o", filepath.Join(temporary, "plugin.wasm"), ".")
+		command.Dir = directory
 
-	// Reproduce the checked-in artifact with the manifest's Go toolchain version,
-	// independently of the developer's newer patch version or ambient build flags.
-	module, err := os.ReadFile(filepath.Join(directory, "go.mod"))
-	if err != nil {
-		return err
-	}
-
-	toolchain := ""
-	for line := range strings.SplitSeq(string(module), "\n") {
-		if value, ok := strings.CutPrefix(line, "go "); ok {
-			toolchain = "go" + strings.TrimSpace(value)
+		// Reproduce the checked-in artifact with the manifest's Go toolchain version,
+		// independently of the developer's newer patch version or ambient build flags.
+		module, err := os.ReadFile(filepath.Join(directory, "go.mod"))
+		if err != nil {
+			return err
 		}
-	}
-	if toolchain == "" {
-		return fmt.Errorf("no Go toolchain in %s", directory)
-	}
 
-	environment := make([]string, 0, len(os.Environ()))
-	for _, value := range os.Environ() {
-		key, _, _ := strings.Cut(value, "=")
-		switch key {
-		case "GOOS", "GOARCH", "GOFLAGS", "GOWORK", "GOTOOLCHAIN", "CGO_ENABLED":
-			continue
+		toolchain := ""
+		for line := range strings.SplitSeq(string(module), "\n") {
+			if value, ok := strings.CutPrefix(line, "go "); ok {
+				toolchain = "go" + strings.TrimSpace(value)
+			}
 		}
-		environment = append(environment, value)
-	}
+		if toolchain == "" {
+			return fmt.Errorf("no Go toolchain in %s", directory)
+		}
 
-	command.Env = append(environment, "GOOS=wasip1", "GOARCH=wasm", "CGO_ENABLED=0", "GOFLAGS=", "GOWORK=off", "GOTOOLCHAIN="+toolchain)
-	if output, err := command.CombinedOutput(); err != nil {
-		return fmt.Errorf("build %s: %w\n%s", directory, err, output)
+		environment := make([]string, 0, len(os.Environ()))
+		for _, value := range os.Environ() {
+			key, _, _ := strings.Cut(value, "=")
+			switch key {
+			case "GOOS", "GOARCH", "GOFLAGS", "GOWORK", "GOTOOLCHAIN", "CGO_ENABLED":
+				continue
+			}
+			environment = append(environment, value)
+		}
+
+		command.Env = append(environment, "GOOS=wasip1", "GOARCH=wasm", "CGO_ENABLED=0", "GOFLAGS=", "GOWORK=off", "GOTOOLCHAIN="+toolchain)
+		if output, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("build %s: %w\n%s", directory, err, output)
+		}
 	}
 
 	files := map[string]string{
 		"README.md":   filepath.Join(directory, "README.md"),
 		"plugin.yaml": filepath.Join(directory, "plugin.yaml"),
-		"plugin.wasm": filepath.Join(temporary, "plugin.wasm"),
+	}
+	if manifest.RequiresWASM() {
+		files["plugin.wasm"] = filepath.Join(temporary, "plugin.wasm")
 	}
 	assets := filepath.Join(directory, "assets")
 	if _, err := os.Stat(assets); err == nil {

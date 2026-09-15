@@ -40,6 +40,23 @@ func testArchive(t *testing.T, manifest string, extras ...archiveEntry) []byte {
 	return buffer.Bytes()
 }
 
+func testArchiveWithoutWASM(t *testing.T, manifest string, extras ...archiveEntry) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	archive := zip.NewWriter(&buffer)
+	entries := append([]archiveEntry{{"README.md", []byte("# Test\n"), 0644}, {"plugin.yaml", []byte(manifest), 0644}}, extras...)
+	for _, entry := range entries {
+		header := &zip.FileHeader{Name: entry.name, Method: zip.Deflate}
+		header.SetMode(entry.mode)
+		writer, err := archive.CreateHeader(header)
+		require.NoError(t, err)
+		_, err = writer.Write(entry.data)
+		require.NoError(t, err)
+	}
+	require.NoError(t, archive.Close())
+	return buffer.Bytes()
+}
+
 // archiveEntry groups the state and data associated with archive entry.
 type archiveEntry struct {
 	// name stores the value associated with name.
@@ -74,6 +91,29 @@ func TestPackageReadAndDefensiveCopies(t *testing.T) {
 	assert.ErrorIs(t, err, fs.ErrInvalid)
 	_, err = pkg.Asset("missing")
 	assert.ErrorIs(t, err, fs.ErrNotExist)
+}
+
+func TestDeclarativePackageDoesNotRequireWASM(t *testing.T) {
+	manifest := `api_version: 1
+id: io.example.syntax
+name: Syntax
+version: 1.0.0
+modules:
+  - type: markdown-syntax
+    id: grammar
+    syntax: strikethrough
+permissions: []
+`
+	pkg, err := Read(testArchiveWithoutWASM(t, manifest))
+	require.NoError(t, err)
+	assert.False(t, pkg.Manifest().RequiresWASM())
+	assert.Empty(t, pkg.WASM())
+
+	_, err = Read(testArchiveWithoutWASM(t, testManifest))
+	require.ErrorContains(t, err, "missing or invalid plugin.wasm")
+
+	_, err = Read(testArchiveWithoutWASM(t, manifest, archiveEntry{"plugin.wasm", []byte("not wasm"), 0644}))
+	require.ErrorContains(t, err, "invalid plugin.wasm")
 }
 
 // TestPackageRejectsUnsafeEntries verifies package rejects unsafe entries behavior.

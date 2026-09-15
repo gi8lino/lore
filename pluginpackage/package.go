@@ -56,6 +56,19 @@ type Manifest struct {
 	Permissions []string `yaml:"permissions"`
 }
 
+// RequiresWASM reports whether any module in this manifest executes guest code.
+// Declarative modules are handled entirely by the host and do not need a WASM guest.
+func (m Manifest) RequiresWASM() bool {
+	for _, module := range m.Modules {
+		switch module.Type {
+		case "renderer-extension", "macro", "code-highlighter":
+			return true
+		}
+	}
+
+	return false
+}
+
 // ResourceField declares one field in a plugin-owned admin resource.
 type ResourceField struct {
 	// ID identifies the field in stored records.
@@ -256,8 +269,12 @@ func read(data []byte) (*Package, error) {
 	}
 
 	wasm := files["plugin.wasm"]
-	if !hasWASMHeader(wasm) {
-		return nil, errors.New("missing or invalid plugin.wasm")
+	if manifest.RequiresWASM() {
+		if !hasWASMHeader(wasm) {
+			return nil, errors.New("missing or invalid plugin.wasm")
+		}
+	} else if len(wasm) != 0 && !hasWASMHeader(wasm) {
+		return nil, errors.New("invalid plugin.wasm")
 	}
 
 	readme := files["README.md"]

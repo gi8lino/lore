@@ -1,10 +1,13 @@
 package build
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gi8lino/lore/pluginpackage"
 )
 
 func TestValidationRejectsUnsafeProjects(t *testing.T) {
@@ -39,5 +42,36 @@ func TestValidationRejectsUnsafeProjects(t *testing.T) {
 	}
 	if _, err := Validate(directory); err == nil {
 		t.Fatal("asset symlink accepted")
+	}
+}
+
+func TestDeclarativeBuildOmitsWASMAndGoModule(t *testing.T) {
+	directory := t.TempDir()
+	write := func(name, value string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(value), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("plugin.yaml", "api_version: 1\nid: com.example.syntax\nname: Syntax\nversion: 1.0.0\nmodules:\n  - type: markdown-syntax\n    id: syntax\n    syntax: strikethrough\npermissions: []\n")
+	write("README.md", "# Syntax\n")
+
+	destination := filepath.Join(t.TempDir(), "syntax.loreplugin")
+	if err := Build(context.Background(), directory, destination); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := pluginpackage.Read(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pkg.Manifest().RequiresWASM() {
+		t.Fatal("declarative manifest unexpectedly requires WASM")
+	}
+	if len(pkg.WASM()) != 0 {
+		t.Fatal("declarative package contains plugin.wasm")
 	}
 }

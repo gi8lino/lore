@@ -14,13 +14,12 @@
             href="{{ .BasePath }}plugins/styles.css"
             data-plugin-styles />
       <script id="lore-themes" type="application/json">{{ .ThemeData }}</script>
+      <script id="lore-plugin-modules" type="application/json">{{ .PluginModules }}</script>
       <script src="{{ asseturl "js/theme-init.js" }}"></script>
       <script type="module" src="{{ asseturl "js/static.js" }}"></script>
     </head>
     <body class="static-site"
           data-static-base-path="{{ .BasePath }}"
-          data-plugin-modules="{{ .BasePath }}plugins/modules.json"
-          data-plugin-live="false"
           data-coding-ligatures="false"
           data-navigation-style="{{ .NavigationStyle }}"
           data-navigation-density="{{ .NavigationDensity }}"

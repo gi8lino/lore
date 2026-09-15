@@ -8,6 +8,12 @@ export const plugin = {
 export const base = `/plugins/${plugin.plugin_id}/${plugin.digest}/`;
 export const block =
   '<div data-lore-plugin="io.lore.mermaid" data-lore-module="diagrams"><pre><code class="language-mermaid">graph LR; A --> B</code></pre></div>';
+export function pluginCatalog(module = plugin, enabled = true) {
+  const modules = enabled
+    ? [{ ...module, frame_url: `/plugins/${module.plugin_id}/${module.digest}/frames/${module.module_id}.html` }]
+    : [];
+  return `<script id="lore-plugin-modules" type="application/json">${JSON.stringify(modules)}</script>`;
+}
 // Browser fixture uses actual package JS/CSS and the core harness. HTTP tests
 // independently verify the generated frame and response policy.
 export async function pluginRoute(
@@ -24,12 +30,6 @@ export async function pluginRoute(
   const url = new URL(route.request().url());
   const path = url.pathname;
   if (!path.startsWith("/plugins/")) return false;
-  if (path === "/plugins/modules.json") {
-    await route.fulfill({
-      json: enabled ? [{ ...module, frame_url: framePath }] : [],
-    });
-    return true;
-  }
   if (!enabled) {
     await route.fulfill({ status: 404 });
     return true;

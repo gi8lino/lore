@@ -55,7 +55,6 @@ func addRoutes(
 	mux.Handle("POST /admin/plugins/{pluginID}/{action}", browserAuthn(adminAuthz(http.HandlerFunc(pluginsAdmin.Action))))
 	// Public infrastructure and authentication routes.
 	mux.HandleFunc("GET /plugins/styles.css", handler.PluginPresentationStyles(renderer.PluginManager()))
-	mux.HandleFunc("GET /plugins/modules.json", handler.PluginModules(renderer.PluginManager()))
 	mux.HandleFunc("GET /plugins/runtime.js", handler.PluginBrowserRuntime(appFS))
 	mux.HandleFunc("GET /plugins/{pluginID}/{digest}/assets/{asset...}", handler.PluginAssets(renderer.PluginManager()))
 	mux.HandleFunc("GET /plugins/{pluginID}/{digest}/frames/{frame}", handler.PluginFrame(renderer.PluginManager()))

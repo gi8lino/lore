@@ -125,12 +125,19 @@ func (i *Instance) Close(ctx context.Context) error {
 	if i.module != nil {
 		err = i.module.Close(ctx)
 	}
+	if i.compiled != nil {
+		err = errors.Join(err, i.compiled.Close(ctx))
+	}
 
-	return errors.Join(err, i.compiled.Close(ctx))
+	return err
 }
 
 // invoke executes one serialized guest render request with the current capability scope.
 func (i *Instance) invoke(ctx context.Context, request pluginapi.RenderRequest) (result pluginapi.RenderResult, err error) {
+	if i.module == nil {
+		return pluginapi.RenderResult{}, errors.New("plugin has no executable WASM module")
+	}
+
 	trace := renderprofile.FromContext(ctx)
 	profiled := trace != nil
 	metrics := renderprofile.WASMCall{}

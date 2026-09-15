@@ -79,7 +79,6 @@ func main() {
 	mux.Handle("POST /admin/plugins", secure(admin.Install))
 	mux.Handle("POST /admin/plugins/{pluginID}/{action}", secure(admin.Action))
 	mux.Handle("GET /assets/", handler.Assets(web.Assets))
-	mux.HandleFunc("GET /plugins/modules.json", handler.PluginModules(renderer.PluginManager()))
 	mux.HandleFunc("GET /plugins/styles.css", handler.PluginPresentationStyles(renderer.PluginManager()))
 	mux.HandleFunc("GET /fixture/package", func(w http.ResponseWriter, r *http.Request) {
 		version := r.URL.Query().Get("version")

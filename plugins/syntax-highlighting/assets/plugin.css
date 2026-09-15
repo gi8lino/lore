@@ -1,4 +1,4 @@
-/* Chroma token presentation owned by the bundled highlighter plugin. */
+/* Syntax token presentation owned by the bundled highlighter plugin. */
 .prose .chroma {
   color: var(--text);
   background: var(--surface-hover);
@@ -93,3 +93,5 @@
 .prose .chroma .w {
   color: var(--muted);
 }
+
+
