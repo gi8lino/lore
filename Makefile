@@ -59,7 +59,7 @@ SCREENSHOT_SCRIPT := scripts/screenshots/run.sh
 SCREENSHOT_BROWSER_CHANNEL ?= chrome
 
 ## Formatting
-PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md"
+PRETTIER_MD_SOURCES := README.md "docs/content/**/*.md" "plugins/**/*.md"
 
 # Compatibility alias for the shared current target.
 .PHONY: tag
@@ -247,7 +247,7 @@ fmt-go: generate web ## Format Go code.
 
 .PHONY: fmt-md
 fmt-md: $(NODE_MODULES) ## Format Markdown files.
-	$(NPX) prettier --write $(PRETTIER_MD_SOURCES)
+	$(NPX) prettier --write  $(PRETTIER_MD_SOURCES)
 
 .PHONY: check-templates
 check-templates: ## Check Go HTML template formatting.

@@ -42,7 +42,15 @@ func NewWithPluginStore(ctx context.Context, store plugin.Store, runtimeOptions 
 // moduleFeatures translates request-scoped compatibility flags at the composition boundary.
 // It does not activate modules absent from the registry.
 func moduleFeatures(options Options) map[string]bool {
-	return map[string]bool{"io.lore.callouts": options.Callouts, "io.lore.mermaid": options.Mermaid, "io.lore.tables": options.Tables, "io.lore.tables.tables": options.Tables, "io.lore.tables.styles": options.TableStyles, "io.lore.tables.sorting": options.TableSorting, "io.lore.tables.filtering": options.TableFiltering}
+	return map[string]bool{
+		"io.lore.callouts":         options.Callouts,
+		"io.lore.mermaid":          options.Mermaid,
+		"io.lore.tables":           options.Tables,
+		"io.lore.tables.tables":    options.Tables,
+		"io.lore.tables.styles":    options.TableStyles,
+		"io.lore.tables.sorting":   options.TableSorting,
+		"io.lore.tables.filtering": options.TableFiltering,
+	}
 }
 
 // pluginFeatures overlays persisted plugin-owned settings on legacy request options.
