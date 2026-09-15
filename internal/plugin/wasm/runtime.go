@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -96,6 +97,8 @@ type Runtime struct {
 	permissions map[string]bool
 	// storage provides persistent plugin state storage.
 	storage plugin.Storage
+	// logger receives debug-only plugin initialization timings when configured.
+	logger *slog.Logger
 }
 
 // Option configures trusted application policy, equally for every source.
@@ -112,6 +115,10 @@ func WithPermissions(permissions ...string) Option {
 
 // WithStorage provides namespaced persistent settings and data storage to plugins.
 func WithStorage(storage plugin.Storage) Option { return func(r *Runtime) { r.storage = storage } }
+
+// WithLogger enables runtime diagnostics such as per-plugin initialization timings.
+// Timing messages use DEBUG level, so normal application logging remains unchanged.
+func WithLogger(logger *slog.Logger) Option { return func(r *Runtime) { r.logger = logger } }
 
 // New creates a WASM plugin runtime with bounded resources and explicit host policy.
 func New(ctx context.Context, limits Limits, options ...Option) (*Runtime, error) {
@@ -150,8 +157,28 @@ func validLimits(limits Limits) bool {
 
 // Load validates policy and returns one isolated plugin instance. Declarative
 // packages never compile or instantiate WASM.
-func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (plugin.Instance, error) {
+func (r *Runtime) Load(ctx context.Context, pkg *pluginpackage.Package) (loaded plugin.Instance, err error) {
 	manifest := pkg.Manifest()
+	started := time.Now()
+	if r.logger != nil {
+		defer func() {
+			attributes := []any{
+				"event", "plugin_initialized",
+				"plugin_id", manifest.ID,
+				"plugin_name", manifest.Name,
+				"wasm", manifest.RequiresWASM(),
+				"duration", time.Since(started),
+			}
+			if err != nil {
+				attributes[1] = "plugin_initialization_failed"
+				attributes = append(attributes, "error", err)
+				r.logger.Debug("plugin initialization failed", attributes...)
+				return
+			}
+			r.logger.Debug("plugin initialized", attributes...)
+		}()
+	}
+
 	for _, permission := range manifest.Permissions {
 		if !r.permissions[permission] {
 			return nil, fmt.Errorf("plugin permission not granted: %s", permission)

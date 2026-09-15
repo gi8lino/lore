@@ -96,6 +96,45 @@ func TestDeclarativePackageLoadsWithoutWASM(t *testing.T) {
 	require.NoError(t, instance.Close(context.Background()))
 }
 
+func TestPluginInitializationTimingUsesDebugLogging(t *testing.T) {
+	pkg, err := pluginpackage.Read(declarativeArchive(t))
+	require.NoError(t, err)
+
+	t.Run("debug", func(t *testing.T) {
+		var output bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		runtime, err := wasm.New(context.Background(), wasm.Limits{}, wasm.WithLogger(logger))
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, runtime.Close(context.Background())) })
+
+		instance, err := runtime.Load(context.Background(), pkg)
+		require.NoError(t, err)
+		require.NoError(t, instance.Close(context.Background()))
+
+		log := output.String()
+		assert.Contains(t, log, "level=DEBUG")
+		assert.Contains(t, log, `msg="plugin initialized"`)
+		assert.Contains(t, log, "event=plugin_initialized")
+		assert.Contains(t, log, "plugin_id=io.example.declarative")
+		assert.Contains(t, log, "wasm=false")
+		assert.Contains(t, log, "duration=")
+	})
+
+	t.Run("info", func(t *testing.T) {
+		var output bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&output, nil))
+		runtime, err := wasm.New(context.Background(), wasm.Limits{}, wasm.WithLogger(logger))
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, runtime.Close(context.Background())) })
+
+		instance, err := runtime.Load(context.Background(), pkg)
+		require.NoError(t, err)
+		require.NoError(t, instance.Close(context.Background()))
+
+		assert.Empty(t, output.String())
+	})
+}
+
 // runtimeFixture handles the runtime fixture operation.
 func runtimeFixture(t *testing.T, stage string, limits wasm.Limits) (plugin.Instance, []byte) {
 	t.Helper()
