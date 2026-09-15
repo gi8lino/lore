@@ -14,8 +14,8 @@
             href="{{ .BasePath }}plugins/styles.css"
             data-plugin-styles />
       <script id="lore-themes" type="application/json">{{ .ThemeData }}</script>
-      <script id="lore-plugin-modules" type="application/json">{{ .PluginModules }}</script>
       <script src="{{ asseturl "js/theme-init.js" }}"></script>
+      <script id="lore-plugin-modules" type="application/json">{{ .PluginModules }}</script>
       <script type="module" src="{{ asseturl "js/static.js" }}"></script>
     </head>
     <body class="static-site"
