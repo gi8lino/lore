@@ -3,7 +3,7 @@ module io.lore/tables
 go 1.27.0
 
 require (
-	github.com/gi8lino/lore v0.0.0
+	github.com/gi8lino/lore v0.17.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/net v0.59.0
 )

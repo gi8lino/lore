@@ -3,7 +3,7 @@ module io.lore/page-report
 go 1.27.0
 
 require (
-	github.com/gi8lino/lore v0.0.0
+	github.com/gi8lino/lore v0.17.0
 	github.com/stretchr/testify v1.12.1
 )
 
