@@ -28,7 +28,9 @@ function isBrowserDraftValue(value: unknown): value is BrowserDraftValue {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return false;
   const values = (value as BrowserDraftValue).values;
-  return typeof values === "object" && values !== null && !Array.isArray(values);
+  return (
+    typeof values === "object" && values !== null && !Array.isArray(values)
+  );
 }
 
 function validDraftKey(key: string): boolean {

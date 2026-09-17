@@ -3,13 +3,14 @@
     <div class="settings-heading">
       <p class="eyebrow">Administration</p>
       <h1>Exports</h1>
-      <p class="muted">Export selected pages as Markdown together with every referenced image.</p>
+      <p class="muted">Export selected pages as a portable archive that Kumbuka can import directly.</p>
     </div>
     <section class="panel settings-panel">
       <p class="settings-note">
-        A single page without uploaded-image references downloads directly as <code>.md</code>. Multiple pages, or a
-        page with referenced images, use a ZIP with Markdown under <code>pages/</code> and images under
-        <code>media/</code>.
+        Administration exports use the versioned Kumbuka archive format with <code>manifest.json</code>, Markdown under
+        <code>pages/</code>, page metadata under <code>metadata/</code>, and bundled files under <code>media/</code> and
+        <code>attachments/</code>. <strong>Export all</strong> also includes stored images and attachments that are not
+        currently referenced by a page.
       </p>
       <form action="/admin/export" method="post" data-export-form>
         <div class="export-actions">

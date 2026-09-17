@@ -42,7 +42,10 @@ test("localDrafts ignores malformed values and supplies an untitled fallback", (
   const result = localDrafts(
     storage({
       "lore.editor.draft:bad": "{",
-      "lore.editor.draft:no-time": JSON.stringify({ title: "No time", values: {} }),
+      "lore.editor.draft:no-time": JSON.stringify({
+        title: "No time",
+        values: {},
+      }),
       "lore.editor.draft:new": JSON.stringify({ savedAt: 42, values: {} }),
     }),
   );

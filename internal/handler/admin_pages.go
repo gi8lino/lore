@@ -47,7 +47,7 @@ func AdminPages(
 func BulkAdminPages(
 	pageUseCases pageBulkService,
 	catalogUseCases pageContentService,
-	mediaUseCases imageContentService,
+	mediaUseCases portableArchiveExportMediaService,
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -65,14 +65,14 @@ func BulkAdminPages(
 
 		action := r.FormValue("action")
 		if action == "export" {
-			file, modTime, cleanup, exportErr := createExportArchive(r.Context(), catalogUseCases, mediaUseCases, slugs)
+			file, modTime, cleanup, exportErr := createPortableExportArchive(r.Context(), catalogUseCases, mediaUseCases, slugs, false)
 			if exportErr != nil {
-				writeExportProblem(logger, w, exportErr)
+				writePortableExportProblem(logger, w, exportErr)
 				return
 			}
 			defer cleanup()
 
-			filename := "lore-pages-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+			filename := "kumbuka-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 			serveExportArchive(w, r, filename, file, modTime)
 			return
 		}

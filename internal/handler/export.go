@@ -151,11 +151,11 @@ func ExportPagePDF(
 	}
 }
 
-// ExportPages creates an archive containing selected Markdown pages and referenced images.
+// ExportPages creates a Kumbuka-compatible portable archive for selected pages or the complete Lore content set.
 func ExportPages(
 	catalogUseCases pageContentService,
 	navigationUseCases navigationService,
-	mediaUseCases imageContentService,
+	mediaUseCases portableArchiveExportMediaService,
 	logger *slog.Logger,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +164,7 @@ func ExportPages(
 			return
 		}
 
+		includeAllResources := r.FormValue("all") == "true"
 		slugs, err := exportSlugs(r, navigationUseCases)
 		if err != nil {
 			httpresponse.InternalServerError(logger, w, err)
@@ -178,33 +179,20 @@ func ExportPages(
 			return
 		}
 
-		if len(slugs) == 1 {
-			pageData, err := catalogUseCases.GetPage(r.Context(), slugs[0])
-			if err != nil {
-				writePageProblem(logger, w, err)
-				return
-			}
-			if len(referencedImageIDs(pageData.Markdown)) == 0 {
-				serveMarkdown(w, pageData)
-				return
-			}
-		}
-
-		file, modTime, cleanup, err := createExportArchive(
+		file, modTime, cleanup, err := createPortableExportArchive(
 			r.Context(),
 			catalogUseCases,
 			mediaUseCases,
 			slugs,
+			includeAllResources,
 		)
 		if err != nil {
-			writeExportProblem(logger, w, err)
+			writePortableExportProblem(logger, w, err)
 			return
 		}
-
 		defer cleanup()
 
-		filename := "lore-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
-
+		filename := "kumbuka-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 		serveExportArchive(w, r, filename, file, modTime)
 	}
 }

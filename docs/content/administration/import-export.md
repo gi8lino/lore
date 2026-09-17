@@ -16,7 +16,11 @@ Imported pages are created as `verified`. When an import replaces an existing pa
 
 A single page can be exported as Markdown. If it references stored images, Lore creates a ZIP containing the Markdown plus each referenced image and rewrites image paths to archive-relative locations.
 
-Administrators can export selected pages or all pages as an archive. PDF export uses the normal Markdown renderer, inlines stored images, and sends the self-contained HTML to the configured HTML-to-PDF service.
+Administration exports use Kumbuka portable archive version 1 so Lore content can be imported directly into Kumbuka. The ZIP contains `manifest.json`, Markdown under `pages/`, portable page metadata under `metadata/`, and included uploads under `media/` and `attachments/`. Page metadata preserves the title, icon, language, tags, groups, lifecycle status, owner group, review interval, deprecated target, and structured properties. Resource references in Markdown are rewritten to archive-relative paths so Kumbuka can recreate uploads with new identifiers during import.
+
+A selected-page export includes the images and attachments referenced by those pages. **Export all** additionally includes every stored image and attachment, including currently unreferenced uploads, so a full content migration does not silently drop orphaned files. User accounts, sessions, revision history, comments, audit events, and plugin-owned data are outside portable archive version 1 and remain database-specific.
+
+PDF export uses the normal Markdown renderer, inlines stored images, and sends the self-contained HTML to the configured HTML-to-PDF service.
 
 Filesystem static site generation is a separate publishing path described in [Static sites](../static-sites.md).
 
