@@ -1,3 +1,7 @@
+# DEPRECATED
+
+use [kumbuka-me/kumbuka](https://github.com/kumbuka-me/kumbuka) instead!
+
 <p align="center">
   <img src="web/src/lore.svg" alt="Lore" width="480" />
 </p>
