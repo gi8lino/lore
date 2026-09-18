@@ -12,7 +12,7 @@ require (
 	github.com/go-icons/simple-icons v0.1.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/kaugesaar/lucide-go v0.26.0
+	github.com/kaugesaar/lucide-go v0.27.0
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pmezard/go-difflib v1.0.0
